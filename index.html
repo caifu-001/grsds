@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <title>客户管理系统</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -190,11 +191,11 @@ input,select,textarea,button{font-family:inherit}
 
  <div style="padding:12px 16px;font-size:14px;font-weight:600;color:var(--text2);margin-top:8px">导入/导出</div>
  <div style="padding:0 16px">
-  <div class="settings-item"><span class="lbl">导出客户数据</span><button class="act" onclick="doExport()">导出 JSON</button></div>
+  <div class="settings-item"><span class="lbl">导出客户数据</span><button class="act" onclick="doExport()">导出 Excel</button></div>
   <div class="settings-item">
    <span class="lbl">导入客户数据</span>
-   <input type="file" id="import-file" accept=".json" onchange="handleImport(this)">
-   <button class="act" onclick="document.getElementById('import-file').click()">选择文件</button>
+   <input type="file" id="import-file" accept=".xlsx,.xls" onchange="handleImport(this)">
+   <button class="act" onclick="document.getElementById('import-file').click()">选择 Excel</button>
   </div>
   <div class="hidden" id="import-preview" style="background:var(--bg);border-radius:10px;padding:12px;margin-top:4px">
    <div id="import-summary" style="font-size:13px;color:var(--text2)"></div>
@@ -724,10 +725,31 @@ async function doDelete(){
 function doExport(){
   sb.from('clients').select('*').order('created_at').then(function(r1){
     sb.from('contacts').select('*').order('created_at').then(function(r2){
-      var exp={version:3,exported_at:new Date().toISOString(),clients:r1.data||[],contacts:r2.data||[]};
-      var blob=new Blob([JSON.stringify(exp,null,2)],{type:'application/json'});
-      var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='crm-export-'+new Date().toISOString().slice(0,10)+'.json';
-      a.click();URL.revokeObjectURL(a.href);showToast('导出成功');
+      var wb=XLSX.utils.book_new();
+
+      var clients=r1.data||[],contacts=r2.data||[];
+      var crows=[["名称","属性","项目","招标日期","地址","备注","联系人数"]];
+      for(var i=0;i<clients.length;i++){
+        var c=clients[i],types=parseTypes(c.type).join('、');
+        crows.push([c.name||'',types,c.project||'',c.bidding_date||'',c.address||'',c.notes||'',c.contact_count||0]);
+      }
+      var cs=XLSX.utils.aoa_to_sheet(crows);
+      cs['!cols']=[{wch:30},{wch:25},{wch:20},{wch:12},{wch:30},{wch:30},{wch:10}];
+      XLSX.utils.book_append_sheet(wb,cs,'客户');
+
+      var prows=[["客户名称","姓名","部门","职务","电话","办公室房号"]];
+      for(var i=0;i<contacts.length;i++){
+        var co=contacts[i];
+        var cn='';for(var j=0;j<clients.length;j++){if(clients[j].id===co.client_id){cn=clients[j].name;break}}
+        var phones=[];try{phones=JSON.parse(co.phone||'[]');if(!Array.isArray(phones))phones=[co.phone||'']}catch(e){phones=[co.phone||'']}
+        prows.push([cn,co.name||'',co.dept||'',co.position||'',phones.join(' / '),co.room||'']);
+      }
+      var ps=XLSX.utils.aoa_to_sheet(prows);
+      ps['!cols']=[{wch:30},{wch:12},{wch:14},{wch:14},{wch:25},{wch:12}];
+      XLSX.utils.book_append_sheet(wb,ps,'联系人');
+
+      XLSX.writeFile(wb,'crm-export-'+new Date().toISOString().slice(0,10)+'.xlsx');
+      showToast('导出成功');
     }).catch(function(){showToast('导出失败')});
   }).catch(function(){showToast('导出失败')});
 }
@@ -737,48 +759,73 @@ function handleImport(input){
   var reader=new FileReader();
   reader.onload=function(e){
     try{
-      var d=JSON.parse(e.target.result);
-      if(!d.clients||!Array.isArray(d.clients)){showToast('无效的备份文件');return}
-      pendingImport={clients:d.clients,contacts:d.contacts||[]};
-      document.getElementById('import-summary').textContent='将导入 '+d.clients.length+' 个客户、'+(d.contacts||[]).length+' 个联系人（同名客户会跳过）';
+      var wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+      var clients=[],contacts=[];
+
+      var cs=wb.Sheets['客户']||wb.Sheets[wb.SheetNames[0]];
+      if(!cs){showToast('未找到「客户」工作表');return}
+      var cdata=XLSX.utils.sheet_to_json(cs,{header:1});
+      if(cdata.length<2){showToast('客户表无数据');return}
+      for(var i=1;i<cdata.length;i++){
+        var row=cdata[i];
+        if(!row[0]||!String(row[0]).trim())continue;
+        var typesStr=String(row[1]||'').trim();
+        var types=typesStr?typesStr.split(/[、,，\/]/).map(function(t){return t.trim()}).filter(Boolean):[];
+        clients.push({
+          name:String(row[0]).trim(),type:JSON.stringify(types),
+          project:String(row[2]||'').trim(),bidding_date:String(row[3]||'').trim(),
+          address:String(row[4]||'').trim(),notes:String(row[5]||'').trim(),
+          contact_count:parseInt(row[6])||0
+        });
+      }
+
+      var ps=wb.Sheets['联系人']||null;
+      if(ps){
+        var pdata=XLSX.utils.sheet_to_json(ps,{header:1});
+        for(var i=1;i<pdata.length;i++){
+          var row=pdata[i],cn=String(row[0]||'').trim();
+          if(!cn)continue;
+          var phones=String(row[4]||'').trim();
+          var phoneArr=phones?phones.split(/[\/、,，]/).map(function(p){return p.trim()}).filter(Boolean):[''];
+          contacts.push({
+            _clientName:cn,name:String(row[1]||'').trim(),
+            dept:String(row[2]||'').trim(),position:String(row[3]||'').trim(),
+            phone:JSON.stringify(phoneArr),room:String(row[5]||'').trim()
+          });
+        }
+      }
+
+      pendingImport={clients:clients,contacts:contacts};
+      document.getElementById('import-summary').textContent='将导入 '+clients.length+' 个客户、'+contacts.length+' 个联系人（同名客户会跳过）';
       document.getElementById('import-preview').classList.remove('hidden');
-    }catch(err){showToast('文件解析失败')}
+    }catch(err){showToast('文件解析失败: '+err.message)}
   };
-  reader.readAsText(f);
+  reader.readAsArrayBuffer(f);
 }
 function cancelImport(){pendingImport=null;document.getElementById('import-preview').classList.add('hidden');document.getElementById('import-file').value=''}
 
 async function confirmImport(){
   if(!pendingImport)return;
-  var nameExists={},added=0,skipped=0;
-  // track which names already exist
+  var nameExists={},added=0,skipped=0,nameToNewId={};
   for(var i=0;i<allClients.length;i++)nameExists[allClients[i].name]=true;
 
-  // Map: old client id -> name (from import data)
-  var oldIdToName={};
-  for(var i=0;i<pendingImport.clients.length;i++){var c=pendingImport.clients[i];if(c.id&&c.name)oldIdToName[c.id]=c.name}
-
-  // Map: name -> new client id
-  var nameToNewId={};
   for(var i=0;i<pendingImport.clients.length;i++){
     var c=pendingImport.clients[i];
     if(!c.name)continue;
     if(nameExists[c.name]){skipped++;continue}
-    delete c.id;c.user_id=currentUser.id;c.updated_at=new Date().toISOString();
+    c.user_id=currentUser.id;c.updated_at=new Date().toISOString();
     var {data:nd}=await sb.from('clients').insert(c).select('id');
-    if(nd&&nd.length){var newId=nd[0].id;nameToNewId[c.name]=newId;nameExists[c.name]=true;added++}
+    if(nd&&nd.length){nameToNewId[c.name]=nd[0].id;nameExists[c.name]=true;added++}
   }
 
-  // Import contacts for newly added clients only
   var contactAdded=0;
   for(var i=0;i<pendingImport.contacts.length;i++){
-    var co=JSON.parse(JSON.stringify(pendingImport.contacts[i]));
-    if(!co.client_id||!co.name)continue;
-    var oldName=oldIdToName[co.client_id];
-    if(!oldName||!nameToNewId[oldName])continue;
-    delete co.id;delete co.client_id;
-    co.user_id=currentUser.id;
-    co.client_id=nameToNewId[oldName];
+    var co=pendingImport.contacts[i];
+    if(!co._clientName||!co.name)continue;
+    var newId=nameToNewId[co._clientName];
+    if(!newId)continue;
+    delete co._clientName;
+    co.user_id=currentUser.id;co.client_id=newId;
     var {error}=await sb.from('contacts').insert(co);
     if(!error)contactAdded++;
   }
