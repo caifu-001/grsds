@@ -18,27 +18,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-
 .login-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:24px}
 .login-wrap h1{font-size:24px;margin-bottom:4px;color:var(--primary)}
 .login-wrap .sub{font-size:13px;color:var(--text2);margin-bottom:32px}
-.login-wrap .field{width:100%;margin-bottom:12px;position:relative}
+.login-wrap .field{width:100%;margin-bottom:12px}
 .login-wrap input{width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:10px;font-size:15px;outline:none;transition:border .2s;background:#fff}
 .login-wrap input:focus{border-color:var(--primary)}
 .login-wrap .btn{width:100%;padding:13px;border:none;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer;margin-bottom:8px;transition:opacity .2s}
 .login-wrap .btn:active{opacity:.8}
 .login-wrap .btn-primary{background:var(--primary);color:#fff}
-.login-wrap .btn-primary:disabled{opacity:.5;cursor:not-allowed}
 .login-wrap .btn-ghost{background:transparent;color:var(--primary);border:1px solid var(--primary)}
 .login-wrap .err{color:var(--danger);font-size:13px;margin-bottom:8px;min-height:20px}
-.login-wrap .hint{font-size:11px;color:var(--text3);margin-top:-8px;margin-bottom:12px;width:100%}
+.login-wrap .hint{font-size:11px;color:var(--text3);margin-top:-8px;margin-bottom:12px}
 .pw-strength{display:flex;gap:4px;width:100%;margin-top:-8px;margin-bottom:10px}
 .pw-strength .bar{flex:1;height:3px;border-radius:2px;background:var(--border);transition:background .3s}
 .pw-strength .bar.l1{background:#EF4444}.pw-strength .bar.l2{background:#F59E0B}.pw-strength .bar.l3{background:#10B981}
 
 .topbar{position:sticky;top:0;z-index:100;background:var(--primary);color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;font-size:17px;font-weight:600}
-.topbar .actions{display:flex;align-items:center;gap:12px}
 .topbar-btn{font-size:13px;font-weight:400;opacity:.85;cursor:pointer;background:none;border:none;color:#fff;padding:4px 8px;border-radius:6px}
 .topbar-btn:active{background:rgba(255,255,255,.15)}
 
 .search-bar{padding:12px 16px;position:sticky;top:44px;z-index:99;background:var(--bg)}
-.search-bar input{width:100%;padding:10px 14px 10px 36px;border:1px solid var(--border);border-radius:10px;font-size:14px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%239CA3AF' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.242.156a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E") 12px center no-repeat;outline:none;transition:border .2s}
+.search-bar input{width:100%;padding:10px 14px 10px 36px;border:1px solid var(--border);border-radius:10px;font-size:14px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%239CA3AF' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zM6.5 10.5a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E") 12px center no-repeat;outline:none;transition:border .2s}
 .search-bar input:focus{border-color:var(--primary)}
 
 .filter-tabs{display:flex;gap:8px;padding:0 16px 12px;overflow-x:auto;position:sticky;top:96px;z-index:98;background:var(--bg)}
@@ -50,25 +48,34 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-
 .client-card:active{transform:scale(.97)}
 .card-type{display:inline-block;font-size:11px;padding:2px 8px;border-radius:10px;margin-bottom:8px;font-weight:500;color:#fff}
 .card-type.type-a{background:var(--type-a)}.card-type.type-b{background:var(--type-b)}.card-type.type-c{background:var(--type-c)}.card-type.type-d{background:var(--type-d)}
-.card-name{font-size:16px;font-weight:600;margin-bottom:6px}
-.card-row{display:flex;align-items:center;font-size:12px;color:var(--text2);margin-bottom:3px;line-height:1.5}
-.card-row .lbl{flex-shrink:0;color:var(--text3);margin-right:4px}
-.card-row .val{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.card-project{font-size:12px;color:var(--primary);margin-top:6px;padding-top:6px;border-top:1px solid var(--border);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card-name{font-size:16px;font-weight:600;margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card-addr{font-size:11px;color:var(--text3);margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card-project{font-size:12px;color:var(--primary);margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card-contact{font-size:12px;color:var(--text2);padding-top:4px;border-top:1px solid var(--border);display:flex;align-items:center;gap:4px}
 
 .fab{position:fixed;bottom:24px;right:max(16px,calc((100vw - 480px)/2 + 16px));width:52px;height:52px;border-radius:50%;background:var(--primary);color:#fff;font-size:28px;border:none;cursor:pointer;box-shadow:0 4px 12px rgba(59,130,246,.4);display:flex;align-items:center;justify-content:center;z-index:200;transition:transform .2s}
 .fab:active{transform:scale(.92)}
 
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:300;display:flex;align-items:flex-end;justify-content:center}
-.modal-sheet{background:#fff;width:100%;max-width:480px;border-radius:16px 16px 0 0;max-height:85vh;overflow-y:auto;padding:20px 16px 32px;animation:slideUp .25s ease}
+.modal-sheet{background:#fff;width:100%;max-width:480px;border-radius:16px 16px 0 0;max-height:90vh;overflow-y:auto;padding:20px 16px 32px;animation:slideUp .25s ease}
 @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
 .modal-sheet h3{font-size:18px;margin-bottom:16px;text-align:center}
-.form-group{margin-bottom:14px}
+
+.section-title{font-size:14px;font-weight:600;color:var(--text);padding:12px 0 8px;border-bottom:2px solid var(--primary);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
+.section-title .add-btn{font-size:13px;font-weight:400;color:var(--primary);cursor:pointer;padding:2px 10px;border:1px solid var(--primary);border-radius:14px;background:transparent}
+.section-title .add-btn:active{background:rgba(59,130,246,.08)}
+
+.contact-item{background:var(--bg);border-radius:10px;padding:12px;margin-bottom:10px;position:relative}
+.contact-item .del-btn{position:absolute;top:8px;right:10px;width:24px;height:24px;border-radius:50%;background:rgba(239,68,68,.1);color:var(--danger);border:none;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.contact-item .del-btn:active{background:rgba(239,68,68,.2)}
+
+.form-group{margin-bottom:12px}
 .form-group label{display:block;font-size:13px;color:var(--text2);margin-bottom:4px;font-weight:500}
-.form-group input,.form-group select{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:15px;outline:none;transition:border .2s;background:#FAFAFA}
-.form-group input:focus,.form-group select:focus{border-color:var(--primary);background:#fff}
+.form-group input,.form-group select{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:15px;outline:none;transition:border .2s;background:#fff}
+.form-group input:focus,.form-group select:focus{border-color:var(--primary)}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.modal-actions{display:flex;gap:10px;margin-top:20px}
+.form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.modal-actions{display:flex;gap:10px;margin-top:20px;position:sticky;bottom:0;background:#fff;padding-top:12px}
 .modal-actions button{flex:1;padding:12px;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;border:none;transition:opacity .2s}
 .modal-actions button:active{opacity:.8}
 .btn-save{background:var(--primary);color:#fff}
@@ -84,31 +91,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-
 .toast{position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:500;background:#333;color:#fff;padding:10px 20px;border-radius:20px;font-size:14px;animation:fadeInOut 2.5s ease forwards;pointer-events:none}
 @keyframes fadeInOut{0%{opacity:0;transform:translateX(-50%) translateY(-10px)}15%{opacity:1;transform:translateX(-50%) translateY(0)}80%{opacity:1}100%{opacity:0}}
 
-/* Loading */
-.loading{display:flex;align-items:center;justify-content:center;padding:40px;color:var(--text3);font-size:14px}
-.loading .spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .6s linear infinite;margin-right:8px}
-@keyframes spin{to{transform:rotate(360deg)}}
-
 .empty{padding:60px 20px;text-align:center;color:var(--text3);font-size:14px}
 .hidden{display:none !important}
 #main-screen{display:flex;flex-direction:column;min-height:100vh}
+.loading{display:flex;align-items:center;justify-content:center;padding:40px;color:var(--text3);font-size:14px}
+.loading .spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .6s linear infinite;margin-right:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
-
-<!-- ====== CONFIG START ====== -->
-<!-- 替换为你的 Supabase 项目 URL 和 anon key -->
-<script>
-const SUPABASE_URL = 'https://jyefbatmmbelrhhzsgva.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp5ZWZiYXRtbWJlbHJoaHpzZ3ZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5NDIyMDUsImV4cCI6MjA5NTUxODIwNX0.m8pVc7yA9AycSTkexoH76SNo_P40KVRA4pmKECJQea4';
-</script>
-<!-- ====== CONFIG END ====== -->
 
 <!-- Login -->
 <div id="login-screen" class="login-wrap">
  <h1>客户管理系统</h1>
  <p class="sub">安全登录，数据云端同步</p>
- <div class="field"><input type="text" id="login-user" placeholder="邮箱 / 用户名" autocomplete="username"></div>
+ <div class="field"><input type="text" id="login-user" placeholder="邮箱" autocomplete="username"></div>
  <div class="field"><input type="password" id="login-pass" placeholder="密码" autocomplete="current-password"></div>
  <div class="pw-strength hidden" id="pw-strength-bars"><div class="bar" id="pw-b1"></div><div class="bar" id="pw-b2"></div><div class="bar" id="pw-b3"></div></div>
  <div class="hint hidden" id="pw-hint"></div>
@@ -121,9 +118,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 <div id="main-screen" class="hidden">
  <div class="topbar">
   <span>客户管理</span>
-  <div class="actions">
-   <button class="topbar-btn" onclick="doLogout()">退出</button>
-  </div>
+  <button class="topbar-btn" onclick="doLogout()">退出</button>
  </div>
  <div class="search-bar">
   <input type="text" id="search-input" placeholder="搜索客户..." oninput="renderList()">
@@ -144,24 +139,21 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 <div class="modal-overlay hidden" id="form-modal">
  <div class="modal-sheet">
   <h3 id="form-title">添加客户</h3>
+
+  <div class="section-title">📋 客户信息</div>
   <div class="form-group"><label>客户属性 *</label><select id="f-type"><option value="">请选择</option><option value="甲方">甲方</option><option value="集成商">集成商</option><option value="设计院">设计院</option><option value="运营商">运营商</option></select></div>
-  <div class="form-group"><label>姓名 *</label><input type="text" id="f-name" placeholder="客户姓名"></div>
+  <div class="form-group"><label>客户名称 *</label><input type="text" id="f-name" placeholder="公司/单位名称"></div>
   <div class="form-row">
    <div class="form-group"><label>近期项目</label><input type="text" id="f-project" placeholder="项目名称"></div>
    <div class="form-group"><label>招标日期</label><input type="date" id="f-bidding-date"></div>
   </div>
   <div class="form-group"><label>客户地址</label><input type="text" id="f-address" placeholder="详细地址"></div>
-  <div class="form-row">
-   <div class="form-group"><label>客户部门</label><input type="text" id="f-dept" placeholder="部门名称"></div>
-   <div class="form-group"><label>客户联系人</label><input type="text" id="f-contact" placeholder="联系人姓名"></div>
-  </div>
-  <div class="form-row">
-   <div class="form-group"><label>客户职务</label><input type="text" id="f-position" placeholder="职务"></div>
-   <div class="form-group"><label>客户联系电话</label><input type="tel" id="f-phone" placeholder="手机号"></div>
-  </div>
-  <div class="form-group"><label>客户办公室房号</label><input type="text" id="f-room" placeholder="办公室房号"></div>
+
+  <div class="section-title">👤 联系人 <span class="add-btn" onclick="addContact()">＋ 添加</span></div>
+  <div id="contacts-container"></div>
+
   <div class="modal-actions">
-   <button class="btn-delete hidden" id="btn-delete" onclick="confirmDelete()">删除</button>
+   <button class="btn-delete hidden" id="btn-delete" onclick="confirmDelete()">删除客户</button>
    <button class="btn-cancel" onclick="closeForm()">取消</button>
    <button class="btn-save" onclick="saveClient()">保存</button>
   </div>
@@ -171,7 +163,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 <!-- Delete Confirm -->
 <div class="confirm-overlay hidden" id="confirm-dialog">
  <div class="confirm-box">
-  <p>确定要删除该客户吗？</p>
+  <p>确定要删除该客户及所有联系人吗？</p>
   <div class="btns">
    <button style="background:var(--border);color:var(--text)" onclick="document.getElementById('confirm-dialog').classList.add('hidden')">取消</button>
    <button style="background:var(--danger);color:#fff" onclick="doDelete()">删除</button>
@@ -181,17 +173,9 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 <script>
 // ====== Supabase Init ======
-if (!SUPABASE_URL || SUPABASE_URL === 'YOUR_SUPABASE_URL') {
-  document.getElementById('login-screen').innerHTML = '<div style="text-align:center;padding:40px;color:#EF4444"><h2>⚙ 需要配置 Supabase</h2><p style="margin:16px 0;line-height:1.8">1. 去 <a href="https://supabase.com" target="_blank" style="color:#3B82F6">supabase.com</a> 注册免费账号<br>2. 创建项目<br>3. 复制 URL 和 anon key<br>4. 替换 index.html 里的占位符</p><p style="font-size:12px;color:#999">然后到 SQL Editor 运行建表语句</p></div>';
-  document.getElementById('login-screen').style.display = 'flex';
-  document.getElementById('login-screen').style.alignItems = 'flex-start';
-  document.getElementById('login-screen').style.paddingTop = '80px';
-}
-
+const SUPABASE_URL = 'https://jyefbatmmbelrhhzsgva.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp5ZWZiYXRtbWJlbHJoaHpzZ3ZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5NDIyMDUsImV4cCI6MjA5NTUxODIwNX0.m8pVc7yA9AycSTkexoH76SNo_P40KVRA4pmKECJQea4';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-// Fix: Supabase signUp returns email/phoneless user by default
-// We'll store the username (display name) in user_metadata
 
 const TYPE_MAP = {甲方:'type-a',集成商:'type-b',设计院:'type-c',运营商:'type-d'};
 
@@ -199,142 +183,129 @@ let loginMode = 'login';
 let currentUser = null;
 let allClients = [];
 let currentFilter = 'all';
-let editId = null;
+let editId = null;        // client id being edited
+let formContacts = [];    // contacts in the form: [{id, name, dept, position, phone, room, _new:bool}]
 let deleteId = null;
 
 // ====== Toast ======
 function showToast(msg) {
-  const t = document.createElement('div');
-  t.className = 'toast';
-  t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 2600);
+  var t = document.createElement('div'); t.className='toast'; t.textContent=msg;
+  document.body.appendChild(t); setTimeout(function(){t.remove()},2600);
 }
 
 // ====== Auth UI ======
 function switchMode() {
-  loginMode = loginMode === 'login' ? 'register' : 'login';
-  const loginBtn = document.getElementById('login-btn');
-  const registerBtn = document.getElementById('register-btn');
-  const pwBars = document.getElementById('pw-strength-bars');
-  const pwHint = document.getElementById('pw-hint');
-  document.getElementById('login-err').textContent = '';
-  if (loginMode === 'register') {
-    loginBtn.textContent = '注册';
-    registerBtn.textContent = '返回登录';
-    pwBars.classList.remove('hidden');
-    pwHint.classList.remove('hidden');
-    document.getElementById('login-pass').addEventListener('input', updateLoginPwStrength);
-  } else {
-    loginBtn.textContent = '登录';
-    registerBtn.textContent = '注册新账号';
-    pwBars.classList.add('hidden');
-    pwHint.classList.add('hidden');
-    document.getElementById('login-pass').removeEventListener('input', updateLoginPwStrength);
-  }
+  loginMode=loginMode==='login'?'register':'login';
+  document.getElementById('login-btn').textContent=loginMode==='register'?'注册':'登录';
+  document.getElementById('register-btn').textContent=loginMode==='register'?'返回登录':'注册新账号';
+  document.getElementById('login-err').textContent='';
+  var pwBars=document.getElementById('pw-strength-bars'), pwHint=document.getElementById('pw-hint');
+  if(loginMode==='register'){pwBars.classList.remove('hidden');pwHint.classList.remove('hidden')}
+  else{pwBars.classList.add('hidden');pwHint.classList.add('hidden')}
 }
 
 function checkPasswordStrength(pw) {
-  if (pw.length < 6) return {ok:false, level:0, msg:'密码至少6位'};
-  const hl = /[a-zA-Z]/.test(pw), hn = /[0-9]/.test(pw);
-  if (!hl||!hn) return {ok:false, level:1, msg:'需包含字母和数字'};
-  if (pw.length>=8&&/[!@#$%^&*]/.test(pw)) return {ok:true, level:3, msg:'密码强度：强'};
-  return {ok:true, level:2, msg:'密码强度：中'};
+  if(pw.length<6)return{ok:false,level:0,msg:'密码至少6位'};
+  var hl=/[a-zA-Z]/.test(pw), hn=/[0-9]/.test(pw);
+  if(!hl||!hn)return{ok:false,level:1,msg:'需包含字母和数字'};
+  if(pw.length>=8&&/[!@#$%^&*]/.test(pw))return{ok:true,level:3,msg:'密码强度：强'};
+  return{ok:true,level:2,msg:'密码强度：中'};
 }
-function updatePwStrength(prefix) {
-  let pw, b1, b2, b3, hint;
-  if (prefix==='settings'){pw=document.getElementById('settings-new-pass').value;b1=document.getElementById('spw-b1');b2=document.getElementById('spw-b2');b3=document.getElementById('spw-b3');hint=document.getElementById('settings-pw-hint')}
-  else {pw=document.getElementById('login-pass').value;b1=document.getElementById('pw-b1');b2=document.getElementById('pw-b2');b3=document.getElementById('pw-b3');hint=document.getElementById('pw-hint')}
-  var r=checkPasswordStrength(pw);
+
+function updateLoginPwStrength() {
+  var pw=document.getElementById('login-pass').value;
+  var b1=document.getElementById('pw-b1'),b2=document.getElementById('pw-b2'),b3=document.getElementById('pw-b3');
+  var hint=document.getElementById('pw-hint'), r=checkPasswordStrength(pw);
   b1.className='bar'+(r.level>=1?' l'+Math.min(r.level,3):'');
   b2.className='bar'+(r.level>=2?' l'+Math.min(r.level,3):'');
   b3.className='bar'+(r.level>=3?' l3':'');
   hint.textContent=r.msg; hint.style.color=r.ok?'#10B981':'#EF4444';
 }
-function updateLoginPwStrength(){updatePwStrength('login')}
 
-async function handleLogin() {
-  var un = document.getElementById('login-user').value.trim();
-  var pw = document.getElementById('login-pass').value.trim();
-  var er = document.getElementById('login-err');
-  er.textContent = '';
-  if (!un||!pw){er.textContent='请输入邮箱和密码';return}
+document.getElementById('login-pass').addEventListener('input',updateLoginPwStrength);
+document.getElementById('login-pass').addEventListener('keydown',function(e){if(e.key==='Enter')handleLogin()});
 
-  if (loginMode==='login'){
-    var r=await sb.auth.signInWithPassword({email:un,password:pw});
-    if(r.error){er.textContent=translateError(r.error.message);return}
-    onLoginSuccess(r.data.user);
-  }else{
-    var strength=checkPasswordStrength(pw);
-    if(!strength.ok){er.textContent=strength.msg;return}
-    var r=await sb.auth.signUp({email:un,password:pw});
-    if(r.error){er.textContent=translateError(r.error.message);return}
-    if(r.data.user&&!r.data.session){
-      // Email confirmation required
-      er.innerHTML='请检查邮箱确认注册链接<br><small style="color:#999">（可在 Supabase Dashboard → Auth → Settings 关掉邮件确认）</small>';
-      return
-    }
-    onLoginSuccess(r.data.user);
-  }
-}
-
-function translateError(msg){
-  if(msg.includes('Invalid login'))return'邮箱或密码错误';
-  if(msg.includes('not found'))return'账号不存在，请先注册';
-  if(msg.includes('already registered'))return'该邮箱已注册';
-  if(msg.includes('valid email'))return'请输入有效的邮箱地址';
+function translateError(msg) {
+  if(msg.indexOf('Invalid login')>=0)return'邮箱或密码错误';
+  if(msg.indexOf('not found')>=0)return'账号不存在，请先注册';
+  if(msg.indexOf('already registered')>=0)return'该邮箱已注册';
+  if(msg.indexOf('valid email')>=0)return'请输入有效的邮箱地址';
   return msg;
 }
 
-function onLoginSuccess(user){
-  currentUser = user;
+async function handleLogin() {
+  var un=document.getElementById('login-user').value.trim();
+  var pw=document.getElementById('login-pass').value.trim();
+  var er=document.getElementById('login-err'); er.textContent='';
+  if(!un||!pw){er.textContent='请输入邮箱和密码';return}
+  var loginBtn=document.getElementById('login-btn');
+  loginBtn.disabled=true; loginBtn.textContent='请稍候...';
+  try {
+    if(loginMode==='login') {
+      var r=await sb.auth.signInWithPassword({email:un,password:pw});
+      if(r.error){er.textContent=translateError(r.error.message);return}
+      onLoginSuccess(r.data.user);
+    } else {
+      var s=checkPasswordStrength(pw);
+      if(!s.ok){er.textContent=s.msg;return}
+      var r=await sb.auth.signUp({email:un,password:pw,options:{emailRedirectTo:location.origin}});
+      if(r.error){er.textContent=translateError(r.error.message);return}
+      if(r.data.user&&!r.data.session){er.innerHTML='请检查邮箱确认注册链接<br><small style="color:#999">（可在 Supabase Dashboard Auth Settings 关掉邮件确认）</small>';return}
+      onLoginSuccess(r.data.user);
+    }
+  } catch(e){er.textContent='网络错误：'+e.message}
+  finally{loginBtn.disabled=false;loginBtn.textContent=loginMode==='register'?'注册':'登录'}
+}
+
+function onLoginSuccess(user) {
+  currentUser=user;
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('main-screen').classList.remove('hidden');
+  document.getElementById('login-user').value='';
+  document.getElementById('login-pass').value='';
   loadClients();
 }
 
-async function doLogout(){
+async function doLogout() {
   await sb.auth.signOut();
-  currentUser=null;allClients=[];
+  currentUser=null; allClients=[];
   document.getElementById('main-screen').classList.add('hidden');
   document.getElementById('login-screen').classList.remove('hidden');
-  document.getElementById('login-user').value='';
-  document.getElementById('login-pass').value='';
-  document.getElementById('login-err').textContent='';
 }
 
-// ====== Client CRUD via Supabase ======
-async function loadClients(){
+// ====== Client CRUD ======
+async function loadClients() {
   var grid=document.getElementById('client-grid');
   grid.innerHTML='<div class="loading"><span class="spinner"></span>加载中...</div>';
-  var q=sb.from('clients').select('*').order('updated_at',{ascending:false});
-  var {data,error}=await q;
+  var {data,error}=await sb.from('clients').select('*').order('updated_at',{ascending:false});
   if(error){showToast('加载失败: '+error.message);grid.innerHTML='';return}
   allClients=data||[];
   renderList();
 }
 
-function renderList(){
+function renderList() {
   var q=(document.getElementById('search-input').value||'').trim().toLowerCase();
   var filtered=allClients;
-  if(q){filtered=allClients.filter(c=>
-    [c.name,c.type,c.project,c.address,c.dept,c.contact,c.position,c.phone,c.room].some(v=>v&&v.toLowerCase().includes(q)))}
-  if(currentFilter!=='all')filtered=filtered.filter(c=>c.type===currentFilter);
+  if(q) filtered=allClients.filter(function(c){
+    return [c.name,c.type,c.project,c.address].some(function(v){return v&&v.toLowerCase().indexOf(q)>=0});
+  });
+  if(currentFilter!=='all') filtered=filtered.filter(function(c){return c.type===currentFilter});
   var grid=document.getElementById('client-grid');
   var empty=document.getElementById('empty-state');
   if(filtered.length===0){grid.innerHTML='';empty.classList.remove('hidden')}
   else{
     empty.classList.add('hidden');
-    grid.innerHTML=filtered.map(c=>{
+    var html='';
+    for(var i=0;i<filtered.length;i++) {
+      var c=filtered[i];
       var tc=TYPE_MAP[c.type]||'';
       var date=c.bidding_date?new Date(c.bidding_date+'T00:00:00').toLocaleDateString('zh-CN'):'';
-      var parts=[];
-      if(c.dept)parts.push('<div class="card-row"><span class="lbl">部门</span><span class="val">'+esc(c.dept)+'</span></div>');
-      if(c.contact)parts.push('<div class="card-row"><span class="lbl">联系人</span><span class="val">'+esc(c.contact)+(c.position?' · '+esc(c.position):'')+'</span></div>');
-      if(c.phone)parts.push('<div class="card-row"><span class="lbl">电话</span><span class="val">'+esc(c.phone)+'</span></div>');
+      var addr=c.address?'<div class="card-addr">📍 '+esc(c.address)+'</div>':'';
       var proj=c.project?'<div class="card-project">📋 '+esc(c.project)+(date?' · '+date:'')+'</div>':'';
-      return '<div class="client-card" onclick="openForm(\''+c.id+'\')"><span class="card-type '+tc+'">'+esc(c.type)+'</span><div class="card-name">'+esc(c.name)+'</div>'+parts.join('')+proj+'</div>';
-    }).join('');
+      var cc=c.contact_count>0?'<div class="card-contact">👥 '+c.contact_count+'位联系人</div>':'';
+      html+='<div class="client-card" onclick="openForm(\''+c.id+'\')"><span class="card-type '+tc+'">'+esc(c.type)+'</span><div class="card-name">'+esc(c.name)+'</div>'+addr+proj+cc+'</div>';
+    }
+    grid.innerHTML=html;
   }
 }
 
@@ -342,88 +313,174 @@ function esc(s){return s?s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>
 
 function setFilter(f){
   currentFilter=f;
-  document.querySelectorAll('.filter-tab').forEach(t=>{var txt=t.textContent;t.classList.toggle('active',txt===f||(f==='all'&&txt==='全部'))});
+  var tabs=document.querySelectorAll('.filter-tab');
+  for(var i=0;i<tabs.length;i++){var txt=tabs[i].textContent;tabs[i].classList.toggle('active',txt===f||(f==='all'&&txt==='全部'))}
   renderList();
 }
 
+// ====== Contact Form ======
+function createContactHTML(c, idx) {
+  return '<div class="contact-item">\
+    <button class="del-btn" onclick="removeContact('+idx+')">✕</button>\
+    <div class="form-row">\
+      <div class="form-group"><label>姓名</label><input type="text" value="'+esc(c.name||'')+'" onchange="updateContact('+idx+',\'name\',this.value)" placeholder="联系人姓名"></div>\
+      <div class="form-group"><label>部门</label><input type="text" value="'+esc(c.dept||'')+'" onchange="updateContact('+idx+',\'dept\',this.value)" placeholder="所属部门"></div>\
+    </div>\
+    <div class="form-row">\
+      <div class="form-group"><label>职务</label><input type="text" value="'+esc(c.position||'')+'" onchange="updateContact('+idx+',\'position\',this.value)" placeholder="职位"></div>\
+      <div class="form-group"><label>电话</label><input type="tel" value="'+esc(c.phone||'')+'" onchange="updateContact('+idx+',\'phone\',this.value)" placeholder="联系电话"></div>\
+    </div>\
+    <div class="form-group"><label>办公室房号</label><input type="text" value="'+esc(c.room||'')+'" onchange="updateContact('+idx+',\'room\',this.value)" placeholder="办公室房号"></div>\
+  </div>';
+}
+
+function addContact() {
+  formContacts.push({id:'t'+Date.now()+Math.random().toString(36).slice(2,6),name:'',dept:'',position:'',phone:'',room:'',_new:true});
+  refreshContactsUI();
+}
+
+function removeContact(idx) {
+  formContacts.splice(idx,1);
+  refreshContactsUI();
+}
+
+function updateContact(idx, field, value) {
+  if(idx>=0&&idx<formContacts.length) formContacts[idx][field]=value;
+}
+
+function refreshContactsUI() {
+  var container=document.getElementById('contacts-container');
+  if(formContacts.length===0){container.innerHTML='<div class="empty" style="padding:20px">暂无联系人，点击上方「＋ 添加」</div>';return}
+  var html='';
+  for(var i=0;i<formContacts.length;i++) html+=createContactHTML(formContacts[i],i);
+  container.innerHTML=html;
+}
+
 // ====== Form ======
-function openForm(id){
+async function openForm(id) {
   editId=id||null;
   document.getElementById('form-title').textContent=id?'编辑客户':'添加客户';
   document.getElementById('btn-delete').classList.toggle('hidden',!id);
+  // Reset form
+  document.getElementById('f-type').value='';document.getElementById('f-name').value='';
+  document.getElementById('f-project').value='';document.getElementById('f-bidding-date').value='';
+  document.getElementById('f-address').value='';
+  formContacts=[];
   if(id){
-    var c=allClients.find(x=>x.id===id);
+    var c=allClients.find(function(x){return x.id===id});
     if(c){
-      document.getElementById('f-type').value=c.type||'';document.getElementById('f-name').value=c.name||'';
-      document.getElementById('f-project').value=c.project||'';document.getElementById('f-bidding-date').value=c.bidding_date||'';
-      document.getElementById('f-address').value=c.address||'';document.getElementById('f-dept').value=c.dept||'';
-      document.getElementById('f-contact').value=c.contact||'';document.getElementById('f-position').value=c.position||'';
-      document.getElementById('f-phone').value=c.phone||'';document.getElementById('f-room').value=c.room||'';
+      document.getElementById('f-type').value=c.type||'';
+      document.getElementById('f-name').value=c.name||'';
+      document.getElementById('f-project').value=c.project||'';
+      document.getElementById('f-bidding-date').value=c.bidding_date||'';
+      document.getElementById('f-address').value=c.address||'';
     }
-  }else{
-    ['f-type','f-name','f-project','f-bidding-date','f-address','f-dept','f-contact','f-position','f-phone','f-room'].forEach(id=>document.getElementById(id).value='');
+    // Load contacts
+    var {data}=await sb.from('contacts').select('*').eq('client_id',id).order('created_at',{ascending:true});
+    if(data&&data.length>0) {
+      for(var i=0;i<data.length;i++) formContacts.push(data[i]);
+    }
   }
+  refreshContactsUI();
   document.getElementById('form-modal').classList.remove('hidden');
 }
-function closeForm(){document.getElementById('form-modal').classList.add('hidden');editId=null}
 
-async function saveClient(){
+function closeForm() {
+  document.getElementById('form-modal').classList.add('hidden');
+  editId=null; formContacts=[];
+}
+
+async function saveClient() {
   var type=document.getElementById('f-type').value;
   var name=document.getElementById('f-name').value.trim();
   if(!type){showToast('请选择客户属性');return}
-  if(!name){showToast('请输入姓名');return}
+  if(!name){showToast('请输入客户名称');return}
+
   var client={
     type,name,
     project:document.getElementById('f-project').value.trim(),
     bidding_date:document.getElementById('f-bidding-date').value||null,
     address:document.getElementById('f-address').value.trim(),
-    dept:document.getElementById('f-dept').value.trim(),
-    contact:document.getElementById('f-contact').value.trim(),
-    position:document.getElementById('f-position').value.trim(),
-    phone:document.getElementById('f-phone').value.trim(),
-    room:document.getElementById('f-room').value.trim(),
+    contact_count: formContacts.length,
+    updated_at: new Date().toISOString()
   };
 
-  if(editId){
-    client.updated_at=new Date().toISOString();
+  var clientId = editId;
+  if(!editId) {
+    client.user_id = currentUser.id;
+    var {data:newData,error}=await sb.from('clients').insert(client).select('id');
+    if(error){showToast('添加失败: '+error.message);return}
+    clientId = newData[0].id;
+  } else {
     var {error}=await sb.from('clients').update(client).eq('id',editId);
     if(error){showToast('更新失败: '+error.message);return}
-  }else{
-    client.user_id=currentUser.id;
-    var {error}=await sb.from('clients').insert(client);
-    if(error){showToast('添加失败: '+error.message);return}
   }
+
+  // Sync contacts
+  var existingIds = [];
+  if(editId) {
+    var {data:oldContacts}=await sb.from('contacts').select('id').eq('client_id',editId);
+    existingIds = (oldContacts||[]).map(function(c){return c.id});
+  }
+
+  var savedIds = [];
+  for(var i=0;i<formContacts.length;i++) {
+    var co = formContacts[i];
+    var contactData = {
+      client_id: clientId,
+      user_id: currentUser.id,
+      name: co.name||'',
+      dept: co.dept||'',
+      position: co.position||'',
+      phone: co.phone||'',
+      room: co.room||''
+    };
+
+    if(co._new) {
+      var {data:newCo,error}=await sb.from('contacts').insert(contactData).select('id');
+      if(error){showToast('保存联系人失败');return}
+      if(newCo) savedIds.push(newCo[0].id);
+    } else {
+      var {error}=await sb.from('contacts').update(contactData).eq('id',co.id);
+      if(error){showToast('更新联系人失败');return}
+      savedIds.push(co.id);
+    }
+  }
+
+  // Delete removed contacts
+  var toDelete = existingIds.filter(function(id){return savedIds.indexOf(id)<0});
+  for(var j=0;j<toDelete.length;j++) {
+    await sb.from('contacts').delete().eq('id',toDelete[j]);
+  }
+
   closeForm();
   loadClients();
   showToast(editId?'已更新':'已添加');
 }
 
 function confirmDelete(){deleteId=editId;document.getElementById('confirm-dialog').classList.remove('hidden')}
-async function doDelete(){
+async function doDelete() {
   if(!deleteId)return;
   var {error}=await sb.from('clients').delete().eq('id',deleteId);
   document.getElementById('confirm-dialog').classList.add('hidden');
   closeForm();
-  if(error){showToast('删除失败: '+error.message);return}
-  loadClients();
   deleteId=null;
+  if(error){showToast('删除失败');return}
+  loadClients();
   showToast('已删除');
 }
 
 // ====== Init ======
-document.getElementById('login-pass').addEventListener('keydown',e=>{if(e.key==='Enter')handleLogin()});
-
-// Check existing session
-sb.auth.getSession().then(({data})=>{
-  if(data.session){
-    currentUser = data.session.user;
+sb.auth.getSession().then(function(res){
+  if(res.data&&res.data.session){
+    currentUser=res.data.session.user;
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('main-screen').classList.remove('hidden');
     loadClients();
-  }else{
+  } else {
     document.getElementById('login-screen').classList.remove('hidden');
   }
-}).catch(()=>{
+}).catch(function(){
   document.getElementById('login-screen').classList.remove('hidden');
 });
 </script>
