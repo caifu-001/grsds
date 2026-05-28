@@ -11,7 +11,6 @@
   --bg:#F0F2F5;--card:#fff;--primary:#3B82F6;--text:#1F2937;
   --text2:#6B7280;--text3:#9CA3AF;--border:#E5E7EB;--danger:#EF4444;
   --shadow:0 1px 3px rgba(0,0,0,.08);
-  --type-a:#3B82F6;--type-b:#10B981;--type-c:#8B5CF6;--type-d:#F59E0B;
 }
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;max-width:480px;margin:0 auto;user-select:none}
 
@@ -39,7 +38,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-
 .search-bar input{width:100%;padding:10px 14px 10px 36px;border:1px solid var(--border);border-radius:10px;font-size:14px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%239CA3AF' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zM6.5 10.5a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E") 12px center no-repeat;outline:none;transition:border .2s}
 .search-bar input:focus{border-color:var(--primary)}
 
-.filter-tabs{display:flex;gap:8px;padding:0 16px 12px;overflow-x:auto;position:sticky;top:96px;z-index:98;background:var(--bg)}
+.filter-tabs{display:flex;gap:8px;padding:0 16px 12px;overflow-x:auto;position:sticky;top:96px;z-index:98;background:var(--bg);scrollbar-width:none;-ms-overflow-style:none}
+.filter-tabs::-webkit-scrollbar{display:none}
 .filter-tab{padding:6px 14px;border-radius:16px;font-size:13px;white-space:nowrap;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;transition:all .2s;flex-shrink:0}
 .filter-tab.active{background:var(--primary);color:#fff;border-color:var(--primary)}
 
@@ -47,7 +47,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-
 .client-card{background:var(--card);border-radius:10px;padding:14px;box-shadow:var(--shadow);cursor:pointer;transition:transform .15s}
 .client-card:active{transform:scale(.97)}
 .card-type{display:inline-block;font-size:11px;padding:2px 8px;border-radius:10px;margin-bottom:8px;font-weight:500;color:#fff}
-.card-type.type-a{background:var(--type-a)}.card-type.type-b{background:var(--type-b)}.card-type.type-c{background:var(--type-c)}.card-type.type-d{background:var(--type-d)}
 .card-name{font-size:16px;font-weight:600;margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .card-addr{font-size:11px;color:var(--text3);margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .card-project{font-size:12px;color:var(--primary);margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -68,13 +67,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-
 .contact-item{background:var(--bg);border-radius:10px;padding:12px;margin-bottom:10px;position:relative}
 .contact-item .del-btn{position:absolute;top:8px;right:10px;width:24px;height:24px;border-radius:50%;background:rgba(239,68,68,.1);color:var(--danger);border:none;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .contact-item .del-btn:active{background:rgba(239,68,68,.2)}
+.contact-header{font-size:13px;font-weight:600;color:var(--primary);margin-bottom:10px;padding-right:30px}
+.contact-header .contact-num{font-weight:400;color:var(--text3);font-size:12px}
 
 .form-group{margin-bottom:12px}
 .form-group label{display:block;font-size:13px;color:var(--text2);margin-bottom:4px;font-weight:500}
 .form-group input,.form-group select{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:15px;outline:none;transition:border .2s;background:#fff}
 .form-group input:focus,.form-group select:focus{border-color:var(--primary)}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+
+.phone-row{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+.phone-row input{flex:1;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:15px;outline:none;transition:border .2s}
+.phone-row input:focus{border-color:var(--primary)}
+.phone-row .rm-phone{width:28px;height:28px;border-radius:50%;background:rgba(239,68,68,.1);color:var(--danger);border:none;font-size:14px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.phone-row .rm-phone:active{background:rgba(239,68,68,.2)}
+.add-phone-btn{font-size:12px;color:var(--primary);cursor:pointer;background:none;border:1px dashed var(--primary);border-radius:8px;padding:6px 12px;width:100%;margin-top:2px;transition:background .15s}
+.add-phone-btn:active{background:rgba(59,130,246,.06)}
+
 .modal-actions{display:flex;gap:10px;margin-top:20px;position:sticky;bottom:0;background:#fff;padding-top:12px}
 .modal-actions button{flex:1;padding:12px;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;border:none;transition:opacity .2s}
 .modal-actions button:active{opacity:.8}
@@ -116,20 +125,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-
 
 <!-- Main -->
 <div id="main-screen" class="hidden">
- <div class="topbar">
-  <span>客户管理</span>
-  <button class="topbar-btn" onclick="doLogout()">退出</button>
- </div>
- <div class="search-bar">
-  <input type="text" id="search-input" placeholder="搜索客户..." oninput="renderList()">
- </div>
- <div class="filter-tabs" id="filter-tabs">
-  <div class="filter-tab active" onclick="setFilter('all')">全部</div>
-  <div class="filter-tab" onclick="setFilter('甲方')">甲方</div>
-  <div class="filter-tab" onclick="setFilter('集成商')">集成商</div>
-  <div class="filter-tab" onclick="setFilter('设计院')">设计院</div>
-  <div class="filter-tab" onclick="setFilter('运营商')">运营商</div>
- </div>
+ <div class="topbar"><span>客户管理</span><button class="topbar-btn" onclick="doLogout()">退出</button></div>
+ <div class="search-bar"><input type="text" id="search-input" placeholder="搜索客户..." oninput="renderList()"></div>
+ <div class="filter-tabs" id="filter-tabs"></div>
  <div class="client-grid" id="client-grid"></div>
  <div class="empty hidden" id="empty-state">暂无客户数据，点击下方按钮添加</div>
  <button class="fab" onclick="openForm()">+</button>
@@ -141,7 +139,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-
   <h3 id="form-title">添加客户</h3>
 
   <div class="section-title">📋 客户信息</div>
-  <div class="form-group"><label>客户属性 *</label><select id="f-type"><option value="">请选择</option><option value="甲方">甲方</option><option value="集成商">集成商</option><option value="设计院">设计院</option><option value="运营商">运营商</option></select></div>
+  <div class="form-group"><label>客户属性 *</label><select id="f-type"></select></div>
   <div class="form-group"><label>客户名称 *</label><input type="text" id="f-name" placeholder="公司/单位名称"></div>
   <div class="form-row">
    <div class="form-group"><label>近期项目</label><input type="text" id="f-project" placeholder="项目名称"></div>
@@ -172,196 +170,193 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-
 </div>
 
 <script>
-// ====== Supabase Init ======
+// ====== Supabase ======
 const SUPABASE_URL = 'https://jyefbatmmbelrhhzsgva.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp5ZWZiYXRtbWJlbHJoaHpzZ3ZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5NDIyMDUsImV4cCI6MjA5NTUxODIwNX0.m8pVc7yA9AycSTkexoH76SNo_P40KVRA4pmKECJQea4';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const TYPE_MAP = {甲方:'type-a',集成商:'type-b',设计院:'type-c',运营商:'type-d'};
+const TYPE_LIST = ['甲方','集成商','设计院','运营商','国央企','党政','厂家','制造业','军队','司法','教育','医疗'];
+const TYPE_COLORS = ['#3B82F6','#10B981','#8B5CF6','#F59E0B','#EF4444','#DC2626','#06B6D4','#EC4899','#84CC16','#6366F1','#F97316','#14B8A6'];
 
-let loginMode = 'login';
-let currentUser = null;
-let allClients = [];
-let currentFilter = 'all';
-let editId = null;        // client id being edited
-let formContacts = [];    // contacts in the form: [{id, name, dept, position, phone, room, _new:bool}]
-let deleteId = null;
+let loginMode = 'login', currentUser = null, allClients = [], currentFilter = 'all';
+let editId = null, formContacts = [], deleteId = null;
 
-// ====== Toast ======
-function showToast(msg) {
-  var t = document.createElement('div'); t.className='toast'; t.textContent=msg;
-  document.body.appendChild(t); setTimeout(function(){t.remove()},2600);
-}
+function typeColor(t){var i=TYPE_LIST.indexOf(t);return i>=0?TYPE_COLORS[i]:'#999'}
 
-// ====== Auth UI ======
-function switchMode() {
+// Toast
+function showToast(msg){var t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(function(){t.remove()},2600)}
+
+// === Auth ===
+function switchMode(){
   loginMode=loginMode==='login'?'register':'login';
   document.getElementById('login-btn').textContent=loginMode==='register'?'注册':'登录';
   document.getElementById('register-btn').textContent=loginMode==='register'?'返回登录':'注册新账号';
   document.getElementById('login-err').textContent='';
-  var pwBars=document.getElementById('pw-strength-bars'), pwHint=document.getElementById('pw-hint');
-  if(loginMode==='register'){pwBars.classList.remove('hidden');pwHint.classList.remove('hidden')}
-  else{pwBars.classList.add('hidden');pwHint.classList.add('hidden')}
+  var b=document.getElementById('pw-strength-bars'),h=document.getElementById('pw-hint');
+  loginMode==='register'?(b.classList.remove('hidden'),h.classList.remove('hidden')):(b.classList.add('hidden'),h.classList.add('hidden'));
 }
 
-function checkPasswordStrength(pw) {
+function checkPasswordStrength(pw){
   if(pw.length<6)return{ok:false,level:0,msg:'密码至少6位'};
-  var hl=/[a-zA-Z]/.test(pw), hn=/[0-9]/.test(pw);
+  var hl=/[a-zA-Z]/.test(pw),hn=/[0-9]/.test(pw);
   if(!hl||!hn)return{ok:false,level:1,msg:'需包含字母和数字'};
   if(pw.length>=8&&/[!@#$%^&*]/.test(pw))return{ok:true,level:3,msg:'密码强度：强'};
   return{ok:true,level:2,msg:'密码强度：中'};
 }
 
-function updateLoginPwStrength() {
-  var pw=document.getElementById('login-pass').value;
-  var b1=document.getElementById('pw-b1'),b2=document.getElementById('pw-b2'),b3=document.getElementById('pw-b3');
-  var hint=document.getElementById('pw-hint'), r=checkPasswordStrength(pw);
+function updateLoginPwStrength(){
+  var pw=document.getElementById('login-pass').value,b1=document.getElementById('pw-b1'),b2=document.getElementById('pw-b2'),b3=document.getElementById('pw-b3');
+  var hint=document.getElementById('pw-hint'),r=checkPasswordStrength(pw);
   b1.className='bar'+(r.level>=1?' l'+Math.min(r.level,3):'');
   b2.className='bar'+(r.level>=2?' l'+Math.min(r.level,3):'');
   b3.className='bar'+(r.level>=3?' l3':'');
-  hint.textContent=r.msg; hint.style.color=r.ok?'#10B981':'#EF4444';
+  hint.textContent=r.msg;hint.style.color=r.ok?'#10B981':'#EF4444';
 }
-
 document.getElementById('login-pass').addEventListener('input',updateLoginPwStrength);
 document.getElementById('login-pass').addEventListener('keydown',function(e){if(e.key==='Enter')handleLogin()});
 
-function translateError(msg) {
+function translateError(msg){
   if(msg.indexOf('Invalid login')>=0)return'邮箱或密码错误';
   if(msg.indexOf('not found')>=0)return'账号不存在，请先注册';
   if(msg.indexOf('already registered')>=0)return'该邮箱已注册';
-  if(msg.indexOf('valid email')>=0)return'请输入有效的邮箱地址';
+  if(msg.indexOf('valid email')>=0)return'请输入有效邮箱';
   return msg;
 }
 
-async function handleLogin() {
-  var un=document.getElementById('login-user').value.trim();
-  var pw=document.getElementById('login-pass').value.trim();
-  var er=document.getElementById('login-err'); er.textContent='';
+async function handleLogin(){
+  var un=document.getElementById('login-user').value.trim(),pw=document.getElementById('login-pass').value.trim();
+  var er=document.getElementById('login-err');er.textContent='';
   if(!un||!pw){er.textContent='请输入邮箱和密码';return}
-  var loginBtn=document.getElementById('login-btn');
-  loginBtn.disabled=true; loginBtn.textContent='请稍候...';
-  try {
-    if(loginMode==='login') {
+  var btn=document.getElementById('login-btn');btn.disabled=true;btn.textContent='请稍候...';
+  try{
+    if(loginMode==='login'){
       var r=await sb.auth.signInWithPassword({email:un,password:pw});
       if(r.error){er.textContent=translateError(r.error.message);return}
       onLoginSuccess(r.data.user);
-    } else {
+    }else{
       var s=checkPasswordStrength(pw);
       if(!s.ok){er.textContent=s.msg;return}
-      var r=await sb.auth.signUp({email:un,password:pw,options:{emailRedirectTo:location.origin}});
+      var r=await sb.auth.signUp({email:un,password:pw});
       if(r.error){er.textContent=translateError(r.error.message);return}
-      if(r.data.user&&!r.data.session){er.innerHTML='请检查邮箱确认注册链接<br><small style="color:#999">（可在 Supabase Dashboard Auth Settings 关掉邮件确认）</small>';return}
+      if(r.data.user&&!r.data.session){er.innerHTML='请在 Supabase Dashboard Auth Settings 中关掉邮件确认后重试';return}
       onLoginSuccess(r.data.user);
     }
-  } catch(e){er.textContent='网络错误：'+e.message}
-  finally{loginBtn.disabled=false;loginBtn.textContent=loginMode==='register'?'注册':'登录'}
+  }catch(e){er.textContent='网络错误：'+e.message}
+  finally{btn.disabled=false;btn.textContent=loginMode==='register'?'注册':'登录'}
 }
 
-function onLoginSuccess(user) {
-  currentUser=user;
-  document.getElementById('login-screen').classList.add('hidden');
-  document.getElementById('main-screen').classList.remove('hidden');
-  document.getElementById('login-user').value='';
-  document.getElementById('login-pass').value='';
-  loadClients();
+function onLoginSuccess(user){currentUser=user;document.getElementById('login-screen').classList.add('hidden');document.getElementById('main-screen').classList.remove('hidden');buildFilterTabs();loadClients()}
+async function doLogout(){await sb.auth.signOut();currentUser=null;allClients=[];document.getElementById('main-screen').classList.add('hidden');document.getElementById('login-screen').classList.remove('hidden')}
+
+// === Filter Tabs ===
+function buildFilterTabs(){
+  var html='<div class="filter-tab active" onclick="setFilter(\'all\')">全部</div>';
+  for(var i=0;i<TYPE_LIST.length;i++) html+='<div class="filter-tab" onclick="setFilter(\''+TYPE_LIST[i]+'\')">'+TYPE_LIST[i]+'</div>';
+  document.getElementById('filter-tabs').innerHTML=html;
 }
 
-async function doLogout() {
-  await sb.auth.signOut();
-  currentUser=null; allClients=[];
-  document.getElementById('main-screen').classList.add('hidden');
-  document.getElementById('login-screen').classList.remove('hidden');
+function setFilter(f){
+  currentFilter=f;
+  var tabs=document.querySelectorAll('.filter-tab');
+  for(var i=0;i<tabs.length;i++)tabs[i].classList.toggle('active',
+    (f==='all'&&i===0)||tabs[i].textContent===f);
+  renderList();
 }
 
-// ====== Client CRUD ======
-async function loadClients() {
+// === Client CRUD ===
+async function loadClients(){
   var grid=document.getElementById('client-grid');
   grid.innerHTML='<div class="loading"><span class="spinner"></span>加载中...</div>';
   var {data,error}=await sb.from('clients').select('*').order('updated_at',{ascending:false});
-  if(error){showToast('加载失败: '+error.message);grid.innerHTML='';return}
+  if(error){showToast('加载失败');grid.innerHTML='';return}
   allClients=data||[];
   renderList();
 }
 
-function renderList() {
+function renderList(){
   var q=(document.getElementById('search-input').value||'').trim().toLowerCase();
   var filtered=allClients;
-  if(q) filtered=allClients.filter(function(c){
-    return [c.name,c.type,c.project,c.address].some(function(v){return v&&v.toLowerCase().indexOf(q)>=0});
-  });
+  if(q) filtered=allClients.filter(function(c){return[c.name,c.type,c.project,c.address].some(function(v){return v&&v.toLowerCase().indexOf(q)>=0})});
   if(currentFilter!=='all') filtered=filtered.filter(function(c){return c.type===currentFilter});
-  var grid=document.getElementById('client-grid');
-  var empty=document.getElementById('empty-state');
+  var grid=document.getElementById('client-grid'),empty=document.getElementById('empty-state');
   if(filtered.length===0){grid.innerHTML='';empty.classList.remove('hidden')}
   else{
     empty.classList.add('hidden');
     var html='';
-    for(var i=0;i<filtered.length;i++) {
-      var c=filtered[i];
-      var tc=TYPE_MAP[c.type]||'';
+    for(var i=0;i<filtered.length;i++){
+      var c=filtered[i],tc=typeColor(c.type||'');
       var date=c.bidding_date?new Date(c.bidding_date+'T00:00:00').toLocaleDateString('zh-CN'):'';
-      var addr=c.address?'<div class="card-addr">📍 '+esc(c.address)+'</div>':'';
-      var proj=c.project?'<div class="card-project">📋 '+esc(c.project)+(date?' · '+date:'')+'</div>':'';
-      var cc=c.contact_count>0?'<div class="card-contact">👥 '+c.contact_count+'位联系人</div>':'';
-      html+='<div class="client-card" onclick="openForm(\''+c.id+'\')"><span class="card-type '+tc+'">'+esc(c.type)+'</span><div class="card-name">'+esc(c.name)+'</div>'+addr+proj+cc+'</div>';
+      html+='<div class="client-card" onclick="openForm(\''+c.id+'\')">\
+        <span class="card-type" style="background:'+tc+'">'+e(c.type)+'</span>\
+        <div class="card-name">'+e(c.name)+'</div>'+
+        (c.address?'<div class="card-addr">📍 '+e(c.address)+'</div>':'')+
+        (c.project?'<div class="card-project">📋 '+e(c.project)+(date?' · '+date:'')+'</div>':'')+
+        ((c.contact_count||0)>0?'<div class="card-contact">👥 '+c.contact_count+'位联系人</div>':'')+
+      '</div>';
     }
     grid.innerHTML=html;
   }
 }
 
-function esc(s){return s?s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'):''}
+function e(s){return s?s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'):''}
 
-function setFilter(f){
-  currentFilter=f;
-  var tabs=document.querySelectorAll('.filter-tab');
-  for(var i=0;i<tabs.length;i++){var txt=tabs[i].textContent;tabs[i].classList.toggle('active',txt===f||(f==='all'&&txt==='全部'))}
-  renderList();
+// === Type Select ===
+function buildTypeSelect(){
+  var sel=document.getElementById('f-type');
+  sel.innerHTML='<option value="">请选择</option>';
+  for(var i=0;i<TYPE_LIST.length;i++) sel.innerHTML+='<option value="'+TYPE_LIST[i]+'">'+TYPE_LIST[i]+'</option>';
 }
+buildTypeSelect();
 
-// ====== Contact Form ======
-function createContactHTML(c, idx) {
+// === Contact Form with Multi-Phone ===
+function createContactHTML(c, idx){
+  var phones=c.phones||[];
+  if(!phones.length)phones=[''];
+  var phHtml='';
+  for(var p=0;p<phones.length;p++){
+    phHtml+='<div class="phone-row">\
+      <input type="tel" value="'+e(phones[p]||'')+'" onchange="updatePhone('+idx+','+p+',this.value)" placeholder="手机号">\
+      '+(phones.length>1?'<button class="rm-phone" onclick="removePhone('+idx+','+p+')">✕</button>':'')+'\
+    </div>';
+  }
+  phHtml+='<button class="add-phone-btn" onclick="addPhone('+idx+')">＋ 添加号码</button>';
+
+  var name=c.name||''; if(!name)name='新联系人';
   return '<div class="contact-item">\
     <button class="del-btn" onclick="removeContact('+idx+')">✕</button>\
+    <div class="contact-header">🧑 <span class="contact-num">#'+(idx+1)+'</span></div>\
     <div class="form-row">\
-      <div class="form-group"><label>姓名</label><input type="text" value="'+esc(c.name||'')+'" onchange="updateContact('+idx+',\'name\',this.value)" placeholder="联系人姓名"></div>\
-      <div class="form-group"><label>部门</label><input type="text" value="'+esc(c.dept||'')+'" onchange="updateContact('+idx+',\'dept\',this.value)" placeholder="所属部门"></div>\
+      <div class="form-group"><label>姓名</label><input type="text" value="'+e(c.name||'')+'" onchange="updateContact('+idx+',\'name\',this.value)" placeholder="联系人姓名"></div>\
+      <div class="form-group"><label>部门</label><input type="text" value="'+e(c.dept||'')+'" onchange="updateContact('+idx+',\'dept\',this.value)" placeholder="所属部门"></div>\
     </div>\
     <div class="form-row">\
-      <div class="form-group"><label>职务</label><input type="text" value="'+esc(c.position||'')+'" onchange="updateContact('+idx+',\'position\',this.value)" placeholder="职位"></div>\
-      <div class="form-group"><label>电话</label><input type="tel" value="'+esc(c.phone||'')+'" onchange="updateContact('+idx+',\'phone\',this.value)" placeholder="联系电话"></div>\
+      <div class="form-group"><label>职务</label><input type="text" value="'+e(c.position||'')+'" onchange="updateContact('+idx+',\'position\',this.value)" placeholder="职位"></div>\
+      <div class="form-group"><label>办公室房号</label><input type="text" value="'+e(c.room||'')+'" onchange="updateContact('+idx+',\'room\',this.value)" placeholder="办公室房号"></div>\
     </div>\
-    <div class="form-group"><label>办公室房号</label><input type="text" value="'+esc(c.room||'')+'" onchange="updateContact('+idx+',\'room\',this.value)" placeholder="办公室房号"></div>\
+    <div class="form-group"><label>电话</label>'+phHtml+'</div>\
   </div>';
 }
 
-function addContact() {
-  formContacts.push({id:'t'+Date.now()+Math.random().toString(36).slice(2,6),name:'',dept:'',position:'',phone:'',room:'',_new:true});
-  refreshContactsUI();
-}
+function addContact(){formContacts.push({id:'t'+Date.now()+Math.random().toString(36).slice(2,6),name:'',dept:'',position:'',phones:[''],room:'',_new:true});refreshContactsUI()}
+function removeContact(i){formContacts.splice(i,1);refreshContactsUI()}
+function updateContact(i,f,v){if(i>=0&&i<formContacts.length)formContacts[i][f]=v}
+function addPhone(ci){if(!formContacts[ci].phones)formContacts[ci].phones=[];formContacts[ci].phones.push('');refreshContactsUI()}
+function removePhone(ci,pi){formContacts[ci].phones.splice(pi,1);refreshContactsUI()}
+function updatePhone(ci,pi,v){if(formContacts[ci]&&formContacts[ci].phones)formContacts[ci].phones[pi]=v}
 
-function removeContact(idx) {
-  formContacts.splice(idx,1);
-  refreshContactsUI();
-}
-
-function updateContact(idx, field, value) {
-  if(idx>=0&&idx<formContacts.length) formContacts[idx][field]=value;
-}
-
-function refreshContactsUI() {
+function refreshContactsUI(){
   var container=document.getElementById('contacts-container');
   if(formContacts.length===0){container.innerHTML='<div class="empty" style="padding:20px">暂无联系人，点击上方「＋ 添加」</div>';return}
   var html='';
-  for(var i=0;i<formContacts.length;i++) html+=createContactHTML(formContacts[i],i);
+  for(var i=0;i<formContacts.length;i++)html+=createContactHTML(formContacts[i],i);
   container.innerHTML=html;
 }
 
-// ====== Form ======
-async function openForm(id) {
+// === Form Open / Close ===
+async function openForm(id){
   editId=id||null;
   document.getElementById('form-title').textContent=id?'编辑客户':'添加客户';
   document.getElementById('btn-delete').classList.toggle('hidden',!id);
-  // Reset form
   document.getElementById('f-type').value='';document.getElementById('f-name').value='';
   document.getElementById('f-project').value='';document.getElementById('f-bidding-date').value='';
   document.getElementById('f-address').value='';
@@ -375,24 +370,27 @@ async function openForm(id) {
       document.getElementById('f-bidding-date').value=c.bidding_date||'';
       document.getElementById('f-address').value=c.address||'';
     }
-    // Load contacts
     var {data}=await sb.from('contacts').select('*').eq('client_id',id).order('created_at',{ascending:true});
-    if(data&&data.length>0) {
-      for(var i=0;i<data.length;i++) formContacts.push(data[i]);
+    if(data&&data.length>0){
+      for(var i=0;i<data.length;i++){
+        var co=data[i],phones=[];
+        try{phones=JSON.parse(co.phone||'[]');if(!Array.isArray(phones))phones=co.phone?[co.phone]:['']}
+        catch(e){phones=co.phone?[co.phone]:['']}
+        if(!phones.length)phones=[''];
+        co.phones=phones;
+        formContacts.push(co);
+      }
     }
   }
   refreshContactsUI();
   document.getElementById('form-modal').classList.remove('hidden');
 }
 
-function closeForm() {
-  document.getElementById('form-modal').classList.add('hidden');
-  editId=null; formContacts=[];
-}
+function closeForm(){document.getElementById('form-modal').classList.add('hidden');editId=null;formContacts=[]}
 
-async function saveClient() {
-  var type=document.getElementById('f-type').value;
-  var name=document.getElementById('f-name').value.trim();
+// === Save ===
+async function saveClient(){
+  var type=document.getElementById('f-type').value,name=document.getElementById('f-name').value.trim();
   if(!type){showToast('请选择客户属性');return}
   if(!name){showToast('请输入客户名称');return}
 
@@ -401,57 +399,50 @@ async function saveClient() {
     project:document.getElementById('f-project').value.trim(),
     bidding_date:document.getElementById('f-bidding-date').value||null,
     address:document.getElementById('f-address').value.trim(),
-    contact_count: formContacts.length,
-    updated_at: new Date().toISOString()
+    contact_count:formContacts.length,
+    updated_at:new Date().toISOString()
   };
 
-  var clientId = editId;
-  if(!editId) {
-    client.user_id = currentUser.id;
-    var {data:newData,error}=await sb.from('clients').insert(client).select('id');
+  var clientId=editId;
+  if(!editId){
+    client.user_id=currentUser.id;
+    var {data:nd,error}=await sb.from('clients').insert(client).select('id');
     if(error){showToast('添加失败: '+error.message);return}
-    clientId = newData[0].id;
-  } else {
+    clientId=nd[0].id;
+  }else{
     var {error}=await sb.from('clients').update(client).eq('id',editId);
     if(error){showToast('更新失败: '+error.message);return}
   }
 
   // Sync contacts
-  var existingIds = [];
-  if(editId) {
-    var {data:oldContacts}=await sb.from('contacts').select('id').eq('client_id',editId);
-    existingIds = (oldContacts||[]).map(function(c){return c.id});
-  }
+  var existingIds=[];
+  if(editId){var {data:oc}=await sb.from('contacts').select('id').eq('client_id',editId);existingIds=(oc||[]).map(function(x){return x.id})}
 
-  var savedIds = [];
-  for(var i=0;i<formContacts.length;i++) {
-    var co = formContacts[i];
-    var contactData = {
-      client_id: clientId,
-      user_id: currentUser.id,
-      name: co.name||'',
-      dept: co.dept||'',
-      position: co.position||'',
-      phone: co.phone||'',
-      room: co.room||''
+  var savedIds=[];
+  for(var i=0;i<formContacts.length;i++){
+    var co=formContacts[i],phones=co.phones||[''];
+    phones=phones.filter(function(p){return p.trim()});
+    if(!phones.length)phones=[''];
+
+    var cd={
+      client_id:clientId,user_id:currentUser.id,
+      name:co.name||'',dept:co.dept||'',position:co.position||'',
+      phone:JSON.stringify(phones),room:co.room||''
     };
-
-    if(co._new) {
-      var {data:newCo,error}=await sb.from('contacts').insert(contactData).select('id');
+    if(co._new){
+      var {data:nc,error}=await sb.from('contacts').insert(cd).select('id');
       if(error){showToast('保存联系人失败');return}
-      if(newCo) savedIds.push(newCo[0].id);
-    } else {
-      var {error}=await sb.from('contacts').update(contactData).eq('id',co.id);
+      if(nc)savedIds.push(nc[0].id);
+    }else{
+      var {error}=await sb.from('contacts').update(cd).eq('id',co.id);
       if(error){showToast('更新联系人失败');return}
       savedIds.push(co.id);
     }
   }
 
   // Delete removed contacts
-  var toDelete = existingIds.filter(function(id){return savedIds.indexOf(id)<0});
-  for(var j=0;j<toDelete.length;j++) {
-    await sb.from('contacts').delete().eq('id',toDelete[j]);
-  }
+  var toDel=existingIds.filter(function(id){return savedIds.indexOf(id)<0});
+  for(var j=0;j<toDel.length;j++)await sb.from('contacts').delete().eq('id',toDel[j]);
 
   closeForm();
   loadClients();
@@ -459,30 +450,20 @@ async function saveClient() {
 }
 
 function confirmDelete(){deleteId=editId;document.getElementById('confirm-dialog').classList.remove('hidden')}
-async function doDelete() {
+async function doDelete(){
   if(!deleteId)return;
   var {error}=await sb.from('clients').delete().eq('id',deleteId);
   document.getElementById('confirm-dialog').classList.add('hidden');
-  closeForm();
-  deleteId=null;
+  closeForm();deleteId=null;
   if(error){showToast('删除失败');return}
-  loadClients();
-  showToast('已删除');
+  loadClients();showToast('已删除');
 }
 
-// ====== Init ======
+// === Init ===
 sb.auth.getSession().then(function(res){
-  if(res.data&&res.data.session){
-    currentUser=res.data.session.user;
-    document.getElementById('login-screen').classList.add('hidden');
-    document.getElementById('main-screen').classList.remove('hidden');
-    loadClients();
-  } else {
-    document.getElementById('login-screen').classList.remove('hidden');
-  }
-}).catch(function(){
-  document.getElementById('login-screen').classList.remove('hidden');
-});
+  if(res.data&&res.data.session){currentUser=res.data.session.user;document.getElementById('login-screen').classList.add('hidden');document.getElementById('main-screen').classList.remove('hidden');buildFilterTabs();loadClients()}
+  else document.getElementById('login-screen').classList.remove('hidden');
+}).catch(function(){document.getElementById('login-screen').classList.remove('hidden')});
 </script>
 </body>
 </html>
