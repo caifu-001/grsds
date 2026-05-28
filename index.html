@@ -12,23 +12,33 @@
   --shadow:0 1px 3px rgba(0,0,0,.08);
   --type-a:#3B82F6;--type-b:#10B981;--type-c:#8B5CF6;--type-d:#F59E0B;
 }
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;max-width:480px;margin:0 auto}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;max-width:480px;margin:0 auto;user-select:none}
 
 /* Login */
 .login-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:24px}
 .login-wrap h1{font-size:24px;margin-bottom:4px;color:var(--primary)}
 .login-wrap .sub{font-size:13px;color:var(--text2);margin-bottom:32px}
-.login-wrap input{width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:10px;font-size:15px;margin-bottom:12px;outline:none;transition:border .2s}
+.login-wrap .field{width:100%;margin-bottom:12px;position:relative}
+.login-wrap input{width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:10px;font-size:15px;outline:none;transition:border .2s;background:#fff}
 .login-wrap input:focus{border-color:var(--primary)}
 .login-wrap .btn{width:100%;padding:13px;border:none;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer;margin-bottom:8px;transition:opacity .2s}
 .login-wrap .btn:active{opacity:.8}
 .login-wrap .btn-primary{background:var(--primary);color:#fff}
+.login-wrap .btn-primary:disabled{opacity:.5;cursor:not-allowed}
 .login-wrap .btn-ghost{background:transparent;color:var(--primary);border:1px solid var(--primary)}
 .login-wrap .err{color:var(--danger);font-size:13px;margin-bottom:8px;min-height:20px}
+.login-wrap .hint{font-size:11px;color:var(--text3);margin-top:-8px;margin-bottom:12px;width:100%}
+.pw-strength{display:flex;gap:4px;width:100%;margin-top:-8px;margin-bottom:10px}
+.pw-strength .bar{flex:1;height:3px;border-radius:2px;background:var(--border);transition:background .3s}
+.pw-strength .bar.l1{background:#EF4444}
+.pw-strength .bar.l2{background:#F59E0B}
+.pw-strength .bar.l3{background:#10B981}
 
 /* Top bar */
 .topbar{position:sticky;top:0;z-index:100;background:var(--primary);color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;font-size:17px;font-weight:600}
-.topbar .logout{font-size:13px;font-weight:400;opacity:.85;cursor:pointer;background:none;border:none;color:#fff}
+.topbar .actions{display:flex;align-items:center;gap:12px}
+.topbar-btn{font-size:13px;font-weight:400;opacity:.85;cursor:pointer;background:none;border:none;color:#fff;padding:4px 8px;border-radius:6px}
+.topbar-btn:active{background:rgba(255,255,255,.15)}
 
 /* Search */
 .search-bar{padding:12px 16px;position:sticky;top:44px;z-index:99;background:var(--bg)}
@@ -44,13 +54,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-
 .client-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:0 16px 80px}
 .client-card{background:var(--card);border-radius:10px;padding:14px;box-shadow:var(--shadow);cursor:pointer;transition:transform .15s}
 .client-card:active{transform:scale(.97)}
-
 .card-type{display:inline-block;font-size:11px;padding:2px 8px;border-radius:10px;margin-bottom:8px;font-weight:500;color:#fff}
-.card-type.type-a{background:var(--type-a)}
-.card-type.type-b{background:var(--type-b)}
-.card-type.type-c{background:var(--type-c)}
-.card-type.type-d{background:var(--type-d)}
-
+.card-type.type-a{background:var(--type-a)}.card-type.type-b{background:var(--type-b)}.card-type.type-c{background:var(--type-c)}.card-type.type-d{background:var(--type-d)}
 .card-name{font-size:16px;font-weight:600;margin-bottom:6px}
 .card-row{display:flex;align-items:center;font-size:12px;color:var(--text2);margin-bottom:3px;line-height:1.5}
 .card-row .lbl{flex-shrink:0;color:var(--text3);margin-right:4px}
@@ -60,6 +65,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-
 /* FAB */
 .fab{position:fixed;bottom:24px;right:max(16px,calc((100vw - 480px)/2 + 16px));width:52px;height:52px;border-radius:50%;background:var(--primary);color:#fff;font-size:28px;border:none;cursor:pointer;box-shadow:0 4px 12px rgba(59,130,246,.4);display:flex;align-items:center;justify-content:center;z-index:200;transition:transform .2s}
 .fab:active{transform:scale(.92)}
+
+/* Settings panel */
+.settings-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:350;display:flex;align-items:flex-end;justify-content:center}
+.settings-sheet{background:#fff;width:100%;max-width:480px;border-radius:16px 16px 0 0;padding:24px 16px 32px;animation:slideUp .25s ease;max-height:90vh;overflow-y:auto}
+.settings-sheet h3{font-size:18px;margin-bottom:20px;text-align:center}
+.settings-info{background:var(--bg);border-radius:10px;padding:14px;margin-bottom:16px;font-size:14px}
+.settings-info .row{display:flex;justify-content:space-between;padding:6px 0;color:var(--text)}
+.settings-info .row .lb{color:var(--text2)}
+.settings-sheet .divider{height:1px;background:var(--border);margin:16px 0}
+.settings-sheet .danger-zone{color:var(--danger)}
 
 /* Modal */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:300;display:flex;align-items:flex-end;justify-content:center}
@@ -85,9 +100,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-
 .confirm-box .btns{display:flex;gap:10px}
 .confirm-box .btns button{flex:1;padding:10px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;border:none}
 
-/* Empty state */
-.empty{padding:60px 20px;text-align:center;color:var(--text3);font-size:14px}
+/* Toast */
+.toast{position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:500;background:#333;color:#fff;padding:10px 20px;border-radius:20px;font-size:14px;animation:fadeInOut 2.5s ease forwards;pointer-events:none}
+@keyframes fadeInOut{0%{opacity:0;transform:translateX(-50%) translateY(-10px)}15%{opacity:1;transform:translateX(-50%) translateY(0)}80%{opacity:1}100%{opacity:0}}
 
+.empty{padding:60px 20px;text-align:center;color:var(--text3);font-size:14px}
 .hidden{display:none !important}
 #main-screen{display:flex;flex-direction:column;min-height:100vh}
 </style>
@@ -97,19 +114,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-
 <!-- Login -->
 <div id="login-screen" class="login-wrap">
  <h1>客户管理系统</h1>
- <p class="sub">登录以管理您的客户信息</p>
- <input type="text" id="login-user" placeholder="用户名" autocomplete="username">
- <input type="password" id="login-pass" placeholder="密码" autocomplete="current-password">
+ <p class="sub">安全登录以管理您的客户信息</p>
+ <div class="field"><input type="text" id="login-user" placeholder="用户名" autocomplete="username"></div>
+ <div class="field"><input type="password" id="login-pass" placeholder="密码" autocomplete="current-password"></div>
+ <div class="pw-strength hidden" id="pw-strength-bars"><div class="bar" id="pw-b1"></div><div class="bar" id="pw-b2"></div><div class="bar" id="pw-b3"></div></div>
+ <div class="hint hidden" id="pw-hint"></div>
  <p class="err" id="login-err"></p>
- <button class="btn btn-primary" onclick="handleLogin()">登录</button>
- <button class="btn btn-ghost" onclick="switchAuth()">注册新账号</button>
+ <button class="btn btn-primary" id="login-btn" onclick="handleLogin()">登录</button>
+ <button class="btn btn-ghost" id="register-btn" onclick="switchMode()">注册新账号</button>
 </div>
 
 <!-- Main -->
 <div id="main-screen" class="hidden">
  <div class="topbar">
   <span>客户管理</span>
-  <button class="logout" onclick="logout()">退出</button>
+  <div class="actions">
+   <button class="topbar-btn" id="settings-btn" onclick="openSettings()">⚙</button>
+   <button class="topbar-btn" onclick="doLogout()">退出</button>
+  </div>
  </div>
  <div class="search-bar">
   <input type="text" id="search-input" placeholder="搜索客户..." oninput="renderList()">
@@ -126,62 +148,50 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-
  <button class="fab" onclick="openForm()">+</button>
 </div>
 
+<!-- Settings -->
+<div class="settings-overlay hidden" id="settings-modal">
+ <div class="settings-sheet">
+  <h3>账号设置</h3>
+  <div class="settings-info">
+   <div class="row"><span class="lb">当前账号</span><span id="settings-user"></span></div>
+   <div class="row"><span class="lb">注册时间</span><span id="settings-created"></span></div>
+   <div class="row"><span class="lb">客户数量</span><span id="settings-count"></span></div>
+  </div>
+  <div class="divider"></div>
+  <h4 style="font-size:14px;margin-bottom:12px;color:var(--text)">修改密码</h4>
+  <div class="form-group"><label>当前密码</label><input type="password" id="settings-old-pass" placeholder="输入当前密码"></div>
+  <div class="form-group"><label>新密码</label><input type="password" id="settings-new-pass" placeholder="至少6位，含字母和数字" oninput="updatePwStrength('settings')"></div>
+  <div class="pw-strength" id="settings-pw-strength"><div class="bar" id="spw-b1"></div><div class="bar" id="spw-b2"></div><div class="bar" id="spw-b3"></div></div>
+  <div class="hint" id="settings-pw-hint" style="margin-bottom:12px"></div>
+  <div class="form-group"><label>确认新密码</label><input type="password" id="settings-new-pass2" placeholder="再次输入新密码"></div>
+  <p class="err" id="settings-err"></p>
+  <div class="modal-actions">
+   <button class="btn-cancel" onclick="document.getElementById('settings-modal').classList.add('hidden')">取消</button>
+   <button class="btn-save" onclick="changePassword()">修改密码</button>
+  </div>
+ </div>
+</div>
+
 <!-- Form Modal -->
 <div class="modal-overlay hidden" id="form-modal">
  <div class="modal-sheet">
   <h3 id="form-title">添加客户</h3>
-  <div class="form-group">
-   <label>客户属性 *</label>
-   <select id="f-type">
-    <option value="">请选择</option>
-    <option value="甲方">甲方</option>
-    <option value="集成商">集成商</option>
-    <option value="设计院">设计院</option>
-    <option value="运营商">运营商</option>
-   </select>
+  <div class="form-group"><label>客户属性 *</label><select id="f-type"><option value="">请选择</option><option value="甲方">甲方</option><option value="集成商">集成商</option><option value="设计院">设计院</option><option value="运营商">运营商</option></select></div>
+  <div class="form-group"><label>姓名 *</label><input type="text" id="f-name" placeholder="客户姓名"></div>
+  <div class="form-row">
+   <div class="form-group"><label>近期项目</label><input type="text" id="f-project" placeholder="项目名称"></div>
+   <div class="form-group"><label>招标日期</label><input type="date" id="f-bidding-date"></div>
   </div>
-  <div class="form-group">
-   <label>姓名 *</label>
-   <input type="text" id="f-name" placeholder="客户姓名">
+  <div class="form-group"><label>客户地址</label><input type="text" id="f-address" placeholder="详细地址"></div>
+  <div class="form-row">
+   <div class="form-group"><label>客户部门</label><input type="text" id="f-dept" placeholder="部门名称"></div>
+   <div class="form-group"><label>客户联系人</label><input type="text" id="f-contact" placeholder="联系人姓名"></div>
   </div>
   <div class="form-row">
-   <div class="form-group">
-    <label>近期项目</label>
-    <input type="text" id="f-project" placeholder="项目名称">
-   </div>
-   <div class="form-group">
-    <label>招标日期</label>
-    <input type="date" id="f-bidding-date">
-   </div>
+   <div class="form-group"><label>客户职务</label><input type="text" id="f-position" placeholder="职务"></div>
+   <div class="form-group"><label>客户联系电话</label><input type="tel" id="f-phone" placeholder="手机号"></div>
   </div>
-  <div class="form-group">
-   <label>客户地址</label>
-   <input type="text" id="f-address" placeholder="详细地址">
-  </div>
-  <div class="form-row">
-   <div class="form-group">
-    <label>客户部门</label>
-    <input type="text" id="f-dept" placeholder="部门名称">
-   </div>
-   <div class="form-group">
-    <label>客户联系人</label>
-    <input type="text" id="f-contact" placeholder="联系人姓名">
-   </div>
-  </div>
-  <div class="form-row">
-   <div class="form-group">
-    <label>客户职务</label>
-    <input type="text" id="f-position" placeholder="职务">
-   </div>
-   <div class="form-group">
-    <label>客户联系电话</label>
-    <input type="tel" id="f-phone" placeholder="手机号">
-   </div>
-  </div>
-  <div class="form-group">
-   <label>客户办公室房号</label>
-   <input type="text" id="f-room" placeholder="办公室房号">
-  </div>
+  <div class="form-group"><label>客户办公室房号</label><input type="text" id="f-room" placeholder="办公室房号"></div>
   <div class="modal-actions">
    <button class="btn-delete hidden" id="btn-delete" onclick="confirmDelete()">删除</button>
    <button class="btn-cancel" onclick="closeForm()">取消</button>
@@ -202,174 +212,406 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-
 </div>
 
 <script>
-const STORAGE_KEY='crm_users_v2';
-const TYPE_MAP={甲方:'type-a',集成商:'type-b',设计院:'type-c',运营商:'type-d'};
-let currentUser=null, editId=null, currentFilter='all', deleteId=null;
+// ====== Crypto & Auth ======
+const STORAGE_KEY = 'crm_users_v3';
+const SESSION_KEY = 'crm_session';
+const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 min
+const TYPE_MAP = {甲方:'type-a',集成商:'type-b',设计院:'type-c',运营商:'type-d'};
 
-function hash(s){let h=0;for(let i=0;i<s.length;i++){h=((h<<5)-h)+s.charCodeAt(i);h|=0}return Math.abs(h).toString(16).slice(0,8)}
+let currentUser = null, editId = null, currentFilter = 'all', deleteId = null;
+let loginMode = 'login'; // 'login' | 'register'
+let activityTimer = null;
 
-function getUsers(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')}catch(e){return{}}}
-function saveUsers(u){localStorage.setItem(STORAGE_KEY,JSON.stringify(u))}
-function getClients(){const u=getUsers();return currentUser&&u[currentUser]?u[currentUser].clients||[]:[]}
-function saveClients(c){const u=getUsers();if(currentUser){u[currentUser].clients=c;saveUsers(u)}}
-
-// Auth
-function handleLogin(){
- const un=document.getElementById('login-user').value.trim();
- const pw=document.getElementById('login-pass').value.trim();
- const er=document.getElementById('login-err');
- if(!un||!pw){er.textContent='请输入用户名和密码';return}
- const users=getUsers();
- if(!users[un]){er.textContent='用户不存在，请先注册';return}
- if(users[un].pass!==hash(pw)){er.textContent='密码错误';return}
- currentUser=un;
- document.getElementById('login-screen').classList.add('hidden');
- document.getElementById('main-screen').classList.remove('hidden');
- renderList();
+// SHA-256 hash via Web Crypto API
+async function sha256(text) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(text);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2,'0')).join('');
 }
 
-function switchAuth(){
- const un=document.getElementById('login-user').value.trim();
- const pw=document.getElementById('login-pass').value.trim();
- const er=document.getElementById('login-err');
- if(!un||!pw){er.textContent='请输入用户名和密码';return}
- const users=getUsers();
- if(users[un]){er.textContent='用户已存在，请直接登录';return}
- users[un]={pass:hash(pw),clients:[]};
- saveUsers(users);
- currentUser=un;
- document.getElementById('login-screen').classList.add('hidden');
- document.getElementById('main-screen').classList.remove('hidden');
- renderList();
- er.textContent='';
+// Generate random salt (16 bytes → 32 hex chars)
+function generateSalt() {
+  const arr = new Uint8Array(16);
+  crypto.getRandomValues(arr);
+  return Array.from(arr).map(b => b.toString(16).padStart(2,'0')).join('');
 }
 
-function logout(){currentUser=null;editId=null;document.getElementById('main-screen').classList.add('hidden');document.getElementById('login-screen').classList.remove('hidden');document.getElementById('login-user').value='';document.getElementById('login-pass').value=''}
-
-// Filter
-function setFilter(f){
- currentFilter=f;
- document.querySelectorAll('.filter-tab').forEach(t=>t.classList.toggle('active',t.textContent===f||(f==='all'&&t.textContent==='全部')));
- renderList();
+// Hash password with salt
+async function hashWithSalt(password, salt) {
+  return await sha256(salt + password + salt);
 }
 
-// Render
-function renderList(){
- const clients=getClients();
- const q=(document.getElementById('search-input').value||'').trim().toLowerCase();
- let filtered=clients;
- if(q){
-  filtered=clients.filter(c=>
-   (c.name||'').toLowerCase().includes(q)||
-   (c.type||'').toLowerCase().includes(q)||
-   (c.project||'').toLowerCase().includes(q)||
-   (c.address||'').toLowerCase().includes(q)||
-   (c.dept||'').toLowerCase().includes(q)||
-   (c.contact||'').toLowerCase().includes(q)||
-   (c.position||'').toLowerCase().includes(q)||
-   (c.phone||'').toLowerCase().includes(q)||
-   (c.room||'').toLowerCase().includes(q)
-  );
- }
- if(currentFilter!=='all') filtered=filtered.filter(c=>c.type===currentFilter);
- filtered.sort((a,b)=>new Date(b.updatedAt||b.createdAt)-(new Date(a.updatedAt||a.createdAt)));
- const grid=document.getElementById('client-grid');
- const empty=document.getElementById('empty-state');
- if(filtered.length===0){
-  grid.innerHTML='';
-  empty.classList.remove('hidden');
- }else{
-  empty.classList.add('hidden');
-  grid.innerHTML=filtered.map(c=>{
-   const typeCls=TYPE_MAP[c.type]||'';
-   const date=c.biddingDate?new Date(c.biddingDate).toLocaleDateString('zh-CN'):'';
-   return `<div class="client-card" onclick="openForm('${c.id}')">
-    <span class="card-type ${typeCls}">${esc(c.type)}</span>
-    <div class="card-name">${esc(c.name)}</div>
-    ${c.dept?`<div class="card-row"><span class="lbl">部门</span><span class="val">${esc(c.dept)}</span></div>`:''}
-    ${c.contact?`<div class="card-row"><span class="lbl">联系人</span><span class="val">${esc(c.contact)}${c.position?' · '+esc(c.position):''}</span></div>`:''}
-    ${c.phone?`<div class="card-row"><span class="lbl">电话</span><span class="val">${esc(c.phone)}</span></div>`:''}
-    ${c.project?`<div class="card-project">📋 ${esc(c.project)}${date?' · '+date:''}</div>`:''}
-   </div>`;
-  }).join('');
- }
+// Validate password strength (min 6 chars, must contain letters AND numbers)
+function checkPasswordStrength(pw) {
+  if (pw.length < 6) return {ok:false, level:0, msg:'密码至少6位'};
+  const hasLetter = /[a-zA-Z]/.test(pw);
+  const hasNumber = /[0-9]/.test(pw);
+  if (!hasLetter || !hasNumber) return {ok:false, level:1, msg:'需包含字母和数字'};
+  if (pw.length >= 8 && /[!@#$%^&*(),.?":{}|<>]/.test(pw)) return {ok:true, level:3, msg:'密码强度：强'};
+  return {ok:true, level:2, msg:'密码强度：中'};
 }
 
-function esc(s){if(!s)return'';return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+// ====== Storage ======
+function getUsers() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }
+  catch(e) { return {}; }
+}
+function saveUsers(u) { localStorage.setItem(STORAGE_KEY, JSON.stringify(u)); }
+function getClients() {
+  const u = getUsers();
+  return currentUser && u[currentUser] ? u[currentUser].clients || [] : [];
+}
+function saveClients(c) {
+  const u = getUsers();
+  if (currentUser) { u[currentUser].clients = c; saveUsers(u); }
+}
 
-// Form
-function openForm(id){
- editId=id||null;
- const title=document.getElementById('form-title');
- const delBtn=document.getElementById('btn-delete');
- if(id){
-  title.textContent='编辑客户';
-  delBtn.classList.remove('hidden');
-  const clients=getClients();
-  const c=clients.find(x=>x.id===id);
-  if(c){
-   document.getElementById('f-type').value=c.type||'';
-   document.getElementById('f-name').value=c.name||'';
-   document.getElementById('f-project').value=c.project||'';
-   document.getElementById('f-bidding-date').value=c.biddingDate||'';
-   document.getElementById('f-address').value=c.address||'';
-   document.getElementById('f-dept').value=c.dept||'';
-   document.getElementById('f-contact').value=c.contact||'';
-   document.getElementById('f-position').value=c.position||'';
-   document.getElementById('f-phone').value=c.phone||'';
-   document.getElementById('f-room').value=c.room||'';
+// ====== Session Management ======
+function saveSession() {
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+    user: currentUser,
+    loginTime: Date.now(),
+    lastActivity: Date.now()
+  }));
+  resetActivityTimer();
+}
+
+function loadSession() {
+  try {
+    const s = JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null');
+    if (!s || !s.user) return null;
+    if (Date.now() - s.lastActivity > SESSION_TIMEOUT_MS) {
+      sessionStorage.removeItem(SESSION_KEY);
+      return null;
+    }
+    return s;
+  } catch(e) { return null; }
+}
+
+function updateActivity() {
+  if (!currentUser) return;
+  try {
+    const s = JSON.parse(sessionStorage.getItem(SESSION_KEY) || '{}');
+    s.lastActivity = Date.now();
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(s));
+  } catch(e) {}
+}
+
+function resetActivityTimer() {
+  if (activityTimer) clearInterval(activityTimer);
+  activityTimer = setInterval(() => {
+    try {
+      const s = JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null');
+      if (!s || Date.now() - s.lastActivity > SESSION_TIMEOUT_MS) {
+        doLogout(true);
+      }
+    } catch(e) {}
+  }, 30000); // check every 30s
+}
+
+// Track user activity
+['click','touchstart','keydown','scroll'].forEach(ev => {
+  document.addEventListener(ev, () => updateActivity(), {passive:true});
+});
+
+// ====== Toast ======
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2600);
+}
+
+// ====== Auth UI ======
+function switchMode() {
+  loginMode = loginMode === 'login' ? 'register' : 'login';
+  const loginBtn = document.getElementById('login-btn');
+  const registerBtn = document.getElementById('register-btn');
+  const pwStrength = document.getElementById('pw-strength-bars');
+  const pwHint = document.getElementById('pw-hint');
+  document.getElementById('login-err').textContent = '';
+
+  if (loginMode === 'register') {
+    loginBtn.textContent = '注册';
+    registerBtn.textContent = '返回登录';
+    pwStrength.classList.remove('hidden');
+    pwHint.classList.remove('hidden');
+    document.getElementById('login-pass').addEventListener('input', updateLoginPwStrength);
+  } else {
+    loginBtn.textContent = '登录';
+    registerBtn.textContent = '注册新账号';
+    pwStrength.classList.add('hidden');
+    pwHint.classList.add('hidden');
+    document.getElementById('login-pass').removeEventListener('input', updateLoginPwStrength);
+    document.getElementById('pw-b1').className = 'bar';
+    document.getElementById('pw-b2').className = 'bar';
+    document.getElementById('pw-b3').className = 'bar';
+    document.getElementById('pw-hint').textContent = '';
   }
- }else{
-  title.textContent='添加客户';
-  delBtn.classList.add('hidden');
-  ['f-type','f-name','f-project','f-bidding-date','f-address','f-dept','f-contact','f-position','f-phone','f-room'].forEach(id=>document.getElementById(id).value='');
- }
- document.getElementById('form-modal').classList.remove('hidden');
 }
 
-function closeForm(){document.getElementById('form-modal').classList.add('hidden');editId=null}
-
-function saveClient(){
- const type=document.getElementById('f-type').value;
- const name=document.getElementById('f-name').value.trim();
- if(!type){alert('请选择客户属性');return}
- if(!name){alert('请输入姓名');return}
- const client={
-  id:editId||'c'+Date.now()+Math.random().toString(36).slice(2,6),
-  type,name,
-  project:document.getElementById('f-project').value.trim(),
-  biddingDate:document.getElementById('f-bidding-date').value,
-  address:document.getElementById('f-address').value.trim(),
-  dept:document.getElementById('f-dept').value.trim(),
-  contact:document.getElementById('f-contact').value.trim(),
-  position:document.getElementById('f-position').value.trim(),
-  phone:document.getElementById('f-phone').value.trim(),
-  room:document.getElementById('f-room').value.trim(),
- };
- const now=new Date().toISOString();
- if(editId){client.updatedAt=now}else{client.createdAt=now;client.updatedAt=now}
- const clients=getClients();
- if(editId){const i=clients.findIndex(x=>x.id===editId);if(i>=0){clients[i]=client}}
- else{clients.push(client)}
- saveClients(clients);
- closeForm();
- renderList();
+function updatePwStrength(prefix) {
+  let pw, b1, b2, b3, hint;
+  if (prefix === 'settings') {
+    pw = document.getElementById('settings-new-pass').value;
+    b1 = document.getElementById('spw-b1'); b2 = document.getElementById('spw-b2'); b3 = document.getElementById('spw-b3');
+    hint = document.getElementById('settings-pw-hint');
+  } else {
+    pw = document.getElementById('login-pass').value;
+    b1 = document.getElementById('pw-b1'); b2 = document.getElementById('pw-b2'); b3 = document.getElementById('pw-b3');
+    hint = document.getElementById('pw-hint');
+  }
+  const r = checkPasswordStrength(pw);
+  b1.className = 'bar' + (r.level >= 1 ? ' l'+Math.min(r.level,3) : '');
+  b2.className = 'bar' + (r.level >= 2 ? ' l'+Math.min(r.level,3) : '');
+  b3.className = 'bar' + (r.level >= 3 ? ' l3' : '');
+  hint.textContent = r.msg;
+  hint.style.color = r.ok ? '#10B981' : '#EF4444';
 }
 
-function confirmDelete(){deleteId=editId;document.getElementById('confirm-dialog').classList.remove('hidden')}
-function doDelete(){
- if(!deleteId)return;
- let clients=getClients();
- clients=clients.filter(c=>c.id!==deleteId);
- saveClients(clients);
- document.getElementById('confirm-dialog').classList.add('hidden');
- closeForm();
- renderList();
- deleteId=null;
+function updateLoginPwStrength() { updatePwStrength('login'); }
+
+async function handleLogin() {
+  const un = document.getElementById('login-user').value.trim();
+  const pw = document.getElementById('login-pass').value.trim();
+  const er = document.getElementById('login-err');
+  er.textContent = '';
+
+  if (!un || !pw) { er.textContent = '请输入用户名和密码'; return; }
+
+  const users = getUsers();
+
+  if (loginMode === 'login') {
+    if (!users[un]) { er.textContent = '用户不存在'; return; }
+    const hash = await hashWithSalt(pw, users[un].salt);
+    if (hash !== users[un].passHash) { er.textContent = '密码错误'; return; }
+    currentUser = un;
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('main-screen').classList.remove('hidden');
+    saveSession();
+    renderList();
+  } else {
+    // Register
+    if (users[un]) { er.textContent = '用户名已存在'; return; }
+    const strength = checkPasswordStrength(pw);
+    if (!strength.ok) { er.textContent = strength.msg; return; }
+    const salt = generateSalt();
+    const passHash = await hashWithSalt(pw, salt);
+    users[un] = { salt, passHash, createdAt: new Date().toISOString(), clients: [] };
+    saveUsers(users);
+    currentUser = un;
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('main-screen').classList.remove('hidden');
+    saveSession();
+    renderList();
+    showToast('注册成功！');
+  }
 }
 
-// Init
-document.getElementById('login-screen').classList.remove('hidden');
+function doLogout(silent) {
+  if (activityTimer) clearInterval(activityTimer);
+  sessionStorage.removeItem(SESSION_KEY);
+  currentUser = null;
+  editId = null;
+  document.getElementById('main-screen').classList.add('hidden');
+  document.getElementById('login-screen').classList.remove('hidden');
+  document.getElementById('login-user').value = '';
+  document.getElementById('login-pass').value = '';
+  document.getElementById('login-err').textContent = '';
+  if (silent) showToast('会话已过期，请重新登录');
+}
+
+// ====== Settings ======
+function openSettings() {
+  const u = getUsers();
+  const userData = u[currentUser];
+  document.getElementById('settings-user').textContent = currentUser;
+  document.getElementById('settings-created').textContent = new Date(userData.createdAt).toLocaleDateString('zh-CN');
+  document.getElementById('settings-count').textContent = (userData.clients || []).length + ' 个';
+  document.getElementById('settings-old-pass').value = '';
+  document.getElementById('settings-new-pass').value = '';
+  document.getElementById('settings-new-pass2').value = '';
+  document.getElementById('settings-err').textContent = '';
+  document.getElementById('spw-b1').className = 'bar';
+  document.getElementById('spw-b2').className = 'bar';
+  document.getElementById('spw-b3').className = 'bar';
+  document.getElementById('settings-pw-hint').textContent = '';
+  document.getElementById('settings-modal').classList.remove('hidden');
+}
+
+async function changePassword() {
+  const oldPw = document.getElementById('settings-old-pass').value;
+  const newPw = document.getElementById('settings-new-pass').value;
+  const newPw2 = document.getElementById('settings-new-pass2').value;
+  const er = document.getElementById('settings-err');
+  er.textContent = '';
+
+  if (!oldPw) { er.textContent = '请输入当前密码'; return; }
+  if (newPw !== newPw2) { er.textContent = '两次新密码不一致'; return; }
+
+  const strength = checkPasswordStrength(newPw);
+  if (!strength.ok) { er.textContent = strength.msg; return; }
+
+  const users = getUsers();
+  const hash = await hashWithSalt(oldPw, users[currentUser].salt);
+  if (hash !== users[currentUser].passHash) { er.textContent = '当前密码错误'; return; }
+
+  // All checks passed - update password
+  const salt = generateSalt();
+  const passHash = await hashWithSalt(newPw, salt);
+  users[currentUser].salt = salt;
+  users[currentUser].passHash = passHash;
+  saveUsers(users);
+
+  document.getElementById('settings-modal').classList.add('hidden');
+  showToast('密码修改成功！');
+}
+
+// ====== Filter ======
+function setFilter(f) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-tab').forEach(t => {
+    const txt = t.textContent;
+    t.classList.toggle('active', txt === f || (f === 'all' && txt === '全部'));
+  });
+  renderList();
+}
+
+// ====== Render ======
+function renderList() {
+  const clients = getClients();
+  const q = (document.getElementById('search-input').value || '').trim().toLowerCase();
+  let filtered = clients;
+  if (q) {
+    filtered = clients.filter(c =>
+      [c.name, c.type, c.project, c.address, c.dept, c.contact, c.position, c.phone, c.room]
+        .some(v => v && v.toLowerCase().includes(q))
+    );
+  }
+  if (currentFilter !== 'all') filtered = filtered.filter(c => c.type === currentFilter);
+  filtered.sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt));
+
+  const grid = document.getElementById('client-grid');
+  const empty = document.getElementById('empty-state');
+  if (filtered.length === 0) {
+    grid.innerHTML = '';
+    empty.classList.remove('hidden');
+  } else {
+    empty.classList.add('hidden');
+    grid.innerHTML = filtered.map(c => {
+      const typeCls = TYPE_MAP[c.type] || '';
+      const date = c.biddingDate ? new Date(c.biddingDate + 'T00:00:00').toLocaleDateString('zh-CN') : '';
+      const parts = [];
+      if (c.dept) parts.push(`<div class="card-row"><span class="lbl">部门</span><span class="val">${esc(c.dept)}</span></div>`);
+      if (c.contact) parts.push(`<div class="card-row"><span class="lbl">联系人</span><span class="val">${esc(c.contact)}${c.position ? ' · '+esc(c.position) : ''}</span></div>`);
+      if (c.phone) parts.push(`<div class="card-row"><span class="lbl">电话</span><span class="val">${esc(c.phone)}</span></div>`);
+      const proj = c.project ? `<div class="card-project">📋 ${esc(c.project)}${date ? ' · '+date : ''}</div>` : '';
+      return `<div class="client-card" onclick="openForm('${c.id}')">
+        <span class="card-type ${typeCls}">${esc(c.type)}</span>
+        <div class="card-name">${esc(c.name)}</div>
+        ${parts.join('')}
+        ${proj}
+      </div>`;
+    }).join('');
+  }
+}
+
+function esc(s) { return s ? s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;') : ''; }
+
+// ====== Form ======
+function openForm(id) {
+  editId = id || null;
+  const title = document.getElementById('form-title');
+  const delBtn = document.getElementById('btn-delete');
+  if (id) {
+    title.textContent = '编辑客户';
+    delBtn.classList.remove('hidden');
+    const c = getClients().find(x => x.id === id);
+    if (c) {
+      document.getElementById('f-type').value = c.type || '';
+      document.getElementById('f-name').value = c.name || '';
+      document.getElementById('f-project').value = c.project || '';
+      document.getElementById('f-bidding-date').value = c.biddingDate || '';
+      document.getElementById('f-address').value = c.address || '';
+      document.getElementById('f-dept').value = c.dept || '';
+      document.getElementById('f-contact').value = c.contact || '';
+      document.getElementById('f-position').value = c.position || '';
+      document.getElementById('f-phone').value = c.phone || '';
+      document.getElementById('f-room').value = c.room || '';
+    }
+  } else {
+    title.textContent = '添加客户';
+    delBtn.classList.add('hidden');
+    ['f-type','f-name','f-project','f-bidding-date','f-address','f-dept','f-contact','f-position','f-phone','f-room'].forEach(id => document.getElementById(id).value = '');
+  }
+  document.getElementById('form-modal').classList.remove('hidden');
+}
+
+function closeForm() { document.getElementById('form-modal').classList.add('hidden'); editId = null; }
+
+function saveClient() {
+  const type = document.getElementById('f-type').value;
+  const name = document.getElementById('f-name').value.trim();
+  if (!type) { showToast('请选择客户属性'); return; }
+  if (!name) { showToast('请输入姓名'); return; }
+  const client = {
+    id: editId || 'c' + Date.now() + Math.random().toString(36).slice(2, 6),
+    type, name,
+    project: document.getElementById('f-project').value.trim(),
+    biddingDate: document.getElementById('f-bidding-date').value,
+    address: document.getElementById('f-address').value.trim(),
+    dept: document.getElementById('f-dept').value.trim(),
+    contact: document.getElementById('f-contact').value.trim(),
+    position: document.getElementById('f-position').value.trim(),
+    phone: document.getElementById('f-phone').value.trim(),
+    room: document.getElementById('f-room').value.trim(),
+  };
+  const now = new Date().toISOString();
+  if (editId) { client.updatedAt = now; } else { client.createdAt = now; client.updatedAt = now; }
+  const clients = getClients();
+  if (editId) { const i = clients.findIndex(x => x.id === editId); if (i >= 0) clients[i] = client; }
+  else { clients.push(client); }
+  saveClients(clients);
+  closeForm();
+  renderList();
+  showToast(editId ? '已更新' : '已添加');
+}
+
+function confirmDelete() { deleteId = editId; document.getElementById('confirm-dialog').classList.remove('hidden'); }
+function doDelete() {
+  if (!deleteId) return;
+  let clients = getClients().filter(c => c.id !== deleteId);
+  saveClients(clients);
+  document.getElementById('confirm-dialog').classList.add('hidden');
+  closeForm();
+  renderList();
+  deleteId = null;
+  showToast('已删除');
+}
+
+// ====== Init ======
+document.getElementById('login-pass').addEventListener('input', updateLoginPwStrength);
+document.getElementById('settings-new-pass').addEventListener('input', () => updatePwStrength('settings'));
+
+// Support Enter key on login
+document.getElementById('login-pass').addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
+
+// Check for existing session
+const existingSession = loadSession();
+if (existingSession && existingSession.user) {
+  const users = getUsers();
+  if (users[existingSession.user]) {
+    currentUser = existingSession.user;
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('main-screen').classList.remove('hidden');
+    saveSession();
+    renderList();
+  }
+} else {
+  document.getElementById('login-screen').classList.remove('hidden');
+}
 </script>
 </body>
 </html>
