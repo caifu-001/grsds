@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>客户管理系统</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#F0F2F5;--card:#fff;--primary:#3B82F6;--text:#1F2937;
+  --text2:#6B7280;--text3:#9CA3AF;--border:#E5E7EB;--danger:#EF4444;
+  --shadow:0 1px 3px rgba(0,0,0,.08);
+  --type-a:#3B82F6;--type-b:#10B981;--type-c:#8B5CF6;--type-d:#F59E0B;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;max-width:480px;margin:0 auto}
+
+/* Login */
+.login-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+.login-wrap h1{font-size:24px;margin-bottom:4px;color:var(--primary)}
+.login-wrap .sub{font-size:13px;color:var(--text2);margin-bottom:32px}
+.login-wrap input{width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:10px;font-size:15px;margin-bottom:12px;outline:none;transition:border .2s}
+.login-wrap input:focus{border-color:var(--primary)}
+.login-wrap .btn{width:100%;padding:13px;border:none;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer;margin-bottom:8px;transition:opacity .2s}
+.login-wrap .btn:active{opacity:.8}
+.login-wrap .btn-primary{background:var(--primary);color:#fff}
+.login-wrap .btn-ghost{background:transparent;color:var(--primary);border:1px solid var(--primary)}
+.login-wrap .err{color:var(--danger);font-size:13px;margin-bottom:8px;min-height:20px}
+
+/* Top bar */
+.topbar{position:sticky;top:0;z-index:100;background:var(--primary);color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;font-size:17px;font-weight:600}
+.topbar .logout{font-size:13px;font-weight:400;opacity:.85;cursor:pointer;background:none;border:none;color:#fff}
+
+/* Search */
+.search-bar{padding:12px 16px;position:sticky;top:44px;z-index:99;background:var(--bg)}
+.search-bar input{width:100%;padding:10px 14px 10px 36px;border:1px solid var(--border);border-radius:10px;font-size:14px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%239CA3AF' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.242.156a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E") 12px center no-repeat;outline:none;transition:border .2s}
+.search-bar input:focus{border-color:var(--primary)}
+
+/* Filter tabs */
+.filter-tabs{display:flex;gap:8px;padding:0 16px 12px;overflow-x:auto;position:sticky;top:96px;z-index:98;background:var(--bg)}
+.filter-tab{padding:6px 14px;border-radius:16px;font-size:13px;white-space:nowrap;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;transition:all .2s;flex-shrink:0}
+.filter-tab.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+
+/* Grid */
+.client-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:0 16px 80px}
+.client-card{background:var(--card);border-radius:10px;padding:14px;box-shadow:var(--shadow);cursor:pointer;transition:transform .15s}
+.client-card:active{transform:scale(.97)}
+
+.card-type{display:inline-block;font-size:11px;padding:2px 8px;border-radius:10px;margin-bottom:8px;font-weight:500;color:#fff}
+.card-type.type-a{background:var(--type-a)}
+.card-type.type-b{background:var(--type-b)}
+.card-type.type-c{background:var(--type-c)}
+.card-type.type-d{background:var(--type-d)}
+
+.card-name{font-size:16px;font-weight:600;margin-bottom:6px}
+.card-row{display:flex;align-items:center;font-size:12px;color:var(--text2);margin-bottom:3px;line-height:1.5}
+.card-row .lbl{flex-shrink:0;color:var(--text3);margin-right:4px}
+.card-row .val{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card-project{font-size:12px;color:var(--primary);margin-top:6px;padding-top:6px;border-top:1px solid var(--border);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* FAB */
+.fab{position:fixed;bottom:24px;right:max(16px,calc((100vw - 480px)/2 + 16px));width:52px;height:52px;border-radius:50%;background:var(--primary);color:#fff;font-size:28px;border:none;cursor:pointer;box-shadow:0 4px 12px rgba(59,130,246,.4);display:flex;align-items:center;justify-content:center;z-index:200;transition:transform .2s}
+.fab:active{transform:scale(.92)}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:300;display:flex;align-items:flex-end;justify-content:center}
+.modal-sheet{background:#fff;width:100%;max-width:480px;border-radius:16px 16px 0 0;max-height:85vh;overflow-y:auto;padding:20px 16px 32px;animation:slideUp .25s ease}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-sheet h3{font-size:18px;margin-bottom:16px;text-align:center}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:13px;color:var(--text2);margin-bottom:4px;font-weight:500}
+.form-group input,.form-group select{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:15px;outline:none;transition:border .2s;background:#FAFAFA}
+.form-group input:focus,.form-group select:focus{border-color:var(--primary);background:#fff}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.modal-actions{display:flex;gap:10px;margin-top:20px}
+.modal-actions button{flex:1;padding:12px;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;border:none;transition:opacity .2s}
+.modal-actions button:active{opacity:.8}
+.btn-save{background:var(--primary);color:#fff}
+.btn-cancel{background:var(--border);color:var(--text)}
+.btn-delete{background:var(--danger);color:#fff}
+
+/* Confirm dialog */
+.confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:400;display:flex;align-items:center;justify-content:center}
+.confirm-box{background:#fff;width:280px;border-radius:14px;padding:24px 20px 20px;text-align:center}
+.confirm-box p{font-size:15px;margin-bottom:20px;color:var(--text)}
+.confirm-box .btns{display:flex;gap:10px}
+.confirm-box .btns button{flex:1;padding:10px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;border:none}
+
+/* Empty state */
+.empty{padding:60px 20px;text-align:center;color:var(--text3);font-size:14px}
+
+.hidden{display:none !important}
+#main-screen{display:flex;flex-direction:column;min-height:100vh}
+</style>
+</head>
+<body>
+
+<!-- Login -->
+<div id="login-screen" class="login-wrap">
+ <h1>客户管理系统</h1>
+ <p class="sub">登录以管理您的客户信息</p>
+ <input type="text" id="login-user" placeholder="用户名" autocomplete="username">
+ <input type="password" id="login-pass" placeholder="密码" autocomplete="current-password">
+ <p class="err" id="login-err"></p>
+ <button class="btn btn-primary" onclick="handleLogin()">登录</button>
+ <button class="btn btn-ghost" onclick="switchAuth()">注册新账号</button>
+</div>
+
+<!-- Main -->
+<div id="main-screen" class="hidden">
+ <div class="topbar">
+  <span>客户管理</span>
+  <button class="logout" onclick="logout()">退出</button>
+ </div>
+ <div class="search-bar">
+  <input type="text" id="search-input" placeholder="搜索客户..." oninput="renderList()">
+ </div>
+ <div class="filter-tabs" id="filter-tabs">
+  <div class="filter-tab active" onclick="setFilter('all')">全部</div>
+  <div class="filter-tab" onclick="setFilter('甲方')">甲方</div>
+  <div class="filter-tab" onclick="setFilter('集成商')">集成商</div>
+  <div class="filter-tab" onclick="setFilter('设计院')">设计院</div>
+  <div class="filter-tab" onclick="setFilter('运营商')">运营商</div>
+ </div>
+ <div class="client-grid" id="client-grid"></div>
+ <div class="empty hidden" id="empty-state">暂无客户数据，点击下方按钮添加</div>
+ <button class="fab" onclick="openForm()">+</button>
+</div>
+
+<!-- Form Modal -->
+<div class="modal-overlay hidden" id="form-modal">
+ <div class="modal-sheet">
+  <h3 id="form-title">添加客户</h3>
+  <div class="form-group">
+   <label>客户属性 *</label>
+   <select id="f-type">
+    <option value="">请选择</option>
+    <option value="甲方">甲方</option>
+    <option value="集成商">集成商</option>
+    <option value="设计院">设计院</option>
+    <option value="运营商">运营商</option>
+   </select>
+  </div>
+  <div class="form-group">
+   <label>姓名 *</label>
+   <input type="text" id="f-name" placeholder="客户姓名">
+  </div>
+  <div class="form-row">
+   <div class="form-group">
+    <label>近期项目</label>
+    <input type="text" id="f-project" placeholder="项目名称">
+   </div>
+   <div class="form-group">
+    <label>招标日期</label>
+    <input type="date" id="f-bidding-date">
+   </div>
+  </div>
+  <div class="form-group">
+   <label>客户地址</label>
+   <input type="text" id="f-address" placeholder="详细地址">
+  </div>
+  <div class="form-row">
+   <div class="form-group">
+    <label>客户部门</label>
+    <input type="text" id="f-dept" placeholder="部门名称">
+   </div>
+   <div class="form-group">
+    <label>客户联系人</label>
+    <input type="text" id="f-contact" placeholder="联系人姓名">
+   </div>
+  </div>
+  <div class="form-row">
+   <div class="form-group">
+    <label>客户职务</label>
+    <input type="text" id="f-position" placeholder="职务">
+   </div>
+   <div class="form-group">
+    <label>客户联系电话</label>
+    <input type="tel" id="f-phone" placeholder="手机号">
+   </div>
+  </div>
+  <div class="form-group">
+   <label>客户办公室房号</label>
+   <input type="text" id="f-room" placeholder="办公室房号">
+  </div>
+  <div class="modal-actions">
+   <button class="btn-delete hidden" id="btn-delete" onclick="confirmDelete()">删除</button>
+   <button class="btn-cancel" onclick="closeForm()">取消</button>
+   <button class="btn-save" onclick="saveClient()">保存</button>
+  </div>
+ </div>
+</div>
+
+<!-- Delete Confirm -->
+<div class="confirm-overlay hidden" id="confirm-dialog">
+ <div class="confirm-box">
+  <p>确定要删除该客户吗？</p>
+  <div class="btns">
+   <button style="background:var(--border);color:var(--text)" onclick="document.getElementById('confirm-dialog').classList.add('hidden')">取消</button>
+   <button style="background:var(--danger);color:#fff" onclick="doDelete()">删除</button>
+  </div>
+ </div>
+</div>
+
+<script>
+const STORAGE_KEY='crm_users_v2';
+const TYPE_MAP={甲方:'type-a',集成商:'type-b',设计院:'type-c',运营商:'type-d'};
+let currentUser=null, editId=null, currentFilter='all', deleteId=null;
+
+function hash(s){let h=0;for(let i=0;i<s.length;i++){h=((h<<5)-h)+s.charCodeAt(i);h|=0}return Math.abs(h).toString(16).slice(0,8)}
+
+function getUsers(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')}catch(e){return{}}}
+function saveUsers(u){localStorage.setItem(STORAGE_KEY,JSON.stringify(u))}
+function getClients(){const u=getUsers();return currentUser&&u[currentUser]?u[currentUser].clients||[]:[]}
+function saveClients(c){const u=getUsers();if(currentUser){u[currentUser].clients=c;saveUsers(u)}}
+
+// Auth
+function handleLogin(){
+ const un=document.getElementById('login-user').value.trim();
+ const pw=document.getElementById('login-pass').value.trim();
+ const er=document.getElementById('login-err');
+ if(!un||!pw){er.textContent='请输入用户名和密码';return}
+ const users=getUsers();
+ if(!users[un]){er.textContent='用户不存在，请先注册';return}
+ if(users[un].pass!==hash(pw)){er.textContent='密码错误';return}
+ currentUser=un;
+ document.getElementById('login-screen').classList.add('hidden');
+ document.getElementById('main-screen').classList.remove('hidden');
+ renderList();
+}
+
+function switchAuth(){
+ const un=document.getElementById('login-user').value.trim();
+ const pw=document.getElementById('login-pass').value.trim();
+ const er=document.getElementById('login-err');
+ if(!un||!pw){er.textContent='请输入用户名和密码';return}
+ const users=getUsers();
+ if(users[un]){er.textContent='用户已存在，请直接登录';return}
+ users[un]={pass:hash(pw),clients:[]};
+ saveUsers(users);
+ currentUser=un;
+ document.getElementById('login-screen').classList.add('hidden');
+ document.getElementById('main-screen').classList.remove('hidden');
+ renderList();
+ er.textContent='';
+}
+
+function logout(){currentUser=null;editId=null;document.getElementById('main-screen').classList.add('hidden');document.getElementById('login-screen').classList.remove('hidden');document.getElementById('login-user').value='';document.getElementById('login-pass').value=''}
+
+// Filter
+function setFilter(f){
+ currentFilter=f;
+ document.querySelectorAll('.filter-tab').forEach(t=>t.classList.toggle('active',t.textContent===f||(f==='all'&&t.textContent==='全部')));
+ renderList();
+}
+
+// Render
+function renderList(){
+ const clients=getClients();
+ const q=(document.getElementById('search-input').value||'').trim().toLowerCase();
+ let filtered=clients;
+ if(q){
+  filtered=clients.filter(c=>
+   (c.name||'').toLowerCase().includes(q)||
+   (c.type||'').toLowerCase().includes(q)||
+   (c.project||'').toLowerCase().includes(q)||
+   (c.address||'').toLowerCase().includes(q)||
+   (c.dept||'').toLowerCase().includes(q)||
+   (c.contact||'').toLowerCase().includes(q)||
+   (c.position||'').toLowerCase().includes(q)||
+   (c.phone||'').toLowerCase().includes(q)||
+   (c.room||'').toLowerCase().includes(q)
+  );
+ }
+ if(currentFilter!=='all') filtered=filtered.filter(c=>c.type===currentFilter);
+ filtered.sort((a,b)=>new Date(b.updatedAt||b.createdAt)-(new Date(a.updatedAt||a.createdAt)));
+ const grid=document.getElementById('client-grid');
+ const empty=document.getElementById('empty-state');
+ if(filtered.length===0){
+  grid.innerHTML='';
+  empty.classList.remove('hidden');
+ }else{
+  empty.classList.add('hidden');
+  grid.innerHTML=filtered.map(c=>{
+   const typeCls=TYPE_MAP[c.type]||'';
+   const date=c.biddingDate?new Date(c.biddingDate).toLocaleDateString('zh-CN'):'';
+   return `<div class="client-card" onclick="openForm('${c.id}')">
+    <span class="card-type ${typeCls}">${esc(c.type)}</span>
+    <div class="card-name">${esc(c.name)}</div>
+    ${c.dept?`<div class="card-row"><span class="lbl">部门</span><span class="val">${esc(c.dept)}</span></div>`:''}
+    ${c.contact?`<div class="card-row"><span class="lbl">联系人</span><span class="val">${esc(c.contact)}${c.position?' · '+esc(c.position):''}</span></div>`:''}
+    ${c.phone?`<div class="card-row"><span class="lbl">电话</span><span class="val">${esc(c.phone)}</span></div>`:''}
+    ${c.project?`<div class="card-project">📋 ${esc(c.project)}${date?' · '+date:''}</div>`:''}
+   </div>`;
+  }).join('');
+ }
+}
+
+function esc(s){if(!s)return'';return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+
+// Form
+function openForm(id){
+ editId=id||null;
+ const title=document.getElementById('form-title');
+ const delBtn=document.getElementById('btn-delete');
+ if(id){
+  title.textContent='编辑客户';
+  delBtn.classList.remove('hidden');
+  const clients=getClients();
+  const c=clients.find(x=>x.id===id);
+  if(c){
+   document.getElementById('f-type').value=c.type||'';
+   document.getElementById('f-name').value=c.name||'';
+   document.getElementById('f-project').value=c.project||'';
+   document.getElementById('f-bidding-date').value=c.biddingDate||'';
+   document.getElementById('f-address').value=c.address||'';
+   document.getElementById('f-dept').value=c.dept||'';
+   document.getElementById('f-contact').value=c.contact||'';
+   document.getElementById('f-position').value=c.position||'';
+   document.getElementById('f-phone').value=c.phone||'';
+   document.getElementById('f-room').value=c.room||'';
+  }
+ }else{
+  title.textContent='添加客户';
+  delBtn.classList.add('hidden');
+  ['f-type','f-name','f-project','f-bidding-date','f-address','f-dept','f-contact','f-position','f-phone','f-room'].forEach(id=>document.getElementById(id).value='');
+ }
+ document.getElementById('form-modal').classList.remove('hidden');
+}
+
+function closeForm(){document.getElementById('form-modal').classList.add('hidden');editId=null}
+
+function saveClient(){
+ const type=document.getElementById('f-type').value;
+ const name=document.getElementById('f-name').value.trim();
+ if(!type){alert('请选择客户属性');return}
+ if(!name){alert('请输入姓名');return}
+ const client={
+  id:editId||'c'+Date.now()+Math.random().toString(36).slice(2,6),
+  type,name,
+  project:document.getElementById('f-project').value.trim(),
+  biddingDate:document.getElementById('f-bidding-date').value,
+  address:document.getElementById('f-address').value.trim(),
+  dept:document.getElementById('f-dept').value.trim(),
+  contact:document.getElementById('f-contact').value.trim(),
+  position:document.getElementById('f-position').value.trim(),
+  phone:document.getElementById('f-phone').value.trim(),
+  room:document.getElementById('f-room').value.trim(),
+ };
+ const now=new Date().toISOString();
+ if(editId){client.updatedAt=now}else{client.createdAt=now;client.updatedAt=now}
+ const clients=getClients();
+ if(editId){const i=clients.findIndex(x=>x.id===editId);if(i>=0){clients[i]=client}}
+ else{clients.push(client)}
+ saveClients(clients);
+ closeForm();
+ renderList();
+}
+
+function confirmDelete(){deleteId=editId;document.getElementById('confirm-dialog').classList.remove('hidden')}
+function doDelete(){
+ if(!deleteId)return;
+ let clients=getClients();
+ clients=clients.filter(c=>c.id!==deleteId);
+ saveClients(clients);
+ document.getElementById('confirm-dialog').classList.add('hidden');
+ closeForm();
+ renderList();
+ deleteId=null;
+}
+
+// Init
+document.getElementById('login-screen').classList.remove('hidden');
+</script>
+</body>
+</html>
