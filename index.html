@@ -552,7 +552,7 @@ function refCt(){
     ph+='<button class="add-phone-btn" onclick="addPh('+i+')">＋ 添加号码</button>';
     html+='<div class="contact-item">\
       <button class="del-btn" onclick="rmCt('+i+')">✕</button>'+
-      (i>0? '<button class="mv-btn" onclick="openMoveModal('+i+')">转移</button>':'')+
+      '<button class="mv-btn" onclick="openMoveModal('+i+')">转移</button>'+
       '<div class="contact-header">🧑 联系人 #'+(i+1)+'</div>\
       <div class="form-row">\
         <div class="form-group"><label>姓名</label><input value="'+h(co.name||'')+'" onchange="upCt('+i+',\'name\',this.value)" placeholder="联系人姓名"></div>\
