@@ -548,7 +548,7 @@ function refCt(){
     var co=formContacts[i],phones=co.phones||[];
     if(!phones.length)phones=[''];
     var ph='';
-    for(var p=0;p<phones.length;p++)ph+='<div class="phone-row"><input type="tel" value="'+h(phones[p]||'')+'" oninput="this.value=this.value.replace(/\\s+/g,\'\')" onchange="upCtPh('+i+','+p+',this.value.replace(/\\s+/g,\'\'))" placeholder="手机号">'+(phones.length>1?'<button class="rm-phone" onclick="rmPh('+i+','+p+')">✕</button>':'')+'</div>';
+    for(var p=0;p<phones.length;p++)ph+='<div class="phone-row"><input type="tel" value="'+h(phones[p]||'')+'" onchange="upCtPh('+i+','+p+',this.value)" placeholder="手机号">'+(phones.length>1?'<button class="rm-phone" onclick="rmPh('+i+','+p+')">✕</button>':'')+'</div>';
     ph+='<button class="add-phone-btn" onclick="addPh('+i+')">＋ 添加号码</button>';
     html+='<div class="contact-item">\
       <button class="del-btn" onclick="rmCt('+i+')">✕</button>'+
@@ -566,6 +566,8 @@ function refCt(){
     </div>';
   }
   c.innerHTML=html;
+  var pis=c.querySelectorAll('.phone-row input[type="tel"]');
+  for(var j=0;j<pis.length;j++)pis[j].addEventListener('input',function(){this.value=this.value.replace(/\s+/g,'')});
 }
 // global helpers for onclick
 var addContact=function(){formContacts.push({id:'t'+Date.now()+Math.random().toString(36).slice(2,6),name:'',dept:'',position:'',phones:[''],room:'',_new:true});refCt()};
