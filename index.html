@@ -665,6 +665,25 @@ async function saveClient(){
   var name=document.getElementById('f-name').value.trim();
   if(!name){showToast('请输入客户名称');return}
 
+  // Phone uniqueness check
+  var phonesToCheck=[];
+  for(var i=0;i<formContacts.length;i++){
+    var phs=formContacts[i].phones||[''];
+    for(var p=0;p<phs.length;p++){var ph=phs[p].trim();if(ph)phonesToCheck.push(ph)}
+  }
+  if(phonesToCheck.length>0){
+    var others=editId?allContacts.filter(function(c){return c.client_id!==editId}):allContacts;
+    for(var j=0;j<others.length;j++){
+      var eps=[];
+      try{eps=JSON.parse(others[j].phone||'[]')}catch(e){eps=others[j].phone?[String(others[j].phone)]:[]}
+      if(!Array.isArray(eps))eps=eps?[String(eps)]:[];
+      for(var k=0;k<eps.length;k++){
+        var ep=(eps[k]||'').trim();
+        if(ep&&phonesToCheck.indexOf(ep)>=0){showToast('手机号 '+ep+' 已被其他联系人使用');return}
+      }
+    }
+  }
+
   var client={
     type:JSON.stringify(selTypes),
     name:name,
