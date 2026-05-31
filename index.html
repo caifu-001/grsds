@@ -271,7 +271,7 @@ const BUILTIN_TYPES=['甲方','集成商','设计院','运营商','国央企','�
 const BUILTIN_COLORS=['#3B82F6','#10B981','#8B5CF6','#F59E0B','#EF4444','#DC2626','#06B6D4','#EC4899','#84CC16','#6366F1','#F97316','#14B8A6'];
 const PALETTE=['#3B82F6','#10B981','#8B5CF6','#F59E0B','#EF4444','#06B6D4','#EC4899','#84CC16','#6366F1','#F97316','#14B8A6','#78716C','#0EA5E9','#D946EF','#E84C3D'];
 
-let loginMode='login',currentUser=null,allClients=[],currentFilter='all',selTypes=[],customTypes=[],newTypeColor=PALETTE[0];
+let loginMode='login',currentUser=null,allClients=[],allContacts=[],currentFilter='all',selTypes=[],customTypes=[],newTypeColor=PALETTE[0];
 let editId=null,deleteId=null,formContacts=[],pendingImport=null;
 let moveContactIdx=-1,moveContactObj=null;
 
@@ -342,7 +342,7 @@ async function onLoginSuccess(user){
   buildFilterSelect();
   loadClients();
 }
-async function doLogout(){await sb.auth.signOut();currentUser=null;allClients=[];customTypes=[];document.getElementById('main-screen').classList.add('hidden');document.getElementById('login-screen').classList.remove('hidden')}
+async function doLogout(){await sb.auth.signOut();currentUser=null;allClients=[];allContacts=[];customTypes=[];document.getElementById('main-screen').classList.add('hidden');document.getElementById('login-screen').classList.remove('hidden')}
 
 // === Custom Types ===
 async function loadCustomTypes(){
@@ -490,6 +490,8 @@ async function loadClients(){
     var {data,error}=await sb.from('clients').select('*').order('updated_at',{ascending:false});
     if(error){grid.innerHTML='<div class="empty">加载失败：'+h(error.message)+'</div>';return}
     allClients=data||[];
+    var {data:cd}=await sb.from('contacts').select('*');
+    allContacts=(cd||[]);
     renderList();
   }catch(e){grid.innerHTML='<div class="empty">加载失败</div>'}
 }
@@ -497,9 +499,16 @@ function renderList(){
   var q=(document.getElementById('search-input').value||'').trim().toLowerCase();
   var list=allClients;
   if(q) list=list.filter(function(c){
-    var arr=[c.name,c.project,c.address];
+    var arr=[c.name,c.project,c.address,c.notes];
     var types=parseTypes(c.type);
     arr=arr.concat(types);
+    var contacts=allContacts.filter(function(co){return co.client_id===c.id});
+    for(var j=0;j<contacts.length;j++){
+      var co=contacts[j];
+      arr.push(co.name,co.dept,co.position);
+      try{var phs=JSON.parse(co.phone||'[]');if(Array.isArray(phs))arr=arr.concat(phs)}
+      catch(exc){if(co.phone)arr.push(co.phone)}
+    }
     return arr.some(function(v){return v&&v.toString().toLowerCase().indexOf(q)>=0});
   });
   if(currentFilter!=='all') list=list.filter(function(c){
