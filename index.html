@@ -136,7 +136,23 @@ input,select,textarea,button{font-family:inherit}
 .hidden{display:none !important}
 .back-row{padding:8px 16px;background:#fff;border-bottom:1px solid var(--border)}
 .back-row button{font-size:14px;color:var(--primary);background:none;border:none;cursor:pointer;display:flex;align-items:center;gap:4px}
-</style>
+
+/* —— 公司名称自动补全 —— */
+.company-ac-dropdown {
+  position: absolute; top: 100%; left: 0; right: 0;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 0 0 10px 10px; box-shadow: 0 8px 24px rgba(0,0,0,.15);
+  z-index: 1000; max-height: 220px; overflow-y: auto; display: none;
+}
+.company-ac-dropdown.show { display: block; }
+.company-ac-item {
+  padding: 10px 14px; cursor: pointer; border-bottom: 1px solid var(--border);
+  font-size: 14px; display: flex; justify-content: space-between; align-items: center;
+}
+.company-ac-item:last-child { border-bottom: none; }
+.company-ac-item:hover, .company-ac-item.active { background: var(--hover); }
+.company-ac-item .cname { color: var(--text); font-weight: 500; }
+.company-ac-item .cbase { color: var(--text3); font-size: 11px; max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }</style>
 </head>
 <body>
 
@@ -880,6 +896,43 @@ sb.auth.getSession().then(function(res){
     });
   }else document.getElementById('login-screen').classList.remove('hidden');
 }).catch(function(){document.getElementById('login-screen').classList.remove('hidden')});
+
+// === 鍏徃鍚嶇О鑷姩琛ュ叏 ===
+let acTimer=null,acSelected=-1;
+function setupCompanyAutocomplete(){
+  var input=document.getElementById('f-name');if(!input)return;
+  var dd=document.createElement('div');dd.className='company-ac-dropdown';dd.id='company-ac';
+  input.parentElement.style.position='relative';input.parentElement.appendChild(dd);
+  var items=[];
+  input.addEventListener('input',function(){
+    clearTimeout(acTimer);var val=input.value.trim();
+    if(val.length<2){hideAC();return}
+    acTimer=setTimeout(function(){searchCompanies(val)},300);
+  });
+  input.addEventListener('keydown',function(e){
+    if(!dd.classList.contains('show'))return;
+    if(e.key==='ArrowDown'){e.preventDefault();acSelected=Math.min(acSelected+1,items.length-1);renderActive();}
+    else if(e.key==='ArrowUp'){e.preventDefault();acSelected=Math.max(acSelected-1,0);renderActive();}
+    else if(e.key==='Enter'&&acSelected>=0){e.preventDefault();selectCompany(items[acSelected]);}
+    else if(e.key==='Escape'){hideAC();}
+  });
+  input.addEventListener('blur',function(){setTimeout(hideAC,200);});
+  async function searchCompanies(q){
+    try{var r=await sb.from('companies').select('name,base').ilike('name','%'+q+'%').order('name').limit(8);
+      if(r.error||!r.data||!r.data.length){hideAC();return}
+      items=r.data;acSelected=-1;renderDD();}
+    catch(e){hideAC();}
+  }
+  function renderDD(){
+    dd.innerHTML=items.map(function(c,i){return'<div class="company-ac-item'+(i===acSelected?' active':'')+'" data-idx="'+i+'"><span class="cname">'+escHtml(c.name)+'</span><span class="cbase">'+escHtml(c.base||'')+'</span></div>'}).join('');
+    dd.classList.add('show');
+    dd.querySelectorAll('.company-ac-item').forEach(function(el){el.addEventListener('mousedown',function(e){e.preventDefault();selectCompany(items[+el.dataset.idx]);});});
+  }
+  function renderActive(){dd.querySelectorAll('.company-ac-item').forEach(function(el,i){el.classList.toggle('active',i===acSelected)});}
+  function hideAC(){dd.classList.remove('show');items=[];acSelected=-1;}
+}
+function escHtml(s){var d=document.createElement('div');d.textContent=s||'';return d.innerHTML;}
+function selectCompany(c){document.getElementById('f-name').value=c.name;hideAC();}
 </script>
 </body>
 </html>
