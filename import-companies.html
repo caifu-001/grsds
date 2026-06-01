@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>重庆企业名录导入</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#F0F2F5;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.card{background:#fff;border-radius:16px;padding:32px 24px;max-width:420px;width:100%;box-shadow:0 2px 12px rgba(0,0,0,.06);text-align:center}
+h2{font-size:20px;margin-bottom:4px}
+.sub{color:#6B7280;font-size:13px;margin-bottom:24px}
+.stat{display:flex;justify-content:center;gap:24px;margin-bottom:24px}
+.stat-item{text-align:center}
+.stat-item .num{font-size:28px;font-weight:700;color:#3B82F6}
+.stat-item .label{font-size:12px;color:#9CA3AF;margin-top:2px}
+.btn{width:100%;padding:14px;border:none;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-primary{background:#3B82F6;color:#fff}
+.btn-primary:hover{background:#2563EB}
+.btn-primary:disabled{background:#93C5FD;cursor:not-allowed}
+.progress-wrap{margin-top:20px}
+.progress-bar{height:6px;background:#E5E7EB;border-radius:3px;overflow:hidden;margin-bottom:8px}
+.progress-fill{height:100%;background:#3B82F6;border-radius:3px;transition:width .3s}
+.progress-text{font-size:12px;color:#6B7280}
+.log{max-height:200px;overflow-y:auto;text-align:left;font-size:12px;color:#6B7280;margin-top:12px;padding:8px;background:#F9FAFB;border-radius:8px;display:none}
+.log.show{display:block}
+.log .ok{color:#10B981}
+.log .err{color:#EF4444}
+.log .info{color:#3B82F6}
+</style>
+</head>
+<body>
+<div class="card">
+  <h2>重庆企业名录导入</h2>
+  <p class="sub">导入到 Supabase companies 表</p>
+  <div class="stat">
+    <div class="stat-item"><div class="num" id="total">187</div><div class="label">待导入</div></div>
+    <div class="stat-item"><div class="num" id="done">0</div><div class="label">已完成</div></div>
+    <div class="stat-item"><div class="num" id="fail">0</div><div class="label">失败</div></div>
+  </div>
+  <button class="btn btn-primary" id="btn-import" onclick="doImport()">开始导入</button>
+  <div class="progress-wrap" id="progress-wrap" style="display:none">
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+    <div class="progress-text" id="progress-text"></div>
+  </div>
+  <div class="log" id="log"></div>
+</div>
+
+<script>
+const SUPABASE_URL='https://jyefbatmmbelrhhzsgva.supabase.co';
+const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp5ZWZiYXRtbWJlbHJoaHpzZ3ZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5NDIyMDUsImV4cCI6MjA5NTUxODIwNX0.m8pVc7yA9AycSTkexoH76SNo_P40KVRA4pmKECJQea4';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const companies = ["重庆长安汽车股份有限公司", "龙湖集团控股有限公司", "达丰（重庆）电脑有限公司", "重庆化医控股（集团）公司", "重药控股股份有限公司", "国网重庆市电力公司", "英业达（重庆）有限公司", "重庆新鸥鹏企业（集团）有限公司", "重庆千信集团有限公司", "重庆市博赛矿业（集团）有限公司", "金龙精密铜管集团股份有限公司", "重庆智飞生物制品股份有限公司", "重庆小康控股有限公司", "重庆机电控股（集团）公司", "重庆轻纺控股（集团）公司", "赛力斯集团股份有限公司", "重庆农村商业银行股份有限公司", "宗申产业集团有限公司", "重庆银行股份有限公司", "重庆京东海嘉电子商务有限公司", "重庆华宇集团有限公司", "沙师弟（重庆）网络科技有限公司", "OPPO（重庆）智能科技有限公司", "华南物资集团有限公司", "重庆惠科金渝光电科技有限公司", "重庆惠科金扬科技有限公司", "重庆美利信科技股份有限公司", "重庆京东创盟信息技术有限公司", "重庆百亚卫生用品股份有限公司", "重庆中膜复合材料有限公司", "重庆四方新材股份有限公司", "重庆恒安心相印纸制品有限公司", "恒安（重庆）生活用纸有限公司", "重庆商社（集团）有限公司", "重庆建工集团股份有限公司", "重庆钢铁股份有限公司", "太极集团有限公司", "重庆力帆控股有限公司", "隆鑫控股有限公司", "中冶赛迪工程技术股份有限公司", "金科地产集团股份有限公司", "重庆高速公路集团有限公司", "砂之船商业管理集团有限公司", "重庆青山工业有限公司", "中国四联仪器仪表集团有限公司", "重庆宗申动力机械股份有限公司", "重庆百货大楼股份有限公司", "中国烟草总公司重庆市公司", "重庆市能源投资集团公司", "重庆医药股份有限公司", "重庆小传实业有限公司", "重庆大江动力设备制造有限公司", "重庆红宇精密工业集团有限公司", "重庆星达铜业有限公司", "重庆宇海精密制造股份有限公司", "重庆渝进药业有限公司", "重庆美的制冷设备有限公司", "重庆美心（集团）有限公司", "美的通用制冷设备有限公司", "重庆大龙云计算技术有限公司", "国民认证科技（重庆）有限公司", "重庆工尔科技有限公司", "重庆市城投金卡信息产业（集团）股份有限公司", "重庆市瀚德高科机器人有限公司", "重庆睿一网络科技有限公司", "宝信云计算（重庆）有限公司", "重庆有胜电子有限公司", "重庆巨星农牧有限公司", "重庆瑞霆塑胶有限公司", "重庆中检工程质量检测有限公司", "重庆黑曜科技有限公司", "重庆珞优农业科技有限公司", "重庆市轨道交通设计研究院有限责任公司", "长安福特汽车有限公司", "重庆陶氏纸业有限公司", "重庆平元建筑工程有限公司", "重庆市重睿智睿科技有限公司", "重庆市涪陵区强箭气体有限公司", "重庆亚德科技股份有限公司", "重庆库铂科技有限公司", "重庆蓝晟氟硅新材科技有限公司", "重庆智绘华构科技有限公司", "重庆格尔康科技有限公司", "重庆利永纸制品包装有限公司", "重庆弘愿工具（集团）有限公司", "富正建筑集团有限公司", "渝建实业集团股份有限公司", "中国第十八冶金建设有限公司", "中铁十一局集团第五工程有限公司", "中冶建工集团有限公司", "重庆宝宇建设集团有限公司", "重庆博云建工集团有限公司", "重庆长利建设工程有限公司", "重庆崇佳建设集团有限公司", "重庆春越建设工程有限公司", "重庆单轨交通工程有限责任公司", "重庆丰功建筑工程有限公司", "重庆钢铁集团建设工程有限公司", "重庆光鸿建筑工程有限公司", "重庆华阳景观雕塑设计工程有限公司", "重庆森润机电设备有限公司", "重庆万铭文化传媒有限公司", "重庆科冠涂料有限公司", "重庆诺怀软件有限公司", "重庆千巨吉广告有限公司", "重庆升亿过滤设备制造有限公司", "重庆物流金融服务（集团）股份有限公司", "中国石化集团四川维尼纶厂", "重庆市涪陵水利电力投资集团有限责任公司", "台晶（重庆）电子有限公司", "重庆泽胜投资集团有限公司", "重庆啤酒股份有限公司", "西南铝业（集团）有限责任公司", "中船重工（重庆）海装风电设备有限公司", "重庆川仪自动化股份有限公司", "重庆三峡银行股份有限公司", "重庆燃气集团股份有限公司", "重庆水务集团股份有限公司", "重庆港九股份有限公司", "重庆中科云计算有限公司", "重庆誉存大数据科技有限公司", "重庆猪八戒网络有限公司", "重庆金鑫智慧科技有限公司", "重庆华龙网集团股份有限公司", "中科曙光重庆云计算中心", "重庆啄木鸟网络科技有限公司", "重庆渝欧跨境电子商务有限公司", "重庆长安民生物流股份有限公司", "重庆中元汇吉生物技术有限公司", "重庆博腾制药科技股份有限公司", "重庆华森制药股份有限公司", "北大医药股份有限公司", "重庆莱美药业股份有限公司", "重庆希尔安药业有限公司", "重庆金山科技（集团）有限公司", "重庆再升科技股份有限公司", "重庆三峡电缆（集团）有限公司", "重庆通用工业（集团）有限责任公司", "重庆鸽牌电线电缆有限公司", "重庆机床（集团）有限责任公司", "重庆水泵厂有限责任公司", "重庆气体压缩机厂有限责任公司", "重庆康明斯发动机有限公司", "上汽依维柯红岩商用车有限公司", "庆铃汽车（集团）有限公司", "重庆潍柴发动机有限公司", "重庆铁马工业集团有限公司", "重庆长江电工工业集团有限公司", "重庆建设工业（集团）有限责任公司", "重庆望江工业有限公司", "重庆嘉陵特种装备有限公司", "招商局重庆交通科研设计院有限公司", "林同棪国际工程咨询（中国）有限公司", "中机中联工程有限公司", "重庆对外建设（集团）有限公司", "重庆交通建设（集团）有限责任公司", "重庆城建控股（集团）有限责任公司", "重庆新科建设工程有限公司", "重庆教育建设（集团）有限公司", "重庆宏帆实业集团有限公司", "重庆东银控股集团有限公司", "重庆协信控股（集团）有限公司", "重庆斌鑫集团有限公司", "重庆飞亚实业有限公司", "重庆天友乳业股份有限公司", "重庆登康口腔护理用品股份有限公司", "重庆紫光化工股份有限公司", "重庆三峡油漆股份有限公司", "重庆万里新能源股份有限公司", "重庆顺博铝合金股份有限公司", "重庆秦安机电股份有限公司", "重庆蓝黛动力传动机械股份有限公司", "重庆九洲星熠导航设备有限公司", "重庆盟讯电子科技有限公司", "重庆平伟汽车科技股份有限公司", "重庆矢崎仪表有限公司", "重庆延锋安道拓汽车部件系统有限公司", "重庆宏声实业（集团）有限责任公司", "重庆烟草工业有限责任公司", "重庆前卫科技集团有限公司", "重庆长征重工有限责任公司", "重庆中车长客轨道车辆有限公司", "重庆长江轴承股份有限公司", "重庆华渝电气集团有限公司", "重庆耐德工业股份有限公司", "重庆润通控股（集团）有限公司", "重庆秋田齿轮有限责任公司"];
+const BATCH = 20;
+let done = 0, failed = 0;
+
+function log(msg, cls) {
+  const el = document.getElementById('log');
+  el.classList.add('show');
+  el.innerHTML += '<div class="' + (cls||'') + '">' + msg + '</div>';
+  el.scrollTop = el.scrollHeight;
+}
+
+function updateStats() {
+  document.getElementById('done').textContent = done;
+  document.getElementById('fail').textContent = failed;
+  const pct = Math.round((done + failed) / companies.length * 100);
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-text').textContent = done + '/' + companies.length + ' (' + pct + '%)';
+}
+
+async function doImport() {
+  const btn = document.getElementById('btn-import');
+  btn.disabled = true;
+  btn.textContent = '导入中...';
+  document.getElementById('progress-wrap').style.display = 'block';
+  done = 0; failed = 0;
+  log('开始导入 ' + companies.length + ' 家企业...', 'info');
+
+  for (let i = 0; i < companies.length; i += BATCH) {
+    const batch = companies.slice(i, i + BATCH).map(function(name) { return {name: name, base: '重庆市'}; });
+    try {
+      const { error } = await sb.from('companies').upsert(batch, {onConflict: 'name', ignoreDuplicates: true});
+      if (error) {
+        if (error.message && error.message.indexOf('policy') >= 0) {
+          log('RLS策略阻止写入。请在Supabase SQL Editor执行以下SQL后重试:', 'err');
+          log("CREATE POLICY anon_can_insert ON companies FOR INSERT WITH CHECK (true);", 'info');
+          failed += batch.length;
+          break;
+        }
+        log('批次' + (Math.floor(i/BATCH)+1) + '失败: ' + error.message, 'err');
+        failed += batch.length;
+      } else {
+        done += batch.length;
+        log('OK 批次' + (Math.floor(i/BATCH)+1) + ': ' + batch.length + '条', 'ok');
+      }
+    } catch(e) {
+      log('网络错误: ' + e.message, 'err');
+      failed += batch.length;
+    }
+    updateStats();
+    await new Promise(function(r) { setTimeout(r, 200); });
+  }
+
+  log(done > 0 ? '完成! 成功导入 ' + done + ' 家, 失败 ' + failed + ' 家' : '导入失败', done > 0 ? 'ok' : 'err');
+  btn.disabled = false;
+  btn.textContent = '重新导入';
+}
+</script>
+</body>
+</html>
