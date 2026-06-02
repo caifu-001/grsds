@@ -737,18 +737,21 @@ async function saveClient(){
     };
     if(co._new){
       var {data:nc,error}=await sb.from('contacts').insert(cd).select('id');
-      if(error){showToast('保存联系人失败');return}
-      if(nc)savedIds.push(nc[0].id);
+      if(error){showToast('新增联系人失败: '+error.message);console.error('contact insert:',error);return}
+      if(nc&&nc.length) savedIds.push(nc[0].id); else {showToast('新增联系人异常(无返回ID)');console.error('contact insert empty data:',nc);return}
     }else{
       cd.client_id=clientId; // ensure contact stays with this client
-      var {error}=await sb.from('contacts').update(cd).eq('id',co.id);
-      if(error){showToast('保存联系人失败');return}
+      var {error:upErr}=await sb.from('contacts').update(cd).eq('id',co.id);
+      if(upErr){showToast('更新联系人失败: '+upErr.message);console.error('contact update:',upErr,'id:',co.id);return}
       savedIds.push(co.id);
     }
   }
 
   var toDel=existingIds.filter(function(id){return savedIds.indexOf(id)<0});
-  for(var j=0;j<toDel.length;j++)await sb.from('contacts').delete().eq('id',toDel[j]);
+  for(var j=0;j<toDel.length;j++){
+    var {error:delErr}=await sb.from('contacts').delete().eq('id',toDel[j]);
+    if(delErr){console.error('contact delete:',delErr,'id:',toDel[j]);}
+  }
 
   closeForm();
   loadClients();
