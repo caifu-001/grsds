@@ -561,11 +561,15 @@ function refCt(){
   if(formContacts.length===0){c.innerHTML='<div class="empty" style="padding:20px">暂无联系人，点击「＋ 添加」</div>';return}
   var html='';
   for(var i=0;i<formContacts.length;i++){
-    var co=formContacts[i],phones=co.phones||[];
+    var co=formContacts[i],phones=co.phones||[],landlines=co.landlines||[];
     if(!phones.length)phones=[''];
     var ph='';
     for(var p=0;p<phones.length;p++)ph+='<div class="phone-row"><input type="tel" value="'+h(phones[p]||'')+'" onchange="upCtPh('+i+','+p+',this.value)" placeholder="手机号">'+(phones.length>1?'<button class="rm-phone" onclick="rmPh('+i+','+p+')">✕</button>':'')+'</div>';
-    ph+='<button class="add-phone-btn" onclick="addPh('+i+')">＋ 添加号码</button>';
+    ph+='<button class="add-phone-btn" onclick="addPh('+i+')">＋ 添加手机</button>';
+    if(!landlines.length)landlines=[''];
+    var ll='';
+    for(var l=0;l<landlines.length;l++)ll+='<div class="phone-row"><input type="text" value="'+h(landlines[l]||'')+'" onchange="upCtLl('+i+','+l+',this.value)" placeholder="座机号">'+(landlines.length>1?'<button class="rm-phone" onclick="rmLl('+i+','+l+')">✕</button>':'')+'</div>';
+    ll+='<button class="add-phone-btn" onclick="addLl('+i+')">＋ 添加座机</button>';
     html+='<div class="contact-item">\
       <button class="del-btn" onclick="rmCt('+i+')">✕</button>'+
       '<button class="mv-btn" onclick="openMoveModal('+i+')">转移</button>'+
@@ -578,7 +582,8 @@ function refCt(){
         <div class="form-group"><label>职务</label><input value="'+h(co.position||'')+'" onchange="upCt('+i+',\'position\',this.value)" placeholder="职位"></div>\
         <div class="form-group"><label>办公室房号</label><input value="'+h(co.room||'')+'" onchange="upCt('+i+',\'room\',this.value)" placeholder="办公室房号"></div>\
       </div>\
-      <div class="form-group"><label>电话</label>'+ph+'</div>\
+      <div class="form-group"><label>手机</label>'+ph+'</div>\
+      <div class="form-group"><label>座机</label>'+ll+'</div>\
     </div>';
   }
   c.innerHTML=html;
@@ -586,12 +591,15 @@ function refCt(){
   for(var j=0;j<pis.length;j++)pis[j].addEventListener('input',function(){this.value=this.value.replace(/\s+/g,'')});
 }
 // global helpers for onclick
-var addContact=function(){formContacts.push({id:'t'+Date.now()+Math.random().toString(36).slice(2,6),name:'',dept:'',position:'',phones:[''],room:'',_new:true});refCt()};
+var addContact=function(){formContacts.push({id:'t'+Date.now()+Math.random().toString(36).slice(2,6),name:'',dept:'',position:'',phones:[''],landlines:[''],room:'',_new:true});refCt()};
 var rmCt=function(i){formContacts.splice(i,1);refCt()};
 var upCt=function(i,f,v){if(i>=0&&i<formContacts.length)formContacts[i][f]=v};
 var upCtPh=function(i,p,v){if(formContacts[i]&&formContacts[i].phones)formContacts[i].phones[p]=(v||'').replace(/\s+/g,'')};
 var addPh=function(i){if(!formContacts[i].phones)formContacts[i].phones=[];formContacts[i].phones.push('');refCt()};
 var rmPh=function(i,p){formContacts[i].phones.splice(p,1);if(!formContacts[i].phones.length)formContacts[i].phones=[''];refCt()};
+var addLl=function(i){if(!formContacts[i].landlines)formContacts[i].landlines=[];formContacts[i].landlines.push('');refCt()};
+var rmLl=function(i,l){formContacts[i].landlines.splice(l,1);if(!formContacts[i].landlines.length)formContacts[i].landlines=[''];refCt()};
+var upCtLl=function(i,l,v){if(formContacts[i]&&formContacts[i].landlines)formContacts[i].landlines[l]=(v||'').replace(/\s+/g,'')};
 
 async function openForm(id){
   editId=id||null;
@@ -618,11 +626,14 @@ async function openForm(id){
     var {data}=await sb.from('contacts').select('*').eq('client_id',id).order('created_at',{ascending:true});
     if(data&&data.length>0){
       for(var i=0;i<data.length;i++){
-        var co=data[i],phones=[];
+        var co=data[i],phones=[],landlines=[];
         try{phones=JSON.parse(co.phone||'[]');if(!Array.isArray(phones))phones=co.phone?[co.phone]:['']}
         catch(e){phones=co.phone?[co.phone]:['']}
         if(!phones.length)phones=[''];
-        co.phones=phones;formContacts.push(co);
+        try{landlines=JSON.parse(co.landline||'[]');if(!Array.isArray(landlines))landlines=co.landline?[co.landline]:['']}
+        catch(e){landlines=co.landline?[co.landline]:['']}
+        if(!landlines.length)landlines=[''];
+        co.phones=phones;co.landlines=landlines;formContacts.push(co);
       }
     }
   }else{
@@ -700,6 +711,25 @@ async function saveClient(){
     }
   }
 
+  // Landline uniqueness check: one landline → one company, but can be shared by contacts within same company
+  var landlinesToCheck=[];
+  for(var i=0;i<formContacts.length;i++){
+    var lls=formContacts[i].landlines||[''];
+    for(var l=0;l<lls.length;l++){var ll=lls[l].trim();if(ll)landlinesToCheck.push(ll)}
+  }
+  if(landlinesToCheck.length>0){
+    var otherContacts=editId?allContacts.filter(function(c){return c.client_id!==editId}):allContacts;
+    for(var j=0;j<otherContacts.length;j++){
+      var els=[];
+      try{els=JSON.parse(otherContacts[j].landline||'[]')}catch(e){els=otherContacts[j].landline?[String(otherContacts[j].landline)]:[]}
+      if(!Array.isArray(els))els=els?[String(els)]:[];
+      for(var k=0;k<els.length;k++){
+        var el=(els[k]||'').trim();
+        if(el&&landlinesToCheck.indexOf(el)>=0){showToast('座机 '+el+' 已被其他公司使用');return}
+      }
+    }
+  }
+
   var client={
     type:JSON.stringify(selTypes),
     name:name,
@@ -728,12 +758,15 @@ async function saveClient(){
 
   var savedIds=[];
   for(var i=0;i<formContacts.length;i++){
-    var co=formContacts[i],phones=co.phones||[''];
+    var co=formContacts[i],phones=co.phones||[''],landlines=co.landlines||[''];
     phones=phones.filter(function(p){return p.trim()});
+    landlines=landlines.filter(function(l){return l.trim()});
     var cd={
       client_id:clientId,user_id:currentUser.id,
       name:co.name||'',dept:co.dept||'',position:co.position||'',
-      phone:JSON.stringify(phones.length?phones:['']),room:co.room||''
+      phone:JSON.stringify(phones.length?phones:['']),
+      landline:JSON.stringify(landlines.length?landlines:['']),
+      room:co.room||''
     };
     if(co._new){
       var {data:nc,error}=await sb.from('contacts').insert(cd).select('id');
