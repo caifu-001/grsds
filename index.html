@@ -782,13 +782,14 @@ async function saveClient(){
     var co=formContacts[i],phones=co.phones||[''],landlines=co.landlines||[''];
     phones=phones.filter(function(p){return p.trim()});
     landlines=landlines.filter(function(l){return l.trim()});
+    console.log('save contact',i,co.name,co._new,phones,landlines);
     var cd={
       client_id:clientId,user_id:currentUser.id,
       name:co.name||'',dept:co.dept||'',position:co.position||'',
-      phone:JSON.stringify(phones.length?phones:['']),
-      landline:JSON.stringify(landlines.length?landlines:['']),
-      room:co.room||''
+      phone:JSON.stringify(phones.length?phones:['']),room:co.room||''
     };
+    if(landlines.length>0)cd.landline=JSON.stringify(landlines);
+    console.log('save cd',i,cd);
     if(co._new){
       var {data:nc,error}=await sb.from('contacts').insert(cd).select('id');
       if(error){showToast('新增联系人失败: '+error.message);console.error('contact insert:',error);return}
