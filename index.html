@@ -712,6 +712,9 @@ async function saveClient(){
   if(!selTypes.length){document.getElementById('type-err').textContent='请选择至少一个客户属性';setTimeout(function(){document.getElementById('type-err').textContent=''},3000);return}
   var name=document.getElementById('f-name').value.trim();
   if(!name){showToast('请输入客户名称');return}
+  // Company name uniqueness check
+  var dup=allClients.filter(function(c){return c.name.toLowerCase()===name.toLowerCase()&&c.id!==editId});
+  if(dup.length>0){showToast('客户名称「'+name+'」已存在');return}
 
   // Phone uniqueness check
   var phonesToCheck=[];
