@@ -585,23 +585,23 @@ function refCt(){
     var co=formContacts[i],phones=co.phones||[],landlines=co.landlines||[];
     if(!phones.length)phones=[''];
     var ph='';
-    for(var p=0;p<phones.length;p++)ph+='<div class="phone-row"><input type="tel" value="'+h(phones[p]||'')+'" onchange="upCtPh('+i+','+p+',this.value)" placeholder="手机号">'+(phones.length>1?'<button class="rm-phone" onclick="rmPh('+i+','+p+')">✕</button>':'')+'</div>';
+    for(var p=0;p<phones.length;p++)ph+='<div class="phone-row"><input type="tel" value="'+h(phones[p]||'')+'" oninput="upCtPh('+i+','+p+',this.value)" placeholder="手机号">'+(phones.length>1?'<button class="rm-phone" onclick="rmPh('+i+','+p+')">✕</button>':'')+'</div>';
     ph+='<button class="add-phone-btn" onclick="addPh('+i+')">＋ 添加手机</button>';
     if(!landlines.length)landlines=[''];
     var ll='';
-    for(var l=0;l<landlines.length;l++)ll+='<div class="phone-row"><input type="text" value="'+h(landlines[l]||'')+'" onchange="upCtLl('+i+','+l+',this.value)" placeholder="座机号">'+(landlines.length>1?'<button class="rm-phone" onclick="rmLl('+i+','+l+')">✕</button>':'')+'</div>';
+    for(var l=0;l<landlines.length;l++)ll+='<div class="phone-row"><input type="text" value="'+h(landlines[l]||'')+'" oninput="upCtLl('+i+','+l+',this.value)" placeholder="座机号">'+(landlines.length>1?'<button class="rm-phone" onclick="rmLl('+i+','+l+')">✕</button>':'')+'</div>';
     ll+='<button class="add-phone-btn" onclick="addLl('+i+')">＋ 添加座机</button>';
     html+='<div class="contact-item">\
       <button class="del-btn" onclick="rmCt('+i+')">✕</button>'+
       '<button class="mv-btn" onclick="openMoveModal('+i+')">转移</button>'+
       '<div class="contact-header">🧑 联系人 #'+(i+1)+'</div>\
       <div class="form-row">\
-        <div class="form-group"><label>姓名</label><input value="'+h(co.name||'')+'" onchange="upCt('+i+',\'name\',this.value)" placeholder="联系人姓名"></div>\
-        <div class="form-group"><label>部门</label><input value="'+h(co.dept||'')+'" onchange="upCt('+i+',\'dept\',this.value)" placeholder="所属部门"></div>\
+        <div class="form-group"><label>姓名</label><input value="'+h(co.name||'')+'" oninput="upCt('+i+',\'name\',this.value)" placeholder="联系人姓名"></div>\
+        <div class="form-group"><label>部门</label><input value="'+h(co.dept||'')+'" oninput="upCt('+i+',\'dept\',this.value)" placeholder="所属部门"></div>\
       </div>\
       <div class="form-row">\
-        <div class="form-group"><label>职务</label><input value="'+h(co.position||'')+'" onchange="upCt('+i+',\'position\',this.value)" placeholder="职位"></div>\
-        <div class="form-group"><label>办公室房号</label><input value="'+h(co.room||'')+'" onchange="upCt('+i+',\'room\',this.value)" placeholder="办公室房号"></div>\
+        <div class="form-group"><label>职务</label><input value="'+h(co.position||'')+'" oninput="upCt('+i+',\'position\',this.value)" placeholder="职位"></div>\
+        <div class="form-group"><label>办公室房号</label><input value="'+h(co.room||'')+'" oninput="upCt('+i+',\'room\',this.value)" placeholder="办公室房号"></div>\
       </div>\
       <div class="form-group"><label>手机</label>'+ph+'</div>\
       <div class="form-group"><label>座机</label>'+ll+'</div>\
