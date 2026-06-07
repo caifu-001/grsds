@@ -169,7 +169,37 @@ input,select,textarea,button{font-family:inherit}
 .company-ac-item:last-child { border-bottom: none; }
 .company-ac-item:hover, .company-ac-item.active { background: var(--hover); }
 .company-ac-item .cname { color: var(--text); font-weight: 500; }
-.company-ac-item .cbase { color: var(--text3); font-size: 11px; max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }</style>
+.company-ac-item .cbase { color: var(--text3); font-size: 11px; max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── Company Directory ── */
+.dir-tabs{display:flex;gap:0;padding:0 16px;position:sticky;top:48px;z-index:99;background:var(--bg);border-bottom:2px solid var(--border)}
+.dir-tab{flex:1;padding:12px 0;text-align:center;font-size:14px;font-weight:600;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;margin-bottom:-2px;transition:color .2s,border-color .2s;background:none;border-top:none;border-left:none;border-right:none}
+.dir-tab.active{color:var(--primary);border-bottom-color:var(--primary)}
+.dir-tab:active{opacity:.7}
+.dir-stats{display:flex;gap:8px;padding:12px 16px 8px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.dir-stats::-webkit-scrollbar{display:none}
+.dir-stat{flex:1;min-width:80px;background:var(--card);border-radius:12px;padding:12px 14px;text-align:center;box-shadow:var(--shadow);border:1px solid var(--border);cursor:pointer;transition:transform .15s}
+.dir-stat:active{transform:scale(.96)}
+.dir-stat .ds-num{font-size:24px;font-weight:700;color:var(--primary);line-height:1}
+.dir-stat .ds-label{font-size:11px;color:var(--text3);font-weight:500;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dir-list{padding:0 16px 80px}
+.dir-item{background:var(--card);border-radius:10px;padding:14px 16px;margin-bottom:8px;box-shadow:var(--shadow);border:1px solid var(--border);cursor:pointer;transition:transform .15s}
+.dir-item:active{transform:scale(.98)}
+.dir-item .di-name{font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px}
+.dir-item .di-row{display:flex;gap:16px;font-size:12px;color:var(--text2);margin-bottom:3px;flex-wrap:wrap}
+.dir-item .di-row span{display:inline-flex;align-items:center;gap:4px}
+.dir-item .di-label{color:var(--text3);font-size:11px}
+.dir-item .di-badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:10px;background:var(--primary-light);color:var(--primary);font-weight:500;margin-top:4px}
+
+/* ── Company Info in Form ── */
+.company-info-section{background:var(--bg);border-radius:12px;padding:14px;margin-top:12px;border:1px solid var(--border)}
+.company-info-section .ci-title{font-size:12px;font-weight:600;color:var(--text3);margin-bottom:10px;letter-spacing:.5px}
+.ci-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ci-field{font-size:12px}
+.ci-field .ci-label{color:var(--text3);font-size:11px;margin-bottom:2px}
+.ci-field .ci-value{color:var(--text);font-size:13px;word-break:break-all}
+.ci-field .ci-value.empty{color:var(--text3);font-style:italic;font-size:12px}
+.ci-source{font-size:10px;color:var(--success);margin-top:6px}</style>
 </head>
 <body>
 
@@ -189,8 +219,9 @@ input,select,textarea,button{font-family:inherit}
 <!-- Main -->
 <div id="main-screen" class="hidden">
  <div class="topbar">
-  <span>客户管理</span>
+  <span id="topbar-title">客户管理</span>
   <div class="topbar-btns">
+   <button class="topbar-btn" id="btn-dir" onclick="showCompanies()" title="公司名录">📂</button>
    <button class="topbar-btn" onclick="doRefresh()" title="刷新">↻</button>
    <button class="topbar-btn" onclick="openSettings()" title="设置">⚙</button>
    <button class="topbar-btn" style="font-size:13px;font-weight:400" onclick="doLogout()">退出</button>
@@ -244,6 +275,23 @@ input,select,textarea,button{font-family:inherit}
  <div style="padding:0 16px 40px"><div class="settings-item"><span class="lbl">客户管理系统 v3</span></div></div>
 </div>
 
+<!-- Company Directory Screen -->
+<div id="dir-screen" class="hidden" style="min-height:100vh;background:var(--bg)">
+ <div class="topbar">
+  <span>📂 公司名录</span>
+  <div class="topbar-btns">
+   <button class="topbar-btn" onclick="closeDir()" style="font-size:13px;font-weight:400">← 返回</button>
+  </div>
+ </div>
+ <div class="toolbar">
+  <select id="dir-filter" onchange="renderDir()"><option value="all">全部分类</option></select>
+  <div class="search-wrap"><input id="dir-search" placeholder="搜索公司..." oninput="renderDir()"></div>
+ </div>
+ <div class="dir-stats" id="dir-stats"></div>
+ <div class="dir-list" id="dir-list"></div>
+ <div class="empty hidden" id="dir-empty"><div class="empty-icon">📭</div>暂无匹配公司</div>
+</div>
+
 <!-- Form Modal -->
 <div class="modal-overlay hidden" id="form-modal">
  <div class="modal-sheet">
@@ -261,6 +309,16 @@ input,select,textarea,button{font-family:inherit}
   </div>
   <div class="form-group"><label>客户地址</label><input id="f-address" placeholder="详细地址"></div>
   <div class="form-group"><label>备注</label><textarea id="f-notes" placeholder="客户备注信息..."></textarea></div>
+
+  <div class="company-info-section" id="company-info-panel">
+   <div class="ci-title">🏢 公司详情 <span class="ci-source" id="ci-source"></span></div>
+   <div class="ci-grid">
+    <div class="ci-field"><div class="ci-label">法定代表人</div><div class="ci-value empty" id="ci-legal">—</div></div>
+    <div class="ci-field"><div class="ci-label">组织机构代码</div><div class="ci-value empty" id="ci-credit">—</div></div>
+    <div class="ci-field"><div class="ci-label">注册资本</div><div class="ci-value empty" id="ci-capital">—</div></div>
+    <div class="ci-field"><div class="ci-label">注册状态</div><div class="ci-value empty" id="ci-status">—</div></div>
+   </div>
+  </div>
 
   <div class="section-title">👤 联系人</div>
   <div id="contacts-container"></div>
@@ -305,7 +363,7 @@ const BUILTIN_TYPES=['甲方','集成商','设计院','运营商','国央企','�
 const BUILTIN_COLORS=['#3B82F6','#10B981','#8B5CF6','#F59E0B','#EF4444','#DC2626','#06B6D4','#EC4899','#84CC16','#6366F1','#F97316','#14B8A6'];
 const PALETTE=['#3B82F6','#10B981','#8B5CF6','#F59E0B','#EF4444','#06B6D4','#EC4899','#84CC16','#6366F1','#F97316','#14B8A6','#78716C','#0EA5E9','#D946EF','#E84C3D'];
 
-let loginMode='login',currentUser=null,allClients=[],allContacts=[],currentFilter='all',selTypes=[],customTypes=[],newTypeColor=PALETTE[0];
+let loginMode='login',currentUser=null,allClients=[],allContacts=[],allCompanies=[],allCompaniesMap={},currentFilter='all',selTypes=[],customTypes=[],newTypeColor=PALETTE[0];
 let editId=null,deleteId=null,formContacts=[],pendingImport=null;
 let moveContactIdx=-1,moveContactObj=null;
 
@@ -375,6 +433,7 @@ async function onLoginSuccess(user){
   await loadCustomTypes();
   buildFilterSelect();
   loadClients();
+  loadCompanies();
 }
 async function doLogout(){await sb.auth.signOut();currentUser=null;allClients=[];allContacts=[];customTypes=[];document.getElementById('main-screen').classList.add('hidden');document.getElementById('login-screen').classList.remove('hidden')}
 
@@ -531,6 +590,108 @@ async function loadClients(){
     renderList();
   }catch(e){grid.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div>加载失败</div>';statsBar.innerHTML=''}
 }
+
+// === Companies Directory ===
+async function loadCompanies(){
+  try{
+    var {data}=await sb.from('companies').select('*').order('name');
+    allCompanies=(data||[]);
+    allCompaniesMap={};
+    for(var i=0;i<allCompanies.length;i++){
+      var c=allCompanies[i],key=(c.name||'').toLowerCase();
+      if(key) allCompaniesMap[key]=c;
+    }
+    buildDirFilter();
+  }catch(e){console.error('loadCompanies:',e)}
+}
+function buildDirFilter(){
+  var cats={};
+  for(var i=0;i<allCompanies.length;i++){var base=allCompanies[i].base||'未分类';cats[base]=(cats[base]||0)+1}
+  var html='<option value="all">全部分类 ('+allCompanies.length+')</option>';
+  var sorted=Object.keys(cats).sort(function(a,b){return cats[b]-cats[a]});
+  for(var i=0;i<sorted.length;i++)html+='<option value="'+h(sorted[i])+'">'+h(sorted[i])+' ('+cats[sorted[i]]+')</option>';
+  document.getElementById('dir-filter').innerHTML=html;
+}
+function showCompanies(){
+  document.getElementById('main-screen').classList.add('hidden');
+  document.getElementById('dir-screen').classList.remove('hidden');
+  renderDir();
+}
+function closeDir(){
+  document.getElementById('dir-screen').classList.add('hidden');
+  document.getElementById('main-screen').classList.remove('hidden');
+}
+function renderDir(){
+  var q=(document.getElementById('dir-search').value||'').trim().toLowerCase();
+  var cat=document.getElementById('dir-filter').value;
+  var list=allCompanies;
+  if(q) list=list.filter(function(c){return(c.name||'').toLowerCase().indexOf(q)>=0});
+  if(cat!=='all') list=list.filter(function(c){return(c.base||'')===cat});
+  // Stats
+  var cats={},total=list.length;
+  for(var i=0;i<list.length;i++){var base=list[i].base||'未分类';cats[base]=(cats[base]||0)+1}
+  var sorted=Object.keys(cats).sort(function(a,b){return cats[b]-cats[a]});
+  var sh='<div class="dir-stat" onclick="document.getElementById(\'dir-filter\').value=\'all\';renderDir()"><div class="ds-num">'+total+'</div><div class="ds-label">当前筛选</div></div><div class="dir-stat"><div class="ds-num">'+allCompanies.length+'</div><div class="ds-label">全库总计</div></div>';
+  for(var i=0;i<Math.min(sorted.length,6);i++){
+    sh+='<div class="dir-stat" onclick="document.getElementById(\'dir-filter\').value=\''+h(sorted[i]).replace(/'/g,"\\'")+'\';renderDir()"><div class="ds-num">'+cats[sorted[i]]+'</div><div class="ds-label">'+h(sorted[i])+'</div></div>';
+  }
+  document.getElementById('dir-stats').innerHTML=sh;
+  // List
+  var el=document.getElementById('dir-list'),emp=document.getElementById('dir-empty');
+  if(!list.length){el.innerHTML='';emp.classList.remove('hidden');return}
+  emp.classList.add('hidden');
+  var html='';
+  for(var i=0;i<list.length;i++){
+    var c=list[i];
+    var rows='';
+    if(c.legal_person)rows+='<span>👔 '+h(c.legal_person)+'</span>';
+    if(c.credit_code)rows+='<span>🆔 '+h(c.credit_code)+'</span>';
+    if(c.reg_capital)rows+='<span>💰 '+h(c.reg_capital)+'</span>';
+    if(c.reg_status)rows+='<span>📌 '+h(c.reg_status)+'</span>';
+    var created=c.created_at?new Date(c.created_at).toLocaleDateString('zh-CN'):'';
+    if(created)rows+='<span>📅 '+created+'</span>';
+    html+='<div class="dir-item" onclick="useCompanyName(\''+h(c.name||'').replace(/'/g,"\\'")+'\')"><div class="di-name">'+h(c.name)+'</div>'+(rows?'<div class="di-row">'+rows+'</div>':'')+(c.base?'<span class="di-badge">'+h(c.base)+'</span>':'')+'</div>';
+  }
+  el.innerHTML=html;
+}
+function useCompanyName(name){
+  closeDir();
+  // Search in main screen for this company
+  document.getElementById('search-input').value=name;
+  renderList();
+  // If company not in clients, open add form
+  var exists=allClients.find(function(c){return c.name.toLowerCase()===name.toLowerCase()});
+  if(exists) openForm(exists.id);
+  else{
+    document.getElementById('f-name').value=name;
+    // Auto-fill from directory
+    var key=name.toLowerCase();
+    if(allCompaniesMap[key]) fillCompanyInfo(allCompaniesMap[key]);
+  }
+}
+function fillCompanyInfo(comp){
+  document.getElementById('ci-legal').textContent=comp.legal_person||'—';
+  document.getElementById('ci-legal').classList.toggle('empty',!comp.legal_person);
+  document.getElementById('ci-credit').textContent=comp.credit_code||'—';
+  document.getElementById('ci-credit').classList.toggle('empty',!comp.credit_code);
+  document.getElementById('ci-capital').textContent=comp.reg_capital||'—';
+  document.getElementById('ci-capital').classList.toggle('empty',!comp.reg_capital);
+  document.getElementById('ci-status').textContent=comp.reg_status||'—';
+  document.getElementById('ci-status').classList.toggle('empty',!comp.reg_status);
+  document.getElementById('ci-source').textContent='✔ 来自企业名录';
+}
+function displayCompanyInfo(ci){
+  document.getElementById('ci-legal').textContent=ci.legal_person||'—';
+  document.getElementById('ci-legal').classList.toggle('empty',!ci.legal_person);
+  document.getElementById('ci-credit').textContent=ci.credit_code||'—';
+  document.getElementById('ci-credit').classList.toggle('empty',!ci.credit_code);
+  document.getElementById('ci-capital').textContent=ci.reg_capital||'—';
+  document.getElementById('ci-capital').classList.toggle('empty',!ci.reg_capital);
+  document.getElementById('ci-status').textContent=ci.reg_status||'—';
+  document.getElementById('ci-status').classList.toggle('empty',!ci.reg_status);
+  document.getElementById('ci-source').textContent=ci.legal_person?'💾 已保存':'';
+}
+
 function renderList(){
   var q=(document.getElementById('search-input').value||'').trim().toLowerCase();
   var list=allClients;
@@ -667,6 +828,10 @@ async function openForm(id){
       document.getElementById('f-address').value=c.address||'';
       document.getElementById('f-notes').value=c.notes||'';
       setSelectedTypes(parseTypes(c.type));
+      // Load company_info
+      var ciStr=c.company_info||'{}';
+      try{var ci=JSON.parse(ciStr);displayCompanyInfo(ci);}
+      catch(e){displayCompanyInfo({});}
     }else{
       setSelectedTypes([]);
     }
@@ -685,6 +850,7 @@ async function openForm(id){
     }
   }else{
     setSelectedTypes([]);
+    displayCompanyInfo({});
   }
   refCt();
   document.getElementById('form-modal').classList.remove('hidden');
@@ -780,6 +946,13 @@ async function saveClient(){
     }
   }
 
+  // Build company_info from form
+  var ci={};
+  var v=document.getElementById('ci-legal').textContent; if(v&&v!=='—')ci.legal_person=v;
+  v=document.getElementById('ci-credit').textContent; if(v&&v!=='—')ci.credit_code=v;
+  v=document.getElementById('ci-capital').textContent; if(v&&v!=='—')ci.reg_capital=v;
+  v=document.getElementById('ci-status').textContent; if(v&&v!=='—')ci.reg_status=v;
+
   var client={
     type:JSON.stringify(selTypes),
     name:name,
@@ -787,6 +960,7 @@ async function saveClient(){
     bidding_date:document.getElementById('f-bidding-date').value||null,
     address:document.getElementById('f-address').value.trim(),
     notes:document.getElementById('f-notes').value.trim(),
+    company_info:JSON.stringify(ci),
     contact_count:formContacts.length,
     updated_at:new Date().toISOString()
   };
@@ -980,6 +1154,7 @@ sb.auth.getSession().then(function(res){
       buildFilterSelect();
       buildTypeGrid();
       loadClients();
+      loadCompanies();
     });
   }else document.getElementById('login-screen').classList.remove('hidden');
 }).catch(function(){document.getElementById('login-screen').classList.remove('hidden')});
@@ -1019,7 +1194,7 @@ function setupCompanyAutocomplete(){
   function hideAC(){dd.classList.remove('show');items=[];acSelected=-1;}
 }
 function escHtml(s){var d=document.createElement('div');d.textContent=s||'';return d.innerHTML;}
-function selectCompany(c){document.getElementById('f-name').value=c.name;hideAC();}
+function selectCompany(c){document.getElementById('f-name').value=c.name;hideAC();fillCompanyInfo(c);}
 setupCompanyAutocomplete();
 </script>
 </body>
