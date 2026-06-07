@@ -199,7 +199,6 @@ input,select,textarea,button{font-family:inherit}
 .ci-field .ci-label{color:var(--text3);font-size:11px;margin-bottom:2px}
 .ci-field .ci-input{width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box;word-break:break-all}
 .ci-field .ci-input:focus{outline:none;border-color:#4F6EF7}
-.ci-field .ci-input:focus{outline:none;border-color:#4F6EF7}
 .ci-source{font-size:10px;color:var(--success);margin-top:6px}</style>
 </head>
 <body>
@@ -313,6 +312,7 @@ input,select,textarea,button{font-family:inherit}
 
   <div class="company-info-section" id="company-info-panel">
           <div class="ci-title">公司信息</div>
+        <span class="ci-source" id="ci-source" style="display:none"></span>
           <div class="ci-grid">
             <div class="ci-field">
               <label class="ci-label">法人代表</label>
@@ -330,13 +330,12 @@ input,select,textarea,button{font-family:inherit}
               <label class="ci-label">注册状态</label>
               <input class="ci-input" id="ci-status" placeholder="未填写">
             </div>
+            <div class="ci-field">
+              <label class="ci-label">创建时间</label>
+              <input class="ci-input" id="ci-created" readonly placeholder="自动填充">
+            </div>
           </div>
         </div>
-    <div class="ci-field"><div class="ci-label">组织机构代码</div><div class="ci-value empty" id="ci-credit">—</div></div>
-    <div class="ci-field"><div class="ci-label">注册资本</div><div class="ci-value empty" id="ci-capital">—</div></div>
-    <div class="ci-field"><div class="ci-label">注册状态</div><div class="ci-value empty" id="ci-status">—</div></div>
-   </div>
-  </div>
 
   <div class="section-title">👤 联系人</div>
   <div id="contacts-container"></div>
@@ -692,14 +691,14 @@ function fillCompanyInfo(comp){
   document.getElementById('ci-credit').value=comp.credit_code||'';
   document.getElementById('ci-capital').value=comp.reg_capital||'';
   document.getElementById('ci-status').value=comp.reg_status||'';
-  document.getElementById('ci-source').value='✔ 来自企业名录';
+  (function(){var s=document.getElementById('ci-source');if(s)s.value='来自企业名录';})();
 }
 function displayCompanyInfo(ci){
   document.getElementById('ci-legal').value=ci.legal_person||'';
   document.getElementById('ci-credit').value=ci.credit_code||'';
   document.getElementById('ci-capital').value=ci.reg_capital||'';
   document.getElementById('ci-status').value=ci.reg_status||'';
-  document.getElementById('ci-source').value=ci.legal_person?'💾 已保存':'';
+  (function(){var s=document.getElementById('ci-source');if(s)s.value=ci.legal_person?'已保存':'';})();
 }
 
 function renderList(){
@@ -959,9 +958,9 @@ async function saveClient(){
   // Build company_info from form
   var ci={};
   var v=document.getElementById('ci-legal').value; if(v)ci.legal_person=v;
-  v=document.getElementById('ci-credit').value; if(v&&v!=='—')ci.credit_code=v;
-  v=document.getElementById('ci-capital').value; if(v&&v!=='—')ci.reg_capital=v;
-  v=document.getElementById('ci-status').value; if(v&&v!=='—')ci.reg_status=v;
+  v=document.getElementById('ci-credit').value; if(v)ci.credit_code=v;
+  v=document.getElementById('ci-capital').value; if(v)ci.reg_capital=v;
+  v=document.getElementById('ci-status').value; if(v)ci.reg_status=v;
 
   var client={
     type:JSON.stringify(selTypes),
