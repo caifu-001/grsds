@@ -676,7 +676,12 @@ async function onLoginSuccess(user){
     }
   }
 
-  buildUI();
+  await loadCustomTypes();
+ buildFilterSelect();
+ buildTypeGrid();
+ buildStageGrid();
+ await loadClients();
+ await loadCompanies();
   document.getElementById('main-screen').classList.remove('hidden');
   if(isSuperAdmin)document.getElementById('tab-admin').classList.remove('hidden');
   switchTab('clients');
@@ -1510,7 +1515,9 @@ function switchTab(tab){
     tc.classList.add('active');to.classList.remove('active');if(ta)ta.classList.remove('active');
     fab.classList.remove('hidden');fab.textContent='+';fab.onclick=function(){openForm()};
     document.getElementById('topbar-title').textContent='客户管理';
-  }else if(tab==='admin'){
+  
+ loadClients();
+ }else if(tab==='admin'){
     cv.classList.add('hidden');ov.classList.add('hidden');av.classList.remove('hidden');
     if(tc)tc.classList.remove('active');if(to)to.classList.remove('active');if(ta)ta.classList.add('active');
     fab.classList.add('hidden');
@@ -1826,7 +1833,12 @@ async function checkPendingCompany(){
     currentCompanyId=data[0].id;
     await sb.from('profiles').upsert({user_id:user.id,company_id:currentCompanyId,role:'admin'},{onConflict:'user_id'});
     if(window._pendPoll)clearInterval(window._pendPoll);
-    buildUI();
+    await loadCustomTypes();
+ buildFilterSelect();
+ buildTypeGrid();
+ buildStageGrid();
+ await loadClients();
+ await loadCompanies();
     document.getElementById('pending-screen').classList.add('hidden');
     document.getElementById('main-screen').classList.remove('hidden');
     if(isSuperAdmin)document.getElementById('tab-admin').classList.remove('hidden');
