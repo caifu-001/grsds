@@ -1431,7 +1431,7 @@ async function saveOrder(){
   var amountEnc=await encryptAmount(amount.toFixed(2));
 
   var order={
-    client_id:orderClientId,user_id:currentUser.id,
+    client_id:orderClientId,
     order_number:number,
     project_name:document.getElementById('of-project').value.trim(),
     amount_enc:amountEnc,
@@ -1442,6 +1442,7 @@ async function saveOrder(){
     notes:document.getElementById('of-notes').value.trim(),
     updated_at:new Date().toISOString()
   };
+  if(!orderEditId)order.user_id=currentUser.id;
 
   if(!orderEditId){
     var {error}=await sb.from('orders').insert(order);
