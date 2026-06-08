@@ -1940,7 +1940,7 @@ async function loadAdminData(){
   var {data:depts,error}=await sb.from('departments').select('*').eq('company_id',currentCompanyId).order('name');
   if(!error)allDepartments=depts||[];
   // Load all users for admin
-  if(userRole==='admin'){
+  if(currentUserRole==='admin'){
     var {data:users,error:uerr}=await sb.rpc('list_all_users');
     if(!uerr)adminUserList=users||[];
   }
