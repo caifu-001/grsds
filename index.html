@@ -199,7 +199,46 @@ input,select,textarea,button{font-family:inherit}
 .ci-field .ci-label{color:var(--text3);font-size:11px;margin-bottom:2px}
 .ci-field .ci-input{width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box;word-break:break-all}
 .ci-field .ci-input:focus{outline:none;border-color:#4F6EF7}
-.ci-source{font-size:10px;color:var(--success);margin-top:6px}</style>
+.ci-source{font-size:10px;color:var(--success);margin-top:6px}
+/* ── Topbar Tabs ── */
+.topbar-tabs{display:flex;gap:2px;margin:0 8px}
+.topbar-tab{padding:6px 14px;border-radius:16px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:rgba(255,255,255,.15);color:rgba(255,255,255,.7);transition:all .2s}
+.topbar-tab.active{background:#fff;color:var(--primary)}
+.topbar-tab:active{opacity:.8}
+
+/* ── Order Card ── */
+.order-card{background:var(--card);border-radius:12px;padding:16px;box-shadow:var(--shadow);cursor:pointer;transition:transform .15s,box-shadow .15s;border:1px solid var(--border);position:relative;overflow:hidden;margin-bottom:10px}
+.order-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:4px 0 0 4px}
+.order-card:active{transform:scale(.975);box-shadow:var(--shadow-lg)}
+.order-card .oc-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.order-card .oc-client{font-size:16px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:65%}
+.order-card .oc-amount{font-size:18px;font-weight:800;color:var(--primary);white-space:nowrap}
+.order-card .oc-number{font-size:11px;color:var(--text3);margin-bottom:4px}
+.order-card .oc-project{font-size:13px;color:var(--text2);margin-bottom:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.order-card .oc-dates{font-size:11px;color:var(--text3);display:flex;gap:12px;margin-bottom:4px}
+.order-card .oc-notes{font-size:12px;color:var(--text2);margin-top:8px;padding-top:8px;border-top:1px solid var(--border);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ── Stage Badges ── */
+.stage-badge{display:inline-block;font-size:10px;padding:3px 10px;border-radius:12px;font-weight:600;letter-spacing:.3px}
+.stage-negotiating{background:#FEF3C7;color:#92400E}
+.stage-signed{background:#DBEAFE;color:#1E40AF}
+.stage-executing{background:#DCFCE7;color:#166534}
+.stage-completed{background:#F3E8FF;color:#6B21A8}
+.stage-cancelled{background:#FEE2E2;color:#991B1B}
+
+/* ── Order Stats ── */
+.order-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:8px 16px 4px}
+.order-stat{background:var(--card);border-radius:10px;padding:10px;text-align:center;box-shadow:var(--shadow);border:1px solid var(--border);transition:transform .15s}
+.order-stat:active{transform:scale(.96)}
+.order-stat .os-num{font-size:22px;font-weight:700;color:var(--primary);line-height:1}
+.order-stat .os-label{font-size:10px;color:var(--text3);font-weight:500;margin-top:2px}
+
+/* ── Order Form ── */
+.order-stage-select{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px}
+.order-stage-opt{padding:8px 4px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;color:var(--text2);text-align:center;transition:all .15s;user-select:none;font-weight:500}
+.order-stage-opt.selected{border-color:var(--primary);background:rgba(79,110,247,.08);color:var(--primary);font-weight:600}
+.order-stage-opt:active{transform:scale(.95)}
+</style>
 </head>
 <body>
 
@@ -219,7 +258,11 @@ input,select,textarea,button{font-family:inherit}
 <!-- Main -->
 <div id="main-screen" class="hidden">
  <div class="topbar">
-  <span id="topbar-title">客户管理</span>
+  <span id="topbar-title">CRM</span>
+  <div class="topbar-tabs">
+   <button class="topbar-tab active" id="tab-clients" onclick="switchTab('clients')">客户</button>
+   <button class="topbar-tab" id="tab-orders" onclick="switchTab('orders')">订单</button>
+  </div>
   <div class="topbar-btns">
    <button class="topbar-btn" id="btn-dir" onclick="showCompanies()" title="公司名录">📂</button>
    <button class="topbar-btn" onclick="doRefresh()" title="刷新">↻</button>
@@ -227,14 +270,25 @@ input,select,textarea,button{font-family:inherit}
    <button class="topbar-btn" style="font-size:13px;font-weight:400" onclick="doLogout()">退出</button>
   </div>
  </div>
- <div class="toolbar">
-  <select id="filter-select" onchange="onFilterChange()"><option value="all">全部类型</option></select>
-  <div class="search-wrap"><input id="search-input" placeholder="搜索客户..." oninput="renderList()"></div>
+ <div id="client-view">
+  <div class="toolbar">
+   <select id="filter-select" onchange="onFilterChange()"><option value="all">全部类型</option></select>
+   <div class="search-wrap"><input id="search-input" placeholder="搜索客户..." oninput="renderList()"></div>
+  </div>
+  <div class="stats-bar" id="stats-bar"></div>
+  <div class="client-grid" id="client-grid"></div>
+  <div class="empty hidden" id="empty-state"><div class="empty-icon">📭</div>暂无客户数据<br><span style="font-size:12px;color:var(--text3)">点击右下角 ＋ 开始添加</span></div>
  </div>
- <div class="stats-bar" id="stats-bar"></div>
- <div class="client-grid" id="client-grid"></div>
- <div class="empty hidden" id="empty-state"><div class="empty-icon">📭</div>暂无客户数据<br><span style="font-size:12px;color:var(--text3)">点击右下角 ＋ 开始添加</span></div>
- <button class="fab" onclick="openForm()">+</button>
+ <div id="order-view" class="hidden">
+  <div class="toolbar">
+   <select id="order-stage-filter" onchange="renderOrders()"><option value="all">全部阶段</option><option value="谈判中">谈判中</option><option value="已签约">已签约</option><option value="执行中">执行中</option><option value="已完成">已完成</option><option value="已取消">已取消</option></select>
+   <div class="search-wrap"><input id="order-search" placeholder="搜索订单/客户/项目..." oninput="renderOrders()"></div>
+  </div>
+  <div class="order-stats" id="order-stats"></div>
+  <div class="client-grid" id="order-grid"></div>
+  <div class="empty hidden" id="order-empty"><div class="empty-icon">📭</div>暂无订单<br><span style="font-size:12px;color:var(--text3)">点击右下角 ＋ 创建订单</span></div>
+ </div>
+ <button class="fab" id="main-fab" onclick="handleFab()">+</button>
 </div>
 
 <!-- Settings Page -->
@@ -604,6 +658,8 @@ async function loadClients(){
     allClients=data||[];
     var {data:cd}=await sb.from('contacts').select('*');
     allContacts=(cd||[]);
+    await loadOrders();
+    _clientOrderCache={};
     renderList();
   }catch(e){grid.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div>加载失败</div>';statsBar.innerHTML=''}
 }
@@ -772,7 +828,9 @@ function renderList(){
         (c.address?'<div class="card-addr">📍 '+h(c.address)+'</div>':'')+
         (c.project?'<div class="card-project">📋 '+h(c.project)+(date?' · '+date:'')+'</div>':'')+
         (contactHtml?'<div class="card-contact">'+contactHtml+'</div>':'')+
-      '</div>';
+      var osum=getClientOrderSummary(c.id);
+      if(osum.count>0)html+='<div class="card-contact" style="justify-content:space-between"><span style="font-size:11px;color:var(--text3)">📦 '+osum.count+'个订单</span><span style="font-size:12px;color:var(--primary);font-weight:600">'+formatMoney(osum.total)+'</span></div>';
+      html+='</div>';
     }
     grid.innerHTML=html;
   }
@@ -1194,6 +1252,309 @@ async function confirmImport(){
   showToast('导入了 '+added+' 个客户 + '+contactAdded+' 个联系人，跳过 '+skipped+' 个已存在');
 }
 
+
+// === Crypto helpers (AES-GCM for amount encryption) ===
+var _cryptoKey=null;
+async function getCryptoKey(){
+  if(_cryptoKey)return _cryptoKey;
+  try{
+    var enc=new TextEncoder();
+    var km=await crypto.subtle.importKey('raw',enc.encode((currentUser?currentUser.id:'default')+'-crm-order-key-2026'),'PBKDF2',false,['deriveKey']);
+    _cryptoKey=await crypto.subtle.deriveKey({name:'PBKDF2',salt:enc.encode('order-amount-salt'),iterations:100000,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
+  }catch(e){_cryptoKey=null}
+  return _cryptoKey;
+}
+async function encryptAmount(amountStr){
+  try{
+    var key=await getCryptoKey();if(!key)return amountStr;
+    var iv=crypto.getRandomValues(new Uint8Array(12));
+    var ct=await crypto.subtle.encrypt({name:'AES-GCM',iv:iv},key,new TextEncoder().encode(amountStr));
+    var combined=new Uint8Array(iv.length+ct.byteLength);
+    combined.set(iv);combined.set(new Uint8Array(ct),iv.length);
+    var bin='';for(var i=0;i<combined.length;i++)bin+=String.fromCharCode(combined[i]);
+    return btoa(bin);
+  }catch(e){console.error('encrypt error:',e);return amountStr}
+}
+async function decryptAmount(encStr){
+  try{
+    if(!encStr||encStr.indexOf('.')>=0)return encStr;
+    var key=await getCryptoKey();if(!key)return encStr;
+    var bin=atob(encStr);var data=new Uint8Array(bin.length);
+    for(var i=0;i<bin.length;i++)data[i]=bin.charCodeAt(i);
+    var iv=data.slice(0,12),ct=data.slice(12);
+    var dec=await crypto.subtle.decrypt({name:'AES-GCM',iv:iv},key,ct);
+    return new TextDecoder().decode(dec);
+  }catch(e){return encStr}
+}
+
+// === Order State ===
+var allOrders=[],orderEditId=null,orderDeleteId=null;
+var orderStage='谈判中',orderClientId=null,orderClientName='';
+var ORDER_STAGES=['谈判中','已签约','执行中','已完成','已取消'];
+
+function stageClass(stage){
+  switch(stage){
+    case '已签约':return 'stage-signed';
+    case '执行中':return 'stage-executing';
+    case '已完成':return 'stage-completed';
+    case '已取消':return 'stage-cancelled';
+    default:return 'stage-negotiating';
+  }
+}
+
+function stageColor(stage){
+  switch(stage){
+    case '谈判中':return '#F59E0B';
+    case '已签约':return '#3B82F6';
+    case '执行中':return '#10B981';
+    case '已完成':return '#8B5CF6';
+    case '已取消':return '#EF4444';
+    default:return '#999';
+  }
+}
+
+// === Tab Switching ===
+function switchTab(tab){
+  var cv=document.getElementById('client-view');
+  var ov=document.getElementById('order-view');
+  var tc=document.getElementById('tab-clients');
+  var to=document.getElementById('tab-orders');
+  var fab=document.getElementById('main-fab');
+
+  if(tab==='clients'){
+    cv.classList.remove('hidden');ov.classList.add('hidden');
+    tc.classList.add('active');to.classList.remove('active');
+    fab.textContent='+';fab.onclick=function(){openForm()};
+    document.getElementById('topbar-title').textContent='客户管理';
+  }else{
+    cv.classList.add('hidden');ov.classList.remove('hidden');
+    to.classList.add('active');tc.classList.remove('active');
+    fab.textContent='+';fab.onclick=function(){openOrderForm()};
+    document.getElementById('topbar-title').textContent='订单管理';
+    renderOrders();
+  }
+}
+
+function handleFab(){
+  var ov=document.getElementById('order-view');
+  if(ov.classList.contains('hidden'))openForm();else openOrderForm();
+}
+
+// === Order Form ===
+function openOrderForm(id){
+  orderEditId=id||null;
+  orderClientId=null;orderClientName='';
+  orderStage='谈判中';
+  document.getElementById('order-form-title').textContent=id?'编辑订单':'创建订单';
+  document.getElementById('order-btn-delete').classList.toggle('hidden',!id);
+  document.getElementById('of-client-search').value='';
+  document.getElementById('of-client-list').classList.add('hidden');
+  var cs=document.getElementById('of-client-selected');cs.style.display='none';cs.textContent='';
+  document.getElementById('of-project').value='';
+  document.getElementById('of-amount').value='';
+  document.getElementById('of-start-date').value='';
+  document.getElementById('of-expected-date').value='';
+  document.getElementById('of-actual-date').value='';
+  document.getElementById('of-notes').value='';
+  buildStageGrid();
+  if(id){
+    var o=allOrders.find(function(x){return x.id===id});
+    if(o){
+      orderClientId=o.client_id;
+      orderStage=o.stage||'谈判中';
+      document.getElementById('of-number').value=o.order_number||'';
+      document.getElementById('of-project').value=o.project_name||'';
+      document.getElementById('of-start-date').value=o.start_date||'';
+      document.getElementById('of-expected-date').value=o.expected_date||'';
+      document.getElementById('of-actual-date').value=o.actual_date||'';
+      document.getElementById('of-notes').value=o.notes||'';
+      buildStageGrid();
+      // Decrypt amount
+      decryptAmount(o.amount_enc||'').then(function(v){
+        document.getElementById('of-amount').value=v||'';
+      });
+      // Set client name
+      var cl=allClients.find(function(x){return x.id===o.client_id});
+      if(cl){orderClientName=cl.name;cs.style.display='block';cs.textContent='已选择: '+cl.name}
+    }
+  }else{
+    document.getElementById('of-number').value='ORD-'+Date.now().toString(36).toUpperCase();
+  }
+  document.getElementById('order-form-modal').classList.remove('hidden');
+}
+
+function closeOrderForm(){
+  document.getElementById('order-form-modal').classList.add('hidden');
+  orderEditId=null;orderClientId=null;orderClientName='';
+}
+
+function buildStageGrid(){
+  var g=document.getElementById('order-stage-grid');
+  var h='';
+  for(var i=0;i<ORDER_STAGES.length;i++){
+    h+='<div class="order-stage-opt'+(ORDER_STAGES[i]===orderStage?' selected':'')+'" onclick="selOrderStage(''+ORDER_STAGES[i]+'')">'+ORDER_STAGES[i]+'</div>';
+  }
+  g.innerHTML=h;
+}
+
+function selOrderStage(stage){
+  orderStage=stage;
+  var opts=document.querySelectorAll('.order-stage-opt');
+  for(var i=0;i<opts.length;i++)opts[i].classList.toggle('selected',opts[i].textContent===stage);
+}
+
+function searchOrderClient(){
+  var q=(document.getElementById('of-client-search').value||'').trim().toLowerCase();
+  var list=document.getElementById('of-client-list');
+  if(!q){list.classList.add('hidden');return}
+  var matches=allClients.filter(function(c){return c.name.toLowerCase().indexOf(q)>=0}).slice(0,8);
+  if(!matches.length){list.classList.add('hidden');return}
+  var h='';
+  for(var i=0;i<matches.length;i++)h+='<div class="search-list-item" onclick="pickOrderClient(''+matches[i].id+'',''+h(matches[i].name).replace(/'/g,"\\'")+'')"><div class="name">'+h(matches[i].name)+'</div></div>';
+  list.innerHTML=h;list.classList.remove('hidden');
+}
+
+function pickOrderClient(id,name){
+  orderClientId=id;orderClientName=name;
+  document.getElementById('of-client-search').value='';
+  document.getElementById('of-client-list').classList.add('hidden');
+  var cs=document.getElementById('of-client-selected');cs.style.display='block';cs.textContent='已选择: '+name;
+}
+
+// === Save Order ===
+async function saveOrder(){
+  if(!orderClientId){showToast('请选择关联客户');return}
+  var number=document.getElementById('of-number').value.trim();if(!number){showToast('请输入订单编号');return}
+  var amountStr=document.getElementById('of-amount').value.trim();
+  if(!amountStr||isNaN(parseFloat(amountStr))||parseFloat(amountStr)<0){showToast('请输入有效金额');return}
+  var amount=parseFloat(amountStr);
+  var amountEnc=await encryptAmount(amount.toFixed(2));
+
+  var order={
+    client_id:orderClientId,user_id:currentUser.id,
+    order_number:number,
+    project_name:document.getElementById('of-project').value.trim(),
+    amount_enc:amountEnc,
+    stage:orderStage,
+    start_date:document.getElementById('of-start-date').value||null,
+    expected_date:document.getElementById('of-expected-date').value||null,
+    actual_date:document.getElementById('of-actual-date').value||null,
+    notes:document.getElementById('of-notes').value.trim(),
+    updated_at:new Date().toISOString()
+  };
+
+  if(!orderEditId){
+    var {error}=await sb.from('orders').insert(order);
+    if(error){showToast('创建失败: '+error.message);return}
+    showToast('订单已创建');
+  }else{
+    var {error}=await sb.from('orders').update(order).eq('id',orderEditId);
+    if(error){showToast('更新失败: '+error.message);return}
+    showToast('订单已更新');
+  }
+  closeOrderForm();
+  await loadOrders();
+  if(!document.getElementById('order-view').classList.contains('hidden'))renderOrders();
+  else renderList();
+}
+
+async function loadOrders(){
+  try{
+    var {data,error}=await sb.from('orders').select('*').order('updated_at',{ascending:false});
+    if(error){console.error('loadOrders:',error);return}
+    allOrders=(data||[]);
+    // Decrypt amounts
+    for(var i=0;i<allOrders.length;i++){
+      allOrders[i]._amount=allOrders[i].amount||0;
+      try{
+        var dec=await decryptAmount(allOrders[i].amount_enc||'');
+        if(dec)allOrders[i]._amount=parseFloat(dec)||0;
+      }catch(e){}
+    }
+  }catch(e){console.error('loadOrders error:',e)}
+}
+
+function renderOrders(){
+  var stageF=document.getElementById('order-stage-filter').value;
+  var query=(document.getElementById('order-search').value||'').trim().toLowerCase();
+  var list=allOrders.slice();
+
+  if(stageF!=='all')list=list.filter(function(o){return o.stage===stageF});
+  if(query){
+    list=list.filter(function(o){
+      var cn='';var cl=allClients.find(function(x){return x.id===o.client_id});if(cl)cn=cl.name.toLowerCase();
+      return (o.order_number||'').toLowerCase().indexOf(query)>=0||cn.indexOf(query)>=0||(o.project_name||'').toLowerCase().indexOf(query)>=0||(o.notes||'').toLowerCase().indexOf(query)>=0;
+    });
+  }
+
+  // Stats
+  var statHtml='',totalAmt=0,negAmt=0,sigAmt=0,exeAmt=0,comAmt=0;
+  for(var i=0;i<list.length;i++){totalAmt+=list[i]._amount||0}
+  for(var i=0;i<list.length;i++){
+    var a=list[i]._amount||0;
+    if(list[i].stage==='谈判中')negAmt+=a;
+    else if(list[i].stage==='已签约')sigAmt+=a;
+    else if(list[i].stage==='执行中')exeAmt+=a;
+    else if(list[i].stage==='已完成')comAmt+=a;
+  }
+  statHtml='<div class="order-stat"><div class="os-num">'+list.length+'</div><div class="os-label">订单数</div></div>';
+  statHtml+='<div class="order-stat"><div class="os-num">'+formatMoney(totalAmt)+'</div><div class="os-label">总额</div></div>';
+  statHtml+='<div class="order-stat"><div class="os-num">'+formatMoney(negAmt+sigAmt+exeAmt)+'</div><div class="os-label">进行中</div></div>';
+  document.getElementById('order-stats').innerHTML=statHtml;
+
+  // Grid
+  var grid=document.getElementById('order-grid'),empty=document.getElementById('order-empty');
+  if(list.length===0){grid.innerHTML='';empty.classList.remove('hidden');return}
+  empty.classList.add('hidden');
+  var html='';
+  for(var i=0;i<list.length;i++){
+    var o=list[i],sc=stageClass(o.stage);
+    var cn='';var cl=allClients.find(function(x){return x.id===o.client_id});if(cl)cn=h(cl.name);
+    html+='<div class="order-card" onclick="openOrderForm(''+o.id+'')" style="--card-bar:'+stageColor(o.stage)+'">';
+    html+='<div class="oc-number">#'+h(o.order_number||'')+' · <span class="stage-badge '+sc+'">'+h(o.stage)+'</span></div>';
+    html+='<div class="oc-header"><span class="oc-client">'+cn+'</span><span class="oc-amount">'+formatMoney(o._amount||0)+'</span></div>';
+    if(o.project_name)html+='<div class="oc-project">📋 '+h(o.project_name)+'</div>';
+    var dates=[];
+    if(o.start_date)dates.push('起: '+o.start_date);
+    if(o.expected_date)dates.push('预: '+o.expected_date);
+    if(o.actual_date)dates.push('完: '+o.actual_date);
+    if(dates.length)html+='<div class="oc-dates">'+dates.join(' · ')+'</div>';
+    if(o.notes)html+='<div class="oc-notes">💬 '+h(o.notes)+'</div>';
+    html+='</div>';
+  }
+  grid.innerHTML=html;
+}
+
+function formatMoney(v){
+  if(v>=10000)return (v/10000).toFixed(1)+'万';
+  return v.toFixed(0);
+}
+
+// === Delete Order ===
+function confirmDeleteOrder(){document.getElementById('order-confirm').classList.remove('hidden');orderDeleteId=orderEditId}
+async function doDeleteOrder(){
+  if(!orderDeleteId)return;
+  document.getElementById('order-confirm').classList.add('hidden');
+  var {error}=await sb.from('orders').delete().eq('id',orderDeleteId);
+  if(error){showToast('删除失败: '+error.message);return}
+  showToast('订单已删除');
+  closeOrderForm();
+  await loadOrders();
+  renderOrders();
+  renderList();
+}
+
+// === Client Card: Add order summary ===
+var _clientOrderCache={};
+function getClientOrderSummary(clientId){
+  if(_clientOrderCache[clientId])return _clientOrderCache[clientId];
+  var orders=allOrders.filter(function(o){return o.client_id===clientId});
+  var total=0,count=orders.length;
+  for(var i=0;i<orders.length;i++)total+=orders[i]._amount||0;
+  var r={count:count,total:total};
+  _clientOrderCache[clientId]=r;
+  return r;
+}
 // === Init ===
 buildFilterSelect();
 sb.auth.getSession().then(function(res){
@@ -1204,6 +1565,7 @@ sb.auth.getSession().then(function(res){
     loadCustomTypes().then(function(){
       buildFilterSelect();
       buildTypeGrid();
+      buildStageGrid();
       loadClients();
       loadCompanies();
     });
