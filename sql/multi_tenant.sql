@@ -125,6 +125,7 @@ DROP POLICY IF EXISTS "Users manage own profile" ON profiles;
 CREATE POLICY "Users own profile" ON profiles FOR ALL USING (auth.uid()=user_id);
 
 -- 5. RPC: 列出本公司用户 (admin/super_admin)
+DROP FUNCTION IF EXISTS list_all_users;
 CREATE OR REPLACE FUNCTION list_all_users()
 RETURNS TABLE(user_id UUID, email TEXT, display_name TEXT, department_id INTEGER, role TEXT, company_id INTEGER)
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
@@ -142,6 +143,7 @@ END;
 $$;
 
 -- 6. RPC: 列出所有公司 (super_admin only)
+DROP FUNCTION IF EXISTS list_all_companies;
 CREATE OR REPLACE FUNCTION list_all_companies()
 RETURNS TABLE(id INTEGER, name TEXT, tax_id TEXT, status TEXT, created_by UUID, created_at TIMESTAMPTZ, creator_email TEXT)
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
