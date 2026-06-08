@@ -25,18 +25,20 @@ ALTER TABLE departments ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES c
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES companies(id) ON DELETE SET NULL;
 
 -- companies RLS 策略（依赖 profiles.company_id，必须在 step 2 之后）
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname='Super admins all companies') THEN
-    CREATE POLICY "Super admins all companies" ON companies FOR ALL USING (EXISTS(SELECT 1 FROM profiles WHERE user_id=auth.uid() AND role='super_admin'));
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname='Members see own company') THEN
-    CREATE POLICY "Members see own company" ON companies FOR SELECT USING (EXISTS(SELECT 1 FROM profiles WHERE user_id=auth.uid() AND company_id=companies.id));
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname='Auth users register company') THEN
-    CREATE POLICY "Auth users register company" ON companies FOR INSERT WITH CHECK (auth.role()='authenticated' AND status='pending' AND created_by=auth.uid());
-  END IF;
-END $$;
+DROP POLICY IF EXISTS "Super admins all companies" ON companies;
+CREATE POLICY "Super admins all companies" ON companies FOR ALL USING (
+  EXISTS(SELECT 1 FROM profiles WHERE user_id=auth.uid() AND role='super_admin')
+);
+
+DROP POLICY IF EXISTS "Members see own company" ON companies;
+CREATE POLICY "Members see own company" ON companies FOR SELECT USING (
+  EXISTS(SELECT 1 FROM profiles WHERE user_id=auth.uid() AND company_id=companies.id)
+);
+
+DROP POLICY IF EXISTS "Auth users register company" ON companies;
+CREATE POLICY "Auth users register company" ON companies FOR INSERT WITH CHECK (
+  auth.role()='authenticated' AND status='pending' AND created_by=auth.uid()
+);
 
 -- 3. 创建默认公司 + 迁移已有数据
 INSERT INTO companies (name, tax_id, status, created_by)
