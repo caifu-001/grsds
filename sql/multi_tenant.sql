@@ -37,7 +37,7 @@ CREATE POLICY "Members see own company" ON companies FOR SELECT USING (
 
 DROP POLICY IF EXISTS "Auth users register company" ON companies;
 CREATE POLICY "Auth users register company" ON companies FOR INSERT
-  WITH CHECK (auth.role()='authenticated' AND companies."status"='pending' AND companies.created_by=auth.uid());
+  WITH CHECK (auth.role()='authenticated' AND status='pending' AND created_by=auth.uid());
 
 -- 3. 创建默认公司 + 迁移已有数据
 INSERT INTO companies (name, tax_id, status, created_by)
