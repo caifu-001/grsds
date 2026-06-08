@@ -1450,7 +1450,7 @@ function selOrderStage(stage){
 function searchOrderClient(){
   var q=(document.getElementById('of-client-search').value||'').trim().toLowerCase();
   var list=document.getElementById('of-client-list');
-  if(!q){list.classList.add('hidden');return}
+  if(q.length<2){list.classList.add('hidden');return}
   var matches=allClients.filter(function(c){return c.name.toLowerCase().indexOf(q)>=0}).slice(0,8);
   if(!matches.length){list.classList.add('hidden');return}
   var h='';
