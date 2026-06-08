@@ -17,6 +17,13 @@ CREATE TABLE IF NOT EXISTS companies (
 
 ALTER TABLE companies ENABLE ROW LEVEL SECURITY;
 
+-- 旧 companies 表可能缺列，补建
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'approved';
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS tax_id TEXT;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS created_by UUID;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS approved_by UUID;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS approved_at TIMESTAMPTZ;
+
 -- 2. 加 company_id 列（必须在 companies RLS 策略之前，因为策略引用了 profiles.company_id）
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE contacts ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES companies(id) ON DELETE CASCADE;
