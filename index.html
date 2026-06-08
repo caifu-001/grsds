@@ -271,6 +271,25 @@ input,select,textarea,button{font-family:inherit}
 .btn-sm-danger:active{opacity:.8}
 .btn-sm-muted{background:var(--border);color:var(--text)}
 .btn-sm-muted:active{opacity:.8}
+
+/* Company Registration */
+.reg-box{background:var(--card);border-radius:16px;padding:32px 28px;margin:12px;max-width:420px;width:100%;box-shadow:0 4px 24px rgba(0,0,0,.08)}
+.reg-box h2{font-size:24px;font-weight:700;margin-bottom:6px;color:var(--text)}
+.reg-field{margin-bottom:14px}
+.reg-field label{display:block;font-size:13px;color:var(--text2);margin-bottom:4px;font-weight:500}
+.reg-field input{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;background:var(--bg);color:var(--text)}
+.reg-field input:focus{border-color:var(--primary);outline:none}
+.btn-outline{background:transparent;border:1px solid var(--border);border-radius:8px;padding:10px 16px;font-size:14px;color:var(--text2);cursor:pointer}
+.btn-outline:hover{background:var(--bg)}
+.admin-panel.hidden{display:none}
+.company-row{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px}
+.company-info{flex:1;min-width:200px}
+.company-name{font-weight:600;font-size:15px;color:var(--text)}
+.company-meta{font-size:12px;color:var(--text3);margin-top:2px}
+.company-badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600}
+.badge-pending{background:#FFF3E0;color:#E65100}
+.badge-approved{background:#E8F5E9;color:#2E7D32}
+.badge-rejected{background:#FFEBEE;color:#C62828}
 </style>
 </head>
 <body>
@@ -322,11 +341,46 @@ input,select,textarea,button{font-family:inherit}
   <div class="client-grid" id="order-grid"></div>
   <div class="empty hidden" id="order-empty"><div class="empty-icon">📭</div>暂无订单<br><span style="font-size:12px;color:var(--text3)">点击右下角 ＋ 创建订单</span></div>
  </div>
- <!-- Admin View -->
+ <!-- Company Registration -->
+ <div id="company-reg-screen" class="hidden">
+  <div class="reg-box">
+   <h2>注册公司</h2>
+   <p class="sub">创建您的公司账户，审核通过后即可使用</p>
+   <div class="reg-field">
+    <label>公司名称</label>
+    <input id="cr-name" placeholder="请输入公司全称">
+   </div>
+   <div class="reg-field">
+    <label>统一社会信用代码 / 税号</label>
+    <input id="cr-tax-id" placeholder="请输入18位信用代码">
+   </div>
+   <div class="reg-field">
+    <label>管理员邮箱</label>
+    <input id="cr-email" placeholder="请输入管理员邮箱（默认当前账号）">
+   </div>
+   <div id="cr-err" class="err-msg" style="display:none"></div>
+   <button class="btn-primary" onclick="submitCompanyReg()" style="width:100%;margin-top:6px">提交审核</button>
+   <button class="btn-outline" onclick="logout()" style="width:100%;margin-top:8px">退出登录</button>
+   </div>
+ </div>
+
+ <!-- Pending Approval -->
+ <div id="pending-screen" class="hidden">
+  <div class="reg-box">
+   <h2>&#9203; 等待管理员审核</h2>
+   <p class="sub" id="pending-company-name"></p>
+   <p style="color:var(--text3);font-size:13px;margin:12px 0">您的公司注册申请已提交，管理员审核通过后即可开始使用。</p>
+   <button class="btn-outline" onclick="checkPendingCompany()" style="width:100%;margin-top:6px">刷新状态</button>
+   <button class="btn-outline" onclick="logout()" style="width:100%;margin-top:8px;color:var(--danger)">退出登录</button>
+  </div>
+ </div>
+
+<!-- Admin View -->
  <div id="admin-view" class="hidden">
   <div class="admin-tabs">
    <button class="admin-subtab active" onclick="switchAdminTab('users')">用户管理</button>
    <button class="admin-subtab" onclick="switchAdminTab('depts')">部门管理</button>
+   <button class="admin-subtab" id="admin-tab-companies" onclick="switchAdminTab('companies')">公司审核</button>
   </div>
 
   <!-- User Management -->
@@ -587,27 +641,45 @@ async function handleLogin(){
     if(loginMode==='login'){
       var r=await sb.auth.signInWithPassword({email:un,password:pw});
       if(r.error){er.textContent=trErr(r.error.message);return}
-      onLoginSuccess(r.data.user);
+      await onLoginSuccess(r.data.user);
     }else{
       var s=checkPwStrength(pw);if(!s.ok){er.textContent=s.msg;return}
       var r=await sb.auth.signUp({email:un,password:pw});
       if(r.error){er.textContent=trErr(r.error.message);return}
       if(r.data.user&&!r.data.session){er.textContent='请联系管理员关闭邮件确认';return}
-      onLoginSuccess(r.data.user);
+      await onLoginSuccess(r.data.user);
     }
   }catch(e){er.textContent='网络错误'}
   finally{btn.disabled=false;btn.textContent=loginMode==='register'?'注册':'登录'}
 }
 async function onLoginSuccess(user){
-  currentUser=user;
+  // Upsert profile and load role/company
+  var {data:profile}=await sb.from('profiles').upsert({user_id:user.id},{onConflict:'user_id'}).select('role,company_id').single();
+  if(profile){currentUserRole=profile.role||'user';isSuperAdmin=profile.role==='super_admin';currentCompanyId=profile.company_id;}
+
+  document.getElementById('login-user').value='';
+  document.getElementById('login-pass').value='';
   document.getElementById('login-screen').classList.add('hidden');
+
+  if(!currentCompanyId){
+    // Check for pending registration
+    var {data:pend}=await sb.from('companies').select('id,name,status').eq('created_by',user.id).order('created_at',{ascending:false}).limit(1);
+    if(pend && pend.length>0){
+      if(pend[0].status==='pending'){showPendingScreen(pend[0].name);return}
+      if(pend[0].status==='rejected'){showCompanyRegScreen();return}
+      // Approved - set company_id
+      currentCompanyId=pend[0].id;
+      await sb.from('profiles').upsert({user_id:user.id,company_id:currentCompanyId,role:'admin'},{onConflict:'user_id'});
+    }else{
+      showCompanyRegScreen();
+      return;
+    }
+  }
+
+  buildUI();
   document.getElementById('main-screen').classList.remove('hidden');
-  // Show admin tab if user is admin
-  if(userRole==='admin'){document.getElementById('tab-admin').classList.remove('hidden');}
-  await loadCustomTypes();
-  buildFilterSelect();
-  loadClients();
-  loadCompanies();
+  if(isSuperAdmin)document.getElementById('tab-admin').classList.remove('hidden');
+  switchTab('clients');
 }
 async function doLogout(){await sb.auth.signOut();currentUser=null;allClients=[];allContacts=[];customTypes=[];document.getElementById('main-screen').classList.add('hidden');document.getElementById('login-screen').classList.remove('hidden')}
 
@@ -756,10 +828,10 @@ async function loadClients(){
   grid.innerHTML='<div class="loading"><span class="spinner"></span>加载中...</div>';
   statsBar.innerHTML='';
   try{
-    var {data,error}=await sb.from('clients').select('*').order('updated_at',{ascending:false});
+    var {data,error}=await sb.from('clients').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
     if(error){grid.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div>加载失败<br><span style="font-size:12px;color:var(--text3)">'+h(error.message)+'</span></div>';statsBar.innerHTML='';return}
     allClients=data||[];
-    var {data:cd}=await sb.from('contacts').select('*');
+    var {data:cd}=await sb.from('contacts').select('*').eq('company_id',currentCompanyId);
     allContacts=(cd||[]);
     await loadOrders();
     _clientOrderCache={};
@@ -1176,11 +1248,14 @@ async function saveClient(){
   var clientId=editId;
   if(!editId){
     client.user_id=currentUser.id;
+    client.company_id=currentCompanyId;
     var {data:nd,error}=await sb.from('clients').insert(client).select('id');
+    var{error}=await sb.from('clients').insert(client).select('id');
     if(error){showToast('添加失败: '+error.message);return}
     clientId=nd[0].id;
   }else{
-    var {error}=await sb.from('clients').update(client).eq('id',editId);
+    client.company_id=currentCompanyId;
+    var{error}=await sb.from('clients').update(client).eq('id',editId);
     if(error){showToast('更新失败: '+error.message);return}
   }
 
@@ -1204,6 +1279,7 @@ async function saveClient(){
     if(landlines.length>0)cd.landline=JSON.stringify(landlines);
     console.log('save cd',i,cd);
     if(co._new){
+      cd.company_id=currentCompanyId;
       var {data:nc,error}=await sb.from('contacts').insert(cd).select('id');
       if(error){showToast('新增联系人失败: '+error.message);console.error('contact insert:',error);return}
       if(nc&&nc.length) savedIds.push(nc[0].id); else {showToast('新增联系人异常(无返回ID)');console.error('contact insert empty data:',nc);return}
@@ -1335,7 +1411,8 @@ async function confirmImport(){
     if(!c.name)continue;
     if(nameExists[c.name]){skipped++;continue}
     c.user_id=currentUser.id;c.updated_at=new Date().toISOString();
-    var {data:nd}=await sb.from('clients').insert(c).select('id');
+    c.company_id=currentCompanyId;
+    var{data:nd,error}=await sb.from('clients').insert(c).select('id');
     if(nd&&nd.length){nameToNewId[c.name]=nd[0].id;nameExists[c.name]=true;added++}
   }
 
@@ -1347,7 +1424,8 @@ async function confirmImport(){
     if(!newId)continue;
     delete co._clientName;
     co.user_id=currentUser.id;co.client_id=newId;
-    var {error}=await sb.from('contacts').insert(co);
+    co.company_id=currentCompanyId;
+    var{error}=await sb.from('contacts').insert(co);
     if(!error)contactAdded++;
   }
 
@@ -1557,6 +1635,7 @@ async function saveOrder(){
   if(!orderEditId)order.user_id=currentUser.id;
 
   if(!orderEditId){
+    order.company_id=currentCompanyId;
     var {error}=await sb.from('orders').insert(order);
     if(error){showToast('创建失败: '+error.message);return}
     showToast('订单已创建');
@@ -1573,7 +1652,7 @@ async function saveOrder(){
 
 async function loadOrders(){
   try{
-    var {data,error}=await sb.from('orders').select('*').order('updated_at',{ascending:false});
+    var {data,error}=await sb.from('orders').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
     if(error){console.error('loadOrders:',error);return}
     allOrders=(data||[]);
     // Decrypt amounts
@@ -1719,6 +1798,115 @@ function setupCompanyAutocomplete(){
   function renderActive(){dd.querySelectorAll('.company-ac-item').forEach(function(el,i){el.classList.toggle('active',i===acSelected)});}
   function hideAC(){dd.classList.remove('show');items=[];acSelected=-1;}
 }
+function showCompanyRegScreen(){
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('main-screen').classList.add('hidden');
+  document.getElementById('pending-screen').classList.add('hidden');
+  document.getElementById('company-reg-screen').classList.remove('hidden');
+  document.getElementById('cr-err').style.display='none';
+}
+
+function showPendingScreen(companyName){
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('main-screen').classList.add('hidden');
+  document.getElementById('company-reg-screen').classList.add('hidden');
+  document.getElementById('pending-screen').classList.remove('hidden');
+  document.getElementById('pending-company-name').textContent='公司: '+companyName;
+  // Poll for approval every 30s
+  if(window._pendPoll)clearInterval(window._pendPoll);
+  window._pendPoll=setInterval(checkPendingCompany,30000);
+}
+
+async function checkPendingCompany(){
+  var user=sb.auth.user();
+  if(!user)return;
+  var {data}=await sb.from('companies').select('id,name,status').eq('created_by',user.id).order('created_at',{ascending:false}).limit(1);
+  if(!data||data.length===0){showCompanyRegScreen();return}
+  if(data[0].status==='approved'){
+    currentCompanyId=data[0].id;
+    await sb.from('profiles').upsert({user_id:user.id,company_id:currentCompanyId,role:'admin'},{onConflict:'user_id'});
+    if(window._pendPoll)clearInterval(window._pendPoll);
+    buildUI();
+    document.getElementById('pending-screen').classList.add('hidden');
+    document.getElementById('main-screen').classList.remove('hidden');
+    if(isSuperAdmin)document.getElementById('tab-admin').classList.remove('hidden');
+    switchTab('clients');
+  }else if(data[0].status==='rejected'){
+    showCompanyRegScreen();
+  }
+}
+
+async function submitCompanyReg(){
+  var name=document.getElementById('cr-name').value.trim();
+  var tax=document.getElementById('cr-tax-id').value.trim();
+  var er=document.getElementById('cr-err');
+  er.style.display='none';
+  if(!name||!tax){er.textContent='请填写公司名称和税号';er.style.display='block';return}
+  if(tax.length!==18){er.textContent='税号应为18位信用代码';er.style.display='block';return}
+  var user=sb.auth.user();
+  if(!user){er.textContent='请先登录';er.style.display='block';return}
+  var {error}=await sb.from('companies').insert({name:name,tax_id:tax,status:'pending',created_by:user.id});
+  if(error){
+    if(error.message.indexOf('unique')>=0||error.message.indexOf('duplicate')>=0){
+      er.textContent='该公司名称或税号已被注册';
+    }else{
+      er.textContent=error.message;
+    }
+    er.style.display='block';
+    return;
+  }
+  showPendingScreen(name);
+}
+
+async function logout(){
+  if(window._pendPoll)clearInterval(window._pendPoll);
+  await sb.auth.signOut();
+  currentCompanyId=null;isSuperAdmin=false;
+  document.getElementById('main-screen').classList.add('hidden');
+  document.getElementById('company-reg-screen').classList.add('hidden');
+  document.getElementById('pending-screen').classList.add('hidden');
+  document.getElementById('login-screen').classList.remove('hidden');
+}
+
+async function loadPendingCompanies(){
+  if(!isSuperAdmin)return;
+  var {data}=await sb.rpc('list_all_companies');
+  if(!data){return}
+  allCompanies=data;
+  var q=(document.getElementById('admin-user-search')?document.getElementById('admin-user-search').value:'').toLowerCase();
+  var html='';
+  for(var i=0;i<data.length;i++){
+    html+=renderCompanyRow(data[i]);
+  }
+  document.getElementById('admin-company-list').innerHTML=html||'<div class="empty-state">暂无公司</div>';
+}
+
+function renderCompanyRow(c){
+  var badge=c.status==='pending'?'badge-pending':'badge-approved';
+  var label=c.status==='pending'?'待审核':c.status==='approved'?'已通过':'已拒绝';
+  if(c.status==='rejected')badge='badge-rejected';
+  var btns='';
+  if(c.status==='pending'){
+    btns='<button class="btn-sm btn-sm-primary" onclick="approveCompany('+c.id+')">通过</button><button class="btn-sm btn-sm-danger" onclick="rejectCompany('+c.id+')">拒绝</button>';
+  }
+  return '<div class="company-row"><div class="company-info"><div class="company-name">'+escHtml(c.name)+'</div><div class="company-meta">税号: '+escHtml(c.tax_id)+' | 注册人: '+escHtml(c.creator_email||'')+' | <span class="company-badge '+badge+'">'+label+'</span></div></div><div>'+btns+'</div></div>';
+}
+
+async function approveCompany(id){
+  var {error}=await sb.from('companies').update({status:'approved',approved_by:sb.auth.user().id,approved_at:new Date().toISOString()}).eq('id',id);
+  if(error){alert('操作失败: '+error.message);return}
+  // Set the creator as admin
+  var {data:comp}=await sb.from('companies').select('created_by').eq('id',id).single();
+  if(comp){await sb.from('profiles').upsert({user_id:comp.created_by,company_id:id,role:'admin'},{onConflict:'user_id'});}
+  loadPendingCompanies();
+}
+
+async function rejectCompany(id){
+  if(!confirm('确定拒绝该公司的注册申请吗?'))return;
+  await sb.from('companies').update({status:'rejected'}).eq('id',id);
+  loadPendingCompanies();
+}
+
 function escHtml(s){var d=document.createElement('div');d.textContent=s||'';return d.innerHTML;}
 function selectCompany(c){document.getElementById('f-name').value=c.name;hideAC();fillCompanyInfo(c);}
 setupCompanyAutocomplete();
@@ -1731,7 +1919,7 @@ var deptExpanded={};
 
 async function loadAdminData(){
   // Load departments
-  var {data:depts,error}=await sb.from('departments').select('*').order('name');
+  var {data:depts,error}=await sb.from('departments').select('*').eq('company_id',currentCompanyId).order('name');
   if(!error)allDepartments=depts||[];
   // Load all users for admin
   if(userRole==='admin'){
@@ -1744,10 +1932,15 @@ async function switchAdminTab(tab){
   currentAdminTab=tab;
   var ut=document.getElementById('admin-users');
   var dt=document.getElementById('admin-depts');
+  var ct=document.getElementById('admin-companies');
   var bu=document.querySelector('.admin-subtab:nth-child(1)');
   var bd=document.querySelector('.admin-subtab:nth-child(2)');
-  if(tab==='users'){ut.classList.remove('hidden');dt.classList.add('hidden');bu.classList.add('active');bd.classList.remove('active');await loadAdminData();renderAdminUsers();}
-  else{ut.classList.add('hidden');dt.classList.remove('hidden');bu.classList.remove('active');bd.classList.add('active');await loadAdminData();renderAdminDepts();}
+  var bc=document.getElementById('admin-tab-companies');
+  ut.classList.add('hidden');dt.classList.add('hidden');ct.classList.add('hidden');
+  bu.classList.remove('active');bd.classList.remove('active');if(bc)bc.classList.remove('active');
+  if(tab==='users'){ut.classList.remove('hidden');bu.classList.add('active');await loadAdminData();renderAdminUsers();}
+  else if(tab==='depts'){dt.classList.remove('hidden');bd.classList.add('active');await loadAdminData();renderAdminDepts();}
+  else if(tab==='companies'){ct.classList.remove('hidden');bc.classList.add('active');loadPendingCompanies();}
 }
 
 /* ── Users ── */
@@ -1806,7 +1999,7 @@ async function saveDept(){
   var name=document.getElementById('dept-name').value.trim();
   if(!name){alert('请输入部门名称');return}
   var parentId=parseInt(document.getElementById('dept-parent').value)||null;
-  var payload={name:name,parent_id:parentId};
+  var payload={name:name,parent_id:parentId,company_id:currentCompanyId};
   if(deptFormId){var{error}=await sb.from('departments').update(payload).eq('id',deptFormId);if(error){alert('保存失败: '+error.message);return}}
   else{var{error}=await sb.from('departments').insert(payload);if(error){alert('创建失败: '+error.message);return}}
   document.getElementById('dept-form-modal').remove();
