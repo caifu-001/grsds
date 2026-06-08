@@ -403,6 +403,49 @@ input,select,textarea,button{font-family:inherit}
  </div>
 </div>
 
+<!-- Order Form Modal -->
+<div class="modal-overlay hidden" id="order-form-modal">
+ <div class="modal-sheet">
+  <h3 id="order-form-title">创建订单</h3>
+
+  <div class="section-title">📋 关联客户 *</div>
+  <div class="form-group" style="position:relative">
+   <input id="of-client-search" placeholder="搜索客户名称..." oninput="searchOrderClient()" autocomplete="off">
+   <div class="search-list hidden" id="of-client-list"></div>
+   <div id="of-client-selected" style="display:none;font-size:14px;color:var(--primary);font-weight:500;padding:6px 0"></div>
+  </div>
+
+  <div class="section-title">📝 订单信息</div>
+  <div class="form-group"><label>订单编号 *</label><input id="of-number" placeholder="如 ORD-20260101"></div>
+  <div class="form-group"><label>项目名称</label><input id="of-project" placeholder="订单关联项目"></div>
+  <div class="form-group"><label>金额 *</label><input type="number" id="of-amount" placeholder="0.00" step="0.01" min="0"></div>
+  <div class="form-group"><label>订单阶段</label><div class="order-stage-select" id="order-stage-grid"></div></div>
+  <div class="form-row">
+   <div class="form-group"><label>开始日期</label><input type="date" id="of-start-date"></div>
+   <div class="form-group"><label>预计完成</label><input type="date" id="of-expected-date"></div>
+  </div>
+  <div class="form-group"><label>实际完成</label><input type="date" id="of-actual-date"></div>
+  <div class="form-group"><label>备注</label><textarea id="of-notes" placeholder="订单备注..."></textarea></div>
+
+  <div class="modal-actions">
+   <button class="btn-delete hidden" id="order-btn-delete" onclick="confirmDeleteOrder()">删除订单</button>
+   <button class="btn-cancel" onclick="closeOrderForm()">取消</button>
+   <button class="btn-save" onclick="saveOrder()">保存</button>
+  </div>
+ </div>
+</div>
+
+<!-- Order Confirm Dialog -->
+<div class="confirm-overlay hidden" id="order-confirm">
+ <div class="confirm-box">
+  <p>确定要删除该订单吗？</p>
+  <div class="btns">
+   <button style="background:var(--border);color:var(--text)" onclick="document.getElementById('order-confirm').classList.add('hidden')">取消</button>
+   <button style="background:var(--danger);color:#fff" onclick="doDeleteOrder()">确定</button>
+  </div>
+ </div>
+</div>
+
 <!-- Move Contact Modal -->
 <div class="modal-overlay hidden" id="move-modal">
  <div class="modal-sheet">
@@ -827,7 +870,7 @@ function renderList(){
         '<div class="card-name">'+h(c.name)+'</div>'+
         (c.address?'<div class="card-addr">📍 '+h(c.address)+'</div>':'')+
         (c.project?'<div class="card-project">📋 '+h(c.project)+(date?' · '+date:'')+'</div>':'')+
-        (contactHtml?'<div class="card-contact">'+contactHtml+'</div>':'')+
+        (contactHtml?'<div class="card-contact">'+contactHtml+'</div>':'');
       var osum=getClientOrderSummary(c.id);
       if(osum.count>0)html+='<div class="card-contact" style="justify-content:space-between"><span style="font-size:11px;color:var(--text3)">📦 '+osum.count+'个订单</span><span style="font-size:12px;color:var(--primary);font-weight:600">'+formatMoney(osum.total)+'</span></div>';
       html+='</div>';
@@ -1393,7 +1436,7 @@ function buildStageGrid(){
   var g=document.getElementById('order-stage-grid');
   var h='';
   for(var i=0;i<ORDER_STAGES.length;i++){
-    h+='<div class="order-stage-opt'+(ORDER_STAGES[i]===orderStage?' selected':'')+'" onclick="selOrderStage(''+ORDER_STAGES[i]+'')">'+ORDER_STAGES[i]+'</div>';
+    h+='<div class="order-stage-opt'+(ORDER_STAGES[i]===orderStage?' selected':'')+'" onclick="selOrderStage(\''+ORDER_STAGES[i]+'\')">'+ORDER_STAGES[i]+'</div>';
   }
   g.innerHTML=h;
 }
@@ -1411,7 +1454,7 @@ function searchOrderClient(){
   var matches=allClients.filter(function(c){return c.name.toLowerCase().indexOf(q)>=0}).slice(0,8);
   if(!matches.length){list.classList.add('hidden');return}
   var h='';
-  for(var i=0;i<matches.length;i++)h+='<div class="search-list-item" onclick="pickOrderClient(''+matches[i].id+'',''+h(matches[i].name).replace(/'/g,"\\'")+'')"><div class="name">'+h(matches[i].name)+'</div></div>';
+  for(var i=0;i<matches.length;i++)h+='<div class="search-list-item" onclick="pickOrderClient(\''+matches[i].id+'\',\''+h(matches[i].name)+'\')"><div class="name">'+h(matches[i].name)+'</div></div>';
   list.innerHTML=h;list.classList.remove('hidden');
 }
 
@@ -1512,7 +1555,7 @@ function renderOrders(){
   for(var i=0;i<list.length;i++){
     var o=list[i],sc=stageClass(o.stage);
     var cn='';var cl=allClients.find(function(x){return x.id===o.client_id});if(cl)cn=h(cl.name);
-    html+='<div class="order-card" onclick="openOrderForm(''+o.id+'')" style="--card-bar:'+stageColor(o.stage)+'">';
+    html+='<div class="order-card" onclick="openOrderForm(\''+o.id+'\')" style="--card-bar:'+stageColor(o.stage)+'">';
     html+='<div class="oc-number">#'+h(o.order_number||'')+' · <span class="stage-badge '+sc+'">'+h(o.stage)+'</span></div>';
     html+='<div class="oc-header"><span class="oc-client">'+cn+'</span><span class="oc-amount">'+formatMoney(o._amount||0)+'</span></div>';
     if(o.project_name)html+='<div class="oc-project">📋 '+h(o.project_name)+'</div>';
