@@ -17,6 +17,14 @@ CREATE TABLE IF NOT EXISTS companies (
 
 ALTER TABLE companies ENABLE ROW LEVEL SECURITY;
 
+-- 2. 加 company_id 列（必须在 companies RLS 策略之前，因为策略引用了 profiles.company_id）
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES companies(id) ON DELETE CASCADE;
+ALTER TABLE contacts ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES companies(id) ON DELETE CASCADE;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES companies(id) ON DELETE CASCADE;
+ALTER TABLE departments ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES companies(id) ON DELETE CASCADE;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES companies(id) ON DELETE SET NULL;
+
+-- companies RLS 策略（依赖 profiles.company_id，必须在 step 2 之后）
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname='Super admins all companies') THEN
@@ -29,13 +37,6 @@ BEGIN
     CREATE POLICY "Auth users register company" ON companies FOR INSERT WITH CHECK (auth.role()='authenticated' AND status='pending' AND created_by=auth.uid());
   END IF;
 END $$;
-
--- 2. 加 company_id 列
-ALTER TABLE clients ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES companies(id) ON DELETE CASCADE;
-ALTER TABLE contacts ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES companies(id) ON DELETE CASCADE;
-ALTER TABLE orders ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES companies(id) ON DELETE CASCADE;
-ALTER TABLE departments ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES companies(id) ON DELETE CASCADE;
-ALTER TABLE profiles ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES companies(id) ON DELETE SET NULL;
 
 -- 3. 创建默认公司 + 迁移已有数据
 INSERT INTO companies (name, tax_id, status, created_by)
