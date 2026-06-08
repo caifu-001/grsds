@@ -1093,10 +1093,11 @@ async function saveClient(){
     emails=emails.filter(function(e){return e.trim()});
     console.log('save contact',i,co.name,co._new,phones,landlines);
     var cd={
-      client_id:clientId,user_id:currentUser.id,
+      client_id:clientId,
       name:co.name||'',dept:co.dept||'',position:co.position||'',
       phone:JSON.stringify(phones.length?phones:['']),room:co.room||'',email:JSON.stringify(emails.length?emails:[''])
     };
+    if(co._new)cd.user_id=currentUser.id;
     if(landlines.length>0)cd.landline=JSON.stringify(landlines);
     console.log('save cd',i,cd);
     if(co._new){
