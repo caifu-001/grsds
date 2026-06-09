@@ -659,6 +659,7 @@ async function handleLogin(){
   finally{btn.disabled=false;btn.textContent=loginMode==='register'?'注册':'登录'}
 }
 async function onLoginSuccess(user){
+  currentUser=user;
   // Upsert profile and load role/company
   var {data:profile}=await sb.from('profiles').upsert({user_id:user.id},{onConflict:'user_id'}).select('role,company_id').single();
   if(profile){currentUserRole=profile.role||'user';isSuperAdmin=profile.role==='super_admin';currentCompanyId=profile.company_id;}
