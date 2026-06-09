@@ -1763,18 +1763,22 @@ function getClientOrderSummary(clientId){
 }
 // === Init ===
 buildFilterSelect();
-sb.auth.getSession().then(function(res){
+sb.auth.getSession().then(async function(res){
   if(res.data&&res.data.session){
     currentUser=res.data.session.user;
+    // Load profile for company/role
+    var {data:profile}=await sb.from('profiles').select('role,company_id').eq('user_id',currentUser.id).single();
+    if(profile){currentUserRole=profile.role||'user';isSuperAdmin=profile.role==='super_admin';currentCompanyId=profile.company_id;}
+    if(!currentCompanyId){document.getElementById('login-screen').classList.remove('hidden');return}
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('main-screen').classList.remove('hidden');
-    loadCustomTypes().then(function(){
-      buildFilterSelect();
-      buildTypeGrid();
-      buildStageGrid();
-      loadClients();
-      loadCompanies();
-    });
+    if(isSuperAdmin)document.getElementById('tab-admin').classList.remove('hidden');
+    await loadCustomTypes();
+    buildFilterSelect();
+    buildTypeGrid();
+    buildStageGrid();
+    await loadClients();
+    loadCompanies();
   }else document.getElementById('login-screen').classList.remove('hidden');
 }).catch(function(){document.getElementById('login-screen').classList.remove('hidden')});
 
