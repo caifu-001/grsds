@@ -1776,30 +1776,38 @@ function switchTab(tab){
   var to=document.getElementById('tab-orders');
   var ts=document.getElementById('tab-sales');
   var ta=document.getElementById('tab-admin');
+  var ti=document.getElementById('tab-inventory');
+  var iv=document.getElementById('inventory-view');
   var fab=document.getElementById('main-fab');
 
   if(tab==='clients'){
-    cv.classList.remove('hidden');ov.classList.add('hidden');av.classList.add('hidden');sv.classList.add('hidden');
-    tc.classList.add('active');to.classList.remove('active');ts.classList.remove('active');if(ta)ta.classList.remove('active');
+    cv.classList.remove('hidden');ov.classList.add('hidden');av.classList.add('hidden');sv.classList.add('hidden');iv.classList.add('hidden');
+    tc.classList.add('active');to.classList.remove('active');ts.classList.remove('active');if(ta)ta.classList.remove('active');if(ti)ti.classList.remove('active');
     fab.classList.remove('hidden');fab.textContent='+';fab.onclick=function(){openForm()};
     document.getElementById('topbar-title').textContent='客户管理';
     loadClients();
   }else if(tab==='sales'){
-    cv.classList.add('hidden');ov.classList.add('hidden');av.classList.add('hidden');sv.classList.remove('hidden');
-    if(tc)tc.classList.remove('active');to.classList.remove('active');ts.classList.add('active');if(ta)ta.classList.remove('active');
+    cv.classList.add('hidden');ov.classList.add('hidden');av.classList.add('hidden');sv.classList.remove('hidden');iv.classList.add('hidden');
+    if(tc)tc.classList.remove('active');to.classList.remove('active');ts.classList.add('active');if(ta)ta.classList.remove('active');if(ti)ti.classList.remove('active');
     fab.classList.remove('hidden');fab.textContent='+';fab.onclick=function(){openSalesForm()};
     document.getElementById('topbar-title').textContent='销售管理';
     if(!allClients.length)loadClients().then(function(){});  // ensure clients for selects
     switchSalesTab('leads');
   }else if(tab==='admin'){
-    cv.classList.add('hidden');ov.classList.add('hidden');av.classList.remove('hidden');
-    if(tc)tc.classList.remove('active');if(to)to.classList.remove('active');if(ta)ta.classList.add('active');
+    cv.classList.add('hidden');ov.classList.add('hidden');av.classList.remove('hidden');iv.classList.add('hidden');
+    if(tc)tc.classList.remove('active');if(to)to.classList.remove('active');if(ts)ts.classList.remove('active');if(ta)ta.classList.add('active');if(ti)ti.classList.remove('active');
     fab.classList.add('hidden');
     document.getElementById('topbar-title').textContent='组织架构管理';
     switchAdminTab('users');
+  }else if(tab==='inventory'){
+    cv.classList.add('hidden');ov.classList.add('hidden');av.classList.add('hidden');sv.classList.add('hidden');iv.classList.remove('hidden');
+    if(tc)tc.classList.remove('active');if(to)to.classList.remove('active');if(ts)ts.classList.remove('active');if(ta)ta.classList.remove('active');if(ti)ti.classList.add('active');
+    fab.classList.add('hidden');
+    document.getElementById('topbar-title').textContent='库存管理';
+    if(!allProducts.length){loadCategories().then(function(){loadWarehouses().then(function(){switchInventoryTab('products')})})}else{switchInventoryTab('products')}
   }else{
-    cv.classList.add('hidden');ov.classList.remove('hidden');av.classList.add('hidden');sv.classList.add('hidden');
-    to.classList.add('active');tc.classList.remove('active');ts.classList.remove('active');if(ta)ta.classList.remove('active');
+    cv.classList.add('hidden');ov.classList.remove('hidden');av.classList.add('hidden');sv.classList.add('hidden');iv.classList.add('hidden');
+    to.classList.add('active');tc.classList.remove('active');ts.classList.remove('active');if(ta)ta.classList.remove('active');if(ti)ti.classList.remove('active');
     fab.classList.remove('hidden');fab.textContent='+';fab.onclick=function(){openOrderForm()};
     document.getElementById('topbar-title').textContent='订单管理';
     renderOrders();
@@ -2834,6 +2842,607 @@ async function convertLeadToClient(){
   if(!lead)return;
   await sb.from('leads').update({client_id:lid,updated_at:new Date().toISOString()}).eq('id',leditId);
   showToast('已关联客户');
+}
+
+// ═══════════ INVENTORY ═══════════
+var currentInventoryTab='products';
+var allProducts=[],allCategories=[],allWarehouses=[],allStockRecords=[],allAlerts=[],allChecks=[];
+var productEditId=null,warehouseEditId=null,categoryEditId=null,alertEditId=null,checkEditId=null;
+var tempSpecs=[],tempImages=[],checkItems=[];
+
+function switchInventoryTab(t){
+  currentInventoryTab=t;
+  document.querySelectorAll('.inv-subtab').forEach(function(b){b.classList.remove('active')});
+  document.querySelectorAll('.inv-panel').forEach(function(p){p.classList.remove('active')});
+  var btns=document.querySelectorAll('.inv-subtab');
+  var idx={products:0,records:1,alerts:2,checks:3,warehouses:4}[t]||0;
+  if(btns[idx])btns[idx].classList.add('active');
+  var panel=document.getElementById('inv-'+t);
+  if(panel)panel.classList.add('active');
+  if(t==='products')loadProducts();
+  else if(t==='records')loadStockRecords();
+  else if(t==='alerts')loadStockAlerts();
+  else if(t==='checks')loadStockChecks();
+  else if(t==='warehouses')loadWarehousesPanel();
+}
+
+async function loadCategories(){
+  var r=await sb.from('product_categories').select('*').eq('company_id',currentCompanyId).order('name');
+  if(r.error){console.error(r.error);return}
+  allCategories=r.data||[];
+  var sel=document.getElementById('inv-product-cat-filter');
+  if(!sel)return;
+  var v=sel.value;
+  sel.innerHTML='<option value="">全部分类</option>';
+  for(var i=0;i<allCategories.length;i++)sel.innerHTML+='<option value="'+allCategories[i].id+'">'+escHtml(allCategories[i].name)+'</option>';
+  sel.value=v;
+  var psel=document.getElementById('pfm-category');
+  if(psel){psel.innerHTML='<option value="">选择分类</option>';for(var j=0;j<allCategories.length;j++)psel.innerHTML+='<option value="'+allCategories[j].id+'">'+escHtml(allCategories[j].name)+'</option>'}
+}
+
+function openCategoryForm(){
+  categoryEditId=null;
+  document.getElementById('cat-name').value='';
+  document.getElementById('cat-desc').value='';
+  document.getElementById('category-form-title').textContent='产品分类';
+  renderCategoryList();
+  document.getElementById('category-modal').classList.remove('hidden');
+}
+
+function closeCategoryForm(){document.getElementById('category-modal').classList.add('hidden')}
+
+function renderCategoryList(){
+  var el=document.getElementById('cat-list');
+  if(!el)return;
+  if(allCategories.length===0){el.innerHTML='<div class="empty-state">暂无分类</div>';return}
+  el.innerHTML='';
+  for(var i=0;i<allCategories.length;i++){
+    var c=allCategories[i];
+    el.innerHTML+='<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px"><span>'+escHtml(c.name)+'</span><button class="btn-sm btn-sm-danger" onclick="deleteCategory('+c.id+')" style="font-size:11px;padding:2px 8px">删除</button></div>';
+  }
+}
+
+async function saveCategory(){
+  var name=document.getElementById('cat-name').value.trim();
+  if(!name){showToast('请输入分类名称');return}
+  var r=await sb.from('product_categories').insert({company_id:currentCompanyId,name:name,description:document.getElementById('cat-desc').value.trim()}).select().single();
+  if(r.error){showToast('保存失败:'+r.error.message);return}
+  showToast('分类已添加');
+  document.getElementById('cat-name').value='';
+  document.getElementById('cat-desc').value='';
+  await loadCategories();
+  renderCategoryList();
+}
+
+async function deleteCategory(id){
+  if(!confirm('确定删除此分类？'))return;
+  await sb.from('product_categories').delete().eq('id',id);
+  showToast('已删除');
+  await loadCategories();
+  renderCategoryList();
+}
+
+async function loadProducts(){
+  var cat=document.getElementById('inv-product-cat-filter');
+  var catId=cat?cat.value:'';
+  var search=(document.getElementById('inv-product-search')||{}).value||'';
+  var q=sb.from('products').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
+  if(catId)q=q.eq('category_id',catId);
+  if(search)q=q.or('name.ilike.%'+search+'%,code.ilike.%'+search+'%');
+  var r=await q;
+  if(r.error){console.error(r.error);return}
+  allProducts=r.data||[];
+  await loadStockBalances();
+  renderProducts();
+}
+
+async function loadStockBalances(){
+  if(allProducts.length===0)return;
+  var r=await sb.from('stock_records').select('product_id,warehouse_id,type,quantity').eq('company_id',currentCompanyId);
+  if(r.error)return;
+  var bal={};
+  for(var i=0;i<r.data.length;i++){
+    var d=r.data[i],k=d.product_id+'_'+(d.warehouse_id||'');
+    if(!bal[k])bal[k]=0;
+    bal[k]+=d.type==='in'?d.quantity:-d.quantity;
+  }
+  for(var j=0;j<allProducts.length;j++){
+    var total=0;for(var k in bal){if(k.startsWith(allProducts[j].id+'_'))total+=bal[k]}
+    allProducts[j]._balance=Math.round(total*100)/100;
+  }
+}
+
+function renderProducts(){
+  var el=document.getElementById('product-list');
+  if(!el)return;
+  if(allProducts.length===0){el.innerHTML='<div class="empty-state">暂无产品，点击"＋ 产品"添加</div>';return}
+  el.innerHTML='';
+  for(var i=0;i<allProducts.length;i++){
+    var p=allProducts[i];
+    var catName='';
+    for(var j=0;j<allCategories.length;j++)if(allCategories[j].id===p.category_id){catName=allCategories[j].name;break}
+    el.innerHTML+='<div class="product-card" onclick="editProduct('+p.id+')">'+
+      '<div class="pc-code">'+escHtml(p.code||'-')+'</div>'+
+      '<div class="pc-name">'+escHtml(p.name)+'</div>'+
+      (catName?'<div class="pc-cat">'+escHtml(catName)+'</div>':'')+
+      '<div class="pc-prices"><span class="pc-cost">成本 ¥'+(p.cost_price||0)+'</span><span class="pc-sell">售价 ¥'+(p.selling_price||0)+'</span></div>'+
+      '<div class="pc-stock">库存: '+(p._balance||0)+' '+escHtml(p.unit||'个')+'</div>'+
+      '</div>';
+  }
+}
+
+function openProductForm(){
+  productEditId=null;tempSpecs=[];tempImages=[];
+  document.getElementById('product-form-title').textContent='添加产品';
+  document.getElementById('pfm-name').value='';
+  document.getElementById('pfm-code').value='';
+  document.getElementById('pfm-category').value='';
+  document.getElementById('pfm-unit').value='个';
+  document.getElementById('pfm-cost').value='';
+  document.getElementById('pfm-price').value='';
+  document.getElementById('pfm-desc').value='';
+  document.getElementById('pfm-image-url').value='';
+  document.getElementById('product-btn-delete').classList.add('hidden');
+  renderSpecs();
+  renderProductImages();
+  document.getElementById('product-modal').classList.remove('hidden');
+}
+
+function editProduct(id){
+  var p=allProducts.find(function(x){return x.id===id});if(!p)return;
+  productEditId=id;
+  document.getElementById('product-form-title').textContent='编辑产品';
+  document.getElementById('pfm-name').value=p.name||'';
+  document.getElementById('pfm-code').value=p.code||'';
+  document.getElementById('pfm-category').value=p.category_id||'';
+  document.getElementById('pfm-unit').value=p.unit||'个';
+  document.getElementById('pfm-cost').value=p.cost_price||'';
+  document.getElementById('pfm-price').value=p.selling_price||'';
+  document.getElementById('pfm-desc').value=p.description||'';
+  tempSpecs=(p.specs&&typeof p.specs==='object'&&!Array.isArray(p.specs))?Object.entries(p.specs).map(function(e){return{key:e[0],val:e[1]}}):[];
+  tempImages=(p.images&&Array.isArray(p.images))?p.images:[];
+  document.getElementById('pfm-image-url').value='';
+  document.getElementById('product-btn-delete').classList.remove('hidden');
+  renderSpecs();
+  renderProductImages();
+  document.getElementById('product-modal').classList.remove('hidden');
+}
+
+function closeProductForm(){document.getElementById('product-modal').classList.add('hidden')}
+
+function addSpecRow(){tempSpecs.push({key:'',val:''});renderSpecs()}
+function removeSpecRow(i){tempSpecs.splice(i,1);renderSpecs()}
+function renderSpecs(){
+  var el=document.getElementById('pfm-specs');if(!el)return;
+  el.innerHTML='';
+  for(var i=0;i<tempSpecs.length;i++)el.innerHTML+='<div class="spec-row"><input placeholder="参数名" value="'+escHtml(tempSpecs[i].key||'')+'" oninput="tempSpecs['+i+'].key=this.value"><input placeholder="参数值" value="'+escHtml(tempSpecs[i].val||'')+'" oninput="tempSpecs['+i+'].val=this.value"><button class="btn-sm btn-sm-danger" onclick="removeSpecRow('+i+')" style="font-size:11px;padding:2px 6px">✕</button></div>';
+}
+
+function addProductImage(){
+  var url=document.getElementById('pfm-image-url').value.trim();
+  if(!url)return;
+  tempImages.push(url);
+  document.getElementById('pfm-image-url').value='';
+  renderProductImages();
+}
+function removeProductImage(i){tempImages.splice(i,1);renderProductImages()}
+function renderProductImages(){
+  var el=document.getElementById('pfm-images');if(!el)return;
+  el.innerHTML='';
+  for(var i=0;i<tempImages.length;i++)el.innerHTML+='<div style="position:relative;display:inline-block"><img class="img-item" src="'+escHtml(tempImages[i])+'" onerror="this.style.display=\'none\'"><button style="position:absolute;top:-4px;right:-4px;background:var(--danger);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;line-height:18px" onclick="removeProductImage('+i+')">✕</button></div>';
+}
+
+async function saveProduct(){
+  var name=document.getElementById('pfm-name').value.trim();
+  if(!name){showToast('请输入产品名称');return}
+  var specs={};
+  for(var i=0;i<tempSpecs.length;i++)if(tempSpecs[i].key)specs[tempSpecs[i].key]=tempSpecs[i].val||'';
+  var data={
+    company_id:currentCompanyId,
+    name:name,
+    code:document.getElementById('pfm-code').value.trim(),
+    category_id:document.getElementById('pfm-category').value||null,
+    unit:document.getElementById('pfm-unit').value.trim()||'个',
+    cost_price:parseFloat(document.getElementById('pfm-cost').value)||0,
+    selling_price:parseFloat(document.getElementById('pfm-price').value)||0,
+    description:document.getElementById('pfm-desc').value.trim(),
+    specs:JSON.stringify(specs),
+    images:JSON.stringify(tempImages),
+    updated_at:new Date().toISOString()
+  };
+  var r;
+  if(productEditId){r=await sb.from('products').update(data).eq('id',productEditId)}else{r=await sb.from('products').insert(data)}
+  if(r.error){showToast('保存失败:'+r.error.message);return}
+  showToast(productEditId?'已更新':'已添加');
+  closeProductForm();
+  await loadProducts();
+}
+
+async function deleteProduct(){
+  if(!confirm('确定删除此产品？'))return;
+  await sb.from('products').delete().eq('id',productEditId);
+  showToast('已删除');
+  closeProductForm();
+  await loadProducts();
+}
+
+async function loadWarehouses(){
+  var r=await sb.from('warehouses').select('*').eq('company_id',currentCompanyId).order('name');
+  if(r.error){console.error(r.error);return}
+  allWarehouses=r.data||[];
+  var sels=['srm-warehouse','inv-record-warehouse','inv-alert-warehouse','inv-check-warehouse','alm-warehouse','chm-warehouse'];
+  for(var s=0;s<sels.length;s++){
+    var sel=document.getElementById(sels[s]);if(!sel)continue;
+    var v=sel.value;
+    sel.innerHTML=(sels[s]==='alm-warehouse'?'<option value="">全部仓库</option>':(sels[s].startsWith('inv-')?'<option value="">全部仓库</option>':'<option value="">选择仓库</option>'));
+    for(var i=0;i<allWarehouses.length;i++)sel.innerHTML+='<option value="'+allWarehouses[i].id+'">'+escHtml(allWarehouses[i].name)+'</option>';
+    sel.value=v;
+  }
+}
+
+function loadWarehousesPanel(){
+  var el=document.getElementById('warehouse-list');if(!el)return;
+  if(allWarehouses.length===0){el.innerHTML='<div class="empty-state">暂无仓库</div>';return}
+  el.innerHTML='';
+  for(var i=0;i<allWarehouses.length;i++){
+    var w=allWarehouses[i];
+    el.innerHTML+='<div class="alert-card"><div class="ac-info"><div class="ac-name">'+escHtml(w.name)+'</div><div class="ac-stock">'+escHtml(w.address||'')+' '+escHtml(w.description||'')+'</div></div><div class="ac-action"><button class="btn-sm" onclick="editWarehouse('+w.id+')">编辑</button><button class="btn-sm btn-sm-danger" onclick="deleteWarehouseById('+w.id+')">删除</button></div></div>';
+  }
+}
+
+function openWarehouseForm(){
+  warehouseEditId=null;
+  document.getElementById('warehouse-form-title').textContent='添加仓库';
+  document.getElementById('wh-name').value='';
+  document.getElementById('wh-addr').value='';
+  document.getElementById('wh-desc').value='';
+  document.getElementById('warehouse-btn-delete').classList.add('hidden');
+  document.getElementById('warehouse-modal').classList.remove('hidden');
+}
+
+function editWarehouse(id){
+  var w=allWarehouses.find(function(x){return x.id===id});if(!w)return;
+  warehouseEditId=id;
+  document.getElementById('warehouse-form-title').textContent='编辑仓库';
+  document.getElementById('wh-name').value=w.name||'';
+  document.getElementById('wh-addr').value=w.address||'';
+  document.getElementById('wh-desc').value=w.description||'';
+  document.getElementById('warehouse-btn-delete').classList.remove('hidden');
+  document.getElementById('warehouse-modal').classList.remove('hidden');
+}
+
+function closeWarehouseForm(){document.getElementById('warehouse-modal').classList.add('hidden')}
+
+async function saveWarehouse(){
+  var name=document.getElementById('wh-name').value.trim();
+  if(!name){showToast('请输入仓库名称');return}
+  var data={company_id:currentCompanyId,name:name,address:document.getElementById('wh-addr').value.trim(),description:document.getElementById('wh-desc').value.trim()};
+  if(warehouseEditId){await sb.from('warehouses').update(data).eq('id',warehouseEditId)}else{await sb.from('warehouses').insert(data)}
+  showToast(warehouseEditId?'已更新':'已添加');
+  closeWarehouseForm();
+  await loadWarehouses();
+  loadWarehousesPanel();
+}
+
+async function deleteWarehouse(){await deleteWarehouseById(warehouseEditId);closeWarehouseForm()}
+async function deleteWarehouseById(id){
+  if(!confirm('确定删除此仓库？'))return;
+  await sb.from('warehouses').delete().eq('id',id);
+  showToast('已删除');
+  await loadWarehouses();
+  loadWarehousesPanel();
+}
+
+async function loadStockRecords(){
+  var wh=document.getElementById('inv-record-warehouse');
+  var whId=wh?wh.value:'';
+  var tp=(document.getElementById('inv-record-type')||{}).value||'';
+  var search=(document.getElementById('inv-record-search')||{}).value||'';
+  var q=sb.from('stock_records').select('*').eq('company_id',currentCompanyId).order('created_at',{ascending:false}).limit(200);
+  if(whId)q=q.eq('warehouse_id',whId);
+  if(tp)q=q.eq('type',tp);
+  var r=await q;
+  if(r.error){console.error(r.error);return}
+  allStockRecords=r.data||[];
+  if(search){allStockRecords=allStockRecords.filter(function(sr){
+    var pn=findProductName(sr.product_id).toLowerCase();
+    var bn=(sr.batch_no||'').toLowerCase();
+    var s=search.toLowerCase();
+    return pn.indexOf(s)>=0||bn.indexOf(s)>=0;
+  })}
+  renderStockRecords();
+}
+
+function findProductName(id){
+  var p=allProducts.find(function(x){return x.id===id});
+  return p?p.name:'';
+}
+function findWarehouseName(id){
+  var w=allWarehouses.find(function(x){return x.id===id});
+  return w?w.name:'';
+}
+
+function renderStockRecords(){
+  var el=document.getElementById('stock-records-table');
+  if(!el)return;
+  if(allStockRecords.length===0){el.innerHTML='<div class="empty-state">暂无出入库记录</div>';return}
+  var h='<table class="stock-table"><tr><th>时间</th><th>类型</th><th>产品</th><th>仓库</th><th>数量</th><th>单价</th><th>金额</th><th>批次</th><th>备注</th></tr>';
+  for(var i=0;i<allStockRecords.length;i++){
+    var sr=allStockRecords[i];
+    h+='<tr><td>'+new Date(sr.created_at).toLocaleString('zh-CN')+'</td>'+
+      '<td class="type-'+(sr.type||'')+'">'+(sr.type==='in'?'入库':'出库')+'</td>'+
+      '<td>'+escHtml(findProductName(sr.product_id))+'</td>'+
+      '<td>'+escHtml(findWarehouseName(sr.warehouse_id))+'</td>'+
+      '<td>'+sr.quantity+'</td><td>¥'+(sr.unit_price||0)+'</td><td>¥'+(sr.quantity*sr.unit_price).toFixed(2)+'</td>'+
+      '<td>'+escHtml(sr.batch_no||'')+'</td><td class="text-wrap">'+escHtml(sr.remark||'')+'</td></tr>';
+  }
+  el.innerHTML=h+'</table>';
+}
+
+function openStockRecordForm(){
+  document.getElementById('stock-record-title').textContent='出入库';
+  document.getElementById('srm-type').value='in';
+  document.getElementById('srm-product').value='';
+  document.getElementById('srm-qty').value='';
+  document.getElementById('srm-price').value='';
+  document.getElementById('srm-batch').value='';
+  document.getElementById('srm-remark').value='';
+  document.getElementById('stock-record-modal').classList.remove('hidden');
+  var psel=document.getElementById('srm-product');
+  psel.innerHTML='<option value="">选择产品</option>';
+  for(var i=0;i<allProducts.length;i++)psel.innerHTML+='<option value="'+allProducts[i].id+'">'+escHtml(allProducts[i].name)+'</option>';
+}
+
+function closeStockRecordForm(){document.getElementById('stock-record-modal').classList.add('hidden')}
+
+async function saveStockRecord(){
+  var pid=document.getElementById('srm-product').value;
+  var wid=document.getElementById('srm-warehouse').value;
+  if(!pid||!wid){showToast('请选择产品和仓库');return}
+  var qty=parseFloat(document.getElementById('srm-qty').value)||0;
+  if(qty<=0){showToast('请输入有效数量');return}
+  var type=document.getElementById('srm-type').value;
+  if(type==='out'){
+    var balance=await getProductStock(pid,wid);
+    if(qty>balance){showToast('库存不足！当前库存:'+balance);return}
+  }
+  var data={
+    company_id:currentCompanyId,product_id:pid,warehouse_id:wid,type:type,
+    quantity:qty,unit_price:parseFloat(document.getElementById('srm-price').value)||0,
+    batch_no:document.getElementById('srm-batch').value.trim(),
+    remark:document.getElementById('srm-remark').value.trim(),
+    recorded_by:currentUser.id
+  };
+  var r=await sb.from('stock_records').insert(data);
+  if(r.error){showToast('保存失败:'+r.error.message);return}
+  showToast('记录已保存');
+  closeStockRecordForm();
+  await loadStockRecords();
+  await loadProducts();
+}
+
+async function getProductStock(pid,wid){
+  var r=await sb.from('stock_records').select('type,quantity').eq('company_id',currentCompanyId).eq('product_id',pid).eq('warehouse_id',wid);
+  if(r.error)return 0;
+  var bal=0;
+  for(var i=0;i<r.data.length;i++)bal+=r.data[i].type==='in'?r.data[i].quantity:-r.data[i].quantity;
+  return Math.round(bal*100)/100;
+}
+
+async function loadStockAlerts(){
+  var wh=document.getElementById('inv-alert-warehouse');
+  var whId=wh?wh.value:'';
+  var q=sb.from('stock_alerts').select('*').eq('company_id',currentCompanyId).eq('enabled',true);
+  if(whId)q=q.eq('warehouse_id',whId);
+  var r=await q;
+  if(r.error){console.error(r.error);return}
+  allAlerts=r.data||[];
+  renderAlerts();
+}
+
+async function renderAlerts(){
+  var el=document.getElementById('alert-list');if(!el)return;
+  if(allAlerts.length===0){el.innerHTML='<div class="empty-state">暂无预警设置</div>';return}
+  el.innerHTML='';
+  for(var i=0;i<allAlerts.length;i++){
+    var a=allAlerts[i];
+    var bal=0;
+    if(a.warehouse_id)bal=await getProductStock(a.product_id,a.warehouse_id);
+    else{
+      for(var j=0;j<allWarehouses.length;j++)bal+=await getProductStock(a.product_id,allWarehouses[j].id);
+    }
+    var cls='';
+    if(a.min_stock>0&&bal<=a.min_stock)cls='danger';
+    else if(a.max_stock>0&&bal>=a.max_stock)cls='warning';
+    el.innerHTML+='<div class="alert-card '+(cls?cls:'')+'"><div class="ac-info"><div class="ac-name">'+escHtml(findProductName(a.product_id))+'</div><div class="ac-stock">当前库存: '+bal+' | 最低: '+(a.min_stock||'-')+' 最高: '+(a.max_stock||'-')+' | '+escHtml(a.warehouse_id?findWarehouseName(a.warehouse_id):'全部仓库')+'</div></div><div class="ac-action"><button class="btn-sm" onclick="editAlert('+a.id+')">编辑</button><button class="btn-sm btn-sm-danger" onclick="deleteAlertById('+a.id+')">删除</button></div></div>';
+  }
+}
+
+function openAlertForm(){
+  alertEditId=null;
+  document.getElementById('alert-form-title').textContent='库存预警设置';
+  document.getElementById('alm-product').value='';
+  document.getElementById('alm-warehouse').value='';
+  document.getElementById('alm-min').value='';
+  document.getElementById('alm-max').value='';
+  document.getElementById('alm-enabled').checked=true;
+  document.getElementById('alert-btn-delete').classList.add('hidden');
+  var psel=document.getElementById('alm-product');
+  psel.innerHTML='<option value="">选择产品</option>';
+  for(var i=0;i<allProducts.length;i++)psel.innerHTML+='<option value="'+allProducts[i].id+'">'+escHtml(allProducts[i].name)+'</option>';
+  document.getElementById('alert-modal').classList.remove('hidden');
+}
+
+function editAlert(id){
+  var a=allAlerts.find(function(x){return x.id===id});if(!a)return;
+  alertEditId=id;
+  document.getElementById('alert-form-title').textContent='编辑预警';
+  document.getElementById('alm-product').value=a.product_id;
+  document.getElementById('alm-warehouse').value=a.warehouse_id||'';
+  document.getElementById('alm-min').value=a.min_stock||'';
+  document.getElementById('alm-max').value=a.max_stock||'';
+  document.getElementById('alm-enabled').checked=a.enabled!==false;
+  document.getElementById('alert-btn-delete').classList.remove('hidden');
+  document.getElementById('alert-modal').classList.remove('hidden');
+}
+
+function closeAlertForm(){document.getElementById('alert-modal').classList.add('hidden')}
+
+async function saveAlert(){
+  var pid=document.getElementById('alm-product').value;
+  if(!pid){showToast('请选择产品');return}
+  var wid=document.getElementById('alm-warehouse').value||null;
+  var data={company_id:currentCompanyId,product_id:pid,warehouse_id:wid,min_stock:parseFloat(document.getElementById('alm-min').value)||0,max_stock:parseFloat(document.getElementById('alm-max').value)||0,enabled:document.getElementById('alm-enabled').checked};
+  if(alertEditId){await sb.from('stock_alerts').update(data).eq('id',alertEditId)}else{await sb.from('stock_alerts').insert(data)}
+  showToast(alertEditId?'已更新':'已添加');
+  closeAlertForm();
+  await loadStockAlerts();
+}
+
+async function deleteAlert(){await deleteAlertById(alertEditId);closeAlertForm()}
+async function deleteAlertById(id){
+  if(!confirm('确定删除此预警？'))return;
+  await sb.from('stock_alerts').delete().eq('id',id);
+  showToast('已删除');
+  await loadStockAlerts();
+}
+
+async function loadStockChecks(){
+  var wh=document.getElementById('inv-check-warehouse');
+  var whId=wh?wh.value:'';
+  var q=sb.from('stock_checks').select('*').eq('company_id',currentCompanyId).order('created_at',{ascending:false});
+  if(whId)q=q.eq('warehouse_id',whId);
+  var r=await q;
+  if(r.error){console.error(r.error);return}
+  allChecks=r.data||[];
+  renderChecks();
+}
+
+function renderChecks(){
+  var el=document.getElementById('check-list');if(!el)return;
+  if(allChecks.length===0){el.innerHTML='<div class="empty-state">暂无盘点记录</div>';return}
+  el.innerHTML='';
+  for(var i=0;i<allChecks.length;i++){
+    var ch=allChecks[i];
+    var statusBadge=ch.status==='done'?'<span style="color:var(--success);font-weight:600">已完成</span>':(ch.status==='cancelled'?'<span style="color:var(--text-secondary)">已取消</span>':'<span style="color:var(--warning);font-weight:600">草稿</span>');
+    el.innerHTML+='<div class="alert-card"><div class="ac-info"><div class="ac-name">'+escHtml(findWarehouseName(ch.warehouse_id))+' - '+new Date(ch.check_date).toLocaleDateString('zh-CN')+'</div><div class="ac-stock">'+statusBadge+' | '+escHtml(ch.remark||'')+'</div></div><div class="ac-action"><button class="btn-sm" onclick="viewCheck('+ch.id+')">查看</button><button class="btn-sm btn-sm-danger" onclick="deleteCheckById('+ch.id+')">删除</button></div></div>';
+  }
+}
+
+function openCheckForm(){
+  checkEditId=null;checkItems=[];
+  document.getElementById('check-form-title').textContent='新增盘点';
+  document.getElementById('chm-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('chm-remark').value='';
+  document.getElementById('check-btn-delete').classList.add('hidden');
+  document.getElementById('chm-items-title').style.display='none';
+  document.getElementById('chm-summary').style.display='none';
+  document.getElementById('chm-items').innerHTML='';
+  document.getElementById('chm-add-btn').innerHTML='<button class="btn-sm btn-sm-primary" onclick="initCheckItems()">加载盘点明细</button>';
+  document.getElementById('check-modal').classList.remove('hidden');
+}
+
+async function initCheckItems(){
+  var wid=document.getElementById('chm-warehouse').value;
+  if(!wid){showToast('请先选择仓库');return}
+  checkItems=[];
+  for(var i=0;i<allProducts.length;i++){
+    var bal=await getProductStock(allProducts[i].id,wid);
+    checkItems.push({product_id:allProducts[i].id,book_qty:bal,actual_qty:0,diff_qty:0,remark:''});
+  }
+  renderCheckItems();
+  document.getElementById('chm-items-title').style.display='block';
+  document.getElementById('chm-summary').style.display='flex';
+  document.getElementById('chm-add-btn').innerHTML='';
+  updateCheckSummary();
+}
+
+function renderCheckItems(){
+  var el=document.getElementById('chm-items');if(!el)return;
+  el.innerHTML='<table class="check-table"><tr><th>产品</th><th>账面库存</th><th>实盘数量</th><th>差异</th><th>备注</th></tr>';
+  for(var i=0;i<checkItems.length;i++){
+    var ci=checkItems[i];
+    el.innerHTML+='<tr><td>'+escHtml(findProductName(ci.product_id))+'</td><td>'+ci.book_qty+'</td><td><input type="number" step="0.01" value="'+ci.actual_qty+'" oninput="updateCheckItem('+i+',this.value)"></td><td style="color:'+(ci.actual_qty!==ci.book_qty?'var(--danger)':'var(--text)')+'">'+(ci.actual_qty-ci.book_qty).toFixed(2)+'</td><td><input style="width:100%" placeholder="备注" value="'+escHtml(ci.remark||'')+'" oninput="checkItems['+i+'].remark=this.value"></td></tr>';
+  }
+  el.innerHTML+='</table>';
+}
+
+function updateCheckItem(i,val){
+  checkItems[i].actual_qty=parseFloat(val)||0;
+  checkItems[i].diff_qty=checkItems[i].actual_qty-checkItems[i].book_qty;
+  updateCheckSummary();
+}
+
+function updateCheckSummary(){
+  document.getElementById('chm-total-items').textContent=checkItems.length;
+  var match=0,diff=0;
+  for(var i=0;i<checkItems.length;i++){if(checkItems[i].actual_qty===checkItems[i].book_qty)match++;else diff++}
+  document.getElementById('chm-match').textContent=match;
+  document.getElementById('chm-diff').textContent=diff;
+}
+
+async function viewCheck(id){
+  var ch=allChecks.find(function(x){return x.id===id});if(!ch)return;
+  checkEditId=id;
+  document.getElementById('check-form-title').textContent='盘点详情';
+  document.getElementById('chm-warehouse').value=ch.warehouse_id;
+  document.getElementById('chm-date').value=ch.check_date||'';
+  document.getElementById('chm-remark').value=ch.remark||'';
+  document.getElementById('check-btn-delete').classList.remove('hidden');
+  var r=await sb.from('stock_check_items').select('*').eq('check_id',id);
+  checkItems=r.data||[];
+  renderCheckItems();
+  document.getElementById('chm-items-title').style.display='block';
+  document.getElementById('chm-summary').style.display='flex';
+  document.getElementById('chm-add-btn').innerHTML='';
+  updateCheckSummary();
+  document.getElementById('check-modal').classList.remove('hidden');
+  document.getElementById('chm-warehouse').disabled=true;
+}
+
+function closeCheckForm(){
+  document.getElementById('check-modal').classList.add('hidden');
+  document.getElementById('chm-warehouse').disabled=false;
+}
+
+async function saveCheck(){
+  var wid=document.getElementById('chm-warehouse').value;
+  if(!wid){showToast('请选择仓库');return}
+  if(checkItems.length===0){showToast('请先加载盘点明细');return}
+  var data={
+    company_id:currentCompanyId,warehouse_id:wid,
+    check_date:document.getElementById('chm-date').value,
+    remark:document.getElementById('chm-remark').value.trim(),
+    checked_by:currentUser.id
+  };
+  var r;
+  if(checkEditId){
+    data.status=document.getElementById('check-btn-delete').classList.contains('hidden')?'draft':'done';
+    r=await sb.from('stock_checks').update(data).eq('id',checkEditId);
+  }else{
+    data.status='done';
+    r=await sb.from('stock_checks').insert(data).select().single();
+  }
+  if(r.error){showToast('保存失败:'+r.error.message);return}
+  var checkId=checkEditId||r.data.id;
+  await sb.from('stock_check_items').delete().eq('check_id',checkId);
+  var items=[];
+  for(var i=0;i<checkItems.length;i++){
+    items.push({check_id:checkId,product_id:checkItems[i].product_id,book_qty:checkItems[i].book_qty,actual_qty:checkItems[i].actual_qty,remark:checkItems[i].remark||''});
+  }
+  if(items.length>0)await sb.from('stock_check_items').insert(items);
+  showToast('盘点已保存');
+  closeCheckForm();
+  document.getElementById('chm-warehouse').disabled=false;
+  await loadStockChecks();
+}
+
+async function deleteCheck(){await deleteCheckById(checkEditId);closeCheckForm();document.getElementById('chm-warehouse').disabled=false}
+async function deleteCheckById(id){
+  if(!confirm('确定删除此盘点？'))return;
+  await sb.from('stock_checks').delete().eq('id',id);
+  showToast('已删除');
+  await loadStockChecks();
 }
 
 </script>
