@@ -127,7 +127,7 @@ CREATE POLICY "Users own profile" ON profiles FOR ALL USING (auth.uid()=user_id)
 -- 5. RPC: 列出本公司用户 (admin/super_admin)
 DROP FUNCTION IF EXISTS list_all_users;
 CREATE OR REPLACE FUNCTION list_all_users()
-RETURNS TABLE(user_id UUID, email TEXT, display_name TEXT, department_id INTEGER, role TEXT, company_id INTEGER, position TEXT, status TEXT, phone TEXT, role_id BIGINT)
+RETURNS TABLE(user_id UUID, email TEXT, display_name TEXT, department_id INTEGER, role TEXT, company_id INTEGER, "position" TEXT, status TEXT, phone TEXT, role_id BIGINT)
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
 AS $$
 BEGIN
@@ -135,7 +135,7 @@ BEGIN
     RAISE EXCEPTION 'permission denied';
   END IF;
   RETURN QUERY
-    SELECT p.user_id, au.email::TEXT, p.display_name, p.department_id, p.role, p.company_id, p.position, p.status, p.phone, p.role_id
+    SELECT p.user_id, au.email::TEXT, p.display_name, p.department_id, p.role, p.company_id, p."position", p.status, p.phone, p.role_id
     FROM profiles p LEFT JOIN auth.users au ON au.id=p.user_id
     WHERE p.company_id=(SELECT company_id FROM profiles WHERE user_id=auth.uid())
     ORDER BY p.created_at DESC NULLS LAST;
