@@ -1677,7 +1677,7 @@ function switchTab(tab){
     document.getElementById('topbar-title').textContent='销售管理';
     if(!allClients.length)loadClients().then(function(){});  // ensure clients for selects
     switchSalesTab('leads');
-  }else if(tab==='admin'){else if(tab==='admin'){
+  }else if(tab==='admin'){
     cv.classList.add('hidden');ov.classList.add('hidden');av.classList.remove('hidden');
     if(tc)tc.classList.remove('active');if(to)to.classList.remove('active');if(ta)ta.classList.add('active');
     fab.classList.add('hidden');
