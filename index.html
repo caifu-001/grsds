@@ -365,6 +365,59 @@ input,select,textarea,button{font-family:inherit}
 .link-select-row select{flex:1}
 .link-select-row button{padding:6px 14px;border-radius:8px;border:1px solid var(--primary);background:var(--primary-light);color:var(--primary);cursor:pointer;font-size:13px;font-weight:500;white-space:nowrap}
 
+
+/* === Inventory === */
+.inv-subtabs{display:flex;gap:8px;padding:12px 16px 0;border-bottom:1px solid var(--border);overflow-x:auto}
+.inv-subtab{padding:7px 18px;border-radius:16px;font-size:13px;font-weight:500;cursor:pointer;border:none;background:var(--surface);color:var(--text-secondary);white-space:nowrap;transition:all .2s}
+.inv-subtab.active{background:var(--primary);color:#fff}
+.inv-panel{display:none;padding:16px}
+.inv-panel.active{display:block}
+.inv-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.inv-toolbar select,.inv-toolbar input{height:34px;border:1px solid var(--border);border-radius:8px;padding:0 10px;font-size:13px;background:var(--surface);color:var(--text)}
+.inv-toolbar input{flex:1;min-width:120px}
+.inv-toolbar .btn-sm{height:34px;padding:0 14px}
+.product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.product-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;transition:all .2s;cursor:pointer}
+.product-card:hover{border-color:var(--primary);box-shadow:0 2px 12px rgba(79,110,247,.1)}
+.product-card .pc-code{font-size:11px;color:var(--text-secondary)}
+.product-card .pc-name{font-size:15px;font-weight:600;margin:4px 0;color:var(--text)}
+.product-card .pc-cat{font-size:12px;color:var(--primary);margin-bottom:6px}
+.product-card .pc-prices{display:flex;justify-content:space-between;font-size:13px}
+.product-card .pc-cost{color:var(--text-secondary)}
+.product-card .pc-sell{color:var(--danger);font-weight:600}
+.product-card .pc-stock{font-size:12px;color:var(--success);margin-top:4px}
+.stock-table{width:100%;border-collapse:collapse;font-size:13px}
+.stock-table th{text-align:left;padding:10px 8px;border-bottom:2px solid var(--border);color:var(--text-secondary);font-weight:600;font-size:12px;white-space:nowrap}
+.stock-table td{padding:10px 8px;border-bottom:1px solid var(--border);white-space:nowrap}
+.stock-table td.text-wrap{white-space:normal;max-width:200px}
+.stock-table .type-in{color:var(--success);font-weight:600}
+.stock-table .type-out{color:var(--danger);font-weight:600}
+.stock-table .balance-low{color:var(--danger);font-weight:700}
+.alert-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.alert-card.warning{border-left:4px solid var(--warning);background:#fff8e1}
+.alert-card.danger{border-left:4px solid var(--danger);background:#fdecea}
+.alert-card .ac-info{flex:1}
+.alert-card .ac-name{font-weight:600;font-size:14px}
+.alert-card .ac-stock{font-size:13px;color:var(--text-secondary)}
+.alert-card .ac-action{display:flex;gap:8px}
+.check-summary{display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+.check-sum-card{flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center}
+.check-sum-card .cs-val{font-size:24px;font-weight:700}
+.check-sum-card .cs-label{font-size:12px;color:var(--text-secondary)}
+.check-table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:12px}
+.check-table th{text-align:left;padding:8px;border-bottom:2px solid var(--border);font-size:12px;color:var(--text-secondary)}
+.check-table td{padding:8px;border-bottom:1px solid var(--border)}
+.check-table input{width:80px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px;text-align:center}
+.spec-row{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+.spec-row input{flex:1;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:13px}
+.image-preview{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.image-preview .img-item{width:60px;height:60px;border-radius:8px;border:1px solid var(--border);object-fit:cover;background:#f5f5f5}
+@media(max-width:640px){
+ .product-grid{grid-template-columns:1fr}
+ .inv-toolbar{flex-direction:column;align-items:stretch}
+ .stock-table{font-size:12px}
+}
+
 </style>
 </head>
 <body>
@@ -390,6 +443,7 @@ input,select,textarea,button{font-family:inherit}
    <button class="topbar-tab active" id="tab-clients" onclick="switchTab('clients')">客户</button>
    <button class="topbar-tab" id="tab-orders" onclick="switchTab('orders')">订单</button>
    <button class="topbar-tab" id="tab-sales" onclick="switchTab('sales')">销售</button>
+   <button class="topbar-tab" id="tab-inventory" onclick="switchTab('inventory')">库存</button>
    <button class="topbar-tab hidden" id="tab-admin" onclick="switchTab('admin')">管理</button>
   </div>
   <div class="topbar-btns">
@@ -727,6 +781,66 @@ input,select,textarea,button{font-family:inherit}
   </div>
  </div>
 </div>
+
+<!-- Inventory View -->
+ <div id="inventory-view" class="hidden">
+  <div class="inv-subtabs">
+   <button class="inv-subtab active" onclick="switchInventoryTab('products')">产品库</button>
+   <button class="inv-subtab" onclick="switchInventoryTab('records')">出入库</button>
+   <button class="inv-subtab" onclick="switchInventoryTab('alerts')">库存预警</button>
+   <button class="inv-subtab" onclick="switchInventoryTab('checks')">盘点</button>
+   <button class="inv-subtab" onclick="switchInventoryTab('warehouses')">仓库</button>
+  </div>
+
+  <!-- Products Panel -->
+  <div class="inv-panel active" id="inv-products">
+   <div class="inv-toolbar">
+    <select id="inv-product-cat-filter" onchange="loadProducts()"><option value="">全部分类</option></select>
+    <input id="inv-product-search" placeholder="搜索产品..." oninput="loadProducts()">
+    <button class="btn-sm btn-sm-primary" onclick="openProductForm()">＋ 产品</button>
+    <button class="btn-sm" style="background:var(--surface);border:1px solid var(--border);color:var(--text)" onclick="openCategoryForm()">＋ 分类</button>
+   </div>
+   <div class="product-grid" id="product-list"></div>
+  </div>
+
+  <!-- Records Panel -->
+  <div class="inv-panel" id="inv-records">
+   <div class="inv-toolbar">
+    <select id="inv-record-warehouse" onchange="loadStockRecords()"><option value="">全部仓库</option></select>
+    <select id="inv-record-type" onchange="loadStockRecords()"><option value="">全部类型</option><option value="in">入库</option><option value="out">出库</option></select>
+    <input id="inv-record-search" placeholder="搜索产品/批次..." oninput="loadStockRecords()">
+    <button class="btn-sm btn-sm-primary" onclick="openStockRecordForm()">＋ 出入库</button>
+   </div>
+   <div style="overflow-x:auto" id="stock-records-table"></div>
+  </div>
+
+  <!-- Alerts Panel -->
+  <div class="inv-panel" id="inv-alerts">
+   <div class="inv-toolbar">
+    <select id="inv-alert-warehouse" onchange="loadStockAlerts()"><option value="">全部仓库</option></select>
+    <button class="btn-sm btn-sm-primary" onclick="openAlertForm()">＋ 预警</button>
+   </div>
+   <div id="alert-list"></div>
+  </div>
+
+  <!-- Checks Panel -->
+  <div class="inv-panel" id="inv-checks">
+   <div class="inv-toolbar">
+    <select id="inv-check-warehouse" onchange="loadStockChecks()"><option value="">全部仓库</option></select>
+    <button class="btn-sm btn-sm-primary" onclick="openCheckForm()">＋ 盘点</button>
+   </div>
+   <div id="check-list"></div>
+  </div>
+
+  <!-- Warehouses Panel -->
+  <div class="inv-panel" id="inv-warehouses">
+   <div class="inv-toolbar">
+    <button class="btn-sm btn-sm-primary" onclick="openWarehouseForm()">＋ 仓库</button>
+   </div>
+   <div id="warehouse-list"></div>
+  </div>
+ </div>
+
 
 <script>
 // Supabase
@@ -2058,7 +2172,7 @@ async function loadPendingCompanies(){
   for(var i=0;i<data.length;i++){
     html+=renderCompanyRow(data[i]);
   }
-  document.getElementById('admin-company-list').innerHTML=html||'<div class="empty-state">暂无公司</div>';
+  var el=document.getElementById('admin-company-list');if(el)el.innerHTML=html||'<div class="empty-state">暂无公司</div>';
 }
 
 function renderCompanyRow(c){
@@ -2839,6 +2953,140 @@ async function convertLeadToClient(){
 </div>
 
 <!-- Follow-up Modal (inline in lead view) - simplified: add directly in lead form -->
+
+<!-- Product Modal -->
+<div class="modal-overlay hidden" id="product-modal">
+ <div class="modal-sheet">
+  <h3 id="product-form-title">添加产品</h3>
+  <div class="form-row">
+   <div class="form-group"><label>产品名称 *</label><input id="pfm-name" placeholder="产品名称"></div>
+   <div class="form-group"><label>产品编码</label><input id="pfm-code" placeholder="SKU"></div>
+  </div>
+  <div class="form-row">
+   <div class="form-group"><label>分类</label><select id="pfm-category"><option value="">选择分类</option></select></div>
+   <div class="form-group"><label>单位</label><input id="pfm-unit" placeholder="个/箱/吨" value="个"></div>
+  </div>
+  <div class="form-row">
+   <div class="form-group"><label>成本价(元)</label><input id="pfm-cost" type="number" step="0.01" placeholder="0"></div>
+   <div class="form-group"><label>销售价(元)</label><input id="pfm-price" type="number" step="0.01" placeholder="0"></div>
+  </div>
+  <div class="form-group"><label>规格参数</label>
+   <div id="pfm-specs"></div>
+   <button class="add-btn" onclick="addSpecRow()">＋ 添加参数</button>
+  </div>
+  <div class="form-group"><label>产品图片</label>
+   <input id="pfm-image-url" placeholder="粘贴图片URL" onkeydown="if(event.key==='Enter'){addProductImage();event.preventDefault()}">
+   <button class="add-btn" onclick="addProductImage()" style="margin-top:4px">＋ 添加图片</button>
+   <div class="image-preview" id="pfm-images"></div>
+  </div>
+  <div class="form-group"><label>描述</label><textarea id="pfm-desc" rows="2" placeholder="产品描述..."></textarea></div>
+  <div class="modal-actions">
+   <button class="btn-cancel" onclick="closeProductForm()">取消</button>
+   <button class="btn-delete hidden" id="product-btn-delete" onclick="deleteProduct()">删除</button>
+   <button class="btn-save" onclick="saveProduct()">保存</button>
+  </div>
+ </div>
+</div>
+
+<!-- Category Modal -->
+<div class="modal-overlay hidden" id="category-modal">
+ <div class="modal-sheet">
+  <h3 id="category-form-title">添加分类</h3>
+  <div class="form-group"><label>分类名称 *</label><input id="cat-name" placeholder="如：原材料、成品、半成品"></div>
+  <div class="form-group"><label>描述</label><input id="cat-desc" placeholder="分类描述"></div>
+  <div id="cat-list" style="margin-top:12px"></div>
+  <div class="modal-actions">
+   <button class="btn-cancel" onclick="closeCategoryForm()">取消</button>
+   <button class="btn-save" onclick="saveCategory()">保存</button>
+  </div>
+ </div>
+</div>
+
+<!-- Warehouse Modal -->
+<div class="modal-overlay hidden" id="warehouse-modal">
+ <div class="modal-sheet">
+  <h3 id="warehouse-form-title">添加仓库</h3>
+  <div class="form-group"><label>仓库名称 *</label><input id="wh-name" placeholder="如：主仓库、原材料仓"></div>
+  <div class="form-group"><label>地址</label><input id="wh-addr" placeholder="仓库地址"></div>
+  <div class="form-group"><label>描述</label><textarea id="wh-desc" rows="2" placeholder="备注..."></textarea></div>
+  <div class="modal-actions">
+   <button class="btn-cancel" onclick="closeWarehouseForm()">取消</button>
+   <button class="btn-delete hidden" id="warehouse-btn-delete" onclick="deleteWarehouse()">删除</button>
+   <button class="btn-save" onclick="saveWarehouse()">保存</button>
+  </div>
+ </div>
+</div>
+
+<!-- Stock Record Modal -->
+<div class="modal-overlay hidden" id="stock-record-modal">
+ <div class="modal-sheet">
+  <h3 id="stock-record-title">出入库</h3>
+  <div class="form-row">
+   <div class="form-group"><label>类型 *</label><select id="srm-type"><option value="in">入库</option><option value="out">出库</option></select></div>
+   <div class="form-group"><label>仓库 *</label><select id="srm-warehouse"><option value="">选择仓库</option></select></div>
+  </div>
+  <div class="form-group"><label>产品 *</label><select id="srm-product"><option value="">选择产品</option></select></div>
+  <div class="form-row">
+   <div class="form-group"><label>数量 *</label><input id="srm-qty" type="number" step="0.01" placeholder="0"></div>
+   <div class="form-group"><label>单价(元)</label><input id="srm-price" type="number" step="0.01" placeholder="0"></div>
+  </div>
+  <div class="form-row">
+   <div class="form-group"><label>批次号</label><input id="srm-batch" placeholder="批次号"></div>
+  </div>
+  <div class="form-group"><label>备注</label><textarea id="srm-remark" rows="2" placeholder="备注..."></textarea></div>
+  <div class="modal-actions">
+   <button class="btn-cancel" onclick="closeStockRecordForm()">取消</button>
+   <button class="btn-save" onclick="saveStockRecord()">保存</button>
+  </div>
+ </div>
+</div>
+
+<!-- Alert Modal -->
+<div class="modal-overlay hidden" id="alert-modal">
+ <div class="modal-sheet">
+  <h3 id="alert-form-title">库存预警设置</h3>
+  <div class="form-row">
+   <div class="form-group"><label>产品 *</label><select id="alm-product"><option value="">选择产品</option></select></div>
+   <div class="form-group"><label>仓库</label><select id="alm-warehouse"><option value="">全部仓库</option></select></div>
+  </div>
+  <div class="form-row">
+   <div class="form-group"><label>最低库存</label><input id="alm-min" type="number" step="0.01" placeholder="低于此值预警"></div>
+   <div class="form-group"><label>最高库存</label><input id="alm-max" type="number" step="0.01" placeholder="超过此值预警"></div>
+  </div>
+  <div class="form-group"><label><input type="checkbox" id="alm-enabled" checked> 启用预警</label></div>
+  <div class="modal-actions">
+   <button class="btn-cancel" onclick="closeAlertForm()">取消</button>
+   <button class="btn-delete hidden" id="alert-btn-delete" onclick="deleteAlert()">删除</button>
+   <button class="btn-save" onclick="saveAlert()">保存</button>
+  </div>
+ </div>
+</div>
+
+<!-- Check Modal -->
+<div class="modal-overlay hidden" id="check-modal">
+ <div class="modal-sheet">
+  <h3 id="check-form-title">新增盘点</h3>
+  <div class="form-row">
+   <div class="form-group"><label>仓库 *</label><select id="chm-warehouse"><option value="">选择仓库</option></select></div>
+   <div class="form-group"><label>盘点日期</label><input id="chm-date" type="date"></div>
+  </div>
+  <div class="form-group"><label>备注</label><textarea id="chm-remark" rows="2" placeholder="备注..."></textarea></div>
+  <div id="chm-items-title" style="display:none;margin-top:12px;font-weight:600;font-size:14px">盘点明细</div>
+  <div id="chm-items"></div>
+  <div style="margin-top:8px" id="chm-add-btn"></div>
+  <div class="check-summary" id="chm-summary" style="display:none">
+   <div class="check-sum-card"><div class="cs-val" id="chm-total-items">0</div><div class="cs-label">品项数</div></div>
+   <div class="check-sum-card"><div class="cs-val" style="color:var(--success)" id="chm-match">0</div><div class="cs-label">相符</div></div>
+   <div class="check-sum-card"><div class="cs-val" style="color:var(--danger)" id="chm-diff">0</div><div class="cs-label">差异</div></div>
+  </div>
+  <div class="modal-actions">
+   <button class="btn-cancel" onclick="closeCheckForm()">取消</button>
+   <button class="btn-delete hidden" id="check-btn-delete" onclick="deleteCheck()">删除</button>
+   <button class="btn-save" onclick="saveCheck()">保存</button>
+  </div>
+ </div>
+</div>
+
 
 </body>
 </html>
