@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS performance_records (
   id BIGSERIAL PRIMARY KEY,
   company_id BIGINT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  order_id BIGINT REFERENCES orders(id) ON DELETE SET NULL,
+  order_id UUID REFERENCES orders(id) ON DELETE SET NULL,
   amount NUMERIC(12,2) NOT NULL DEFAULT 0,
   record_year INTEGER NOT NULL,
   record_month INTEGER NOT NULL CHECK(record_month BETWEEN 1 AND 12),
