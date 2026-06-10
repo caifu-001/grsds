@@ -24,9 +24,8 @@ ALTER TABLE roles ENABLE ROW LEVEL SECURITY;
 
 -- 3. profiles 加 role_id 和 role 字段松弛
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS role_id BIGINT REFERENCES roles(id) ON DELETE SET NULL;
--- role 字段扩展允许自定义角色名
-ALTER TABLE profiles ALTER COLUMN role DROP DEFAULT;
-ALTER TABLE profiles ALTER COLUMN role TYPE TEXT;
+-- role 字段已是 TEXT 类型，无需 ALTER（否则会因 RLS 策略引用报错）
+-- ALTER TABLE profiles ALTER COLUMN role TYPE TEXT;  -- skip: 已 TEXT，且 policies on clients/contacts/orders/departments/companies 依赖此列
 
 -- 4. 角色表 RLS
 DROP POLICY IF EXISTS "Company members view roles" ON roles;
