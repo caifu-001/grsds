@@ -418,6 +418,24 @@ input,select,textarea,button{font-family:inherit}
  .stock-table{font-size:12px}
 }
 
+  /* ── Role & Permission ── */
+  .perm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
+  .perm-item{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--card);border-radius:8px;font-size:13px}
+  .perm-item select{font-size:12px;padding:3px 6px;border-radius:4px;border:1px solid var(--border)}
+  .role-card{background:var(--card);border-radius:10px;padding:14px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
+  .role-card .rc-info{flex:1}
+  .role-card .rc-name{font-weight:600;font-size:15px;color:var(--text)}
+  .role-card .rc-perms{font-size:12px;color:var(--text-secondary);margin-top:4px}
+  .role-card .rc-actions{display:flex;gap:6px}
+  .user-table{width:100%;border-collapse:collapse;font-size:13px}
+  .user-table th{padding:10px 12px;text-align:left;font-weight:600;color:var(--text-secondary);border-bottom:2px solid var(--border);background:var(--bg)}
+  .user-table td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text)}
+  .user-table tr:hover{background:var(--bg)}
+  .badge-status{display:inline-block;padding:2px 10px;border-radius:10px;font-size:11px;font-weight:600}
+  .badge-status.active{background:#e8f5e9;color:var(--success)}
+  .badge-status.inactive{background:#fff3e0;color:var(--warning)}
+  .badge-status.leave{background:#ffebee;color:var(--danger)}
+
 </style>
 </head>
 <body>
@@ -558,8 +576,9 @@ input,select,textarea,button{font-family:inherit}
 <!-- Admin View -->
  <div id="admin-view" class="hidden">
   <div class="admin-tabs">
-   <button class="admin-subtab active" onclick="switchAdminTab('users')">用户管理</button>
+   <button class="admin-subtab active" onclick="switchAdminTab('users')">员工管理</button>
    <button class="admin-subtab" onclick="switchAdminTab('depts')">部门管理</button>
+   <button class="admin-subtab" onclick="switchAdminTab('roles')">角色管理</button>
    <button class="admin-subtab" id="admin-tab-companies" onclick="switchAdminTab('companies')">公司审核</button>
   </div>
 
@@ -584,6 +603,14 @@ input,select,textarea,button{font-family:inherit}
   <div id="admin-companies" class="admin-panel hidden">
    <div style="padding:12px 16px;font-size:14px;font-weight:600;color:var(--text2)">待审核公司</div>
    <div id="admin-companies-list" style="padding:0 16px 20px"></div>
+  </div>
+
+  <!-- Role Management -->
+  <div id="admin-roles" class="admin-panel hidden">
+   <div class="toolbar" style="margin-bottom:10px">
+    <button class="btn-save" style="padding:8px 16px;font-size:13px" onclick="openRoleForm()">+ 新建角色</button>
+   </div>
+   <div id="admin-role-list"></div>
   </div>
  </div>
 
@@ -762,6 +789,10 @@ input,select,textarea,button{font-family:inherit}
   <div class="form-group"><label>邮箱 *</label><input id="add-user-email" type="email" placeholder="user@example.com"></div>
   <div class="form-group"><label>密码 *</label><input id="add-user-password" type="password" placeholder="至少6位"></div>
   <div class="form-group"><label>姓名</label><input id="add-user-name" placeholder="显示名称"></div>
+  <div class="form-row">
+   <div class="form-group"><label>岗位</label><input id="add-user-position" placeholder="如：销售经理"></div>
+   <div class="form-group"><label>手机</label><input id="add-user-phone" placeholder="手机号"></div>
+  </div>
   <div class="form-group"><label>部门</label><select id="add-user-dept"><option value="">无部门</option></select></div>
   <div class="form-group"><label>角色</label><select id="add-user-role"><option value="user">普通用户</option><option value="admin">管理员</option></select></div>
   <div class="modal-actions">
@@ -2223,6 +2254,9 @@ async function loadAdminData(){
   // Load departments
   var {data:depts,error}=await sb.from('departments').select('*').eq('company_id',currentCompanyId).order('name');
   if(!error)allDepartments=depts||[];
+  // Load roles
+  var {data:roles,error:rerr}=await sb.from('roles').select('*').eq('company_id',currentCompanyId).order('name');
+  if(!rerr)allRoles=roles||[];
   // Load all users for admin
   if(currentUserRole==='admin'||currentUserRole==='super_admin'){
     var {data:users,error:uerr}=await sb.rpc('list_all_users');
@@ -2230,41 +2264,130 @@ async function loadAdminData(){
   }
 }
 
+/* ── Roles ── */
+function renderAdminRoles(){
+  var el=document.getElementById('admin-role-list');
+  if(!allRoles.length){el.innerHTML='<div class="empty-state">暂无自定义角色</div>';return}
+  el.innerHTML='';
+  for(var i=0;i<allRoles.length;i++){
+    var r=allRoles[i];
+    var permMap={none:'无',view:'查看',view_edit:'查看/编辑',full:'完全控制'};
+    var perms=r.permissions||{};
+    if(typeof perms==='string')perms=JSON.parse(perms);
+    var labels=[];
+    if(perms.clients)labels.push('客户:'+(permMap[perms.clients]||perms.clients));
+    if(perms.orders)labels.push('订单:'+(permMap[perms.orders]||perms.orders));
+    if(perms.sales)labels.push('销售:'+(permMap[perms.sales]||perms.sales));
+    if(perms.inventory)labels.push('库存:'+(permMap[perms.inventory]||perms.inventory));
+    el.innerHTML+='<div class="role-card"><div class="rc-info"><div class="rc-name">'+escHtml(r.name)+'</div><div class="rc-perms">'+escHtml(labels.join(' | '))+'</div></div><div class="rc-actions"><button class="btn-sm btn-sm-primary" onclick="openRoleForm('+r.id+')">编辑</button><button class="btn-sm btn-sm-danger" onclick="deleteRole('+r.id+')">删除</button></div></div>';
+  }
+}
+
+function openRoleForm(id){
+  var r=id?allRoles.find(function(x){return x.id===id}):null;
+  var perms=r?r.permissions:null;
+  if(typeof perms==='string')perms=JSON.parse(perms);
+  perms=perms||{};
+  var modules=['clients','orders','sales','inventory','admin','reports'];
+  var modNames={clients:'客户管理',orders:'订单管理',sales:'销售管理',inventory:'库存管理',admin:'系统管理',reports:'报表'};
+  var permOpts='<option value="">无</option><option value="view">查看</option><option value="view_edit">查看/编辑</option><option value="full">完全控制</option>';
+  var grid='';
+  for(var i=0;i<modules.length;i++){
+    var cur=perms[modules[i]]||'';
+    grid+='<div class="perm-item"><span style="flex:1;font-size:13px">'+modNames[modules[i]]+'</span><select id="rp-'+modules[i]+'">'+permOpts.replace('value=""'+'">',cur?'value=""':'value="" selected')+'</select></div>';
+    if(cur){var ops=['','view','view_edit','full'];for(var j=0;j<ops.length;j++)if(ops[j]===cur){grid=grid.replace('id="rp-'+modules[i],'data-sel="'+j+'" id="rp-'+modules[i]);break}}
+  }
+  var div=document.createElement('div');div.className='confirm-overlay';div.id='role-form-modal';
+  div.innerHTML='<div class="confirm-box" style="max-width:480px;max-height:80vh;overflow-y:auto"><p style="font-weight:600;margin-bottom:12px">'+(id?'编辑角色':'新建角色')+'</p>'+
+    '<input id="rf-name" placeholder="角色名称" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:12px" value="'+escHtml(r?r.name:'')+'">'+
+    '<div style="font-size:13px;font-weight:600;margin-bottom:8px">模块权限</div><div class="perm-grid">'+grid+'</div>'+
+    '<div class="btns" style="margin-top:12px"><button class="btn-cancel" onclick="closeRoleForm()">取消</button>'+(id?'<button class="btn-danger" style="margin-right:auto" onclick="deleteRole('+id+')">删除</button>':'')+'<button class="btn-confirm" onclick="saveRole('+(id||0)+')">保存</button></div></div>';
+  document.body.appendChild(div);
+  // Restore selected values
+  if(r&&r.permissions){
+    setTimeout(function(){
+      for(var i=0;i<modules.length;i++){
+        var sel=document.getElementById('rp-'+modules[i]);
+        if(sel){var idx=parseInt(sel.getAttribute('data-sel')||'0');if(idx>=0&&idx<sel.options.length)sel.selectedIndex=idx}
+      }
+    },50);
+  }
+}
+
+function closeRoleForm(){var m=document.getElementById('role-form-modal');if(m)m.remove()}
+
+async function saveRole(id){
+  var name=document.getElementById('rf-name').value.trim();
+  if(!name){showToast('请输入角色名称');return}
+  var perms={};
+  var m=['clients','orders','sales','inventory','admin','reports'];
+  for(var i=0;i<m.length;i++){var v=document.getElementById('rp-'+m[i]).value;if(v)perms[m[i]]=v}
+  var data={company_id:currentCompanyId,name:name,permissions:perms,updated_at:new Date().toISOString()};
+  if(id){var {error}=await sb.from('roles').update(data).eq('id',id);if(error){showToast('保存失败: '+error.message);return}}
+  else{var {error}=await sb.from('roles').insert(data);if(error){showToast('创建失败: '+error.message);return}}
+  showToast(id?'角色已更新':'角色已创建');
+  closeRoleForm();
+  await loadAdminData();
+  renderAdminRoles();
+}
+
+async function deleteRole(id){
+  if(!confirm('确定删除此角色？'))return;
+  // Unset role_id for users assigned to this role
+  await sb.from('profiles').update({role_id:null,role:'user'}).eq('role_id',id);
+  var {error}=await sb.from('roles').delete().eq('id',id);
+  if(error){showToast('删除失败: '+error.message);return}
+  showToast('角色已删除');
+  await loadAdminData();
+  renderAdminRoles();
+  renderAdminUsers();
+}
+
 async function switchAdminTab(tab){
   currentAdminTab=tab;
   var ut=document.getElementById('admin-users');
   var dt=document.getElementById('admin-depts');
+  var rt=document.getElementById('admin-roles');
   var ct=document.getElementById('admin-companies');
   var bu=document.querySelector('.admin-subtab:nth-child(1)');
   var bd=document.querySelector('.admin-subtab:nth-child(2)');
+  var br=document.querySelector('.admin-subtab:nth-child(3)');
   var bc=document.getElementById('admin-tab-companies');
-  ut.classList.add('hidden');dt.classList.add('hidden');ct.classList.add('hidden');
-  bu.classList.remove('active');bd.classList.remove('active');if(bc)bc.classList.remove('active');
+  ut.classList.add('hidden');dt.classList.add('hidden');rt.classList.add('hidden');ct.classList.add('hidden');
+  bu.classList.remove('active');bd.classList.remove('active');br.classList.remove('active');if(bc)bc.classList.remove('active');
   if(tab==='users'){ut.classList.remove('hidden');bu.classList.add('active');await loadAdminData();renderAdminUsers();}
   else if(tab==='depts'){dt.classList.remove('hidden');bd.classList.add('active');await loadAdminData();renderAdminDepts();}
+  else if(tab==='roles'){rt.classList.remove('hidden');br.classList.add('active');await loadAdminData();renderAdminRoles();}
   else if(tab==='companies'){ct.classList.remove('hidden');bc.classList.add('active');loadPendingCompanies();}
 }
 
 /* ── Users ── */
+var allRoles=[];
+
 function renderAdminUsers(){
   var q=(document.getElementById('admin-user-search').value||'').trim().toLowerCase();
-  var list=adminUserList.filter(function(u){return !q||(u.email||'').toLowerCase().indexOf(q)>=0||(u.display_name||'').toLowerCase().indexOf(q)>=0;});
-  var h='';
+  var list=adminUserList.filter(function(u){return !q||(u.email||'').toLowerCase().indexOf(q)>=0||(u.display_name||'').toLowerCase().indexOf(q)>=0||(u.position||'').toLowerCase().indexOf(q)>=0;});
+  var el=document.getElementById('admin-user-list');
+  if(list.length===0){el.innerHTML='<div class="empty-state">暂无员工</div>';return}
+  var h='<table class="user-table"><thead><tr><th>姓名</th><th>邮箱</th><th>部门</th><th>岗位</th><th>状态</th><th>手机</th><th>角色</th><th>操作</th></tr></thead><tbody>';
   for(var i=0;i<list.length;i++){
     var u=list[i];
     var deptName='-';
-    for(var j=0;j<allDepartments.length;j++){if(allDepartments[j].id===u.department_id){deptName=allDepartments[j].name;break;}}
-    h+='<div class="user-row"><div class="ur-email">'+escHtml(u.email||u.user_id)+'</div>';
-    h+='<div class="ur-name">'+escHtml(u.display_name||'-')+'</div>';
-    h+='<div class="ur-dept">'+escHtml(deptName)+'</div>';
-    h+='<div class="ur-role '+u.role+'">'+u.role+'</div>';
-    h+='<div class="ur-actions">';
-    if(u.role!=='admin')h+='<button class="btn-sm btn-sm-primary" onclick="setUserRole(\''+u.user_id+'\',\'admin\')">设管理员</button>';
-    else h+='<button class="btn-sm btn-sm-muted" onclick="setUserRole(\''+u.user_id+'\',\'user\')">取消管理</button>';
-    h+='<button class="btn-sm btn-sm-muted" onclick="openUserDeptSelect(\''+u.user_id+'\',\''+escHtml(deptName)+'\')">部门</button>';
-    h+='</div></div>';
+    for(var j=0;j<allDepartments.length;j++){if(allDepartments[j].id===u.department_id){deptName=allDepartments[j].name;break}}
+    var roleName=u.role||'user';
+    if(u.role_id&&allRoles){for(var k=0;k<allRoles.length;k++){if(allRoles[k].id===u.role_id){roleName=allRoles[k].name;break}}}
+    var status=u.status||'active';
+    var statusLabel={active:'在职',inactive:'停用',leave:'离职'}[status]||status;
+    h+='<tr><td><strong>'+escHtml(u.display_name||'-')+'</strong></td>';
+    h+='<td>'+escHtml(u.email||'-')+'</td>';
+    h+='<td>'+escHtml(deptName)+'</td>';
+    h+='<td>'+escHtml(u.position||'-')+'</td>';
+    h+='<td><span class="badge-status '+status+'">'+statusLabel+'</span></td>';
+    h+='<td>'+escHtml(u.phone||'-')+'</td>';
+    h+='<td>'+escHtml(roleName)+'</td>';
+    h+='<td><button class="btn-sm btn-sm-primary" onclick="openUserEditForm(\''+u.user_id+'\')" style="font-size:11px;padding:3px 10px">编辑</button></td></tr>';
   }
-  document.getElementById('admin-user-list').innerHTML=h||'<div style="padding:30px;text-align:center;color:var(--text3)">暂无用户数据</div>';
+  el.innerHTML=h+'</tbody></table>';
 }
 
 async function setUserRole(userId,role){
@@ -2281,6 +2404,57 @@ function openUserDeptSelect(userId,currentDept){
   div.innerHTML='<div class="confirm-box"><p>为用户选择部门</p><select id="user-dept-select" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:12px">'+opts+'</select><div class="btns"><button class="btn-cancel" onclick="closeUserDeptModal()">取消</button><button class="btn-confirm" onclick="commitUserDept()">确定</button></div></div>';
   document.body.appendChild(div);
   div._userId=userId;
+}
+
+function openUserEditForm(userId){
+  var u=null;
+  for(var i=0;i<adminUserList.length;i++){if(adminUserList[i].user_id===userId){u=adminUserList[i];break}}
+  if(!u)return;
+  var deptOpts='<option value="">无部门</option>';
+  for(var j=0;j<allDepartments.length;j++){deptOpts+='<option value="'+allDepartments[j].id+'"'+((u.department_id===allDepartments[j].id)?' selected':'')+'>'+escHtml(allDepartments[j].name)+'</option>'}
+  var roleOpts='<option value="user">普通用户</option><option value="admin">管理员</option>';
+  for(var k=0;k<allRoles.length;k++){roleOpts+='<option value="r_'+allRoles[k].id+'"'+((u.role_id===allRoles[k].id)?' selected':'')+'>'+escHtml(allRoles[k].name)+'</option>'}
+  var div=document.createElement('div');div.className='confirm-overlay';div.id='user-edit-modal';
+  div.innerHTML='<div class="confirm-box" style="max-width:420px;max-height:80vh;overflow-y:auto"><p style="font-weight:600;margin-bottom:12px">编辑员工 - '+escHtml(u.display_name||u.email)+'</p>'+
+    '<label style="font-size:13px;display:block;margin-bottom:4px">姓名</label><input id="uedit-name" value="'+escHtml(u.display_name||'')+'" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:10px">'+
+    '<label style="font-size:13px;display:block;margin-bottom:4px">岗位</label><input id="uedit-position" value="'+escHtml(u.position||'')+'" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:10px">'+
+    '<label style="font-size:13px;display:block;margin-bottom:4px">手机</label><input id="uedit-phone" value="'+escHtml(u.phone||'')+'" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:10px">'+
+    '<label style="font-size:13px;display:block;margin-bottom:4px">部门</label><select id="uedit-dept" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:10px">'+deptOpts+'</select>'+
+    '<label style="font-size:13px;display:block;margin-bottom:4px">角色</label><select id="uedit-role" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:10px">'+roleOpts+'</select>'+
+    '<label style="font-size:13px;display:block;margin-bottom:4px">状态</label><select id="uedit-status" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:10px"><option value="active"'+(u.status==='active'||!u.status?' selected':'')+'>在职</option><option value="inactive"'+(u.status==='inactive'?' selected':'')+'>停用</option><option value="leave"'+(u.status==='leave'?' selected':'')+'>离职</option></select>'+
+    '<div class="btns"><button class="btn-cancel" onclick="closeUserEditForm()">取消</button><button class="btn-confirm" onclick="saveUserEdit(\''+userId+'\')">保存</button></div></div>';
+  document.body.appendChild(div);
+}
+
+function closeUserEditForm(){var m=document.getElementById('user-edit-modal');if(m)m.remove()}
+
+async function saveUserEdit(userId){
+  var roleVal=document.getElementById('uedit-role').value;
+  var role=roleVal,roleId=null;
+  if(roleVal&&roleVal.startsWith('r_')){roleId=parseInt(roleVal.slice(2));role='custom'}
+  var data={
+    display_name:document.getElementById('uedit-name').value.trim(),
+    position:document.getElementById('uedit-position').value.trim(),
+    phone:document.getElementById('uedit-phone').value.trim(),
+    department_id:parseInt(document.getElementById('uedit-dept').value)||null,
+    role:role,role_id:roleId,
+    status:document.getElementById('uedit-status').value
+  };
+  var {error}=await sb.from('profiles').update(data).eq('user_id',userId);
+  if(error){showToast('保存失败: '+error.message);return}
+  showToast('已更新');
+  for(var i=0;i<adminUserList.length;i++){if(adminUserList[i].user_id===userId){
+    adminUserList[i].display_name=data.display_name;
+    adminUserList[i].position=data.position;
+    adminUserList[i].phone=data.phone;
+    adminUserList[i].department_id=data.department_id;
+    adminUserList[i].role=data.role;
+    adminUserList[i].role_id=data.role_id;
+    adminUserList[i].status=data.status;
+    break;
+  }}
+  closeUserEditForm();
+  renderAdminUsers();
 }
 
 
@@ -2369,7 +2543,11 @@ function openAddUserForm(){
   // Populate dept dropdown
   var s=document.getElementById('add-user-dept');s.innerHTML='<option value="">无部门</option>';
   for(var i=0;i<allDepartments.length;i++){s.innerHTML+='<option value="'+allDepartments[i].id+'">'+escHtml(allDepartments[i].name)+'</option>';}
+  // Populate role dropdown
+  var rs=document.getElementById('add-user-role');rs.innerHTML='<option value="user">普通用户</option><option value="admin">管理员</option>';
+  for(var j=0;j<allRoles.length;j++){rs.innerHTML+='<option value="r_'+allRoles[j].id+'">'+escHtml(allRoles[j].name)+'</option>'}
   document.getElementById('add-user-email').value='';document.getElementById('add-user-password').value='';document.getElementById('add-user-name').value='';
+  document.getElementById('add-user-position').value='';document.getElementById('add-user-phone').value='';
   document.getElementById('add-user-email').focus();
 }
 function closeAddUserForm(){document.getElementById('add-user-modal').classList.add('hidden');}
@@ -2377,8 +2555,12 @@ async function saveNewUser(){
   var email=document.getElementById('add-user-email').value.trim();
   var password=document.getElementById('add-user-password').value.trim();
   var name=document.getElementById('add-user-name').value.trim();
+  var position=document.getElementById('add-user-position').value.trim();
+  var phone=document.getElementById('add-user-phone').value.trim();
   var deptId=document.getElementById('add-user-dept').value||null;
-  var role=document.getElementById('add-user-role').value;
+  var roleVal=document.getElementById('add-user-role').value;
+  var role=roleVal,roleId=null;
+  if(roleVal&&roleVal.startsWith('r_')){roleId=parseInt(roleVal.slice(2));role='custom'}
   if(!email){showToast('请输入邮箱');return}
   if(!password||password.length<6){showToast('密码至少6位');return}
   var adminSession=(await sb.auth.getSession()).data.session;
@@ -2386,7 +2568,7 @@ async function saveNewUser(){
   var {data,error}=await sb.auth.signUp({email:email,password:password});
   if(error){showToast('创建失败: '+error.message);return}
   if(!data.user){showToast('创建失败');return}
-  await sb.from('profiles').upsert({user_id:data.user.id,role:role||'user',company_id:currentCompanyId,display_name:name,department_id:deptId?parseInt(deptId):null},{onConflict:'user_id'});
+  await sb.from('profiles').upsert({user_id:data.user.id,role:role||'user',role_id:roleId,company_id:currentCompanyId,display_name:name,position:position,phone:phone,department_id:deptId?parseInt(deptId):null},{onConflict:'user_id'});
   await sb.auth.signOut();
   await sb.auth.setSession(adminSession);
   currentUser=savedUser;
