@@ -4630,6 +4630,7 @@ function clearSupLinkClient(){
   supLinkedClientId=null;supLinkedClientName='';
   document.getElementById('sup-link-selected').style.display='none';
   document.getElementById('sup-link-client').value='';
+  var cp=document.getElementById('sup-contact-picker');if(cp)cp.classList.add('hidden');
 }
 
 function importClientContacts(){
@@ -4640,24 +4641,41 @@ function importClientContacts(){
     if(r.error){showToast('\u52a0\u8f7d\u8054\u7cfb\u4eba\u5931\u8d25');return}
     var contacts=r.data||[];
     if(!contacts.length){showToast('\u8be5\u5ba2\u6237\u6ca1\u6709\u8054\u7cfb\u4eba');return}
-    var c0=contacts[0];
-    var nameInp=document.getElementById('sup-contact-name');
-    if(!nameInp.value.trim()&&c0.name)nameInp.value=c0.name;
-    var phones=[];
-    try{phones=JSON.parse(c0.phone||'[]')}catch(e){phones=[]}
-    if(phones.length){
-      var phEl=document.getElementById('sup-phones');
-      phEl.innerHTML='';
-      for(var j=0;j<phones.length;j++){
-        var row=document.createElement('div');
-        row.className='sup-prod-row';
-        row.style.marginBottom='6px';
-        row.innerHTML='<input value="'+escHtml(phones[j])+'" oninput="syncSupPhones()" placeholder="\u8054\u7cfb\u7535\u8bdd '+(j+1)+'" style="flex:2">'+(phones.length>1?'<button class="btn-sm" style="background:#fff;color:var(--danger);border:1px solid var(--danger)" onclick="this.parentElement.remove();syncSupPhones()">\u00d7</button>':'');
-        phEl.appendChild(row);
-      }
+    if(contacts.length===1){doImportContact(contacts[0]);return}
+    window._supContactCache=contacts;
+    var picker=document.getElementById('sup-contact-picker');
+    var h='';
+    for(var i=0;i<contacts.length;i++){
+      var ct=contacts[i];
+      var roleLabel=ct.role||'';
+      var phones=[];
+      try{phones=JSON.parse(ct.phone||'[]')}catch(e){}
+      var phonePreview=phones.slice(0,2).join(', ');
+      h+='<div class="search-list-item" onclick="doImportContact(window._supContactCache['+i+'])"><div class="name">'+escHtml(ct.name||'\u672a\u547d\u540d')+'</div><div class="sub">'+(roleLabel?escHtml(roleLabel)+' \u00b7 ':'')+(phonePreview||'\u65e0\u7535\u8bdd')+'</div></div>';
     }
-    showToast('\u5df2\u5bfc\u5165'+contacts.length+'\u4e2a\u8054\u7cfb\u4eba\u4fe1\u606f');
+    picker.innerHTML=h;picker.classList.remove('hidden');
   })
+}
+
+function doImportContact(ct){
+  if(!ct)return;
+  var nameInp=document.getElementById('sup-contact-name');
+  if(!nameInp.value.trim()&&ct.name)nameInp.value=ct.name;
+  var phones=[];
+  try{phones=JSON.parse(ct.phone||'[]')}catch(e){phones=[]}
+  if(phones.length){
+    var phEl=document.getElementById('sup-phones');
+    phEl.innerHTML='';
+    for(var j=0;j<phones.length;j++){
+      var row=document.createElement('div');
+      row.className='sup-prod-row';
+      row.style.marginBottom='6px';
+      row.innerHTML='<input value="'+escHtml(phones[j])+'" oninput="syncSupPhones()" placeholder="\u8054\u7cfb\u7535\u8bdd '+(j+1)+'" style="flex:2">'+(phones.length>1?'<button class="btn-sm" style="background:#fff;color:var(--danger);border:1px solid var(--danger)" onclick="this.parentElement.remove();syncSupPhones()">\u00d7</button>':'');
+      phEl.appendChild(row);
+    }
+  }
+  document.getElementById('sup-contact-picker').classList.add('hidden');
+  showToast('\u5df2\u5bfc\u5165\u8054\u7cfb\u4eba\u4fe1\u606f');
 }
 
 
@@ -4715,7 +4733,7 @@ var supLinkedClientId=null;var supLinkedClientName='';
 // Modal injection
 (function(){
   var modals=document.createElement('div');
-  modals.innerHTML='<div id="supplier-modal" class="modal hidden"><div class="modal-box" style="max-width:560px"><div class="modal-head"><span id="sup-modal-title">\u65b0\u5efa\u4f9b\u5e94\u5546</span><span class="modal-close" onclick="closeSupplierForm()">\u00d7</span></div><div class="modal-body"><div class="form-group"><label>\u4f9b\u5e94\u5546\u540d\u79f0 <span style="font-size:11px;color:var(--text-secondary);font-weight:400">\u2014 \u652f\u6301\u4f01\u4e1a\u540d\u5f55\u81ea\u52a8\u5339\u914d</span></label><div style="position:relative"><input id="sup-name" placeholder="\u5fc5\u586b" autocomplete="off" oninput="onSupNameInput()" onfocus="onSupNameInput()" onkeydown="onSupNameKeydown(event)"><div class="name-suggestions hidden" id="sup-name-suggestions"></div></div></div><div class="form-group"><label>\u8054\u7cfb\u4eba</label><input id="sup-contact-name" placeholder="\u8054\u7cfb\u4eba\u59d3\u540d"></div></div><div class="form-group"><label>\u5173\u8054\u5ba2\u6237</label><div style="position:relative"><input id="sup-link-client" placeholder="\u641c\u7d22\u5173\u8054\u5ba2\u6237..." autocomplete="off" oninput="searchSupplierLinkClient()" onkeydown="supLinkClientKeydown(event)"><div class="search-list hidden" id="sup-link-list"></div></div><div id="sup-link-selected" style="display:none;margin-top:4px;padding:6px 10px;background:var(--primary-light);border-radius:6px;font-size:13px"><span id="sup-link-client-name"></span><button class="btn-xs" style="color:var(--text-secondary);margin-left:8px;cursor:pointer" onclick="clearSupLinkClient()">\u00d7</button><button class="btn-xs" style="color:var(--primary);margin-left:8px;cursor:pointer" onclick="importClientContacts()">\u5bfc\u5165\u8054\u7cfb\u4eba</button></div><div class="form-group"><label>\u8054\u7cfb\u7535\u8bdd</label><div id="sup-phones"></div><button class="btn-sm" style="background:var(--surface);border:1px solid var(--border);margin-top:4px" onclick="addSupPhone()">\uff0b \u6dfb\u52a0\u7535\u8bdd</button></div><div class="form-group"><label>\u4ea7\u54c1\u6e05\u5355</label><div id="sup-products"></div><button class="btn-sm" style="background:var(--surface);border:1px solid var(--border);margin-top:4px" onclick="addSupProduct()">\uff0b \u6dfb\u52a0\u4ea7\u54c1</button></div><div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>\u7c7b\u522b</label><input id="sup-category" placeholder="\u5982\uff1a\u7535\u5b50\u5143\u4ef6" list="sup-cat-list"><datalist id="sup-cat-list"></datalist></div><div><label>\u5408\u4f5c\u6b21\u6570</label><input id="sup-cooperation-count" type="number" min="0"></div></div><div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>\u5408\u4f5c\u7ea7\u522b</label><select id="sup-cooperation-level"><option value="A">A\u7ea7</option><option value="B">B\u7ea7</option><option value="C" selected>C\u7ea7</option><option value="D">D\u7ea7</option><option value="E">E\u7ea7</option></select></div><div><label>\u6b21\u54c1\u7387 (%)</label><input id="sup-defect-rate" type="number" step="0.01" min="0" max="100" value="0"></div></div><div class="form-group"><label>\u5907\u6ce8</label><input id="sup-notes" placeholder="\u53ef\u9009"></div></div><div class="modal-actions"><button class="btn-cancel" onclick="closeSupplierForm()">\u53d6\u6d88</button><button class="btn-delete hidden" id="sup-btn-delete" onclick="deleteSupplier(supplierEditId)">\u5220\u9664</button><button class="btn-save" onclick="saveSupplier()">\u4fdd\u5b58</button></div></div></div>';
+  modals.innerHTML='<div id="supplier-modal" class="modal hidden"><div class="modal-box" style="max-width:560px"><div class="modal-head"><span id="sup-modal-title">\u65b0\u5efa\u4f9b\u5e94\u5546</span><span class="modal-close" onclick="closeSupplierForm()">\u00d7</span></div><div class="modal-body"><div class="form-group"><label>\u4f9b\u5e94\u5546\u540d\u79f0 <span style="font-size:11px;color:var(--text-secondary);font-weight:400">\u2014 \u652f\u6301\u4f01\u4e1a\u540d\u5f55\u81ea\u52a8\u5339\u914d</span></label><div style="position:relative"><input id="sup-name" placeholder="\u5fc5\u586b" autocomplete="off" oninput="onSupNameInput()" onfocus="onSupNameInput()" onkeydown="onSupNameKeydown(event)"><div class="name-suggestions hidden" id="sup-name-suggestions"></div></div></div><div class="form-group"><label>\u8054\u7cfb\u4eba</label><input id="sup-contact-name" placeholder="\u8054\u7cfb\u4eba\u59d3\u540d"></div></div><div class="form-group"><label>\u5173\u8054\u5ba2\u6237</label><div style="position:relative"><input id="sup-link-client" placeholder="\u641c\u7d22\u5173\u8054\u5ba2\u6237..." autocomplete="off" oninput="searchSupplierLinkClient()" onkeydown="supLinkClientKeydown(event)"><div class="search-list hidden" id="sup-link-list"></div></div><div id="sup-link-selected" style="display:none;margin-top:4px;padding:6px 10px;background:var(--primary-light);border-radius:6px;font-size:13px"><span id="sup-link-client-name"></span><button class="btn-xs" style="color:var(--text-secondary);margin-left:8px;cursor:pointer" onclick="clearSupLinkClient()">\u00d7</button><button class="btn-xs" style="color:var(--primary);margin-left:8px;cursor:pointer" onclick="importClientContacts()">\u5bfc\u5165\u8054\u7cfb\u4eba</button><div class="search-list hidden" id="sup-contact-picker" style="margin-top:6px;max-height:160px;overflow-y:auto"></div></div><div class="form-group"><label>\u8054\u7cfb\u7535\u8bdd</label><div id="sup-phones"></div><button class="btn-sm" style="background:var(--surface);border:1px solid var(--border);margin-top:4px" onclick="addSupPhone()">\uff0b \u6dfb\u52a0\u7535\u8bdd</button></div><div class="form-group"><label>\u4ea7\u54c1\u6e05\u5355</label><div id="sup-products"></div><button class="btn-sm" style="background:var(--surface);border:1px solid var(--border);margin-top:4px" onclick="addSupProduct()">\uff0b \u6dfb\u52a0\u4ea7\u54c1</button></div><div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>\u7c7b\u522b</label><input id="sup-category" placeholder="\u5982\uff1a\u7535\u5b50\u5143\u4ef6" list="sup-cat-list"><datalist id="sup-cat-list"></datalist></div><div><label>\u5408\u4f5c\u6b21\u6570</label><input id="sup-cooperation-count" type="number" min="0"></div></div><div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>\u5408\u4f5c\u7ea7\u522b</label><select id="sup-cooperation-level"><option value="A">A\u7ea7</option><option value="B">B\u7ea7</option><option value="C" selected>C\u7ea7</option><option value="D">D\u7ea7</option><option value="E">E\u7ea7</option></select></div><div><label>\u6b21\u54c1\u7387 (%)</label><input id="sup-defect-rate" type="number" step="0.01" min="0" max="100" value="0"></div></div><div class="form-group"><label>\u5907\u6ce8</label><input id="sup-notes" placeholder="\u53ef\u9009"></div></div><div class="modal-actions"><button class="btn-cancel" onclick="closeSupplierForm()">\u53d6\u6d88</button><button class="btn-delete hidden" id="sup-btn-delete" onclick="deleteSupplier(supplierEditId)">\u5220\u9664</button><button class="btn-save" onclick="saveSupplier()">\u4fdd\u5b58</button></div></div></div>';
   document.body.appendChild(modals);
 })();
 </script>
