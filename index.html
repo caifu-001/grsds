@@ -4299,8 +4299,8 @@ function renderCommission(){
     if(c.status==='paid')paid+=parseFloat(c.commission_amount)||0;
     var statusLabels={pending:'🔶 待确认',confirmed:'✅ 已确认',paid:'💰 已发放'};
     h+='<tr><td>'+escHtml(p.display_name||p.email||'')+'</td><td>'+c.calc_year+'-'+String(c.calc_month).padStart(2,'0')+'</td><td>¥'+fmtNum(c.actual_amount)+'</td><td>¥'+fmtNum(c.target_amount)+'</td><td>'+(parseFloat(c.target_completion_rate)||0)+'%</td><td style="font-weight:600;color:var(--primary)">¥'+fmtNum(c.commission_amount)+'</td><td>'+(statusLabels[c.status]||c.status)+'</td><td>';
-    if(c.status==='pending')h+='<button class="btn-sm" style="background:var(--success);color:#fff;border:none" onclick="updateCommissionStatus('+c.id+','confirmed')">确认</button> ';
-    if(c.status==='confirmed')h+='<button class="btn-sm" style="background:var(--primary);color:#fff;border:none" onclick="updateCommissionStatus('+c.id+','paid')">已发放</button> ';
+    if(c.status==='pending')h+='<button class="btn-sm" style="background:var(--success);color:#fff;border:none" onclick="updateCommissionStatus('+c.id+',\'confirmed\')">确认</button> ';
+    if(c.status==='confirmed')h+='<button class="btn-sm" style="background:var(--primary);color:#fff;border:none" onclick="updateCommissionStatus('+c.id+',\'paid\')">已发放</button> ';
     h+='<button class="btn-sm" style="background:#fff;color:var(--danger);border:1px solid var(--danger)" onclick="deleteCommission('+c.id+')">删除</button></td></tr>';
   }
   tbody.innerHTML=h;
