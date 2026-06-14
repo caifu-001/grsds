@@ -3052,7 +3052,7 @@ async function saveNewUser(){
   if(authKey&&authVal){localStorage.setItem(authKey,authVal);await sb.auth.getSession()}
   // Step 5: Write profile via raw fetch (adminToken from step 1 — independent of sb client state)
   var body={user_id:newUserId,role:role||'user',role_id:roleId,company_id:currentCompanyId,display_name:name,position:position,phone:phone,department_id:deptId?parseInt(deptId):null};
-  var res=await fetch(SUPABASE_URL+'/rest/v1/profiles',{method:'POST',headers:{'Authorization':'Bearer '+adminToken,'apikey':SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},body:JSON.stringify(body)});
+  var res=await fetch(SUPABASE_URL+'/rest/v1/profiles',{method:'POST',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},body:JSON.stringify(body)});
   if(!res.ok){var txt=await res.text();console.error('Profile write failed:',res.status,txt);showToast('Profile write failed: HTTP '+res.status);return}
   closeAddUserForm();
   showToast('用户创建成功');
