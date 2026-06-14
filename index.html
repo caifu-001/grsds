@@ -2005,6 +2005,7 @@ function switchTab(tab){
   var tsp=document.getElementById('tab-suppliers');
   var fab=document.getElementById('main-fab');
 
+    document.getElementById('settings-screen').classList.add('hidden');
   if(tab==='clients'){
     cv.classList.remove('hidden');ov.classList.add('hidden');av.classList.add('hidden');sv.classList.add('hidden');iv.classList.add('hidden');;if(spv)spv.classList.add('hidden');if(pv)pv.classList.add('hidden');
     tc.classList.add('active');to.classList.remove('active');ts.classList.remove('active');if(ta)ta.classList.remove('active');if(ti)ti.classList.remove('active');if(tp)tp.classList.remove('active');if(tsp)tsp.classList.remove('active');
