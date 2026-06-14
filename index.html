@@ -1377,6 +1377,7 @@ function enableMyEditing(){
     fields.push({el:'my-position', col:'position', type:'text'});
     fields.push({el:'my-company', col:'_company_id', type:'select', opts:'companies'});
     fields.push({el:'my-dept', col:'department_id', type:'select', opts:'departments'});
+    fields.push({el:'my-role', col:'role', type:'role-select'});
   }
   for(var i=0;i<fields.length;i++){
     var f=fields[i];el=document.getElementById(f.el);
@@ -1397,7 +1398,29 @@ function startMyEdit(e){
   var type=t.getAttribute('data-mt');
   var opt=t.getAttribute('data-mo');
   var cur=t.textContent==='-'?'':t.textContent;
-  if(type==='select'){
+  if(type==='role-select'){
+    var roleMap={super_admin:'超级管理员',admin:'管理员',user:'普通用户'};
+    var roles=[
+      {v:'super_admin',l:'超级管理员'},
+      {v:'admin',l:'管理员'},
+      {v:'user',l:'普通用户'}
+    ];
+    var sel=document.createElement('select');
+    sel.style.cssText='width:100%;padding:4px 8px;border:1px solid var(--primary);border-radius:6px;font-size:13px;outline:none;background:#fff';
+    for(var i=0;i<roles.length;i++){
+      sel.innerHTML+='<option value="'+roles[i].v+'"'+(roles[i].v===currentUserRole?' selected':'')+'>'+roles[i].l+'</option>';
+    }
+    sel.onchange=function(){
+      if(sel.value===currentUserRole){t.innerHTML=roleMap[sel.value]||sel.value;recallMyEdit(t);return;}
+      if(currentUserRole==='super_admin'&&sel.value!=='super_admin'){
+        if(!confirm('确认将【超级管理员】改为【'+(roleMap[sel.value]||sel.value)+'】？\n\n降级后可能无法访问管理后台，需其他管理员协助恢复。')){
+          sel.value=currentUserRole;
+        }
+      }
+      saveMyField(col,sel.value,t.id);
+    };
+    t.innerHTML='';t.appendChild(sel);sel.focus();
+  }else if(type==='select'){
     var list=opt==='companies'?allCompanies:allDepartments;
     var sel=document.createElement('select');
     sel.style.cssText='width:100%;padding:4px 8px;border:1px solid var(--primary);border-radius:6px;font-size:13px;outline:none;background:#fff';
@@ -1431,6 +1454,10 @@ async function saveMyField(col, val, elId){
   if(isCompany){
     currentCompanyId=val;
     localStorage.setItem('gr_company_id',val);
+  }
+  if(col==='role'){
+    currentUserRole=val;
+    isSuperAdmin=val==='super_admin';
   }
   openMy();
 }
