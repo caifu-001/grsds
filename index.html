@@ -2655,8 +2655,13 @@ async function loadAdminData(){
   if(currentUserRole==='admin'||currentUserRole==='super_admin'){
     if(currentUserRole==='super_admin'){try{var {data:rpcUsers,error:rpcErr}=await sb.rpc('list_all_users');if(!rpcErr&&rpcUsers&&rpcUsers.length){adminUserList=rpcUsers;allUsers=rpcUsers;populatePerfSelects();}}catch(e){}}
     if(!adminUserList.length){
-      var q=currentUserRole==='super_admin'?sb.from('profiles').select('*'):sb.from('profiles').select('*').eq('company_id',currentCompanyId);
-      var {data:pr}=await q;adminUserList=pr||[];allUsers=pr||[];populatePerfSelects();
+      // super_admin 用 service_role 绕过 profiles RLS（auth.uid()=user_id 限制）
+      if(currentUserRole==='super_admin'){
+        try{var ur=await fetch(SUPABASE_URL+'/rest/v1/profiles?select=*',{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}});if(ur.ok){adminUserList=await ur.json();allUsers=adminUserList;populatePerfSelects();}}catch(e){}
+      }else{
+        var {data:pr}=await sb.from('profiles').select('*').eq('company_id',currentCompanyId);
+        adminUserList=pr||[];allUsers=pr||[];populatePerfSelects();
+      }
     }
   }
 }
