@@ -2814,7 +2814,7 @@ function closeMoreMenu(){
   if(menu)menu.classList.remove('show');
   if(overlay)overlay.classList.remove('show');
 }
-function switchAdminTab(sub){
+async function switchAdminTab(tab){
   var panels=document.querySelectorAll('.admin-subpanel');
   var ut=document.getElementById('admin-users');
   var dt=document.getElementById('admin-depts');
