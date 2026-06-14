@@ -487,6 +487,7 @@ input,select,textarea,button{font-family:inherit}
   .sup-card .sc-cat{font-size:12px;color:var(--primary);margin-top:2px}
   .sup-card .sc-contact{font-size:13px;color:var(--text-secondary);margin-bottom:6px}
   .sup-card .sc-contact a{color:var(--primary);text-decoration:none}
+  .sup-card .sc-linked{font-size:12px;color:var(--text-secondary);margin-bottom:4px;padding:2px 8px;background:var(--primary-light);border-radius:4px;display:inline-block}
   .sup-products{width:100%;border-collapse:collapse;font-size:12px;margin:8px 0}
   .sup-products th{text-align:left;padding:6px;border-bottom:1px solid var(--border);color:var(--text-secondary);font-weight:600;font-size:11px}
   .sup-products td{padding:6px;border-bottom:1px solid var(--border);color:var(--text)}
@@ -4458,6 +4459,9 @@ async function loadSuppliers(){
   var q=sb.from('suppliers').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
   var r=await q;
   allSuppliers=r.data||[];
+  var clientMap={};
+  for(var i=0;i<allClients.length;i++)clientMap[allClients[i].id]=allClients[i].name;
+  for(var j=0;j<allSuppliers.length;j++)allSuppliers[j].linked_client_name=clientMap[allSuppliers[j].linked_client_id]||'';
   buildSupCategories();
   renderSuppliers();
 }
@@ -4523,7 +4527,8 @@ function renderSuppliers(){
       prodRows+='<tr><td>'+(pr.name||'')+'</td><td>'+(pr.moq||'')+'</td><td style="font-weight:600;color:var(--primary)">'+(pr.unit_price?'\u00a5'+fmtNum(pr.unit_price):'')+'</td></tr>';
     }
     h+='<div class="sup-card"><div class="sc-header"><div><div class="sc-name">'+escHtml(sp.name||'')+'</div><div class="sc-cat">'+(sp.category||'\u672a\u5206\u7c7b')+'</div></div><span class="level-badge level-'+sp.cooperation_level+'">'+(sp.cooperation_level||'C')+'\u7ea7</span></div>';
-    if(sp.contact_name||phoneStr)h+='<div class="sc-contact">\U0001f464 '+escHtml(sp.contact_name||'\u672a\u77e5')+(phoneStr?' &nbsp; <a href="tel:'+phones[0]+'">'+escHtml(phoneStr)+'</a>':'')+'</div>';
+    if(sp.contact_name||phoneStr)h+='<div class="sc-contact">\U0001f464 '+escHtml(sp.contact_name||'\u672
+    if(sp.linked_client_name)h+='<div class="sc-linked"><span style="opacity:0.6">\u2192 \u5173\u8054\u5ba2\u6237:</span> '+escHtml(sp.linked_client_name)+'</div>';a\u77e5')+(phoneStr?' &nbsp; <a href="tel:'+phones[0]+'">'+escHtml(phoneStr)+'</a>':'')+'</div>';
     if(prodRows)h+='<table class="sup-products"><thead><tr><th>\u4ea7\u54c1</th><th>MOQ</th><th>\u5355\u4ef7</th></tr></thead><tbody>'+prodRows+'</tbody></table>';
     h+='<div class="sc-footer"><div class="sc-meta"><span>\U0001f4cd \u5408\u4f5c '+(sp.cooperation_count||0)+' \u6b21</span><span class="'+drCls+'">\u26a0\ufe0f \u6b21\u54c1\u7387 '+(sp.defect_rate||0)+'%</span></div><div class="sc-actions"><button class="btn-sm" style="background:var(--surface);border:1px solid var(--border)" onclick="openSupplierForm('+sp.id+')">\u7f16\u8f91</button><button class="btn-sm" style="background:#fff;color:var(--danger);border:1px solid var(--danger)" onclick="deleteSupplier('+sp.id+')">\u5220\u9664</button></div></div></div>';
   }
@@ -4541,6 +4546,11 @@ function openSupplierForm(id){
   document.getElementById('sup-cooperation-level').value=sp?(sp.cooperation_level||'C'):'C';
   document.getElementById('sup-defect-rate').value=sp?(sp.defect_rate||0):0;
   document.getElementById('sup-notes').value=sp?(sp.notes||''):'';
+  // Linked client
+  supLinkedClientId=sp?(sp.linked_client_id||null):null;
+  supLinkedClientName=sp?(sp.linked_client_name||''):'';
+  var lcs=document.getElementById('sup-link-selected');
+  if(supLinkedClientId){lcs.style.display='block';document.getElementById('sup-link-client-name').textContent=supLinkedClientName;document.getElementById('sup-link-client').value='';}else{lcs.style.display='none';document.getElementById('sup-link-client').value='';document.getElementById('sup-link-list').classList.add('hidden');}
   // Phones
   var supPhones=[];
   try{supPhones=JSON.parse(sp?(sp.contact_phone||'[]'):'[]')}catch(e){supPhones=[]}
@@ -4592,9 +4602,70 @@ function syncSupProducts(){
 function addSupPhone(){var el=document.getElementById('sup-phones');var row=document.createElement('div');row.className='sup-prod-row';row.style.marginBottom='6px';row.innerHTML='<input oninput="syncSupPhones()" placeholder="\u8054\u7cfb\u7535\u8bdd" style="flex:2"><button class="btn-sm" style="background:#fff;color:var(--danger);border:1px solid var(--danger)" onclick="this.parentElement.remove();syncSupPhones()">\u00d7</button>';el.appendChild(row)}
 function addSupProduct(){var el=document.getElementById('sup-products');var row=document.createElement('div');row.className='sup-prod-row';row.innerHTML='<input class="prod-name" oninput="syncSupProducts()" placeholder="\u4ea7\u54c1\u540d\u79f0"><input class="prod-moq" oninput="syncSupProducts()" placeholder="MOQ"><input class="prod-price" oninput="syncSupProducts()" type="number" step="0.01" placeholder="\u5355\u4ef7"><button class="btn-sm" style="background:#fff;color:var(--danger);border:1px solid var(--danger)" onclick="this.parentElement.remove();syncSupProducts()">\u00d7</button>';el.appendChild(row)}
 
+
+function searchSupplierLinkClient(){
+  var q=document.getElementById('sup-link-client').value.trim().toLowerCase();
+  var list=document.getElementById('sup-link-list');
+  if(q.length<1){list.classList.add('hidden');return}
+  if(!allClients.length){list.innerHTML='<div class="search-list-item" style="color:var(--text3)">\u52a0\u8f7d\u5ba2\u6237\u4e2d...</div>';list.classList.remove('hidden');loadClients().then(function(){searchSupplierLinkClient()});return}
+  var matches=allClients.filter(function(c){var cn=(c.name||'').toLowerCase();return cn.indexOf(q)>=0}).slice(0,8);
+  if(!matches.length){list.innerHTML='<div class="search-list-item" style="color:var(--text3)">\u65e0\u5339\u914d\u5ba2\u6237</div>';list.classList.remove('hidden');return}
+  var h='';
+  for(var i=0;i<matches.length;i++){h+='<div class="search-list-item" onclick="selectSupLinkClient(\''+matches[i].id+'\',\''+escHtml(matches[i].name)+'\')"><div class="name">'+escHtml(matches[i].name)+'</div></div>'}
+  list.innerHTML=h;list.classList.remove('hidden');
+}
+
+function supLinkClientKeydown(e){
+  if(e.key==='Escape'){document.getElementById('sup-link-list').classList.add('hidden')}
+}
+
+function selectSupLinkClient(id,name){
+  supLinkedClientId=id;supLinkedClientName=name;
+  document.getElementById('sup-link-client').value='';
+  document.getElementById('sup-link-list').classList.add('hidden');
+  var lcs=document.getElementById('sup-link-selected');lcs.style.display='block';
+  document.getElementById('sup-link-client-name').textContent=name;
+}
+
+function clearSupLinkClient(){
+  supLinkedClientId=null;supLinkedClientName='';
+  document.getElementById('sup-link-selected').style.display='none';
+  document.getElementById('sup-link-client').value='';
+}
+
+function importClientContacts(){
+  if(!supLinkedClientId)return;
+  var cl=allClients.find(function(x){return x.id===supLinkedClientId});
+  if(!cl){showToast('\u5ba2\u6237\u4e0d\u5b58\u5728');return}
+  sb.from('contacts').select('*').eq('client_id',supLinkedClientId).then(function(r){
+    if(r.error){showToast('\u52a0\u8f7d\u8054\u7cfb\u4eba\u5931\u8d25');return}
+    var contacts=r.data||[];
+    if(!contacts.length){showToast('\u8be5\u5ba2\u6237\u6ca1\u6709\u8054\u7cfb\u4eba');return}
+    var c0=contacts[0];
+    var nameInp=document.getElementById('sup-contact-name');
+    if(!nameInp.value.trim()&&c0.name)nameInp.value=c0.name;
+    var phones=[];
+    try{phones=JSON.parse(c0.phone||'[]')}catch(e){phones=[]}
+    if(phones.length){
+      var phEl=document.getElementById('sup-phones');
+      phEl.innerHTML='';
+      for(var j=0;j<phones.length;j++){
+        var row=document.createElement('div');
+        row.className='sup-prod-row';
+        row.style.marginBottom='6px';
+        row.innerHTML='<input value="'+escHtml(phones[j])+'" oninput="syncSupPhones()" placeholder="\u8054\u7cfb\u7535\u8bdd '+(j+1)+'" style="flex:2">'+(phones.length>1?'<button class="btn-sm" style="background:#fff;color:var(--danger);border:1px solid var(--danger)" onclick="this.parentElement.remove();syncSupPhones()">\u00d7</button>':'');
+        phEl.appendChild(row);
+      }
+    }
+    showToast('\u5df2\u5bfc\u5165'+contacts.length+'\u4e2a\u8054\u7cfb\u4eba\u4fe1\u606f');
+  })
+}
+
+
 function closeSupplierForm(){
   document.getElementById('supplier-modal').classList.add('hidden');
   supplierEditId=null;
+  supLinkedClientId=null;supLinkedClientName='';
 }
 
 async function saveSupplier(){
@@ -4623,6 +4694,7 @@ async function saveSupplier(){
     cooperation_level:document.getElementById('sup-cooperation-level').value,
     defect_rate:parseFloat(document.getElementById('sup-defect-rate').value)||0,
     notes:document.getElementById('sup-notes').value.trim()||null,
+    linked_client_id:supLinkedClientId||null,
     updated_at:new Date().toISOString()
   };
   if(supplierEditId){await sb.from('suppliers').update(obj).eq('id',supplierEditId)}
@@ -4639,11 +4711,12 @@ async function deleteSupplier(id){
 }
 
 var supplierEditId=null;
+var supLinkedClientId=null;var supLinkedClientName='';
 
 // Modal injection
 (function(){
   var modals=document.createElement('div');
-  modals.innerHTML='<div id="supplier-modal" class="modal hidden"><div class="modal-box" style="max-width:560px"><div class="modal-head"><span id="sup-modal-title">\u65b0\u5efa\u4f9b\u5e94\u5546</span><span class="modal-close" onclick="closeSupplierForm()">\u00d7</span></div><div class="modal-body"><div class="form-group"><label>\u4f9b\u5e94\u5546\u540d\u79f0 <span style="font-size:11px;color:var(--text-secondary);font-weight:400">\u2014 \u652f\u6301\u4f01\u4e1a\u540d\u5f55\u81ea\u52a8\u5339\u914d</span></label><div style="position:relative"><input id="sup-name" placeholder="\u5fc5\u586b" autocomplete="off" oninput="onSupNameInput()" onfocus="onSupNameInput()" onkeydown="onSupNameKeydown(event)"><div class="name-suggestions hidden" id="sup-name-suggestions"></div></div></div><div class="form-group"><label>\u8054\u7cfb\u4eba</label><input id="sup-contact-name" placeholder="\u8054\u7cfb\u4eba\u59d3\u540d"></div><div class="form-group"><label>\u8054\u7cfb\u7535\u8bdd</label><div id="sup-phones"></div><button class="btn-sm" style="background:var(--surface);border:1px solid var(--border);margin-top:4px" onclick="addSupPhone()">\uff0b \u6dfb\u52a0\u7535\u8bdd</button></div><div class="form-group"><label>\u4ea7\u54c1\u6e05\u5355</label><div id="sup-products"></div><button class="btn-sm" style="background:var(--surface);border:1px solid var(--border);margin-top:4px" onclick="addSupProduct()">\uff0b \u6dfb\u52a0\u4ea7\u54c1</button></div><div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>\u7c7b\u522b</label><input id="sup-category" placeholder="\u5982\uff1a\u7535\u5b50\u5143\u4ef6" list="sup-cat-list"><datalist id="sup-cat-list"></datalist></div><div><label>\u5408\u4f5c\u6b21\u6570</label><input id="sup-cooperation-count" type="number" min="0"></div></div><div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>\u5408\u4f5c\u7ea7\u522b</label><select id="sup-cooperation-level"><option value="A">A\u7ea7</option><option value="B">B\u7ea7</option><option value="C" selected>C\u7ea7</option><option value="D">D\u7ea7</option><option value="E">E\u7ea7</option></select></div><div><label>\u6b21\u54c1\u7387 (%)</label><input id="sup-defect-rate" type="number" step="0.01" min="0" max="100" value="0"></div></div><div class="form-group"><label>\u5907\u6ce8</label><input id="sup-notes" placeholder="\u53ef\u9009"></div></div><div class="modal-actions"><button class="btn-cancel" onclick="closeSupplierForm()">\u53d6\u6d88</button><button class="btn-delete hidden" id="sup-btn-delete" onclick="deleteSupplier(supplierEditId)">\u5220\u9664</button><button class="btn-save" onclick="saveSupplier()">\u4fdd\u5b58</button></div></div></div>';
+  modals.innerHTML='<div id="supplier-modal" class="modal hidden"><div class="modal-box" style="max-width:560px"><div class="modal-head"><span id="sup-modal-title">\u65b0\u5efa\u4f9b\u5e94\u5546</span><span class="modal-close" onclick="closeSupplierForm()">\u00d7</span></div><div class="modal-body"><div class="form-group"><label>\u4f9b\u5e94\u5546\u540d\u79f0 <span style="font-size:11px;color:var(--text-secondary);font-weight:400">\u2014 \u652f\u6301\u4f01\u4e1a\u540d\u5f55\u81ea\u52a8\u5339\u914d</span></label><div style="position:relative"><input id="sup-name" placeholder="\u5fc5\u586b" autocomplete="off" oninput="onSupNameInput()" onfocus="onSupNameInput()" onkeydown="onSupNameKeydown(event)"><div class="name-suggestions hidden" id="sup-name-suggestions"></div></div></div><div class="form-group"><label>\u8054\u7cfb\u4eba</label><input id="sup-contact-name" placeholder="\u8054\u7cfb\u4eba\u59d3\u540d"></div></div><div class="form-group"><label>\u5173\u8054\u5ba2\u6237</label><div style="position:relative"><input id="sup-link-client" placeholder="\u641c\u7d22\u5173\u8054\u5ba2\u6237..." autocomplete="off" oninput="searchSupplierLinkClient()" onkeydown="supLinkClientKeydown(event)"><div class="search-list hidden" id="sup-link-list"></div></div><div id="sup-link-selected" style="display:none;margin-top:4px;padding:6px 10px;background:var(--primary-light);border-radius:6px;font-size:13px"><span id="sup-link-client-name"></span><button class="btn-xs" style="color:var(--text-secondary);margin-left:8px;cursor:pointer" onclick="clearSupLinkClient()">\u00d7</button><button class="btn-xs" style="color:var(--primary);margin-left:8px;cursor:pointer" onclick="importClientContacts()">\u5bfc\u5165\u8054\u7cfb\u4eba</button></div><div class="form-group"><label>\u8054\u7cfb\u7535\u8bdd</label><div id="sup-phones"></div><button class="btn-sm" style="background:var(--surface);border:1px solid var(--border);margin-top:4px" onclick="addSupPhone()">\uff0b \u6dfb\u52a0\u7535\u8bdd</button></div><div class="form-group"><label>\u4ea7\u54c1\u6e05\u5355</label><div id="sup-products"></div><button class="btn-sm" style="background:var(--surface);border:1px solid var(--border);margin-top:4px" onclick="addSupProduct()">\uff0b \u6dfb\u52a0\u4ea7\u54c1</button></div><div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>\u7c7b\u522b</label><input id="sup-category" placeholder="\u5982\uff1a\u7535\u5b50\u5143\u4ef6" list="sup-cat-list"><datalist id="sup-cat-list"></datalist></div><div><label>\u5408\u4f5c\u6b21\u6570</label><input id="sup-cooperation-count" type="number" min="0"></div></div><div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>\u5408\u4f5c\u7ea7\u522b</label><select id="sup-cooperation-level"><option value="A">A\u7ea7</option><option value="B">B\u7ea7</option><option value="C" selected>C\u7ea7</option><option value="D">D\u7ea7</option><option value="E">E\u7ea7</option></select></div><div><label>\u6b21\u54c1\u7387 (%)</label><input id="sup-defect-rate" type="number" step="0.01" min="0" max="100" value="0"></div></div><div class="form-group"><label>\u5907\u6ce8</label><input id="sup-notes" placeholder="\u53ef\u9009"></div></div><div class="modal-actions"><button class="btn-cancel" onclick="closeSupplierForm()">\u53d6\u6d88</button><button class="btn-delete hidden" id="sup-btn-delete" onclick="deleteSupplier(supplierEditId)">\u5220\u9664</button><button class="btn-save" onclick="saveSupplier()">\u4fdd\u5b58</button></div></div></div>';
   document.body.appendChild(modals);
 })();
 </script>
@@ -4763,7 +4836,7 @@ function onSupNameInput(){
   for(var j=0;j<allClients.length;j++){
     var cl=allClients[j];
     var cn=(cl.name||'').toLowerCase();
-    if(cn&&cn.indexOf(val)>=0&&!seen[cn]){seen[cn]=1;matches.push({name:cl.name,source:'已存客户',exists:true,isClient:true})}
+    if(cn&&cn.indexOf(val)>=0&&!seen[cn]){seen[cn]=1;matches.push({name:cl.name,source:'已存客户',exists:true,isClient:true,clientId:cl.id})}
   }
   // 3. Company directory
   for(var k=0;k<allCompanies.length;k++){
@@ -4821,10 +4894,8 @@ function selectSupNameSuggestion(idx){
     var cEl=document.getElementById('sup-contact-name');
     if(!cEl.value.trim())cEl.value=m.comp.legal_person;
   }
-  if(m.exists){
-    if(m.isClient)showToast('"'+m.name+'" 已是客户，确定要作为供应商添加？');
-    else showToast('供应商 "'+m.name+'" 已存在');
-  }
+  if(m.isClient){selectSupLinkClient(m.clientId,m.name);showToast('已自动关联客户"'+m.name+'"')}
+  else if(m.exists){showToast('供应商"'+m.name+'"已存在')}
 }
 
 // Click-outside to close suggestions

@@ -15,12 +15,14 @@ CREATE TABLE IF NOT EXISTS suppliers (
   defect_rate NUMERIC(5,2) DEFAULT 0,
   notes TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
+  linked_client_id UUID REFERENCES clients(id) ON DELETE SET NULL,
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_sup_company ON suppliers(company_id);
 CREATE INDEX IF NOT EXISTS idx_sup_category ON suppliers(category);
 CREATE INDEX IF NOT EXISTS idx_sup_level ON suppliers(cooperation_level);
+CREATE INDEX IF NOT EXISTS idx_sup_linked_client ON suppliers(linked_client_id);
 
 ALTER TABLE suppliers ENABLE ROW LEVEL SECURITY;
 
