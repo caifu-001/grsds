@@ -791,7 +791,16 @@ input,select,textarea,button{font-family:inherit}
   <div class="color-picker" id="new-type-color"></div>
  </div>
 
- <div style="padding:12px 16px;font-size:14px;font-weight:600;color:var(--text2);margin-top:8px">导入/导出</div>
+ <div style="
+ <div style="padding:12px 16px;font-size:14px;font-weight:600;color:var(--text2);margin-top:8px;cursor:pointer" onclick="openChangePwdForm()">🔒 修改密码 ▾</div>
+ <div id="change-pwd-section" class="hidden" style="padding:0 16px 16px">
+  <input id="change-old-pwd" type="password" placeholder="当前密码" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:8px">
+  <input id="change-new-pwd" type="password" placeholder="新密码（至少6位）" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:8px">
+  <input id="change-confirm-pwd" type="password" placeholder="确认新密码" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:8px">
+  <button class="btn-save" style="padding:10px 24px;font-size:14px" onclick="doChangePassword()">确认修改</button>
+ </div>
+
+padding:12px 16px;font-size:14px;font-weight:600;color:var(--text2);margin-top:8px">导入/导出</div>
  <div style="padding:0 16px">
   <div class="settings-item"><span class="lbl">导出客户数据</span><button class="act" onclick="doExport()">导出 Excel</button></div>
   <div class="settings-item">
@@ -1034,6 +1043,7 @@ input,select,textarea,button{font-family:inherit}
 // Supabase
 const SUPABASE_URL='https://jyefbatmmbelrhhzsgva.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp5ZWZiYXRtbWJlbHJoaHpzZ3ZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5NDIyMDUsImV4cCI6MjA5NTUxODIwNX0.m8pVc7yA9AycSTkexoH76SNo_P40KVRA4pmKECJQea4';
+SUPABASE_SERVICE_KEY=''; // 从 Supabase Dashboard > Settings > API 获取 service_role key（超管重置密码用）
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 
 const BUILTIN_TYPES=['甲方','集成商','设计院','运营商','国央企','党政','厂家','制造业','军队','司法','教育','医疗','供应商'];
@@ -1213,6 +1223,28 @@ function openSettings(){
   document.getElementById('settings-screen').classList.remove('hidden');
   renderCustomTypes();
 }
+
+function openChangePwdForm(){
+  document.getElementById('change-pwd-section').classList.toggle('hidden');
+}
+async function doChangePassword(){
+  var oldPwd=document.getElementById('change-old-pwd').value.trim();
+  var newPwd=document.getElementById('change-new-pwd').value.trim();
+  var confirmPwd=document.getElementById('change-confirm-pwd').value.trim();
+  if(!oldPwd){showToast('请输入当前密码');return}
+  if(!newPwd||newPwd.length<6){showToast('新密码至少6位');return}
+  if(newPwd!==confirmPwd){showToast('两次输入不一致');return}
+  try{
+    var {error}=await sb.auth.updateUser({password:newPwd});
+    if(error){showToast('修改失败: '+error.message);return}
+    document.getElementById('change-old-pwd').value='';
+    document.getElementById('change-new-pwd').value='';
+    document.getElementById('change-confirm-pwd').value='';
+    document.getElementById('change-pwd-section').classList.add('hidden');
+    showToast('密码修改成功');
+  }catch(e){showToast('错误: '+e.message)}
+}
+
 function closeSettings(){
   document.getElementById('settings-screen').classList.add('hidden');
   document.getElementById('main-screen').classList.remove('hidden');
@@ -2562,7 +2594,7 @@ function renderAdminUsers(){
     h+='<td><span class="badge-status '+status+'">'+statusLabel+'</span></td>';
     h+='<td>'+escHtml(u.phone||'-')+'</td>';
     h+='<td>'+escHtml(roleName)+'</td>';
-    h+='<td><button class="btn-sm btn-sm-primary" onclick="openUserEditForm(\''+u.user_id+'\')" style="font-size:11px;padding:3px 10px">编辑</button></td></tr>';
+    h+='<td><button class="btn-sm btn-sm-primary" onclick="openUserEditForm(\''+u.user_id+'\')" style="font-size:11px;padding:3px 10px">编辑</button>'+(isSuperAdmin?' <button class="btn-sm btn-sm-danger" onclick="openResetPwdForm(\''+u.user_id+'\',\''+escHtml(u.email||u.display_name||'-')+'\')" style="font-size:11px;padding:3px 8px">重置密码</button>':'')+'</td></tr>';
   }
   el.innerHTML=h+'</tbody></table>';
 }
@@ -2765,6 +2797,32 @@ async function saveNewUser(){
   await loadAdminData();
   renderAdminUsers();
 }
+
+
+var _resetPwdUserId=null;
+function openResetPwdForm(userId,userName){
+  _resetPwdUserId=userId;
+  document.getElementById('reset-pwd-user-name').textContent=userName;
+  document.getElementById('reset-pwd-input').value='';
+  document.getElementById('reset-pwd-modal').classList.remove('hidden');
+}
+function closeResetPwdForm(){
+  document.getElementById('reset-pwd-modal').classList.add('hidden');
+  _resetPwdUserId=null;
+}
+async function doResetPassword(){
+  var pwd=document.getElementById('reset-pwd-input').value.trim();
+  if(!pwd||pwd.length<6){showToast('密码至少6位');return}
+  var sk=SUPABASE_SERVICE_KEY;
+  if(!sk){showToast('请先配置 SUPABASE_SERVICE_KEY（Supabase Dashboard > Settings > API）');return}
+  try{
+    var res=await fetch(SUPABASE_URL+'/auth/v1/admin/users/'+_resetPwdUserId,{method:'PUT',headers:{'Authorization':'Bearer '+sk,'Content-Type':'application/json'},body:JSON.stringify({password:pwd})});
+    if(!res.ok){var txt=await res.text();showToast('重置失败 HTTP '+res.status+': '+txt);return}
+    closeResetPwdForm();
+    showToast('密码已重置');
+  }catch(e){showToast('网络错误: '+e.message)}
+}
+
 
 // ═══════════ Sales Pipeline ═══════════
 var currentSalesTab='leads';
@@ -4949,6 +5007,19 @@ document.addEventListener('click',function(e){
   if(ns&&!ns.classList.contains('hidden')&&!e.target.closest('#form-modal'))ns.classList.add('hidden');
 });
 </script>
+
+
+<!-- Reset Password Modal -->
+<div class="confirm-overlay hidden" id="reset-pwd-modal">
+ <div class="confirm-box" style="max-width:380px">
+  <p style="font-weight:600;margin-bottom:12px">重置密码 - <span id="reset-pwd-user-name"></span></p>
+  <input id="reset-pwd-input" type="password" placeholder="输入新密码（至少6位）" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:12px">
+  <div class="btns">
+   <button class="btn-cancel" onclick="closeResetPwdForm()">取消</button>
+   <button class="btn-confirm" onclick="doResetPassword()">确认重置</button>
+  </div>
+ </div>
+</div>
 
 </body>
 </html>
