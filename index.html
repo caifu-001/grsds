@@ -2740,19 +2740,22 @@ async function saveNewUser(){
   if(roleVal&&roleVal.startsWith('r_')){roleId=parseInt(roleVal.slice(2));role='custom'}
   if(!email){showToast('请输入邮箱');return}
   if(!password||password.length<6){showToast('密码至少6位');return}
-  var adminSession=(await sb.auth.getSession()).data.session;
-  var savedUser=currentUser;
-  var newUserId=null;
+  // Capture admin token before signUp (signUp may switch session)
+  var adminToken=null;
+  try{var s=(await sb.auth.getSession()).data.session;if(s)adminToken=s.access_token}catch(e){}
   var {data,error}=await sb.auth.signUp({email:email,password:password});
-  if(!error&&data.user){newUserId=data.user.id;if(data.session){await sb.auth.setSession(adminSession);currentUser=savedUser}}
+  var newUserId=null;
+  if(!error&&data.user){newUserId=data.user.id}
   else if(error&&error.message.indexOf('already')>=0){
-    showToast('用户已存在，正在补全档案…');
-    var {data:eu}=await sb.rpc('find_user_by_email',{email:email}).catch(function(){return{}});
-    if(!eu||!eu.length){showToast('该邮箱已注册但无法获取用户ID');closeAddUserForm();return}
-    newUserId=eu[0].id||eu[0].user_id;
+    showToast('该邮箱已注册，请在Supabase Auth面板中查找用户ID后手动关联档案');
+    return;
   }else{showToast('创建失败: '+(error?error.message:'未知错误'));return}
   if(!newUserId){showToast('创建失败');return}
-  await sb.from('profiles').upsert({user_id:newUserId,role:role||'user',role_id:roleId,company_id:currentCompanyId,display_name:name,position:position,phone:phone,department_id:deptId?parseInt(deptId):null},{onConflict:'user_id'});
+  // Use raw fetch with admin token to bypass session-switching issues
+  var res=await fetch(SUPABASE_URL+'/rest/v1/profiles',{method:'POST',headers:{'Authorization':'Bearer '+adminToken,'apikey':SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},body:JSON.stringify({user_id:newUserId,role:role||'user',role_id:roleId,company_id:currentCompanyId,display_name:name,position:position,phone:phone,department_id:deptId?parseInt(deptId):null})});
+  if(!res.ok){showToast('档案创建失败 HTTP '+res.status);return}
+  // If signUp auto-signed-in the new user, restore admin session
+  if(data&&data.session){try{await sb.auth.setSession({access_token:adminToken,refresh_token:'',expires_in:3600})}catch(e){}}
   closeAddUserForm();
   showToast('用户创建成功');
   await loadAdminData();
