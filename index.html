@@ -1964,52 +1964,52 @@ function switchTab(tab){
   var ta=document.getElementById('tab-admin');
   var ti=document.getElementById('tab-inventory');
   var iv=document.getElementById('inventory-view');
+  var tp=document.getElementById('tab-performance');
+  var tsp=document.getElementById('tab-suppliers');
   var fab=document.getElementById('main-fab');
 
   if(tab==='clients'){
     cv.classList.remove('hidden');ov.classList.add('hidden');av.classList.add('hidden');sv.classList.add('hidden');iv.classList.add('hidden');
-    tc.classList.add('active');to.classList.remove('active');ts.classList.remove('active');if(ta)ta.classList.remove('active');if(ti)ti.classList.remove('active');
+    tc.classList.add('active');to.classList.remove('active');ts.classList.remove('active');if(ta)ta.classList.remove('active');if(ti)ti.classList.remove('active');if(tp)tp.classList.remove('active');if(tsp)tsp.classList.remove('active');
     fab.classList.remove('hidden');fab.textContent='+';fab.onclick=function(){openForm()};
     document.getElementById('topbar-title').textContent='客户管理';
     loadClients();
   }else if(tab==='sales'){
     cv.classList.add('hidden');ov.classList.add('hidden');av.classList.add('hidden');sv.classList.remove('hidden');iv.classList.add('hidden');
-    if(tc)tc.classList.remove('active');to.classList.remove('active');ts.classList.add('active');if(ta)ta.classList.remove('active');if(ti)ti.classList.remove('active');
+    if(tc)tc.classList.remove('active');to.classList.remove('active');ts.classList.add('active');if(ta)ta.classList.remove('active');if(ti)ti.classList.remove('active');if(tp)tp.classList.remove('active');if(tsp)tsp.classList.remove('active');
     fab.classList.remove('hidden');fab.textContent='+';fab.onclick=function(){openSalesForm()};
     document.getElementById('topbar-title').textContent='销售管理';
     if(!allClients.length)loadClients().then(function(){});  // ensure clients for selects
     switchSalesTab('leads');
   }else if(tab==='admin'){
     cv.classList.add('hidden');ov.classList.add('hidden');av.classList.remove('hidden');iv.classList.add('hidden');
-    if(tc)tc.classList.remove('active');if(to)to.classList.remove('active');if(ts)ts.classList.remove('active');if(ta)ta.classList.add('active');if(ti)ti.classList.remove('active');
+    if(tc)tc.classList.remove('active');if(to)to.classList.remove('active');if(ts)ts.classList.remove('active');if(ta)ta.classList.add('active');if(ti)ti.classList.remove('active');if(tp)tp.classList.remove('active');if(tsp)tsp.classList.remove('active');
     fab.classList.add('hidden');
     document.getElementById('topbar-title').textContent='组织架构管理';
     switchAdminTab('users');
   }else if(tab==='inventory'){
     cv.classList.add('hidden');ov.classList.add('hidden');av.classList.add('hidden');sv.classList.add('hidden');iv.classList.remove('hidden');
-    if(tc)tc.classList.remove('active');if(to)to.classList.remove('active');if(ts)ts.classList.remove('active');if(ta)ta.classList.remove('active');if(ti)ti.classList.add('active');
+    if(tc)tc.classList.remove('active');if(to)to.classList.remove('active');if(ts)ts.classList.remove('active');if(ta)ta.classList.remove('active');if(ti)ti.classList.add('active');if(tp)tp.classList.remove('active');if(tsp)tsp.classList.remove('active');
     fab.classList.add('hidden');
     document.getElementById('topbar-title').textContent='库存管理';
     if(!allProducts.length){loadCategories().then(function(){loadWarehouses().then(function(){switchInventoryTab('products')})})}else{switchInventoryTab('products')}
   }else if(tab==='performance'){
     var pv=document.getElementById('performance-view');
     cv.classList.add('hidden');ov.classList.add('hidden');av.classList.add('hidden');sv.classList.add('hidden');iv.classList.add('hidden');pv.classList.remove('hidden');
-    var tp=document.getElementById('tab-performance');
-    if(tc)tc.classList.remove('active');if(to)to.classList.remove('active');if(ts)ts.classList.remove('active');if(ta)ta.classList.remove('active');if(ti)ti.classList.remove('active');if(tp)tp.classList.add('active');
+    if(tc)tc.classList.remove('active');if(to)to.classList.remove('active');if(ts)ts.classList.remove('active');if(ta)ta.classList.remove('active');if(ti)ti.classList.remove('active');if(tsp)tsp.classList.remove('active');if(tp)tp.classList.add('active');
     fab.classList.add('hidden');
     document.getElementById('topbar-title').textContent='绩效管理';
     if(!allTargets.length)loadTargets().then(function(){switchPerfTab('dashboard')});else switchPerfTab('dashboard');
   }else if(tab==='suppliers'){
     var spv=document.getElementById('suppliers-view');
     cv.classList.add('hidden');ov.classList.add('hidden');av.classList.add('hidden');sv.classList.add('hidden');iv.classList.add('hidden');pv=document.getElementById('performance-view');if(pv)pv.classList.add('hidden');spv.classList.remove('hidden');
-    var tsp=document.getElementById('tab-suppliers');
     if(tc)tc.classList.remove('active');if(to)to.classList.remove('active');if(ts)ts.classList.remove('active');if(ta)ta.classList.remove('active');if(ti)ti.classList.remove('active');tp=document.getElementById('tab-performance');if(tp)tp.classList.remove('active');if(tsp)tsp.classList.add('active');
     fab.classList.add('hidden');
     document.getElementById('topbar-title').textContent='供应商库';
     loadSuppliers();
   }else{
     cv.classList.add('hidden');ov.classList.remove('hidden');av.classList.add('hidden');sv.classList.add('hidden');iv.classList.add('hidden');
-    to.classList.add('active');tc.classList.remove('active');ts.classList.remove('active');if(ta)ta.classList.remove('active');if(ti)ti.classList.remove('active');
+    to.classList.add('active');tc.classList.remove('active');ts.classList.remove('active');if(ta)ta.classList.remove('active');if(ti)ti.classList.remove('active');if(tp)tp.classList.remove('active');if(tsp)tsp.classList.remove('active');
     fab.classList.remove('hidden');fab.textContent='+';fab.onclick=function(){openOrderForm()};
     document.getElementById('topbar-title').textContent='订单管理';
     renderOrders();
