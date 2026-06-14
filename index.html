@@ -2002,7 +2002,7 @@ function switchTab(tab){
     var spv=document.getElementById('suppliers-view');
     cv.classList.add('hidden');ov.classList.add('hidden');av.classList.add('hidden');sv.classList.add('hidden');iv.classList.add('hidden');pv=document.getElementById('performance-view');if(pv)pv.classList.add('hidden');spv.classList.remove('hidden');
     var tsp=document.getElementById('tab-suppliers');
-    if(tc)tc.classList.remove('active');if(to)to.classList.remove('active');if(ts)ts.classList.remove('active');if(ta)ta.classList.remove('active');if(ti)ti.classList.remove('active');tp=document.getElementById('tab-performance');if(tp)tp.classList.add('active');if(tsp)tsp.classList.remove('active');
+    if(tc)tc.classList.remove('active');if(to)to.classList.remove('active');if(ts)ts.classList.remove('active');if(ta)ta.classList.remove('active');if(ti)ti.classList.remove('active');tp=document.getElementById('tab-performance');if(tp)tp.classList.remove('active');if(tsp)tsp.classList.add('active');
     fab.classList.add('hidden');
     document.getElementById('topbar-title').textContent='供应商库';
     loadSuppliers();
