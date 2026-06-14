@@ -2434,7 +2434,10 @@ async function loadAdminData(){
   // Load all users for admin
   if(currentUserRole==='admin'||currentUserRole==='super_admin'){
     if(currentUserRole==='super_admin'){try{var {data:rpcUsers,error:rpcErr}=await sb.rpc('list_all_users');if(!rpcErr&&rpcUsers&&rpcUsers.length){adminUserList=rpcUsers;allUsers=rpcUsers;populatePerfSelects();}}catch(e){}}
-    if(!adminUserList.length){var {data:pr}=await sb.from('profiles').select('*').eq('company_id',currentCompanyId);adminUserList=pr||[];allUsers=pr||[];populatePerfSelects();}
+    if(!adminUserList.length){
+      var q=currentUserRole==='super_admin'?sb.from('profiles').select('*'):sb.from('profiles').select('*').eq('company_id',currentCompanyId);
+      var {data:pr}=await q;adminUserList=pr||[];allUsers=pr||[];populatePerfSelects();
+    }
   }
 }
 
@@ -2739,13 +2742,21 @@ async function saveNewUser(){
   if(!password||password.length<6){showToast('密码至少6位');return}
   var adminSession=(await sb.auth.getSession()).data.session;
   var savedUser=currentUser;
+  var newUserId=null;
   var {data,error}=await sb.auth.signUp({email:email,password:password});
-  if(error){showToast('创建失败: '+error.message);return}
-  if(!data.user){showToast('创建失败');return}
-  await sb.from('profiles').upsert({user_id:data.user.id,role:role||'user',role_id:roleId,company_id:currentCompanyId,display_name:name,position:position,phone:phone,department_id:deptId?parseInt(deptId):null},{onConflict:'user_id'});
-  await sb.auth.signOut();
-  await sb.auth.setSession(adminSession);
-  currentUser=savedUser;
+  if(!error&&data.user){newUserId=data.user.id}
+  else if(error&&error.message.indexOf('already')>=0){
+    // User already exists in auth but may lack profile — restore admin session and fetch user by email
+    await sb.auth.signOut();await sb.auth.setSession(adminSession);currentUser=savedUser;
+    var {data:eu}=await sb.rpc('find_user_by_email',{email:email}).catch(function(){return{}});
+    if(!eu||!eu.length){showToast('该邮箱已注册但无法获取用户ID');closeAddUserForm();return}
+    newUserId=eu[0].id||eu[0].user_id;
+    showToast('用户已存在，正在补全档案…');
+  }else{showToast('创建失败: '+(error?error.message:'未知错误'));return}
+  if(!newUserId){showToast('创建失败');return}
+  // Restore admin session if not already restored
+  if(!error||error.message.indexOf('already')<0){await sb.auth.signOut();await sb.auth.setSession(adminSession);currentUser=savedUser}
+  await sb.from('profiles').upsert({user_id:newUserId,role:role||'user',role_id:roleId,company_id:currentCompanyId,display_name:name,position:position,phone:phone,department_id:deptId?parseInt(deptId):null},{onConflict:'user_id'});
   closeAddUserForm();
   showToast('用户创建成功');
   await loadAdminData();
