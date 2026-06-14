@@ -2740,9 +2740,13 @@ async function saveNewUser(){
   if(roleVal&&roleVal.startsWith('r_')){roleId=parseInt(roleVal.slice(2));role='custom'}
   if(!email){showToast('请输入邮箱');return}
   if(!password||password.length<6){showToast('密码至少6位');return}
-  // Backup admin's localStorage auth before signUp (signUp auto-switches session)
+  // Step 1: Refresh admin token, capture fresh access_token for fetch
+  var adminToken=null;
+  try{try{await sb.auth.refreshSession()}catch(e){}var s=(await sb.auth.getSession()).data.session;if(s)adminToken=s.access_token}catch(e){}
+  // Step 2: Backup admin localStorage (now contains refreshed tokens from step 1)
   var authKey=null,authVal=null;
   for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k&&k.indexOf('auth-token')>=0){authKey=k;authVal=localStorage.getItem(k);break}}
+  // Step 3: SignUp (auto-switches sb client session to new user)
   var {data,error}=await sb.auth.signUp({email:email,password:password});
   var newUserId=null;
   if(!error&&data.user){newUserId=data.user.id}
@@ -2750,11 +2754,12 @@ async function saveNewUser(){
     showToast('该邮箱已注册，请在Supabase Auth面板中查找用户ID后手动关联档案');
     return;
   }else{showToast('创建失败: '+(error?error.message:'未知错误'));return}
-  // Restore admin session via localStorage + reload sb client
+  // Step 4: Restore admin localStorage, reload sb client session
   if(authKey&&authVal){localStorage.setItem(authKey,authVal);await sb.auth.getSession()}
-  // Create profile (now runs as admin via sb client)
-  var {error:perr}=await sb.from('profiles').upsert({user_id:newUserId,role:role||'user',role_id:roleId,company_id:currentCompanyId,display_name:name,position:position,phone:phone,department_id:deptId?parseInt(deptId):null},{onConflict:'user_id'});
-  if(perr){showToast('档案创建失败: '+perr.message);return}
+  // Step 5: Write profile via raw fetch (adminToken from step 1 — independent of sb client state)
+  var body={user_id:newUserId,role:role||'user',role_id:roleId,company_id:currentCompanyId,display_name:name,position:position,phone:phone,department_id:deptId?parseInt(deptId):null};
+  var res=await fetch(SUPABASE_URL+'/rest/v1/profiles',{method:'POST',headers:{'Authorization':'Bearer '+adminToken,'apikey':SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},body:JSON.stringify(body)});
+  if(!res.ok){var txt=await res.text();console.error('Profile write failed:',res.status,txt);showToast('Profile write failed: HTTP '+res.status);return}
   closeAddUserForm();
   showToast('用户创建成功');
   await loadAdminData();
