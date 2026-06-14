@@ -4526,8 +4526,8 @@ function renderSuppliers(){
       prodRows+='<tr><td>'+(pr.name||'')+'</td><td>'+(pr.moq||'')+'</td><td style="font-weight:600;color:var(--primary)">'+(pr.unit_price?'\u00a5'+fmtNum(pr.unit_price):'')+'</td></tr>';
     }
     h+='<div class="sup-card"><div class="sc-header"><div><div class="sc-name">'+escHtml(sp.name||'')+'</div><div class="sc-cat">'+(sp.category||'\u672a\u5206\u7c7b')+'</div></div><span class="level-badge level-'+sp.cooperation_level+'">'+(sp.cooperation_level||'C')+'\u7ea7</span></div>';
-    if(sp.contact_name||phoneStr)h+='<div class="sc-contact">\U0001f464 '+escHtml(sp.contact_name||'\u672
-    if(sp.linked_client_name)h+='<div class="sc-linked"><span style="opacity:0.6">\u2192 \u5173\u8054\u5ba2\u6237:</span> '+escHtml(sp.linked_client_name)+'</div>';a\u77e5')+(phoneStr?' &nbsp; <a href="tel:'+phones[0]+'">'+escHtml(phoneStr)+'</a>':'')+'</div>';
+    if(sp.contact_name||phoneStr)h+='<div class="sc-contact">\U0001f464 '+escHtml(sp.contact_name||'\u672a\u77e5')+(phoneStr?' &nbsp; <a href="tel:'+phones[0]+'">'+escHtml(phoneStr)+'</a>':'')+'</div>';
+    if(sp.linked_client_name)h+='<div class="sc-linked"><span style="opacity:0.6">\u2192 \u5173\u8054\u5ba2\u6237:</span> '+escHtml(sp.linked_client_name)+'</div>';
     if(prodRows)h+='<table class="sup-products"><thead><tr><th>\u4ea7\u54c1</th><th>MOQ</th><th>\u5355\u4ef7</th></tr></thead><tbody>'+prodRows+'</tbody></table>';
     h+='<div class="sc-footer"><div class="sc-meta"><span>\U0001f4cd \u5408\u4f5c '+(sp.cooperation_count||0)+' \u6b21</span><span class="'+drCls+'">\u26a0\ufe0f \u6b21\u54c1\u7387 '+(sp.defect_rate||0)+'%</span></div><div class="sc-actions"><button class="btn-sm" style="background:var(--surface);border:1px solid var(--border)" onclick="openSupplierForm('+sp.id+')">\u7f16\u8f91</button><button class="btn-sm" style="background:#fff;color:var(--danger);border:1px solid var(--danger)" onclick="deleteSupplier('+sp.id+')">\u5220\u9664</button></div></div></div>';
   }
