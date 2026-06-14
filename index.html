@@ -1760,9 +1760,9 @@ async function saveClient(){
 
 // === Delete ===
 function confirmDelete(){deleteId=editId;document.getElementById('confirm-msg').textContent='确定要删除该客户及所有联系人吗？';document.getElementById('confirm-ok-btn').onclick=doDelete;document.getElementById('confirm-dialog').classList.remove('hidden')}
-var _confirmCallback=null;
-function confirmDialog(msg,cb){document.getElementById("confirm-msg").textContent=msg;_confirmCallback=cb;document.getElementById("confirm-ok-btn").onclick=function(){_confirmCallback();document.getElementById("confirm-dialog").classList.add("hidden");_confirmCallback=null};document.getElementById("confirm-dialog").classList.remove("hidden")}
-function cancelConfirmDialog(){document.getElementById('confirm-dialog').classList.add('hidden');deleteId=null}
+var _confirmCallback=null,_confirmResolve=null;
+function confirmDialog(msg,cb){document.getElementById("confirm-msg").textContent=msg;_confirmCallback=cb;return new Promise(function(resolve){_confirmResolve=resolve;document.getElementById("confirm-ok-btn").onclick=function(){if(_confirmCallback)_confirmCallback();document.getElementById("confirm-dialog").classList.add("hidden");_confirmCallback=null;_confirmResolve=null;resolve(true)};document.getElementById("confirm-dialog").classList.remove("hidden")})}
+function cancelConfirmDialog(){document.getElementById('confirm-dialog').classList.add('hidden');deleteId=null;if(_confirmResolve){_confirmResolve(false);_confirmResolve=null}_confirmCallback=null}
 async function doDelete(){
   if(!deleteId)return;
   await sb.from('contacts').delete().eq('client_id',deleteId);
