@@ -1033,8 +1033,8 @@ const SUPABASE_URL='https://jyefbatmmbelrhhzsgva.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp5ZWZiYXRtbWJlbHJoaHpzZ3ZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5NDIyMDUsImV4cCI6MjA5NTUxODIwNX0.m8pVc7yA9AycSTkexoH76SNo_P40KVRA4pmKECJQea4';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 
-const BUILTIN_TYPES=['甲方','集成商','设计院','运营商','国央企','党政','厂家','制造业','军队','司法','教育','医疗'];
-const BUILTIN_COLORS=['#3B82F6','#10B981','#8B5CF6','#F59E0B','#EF4444','#DC2626','#06B6D4','#EC4899','#84CC16','#6366F1','#F97316','#14B8A6'];
+const BUILTIN_TYPES=['甲方','集成商','设计院','运营商','国央企','党政','厂家','制造业','军队','司法','教育','医疗','供应商'];
+const BUILTIN_COLORS=['#3B82F6','#10B981','#8B5CF6','#F59E0B','#EF4444','#DC2626','#06B6D4','#EC4899','#84CC16','#6366F1','#F97316','#14B8A6','#A855F7'];
 const PALETTE=['#3B82F6','#10B981','#8B5CF6','#F59E0B','#EF4444','#06B6D4','#EC4899','#84CC16','#6366F1','#F97316','#14B8A6','#78716C','#0EA5E9','#D946EF','#E84C3D'];
 
 let loginMode='login',currentUser=null,allClients=[],allContacts=[],allCompanies=[],allCompaniesMap={},currentFilter='all',selTypes=[],customTypes=[],newTypeColor=PALETTE[0];
@@ -1964,38 +1964,39 @@ function switchTab(tab){
   var ta=document.getElementById('tab-admin');
   var ti=document.getElementById('tab-inventory');
   var iv=document.getElementById('inventory-view');
+  var spv=document.getElementById('suppliers-view');
   var tp=document.getElementById('tab-performance');
   var tsp=document.getElementById('tab-suppliers');
   var fab=document.getElementById('main-fab');
 
   if(tab==='clients'){
-    cv.classList.remove('hidden');ov.classList.add('hidden');av.classList.add('hidden');sv.classList.add('hidden');iv.classList.add('hidden');
+    cv.classList.remove('hidden');ov.classList.add('hidden');av.classList.add('hidden');sv.classList.add('hidden');iv.classList.add('hidden');;if(spv)spv.classList.add('hidden');
     tc.classList.add('active');to.classList.remove('active');ts.classList.remove('active');if(ta)ta.classList.remove('active');if(ti)ti.classList.remove('active');if(tp)tp.classList.remove('active');if(tsp)tsp.classList.remove('active');
     fab.classList.remove('hidden');fab.textContent='+';fab.onclick=function(){openForm()};
     document.getElementById('topbar-title').textContent='客户管理';
     loadClients();
   }else if(tab==='sales'){
-    cv.classList.add('hidden');ov.classList.add('hidden');av.classList.add('hidden');sv.classList.remove('hidden');iv.classList.add('hidden');
+    cv.classList.add('hidden');ov.classList.add('hidden');av.classList.add('hidden');sv.classList.remove('hidden');iv.classList.add('hidden');;if(spv)spv.classList.add('hidden');
     if(tc)tc.classList.remove('active');to.classList.remove('active');ts.classList.add('active');if(ta)ta.classList.remove('active');if(ti)ti.classList.remove('active');if(tp)tp.classList.remove('active');if(tsp)tsp.classList.remove('active');
     fab.classList.remove('hidden');fab.textContent='+';fab.onclick=function(){openSalesForm()};
     document.getElementById('topbar-title').textContent='销售管理';
     if(!allClients.length)loadClients().then(function(){});  // ensure clients for selects
     switchSalesTab('leads');
   }else if(tab==='admin'){
-    cv.classList.add('hidden');ov.classList.add('hidden');av.classList.remove('hidden');iv.classList.add('hidden');
+    cv.classList.add('hidden');ov.classList.add('hidden');av.classList.remove('hidden');iv.classList.add('hidden');;if(spv)spv.classList.add('hidden');
     if(tc)tc.classList.remove('active');if(to)to.classList.remove('active');if(ts)ts.classList.remove('active');if(ta)ta.classList.add('active');if(ti)ti.classList.remove('active');if(tp)tp.classList.remove('active');if(tsp)tsp.classList.remove('active');
     fab.classList.add('hidden');
     document.getElementById('topbar-title').textContent='组织架构管理';
     switchAdminTab('users');
   }else if(tab==='inventory'){
-    cv.classList.add('hidden');ov.classList.add('hidden');av.classList.add('hidden');sv.classList.add('hidden');iv.classList.remove('hidden');
+    cv.classList.add('hidden');ov.classList.add('hidden');av.classList.add('hidden');sv.classList.add('hidden');iv.classList.remove('hidden');;if(spv)spv.classList.add('hidden');
     if(tc)tc.classList.remove('active');if(to)to.classList.remove('active');if(ts)ts.classList.remove('active');if(ta)ta.classList.remove('active');if(ti)ti.classList.add('active');if(tp)tp.classList.remove('active');if(tsp)tsp.classList.remove('active');
     fab.classList.add('hidden');
     document.getElementById('topbar-title').textContent='库存管理';
     if(!allProducts.length){loadCategories().then(function(){loadWarehouses().then(function(){switchInventoryTab('products')})})}else{switchInventoryTab('products')}
   }else if(tab==='performance'){
     var pv=document.getElementById('performance-view');
-    cv.classList.add('hidden');ov.classList.add('hidden');av.classList.add('hidden');sv.classList.add('hidden');iv.classList.add('hidden');pv.classList.remove('hidden');
+    cv.classList.add('hidden');ov.classList.add('hidden');av.classList.add('hidden');sv.classList.add('hidden');iv.classList.add('hidden');if(spv)spv.classList.add('hidden');pv.classList.remove('hidden');
     if(tc)tc.classList.remove('active');if(to)to.classList.remove('active');if(ts)ts.classList.remove('active');if(ta)ta.classList.remove('active');if(ti)ti.classList.remove('active');if(tsp)tsp.classList.remove('active');if(tp)tp.classList.add('active');
     fab.classList.add('hidden');
     document.getElementById('topbar-title').textContent='绩效管理';
