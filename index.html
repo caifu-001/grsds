@@ -206,6 +206,21 @@ input,select,textarea,button{font-family:inherit}
 .topbar-tab.active{background:#fff;color:var(--primary)}
 .topbar-tab:active{opacity:.8}
 
+/* ── Business / Resource sub-tabs ── */
+.biz-tabs{display:flex;gap:4px;padding:8px 16px;background:var(--bg);position:sticky;top:48px;z-index:98;border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none}
+.biz-tabs::-webkit-scrollbar{display:none}
+.biz-subtab{padding:6px 14px;border-radius:14px;font-size:12px;font-weight:600;cursor:pointer;border:none;background:transparent;color:var(--text2);white-space:nowrap;transition:all .15s}
+.biz-subtab.active{background:var(--primary);color:#fff}
+/* ── More dropdown ── */
+.more-menu{position:fixed;top:48px;right:8px;z-index:200;background:#fff;border-radius:12px;box-shadow:var(--shadow-lg);min-width:160px;padding:4px 0;display:none}
+.more-menu.show{display:block}
+.more-item{display:block;width:100%;padding:11px 16px;border:none;background:none;font-size:13px;color:var(--text);text-align:left;cursor:pointer;transition:background .1s}
+.more-item:hover{background:var(--primary-light)}
+.more-item .mi-icon{margin-right:8px}
+.more-divider{height:1px;background:var(--border);margin:4px 0}
+.more-overlay{position:fixed;inset:0;z-index:199;display:none}
+.more-overlay.show{display:block}
+
 /* ── Order Card ── */
 .order-card{background:var(--card);border-radius:12px;padding:16px;box-shadow:var(--shadow);cursor:pointer;transition:transform .15s,box-shadow .15s;border:1px solid var(--border);position:relative;overflow:hidden;margin-bottom:10px}
 .order-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:4px 0 0 4px}
@@ -535,6 +550,20 @@ input,select,textarea,button{font-family:inherit}
 <body>
 
 <!-- Login -->
+<!-- 更多下拉菜单 -->
+<div class="more-overlay" id="more-overlay" onclick="closeMoreMenu()"></div>
+<div class="more-menu" id="more-menu">
+ <button class="more-item" onclick="closeMoreMenu();switchTab('performance')"><span class="mi-icon">🏆</span> 业绩看板</button>
+ <button class="more-item" onclick="closeMoreMenu();switchTab('suppliers')"><span class="mi-icon">🏭</span> 供应商库</button>
+ <button class="more-item" id="more-admin" onclick="closeMoreMenu();switchTab('admin')"><span class="mi-icon">⚙</span> 组织管理</button>
+ <div class="more-divider"></div>
+ <button class="more-item" onclick="closeMoreMenu();showCompanies()"><span class="mi-icon">📂</span> 公司名录</button>
+ <button class="more-item" onclick="closeMoreMenu();openSettings()"><span class="mi-icon">🔧</span> 系统设置</button>
+ <button class="more-item" onclick="closeMoreMenu();doRefresh()"><span class="mi-icon">↻</span> 刷新数据</button>
+ <div class="more-divider"></div>
+ <button class="more-item" onclick="doLogout()" style="color:var(--danger)"><span class="mi-icon">🚪</span> 退出登录</button>
+</div>
+
 <div id="login-screen" class="login-wrap">
  <h1>客户管理系统</h1>
  <p class="sub">安全登录，数据云端同步</p>
@@ -550,22 +579,16 @@ input,select,textarea,button{font-family:inherit}
 <!-- Main -->
 <div id="main-screen" class="hidden">
  <div class="topbar">
-  <span id="topbar-title">CRM</span>
+  <span id="topbar-title">客户管理</span>
   <div class="topbar-tabs">
    <button class="topbar-tab active" id="tab-clients" onclick="switchTab('clients')">客户</button>
    <button class="topbar-tab" id="tab-orders" onclick="switchTab('orders')">订单</button>
-   <button class="topbar-tab" id="tab-sales" onclick="switchTab('sales')">销售</button>
    <button class="topbar-tab" id="tab-inventory" onclick="switchTab('inventory')">库存</button>
-   <button class="topbar-tab" id="tab-performance" onclick="switchTab('performance')">绩效</button>
-   <button class="topbar-tab" id="tab-suppliers" onclick="switchTab('suppliers')">供应商</button>
    <button class="topbar-tab hidden" id="tab-admin" onclick="switchTab('admin')">管理</button>
   </div>
   <div class="topbar-btns">
-   <button class="topbar-btn" id="btn-dir" onclick="showCompanies()" title="公司名录">📂</button>
-   <button class="topbar-btn" onclick="doRefresh()" title="刷新">↻</button>
-   <button class="topbar-btn" onclick="openSettings()" title="设置">⚙</button>
    <button class="topbar-btn" onclick="openMy()" title="我的">👤</button>
-   <button class="topbar-btn" style="font-size:13px;font-weight:400" onclick="doLogout()">退出</button>
+   <button class="topbar-btn" id="btn-more" onclick="toggleMoreMenu()" title="更多">☰</button>
   </div>
  </div>
  <div id="client-view">
@@ -578,6 +601,11 @@ input,select,textarea,button{font-family:inherit}
   <div class="empty hidden" id="empty-state"><div class="empty-icon">📭</div>暂无客户数据<br><span style="font-size:12px;color:var(--text3)">点击右下角 ＋ 开始添加</span></div>
  </div>
  <div id="order-view" class="hidden">
+  <div class="biz-tabs" id="biz-tabs">
+   <button class="biz-subtab active" onclick="switchBizTab('orders')">📦 订单管理</button>
+   <button class="biz-subtab" onclick="switchBizTab('sales')">📈 销售管道</button>
+   <button class="biz-subtab" onclick="switchBizTab('performance')">🏆 业绩看板</button>
+  </div>
   <div class="toolbar">
    <select id="order-stage-filter" onchange="renderOrders()"><option value="all">全部阶段</option><option value="谈判中">谈判中</option><option value="已签约">已签约</option><option value="执行中">执行中</option><option value="已完成">已完成</option><option value="已取消">已取消</option></select>
    <div class="search-wrap"><input id="order-search" placeholder="搜索订单/客户/项目..." oninput="renderOrders()"></div>
@@ -1015,6 +1043,10 @@ input,select,textarea,button{font-family:inherit}
 
 <!-- Inventory View -->
  <div id="inventory-view" class="hidden">
+  <div class="biz-tabs" id="res-tabs">
+   <button class="biz-subtab active" onclick="switchResTab('inventory')">📦 库存管理</button>
+   <button class="biz-subtab" onclick="switchResTab('suppliers')">🏭 供应商库</button>
+  </div>
   <div class="inv-subtabs">
    <button class="inv-subtab active" onclick="switchInventoryTab('products')">产品库</button>
    <button class="inv-subtab" onclick="switchInventoryTab('records')">出入库</button>
@@ -1180,7 +1212,7 @@ async function onLoginSuccess(user){
  await loadClients();
  await loadCompanies();
   document.getElementById('main-screen').classList.remove('hidden');
-  if(isSuperAdmin)document.getElementById('tab-admin').classList.remove('hidden');
+  if(isSuperAdmin||currentUserRole==='admin')document.getElementById('tab-admin').classList.remove('hidden');
   switchTab('clients');
 }
 async function doLogout(){await sb.auth.signOut();currentUser=null;allClients=[];allContacts=[];customTypes=[];document.getElementById('main-screen').classList.add('hidden');document.getElementById('login-screen').classList.remove('hidden')}
@@ -2152,63 +2184,58 @@ function switchTab(tab){
   var ov=document.getElementById('order-view');
   var av=document.getElementById('admin-view');
   var sv=document.getElementById('sales-view');
-  var tc=document.getElementById('tab-clients');
-  var to=document.getElementById('tab-orders');
-  var ts=document.getElementById('tab-sales');
-  var ta=document.getElementById('tab-admin');
-  var ti=document.getElementById('tab-inventory');
   var iv=document.getElementById('inventory-view');
   var spv=document.getElementById('suppliers-view');
   var pv=document.getElementById('performance-view');
-  var tp=document.getElementById('tab-performance');
-  var tsp=document.getElementById('tab-suppliers');
+  var tc=document.getElementById('tab-clients');
+  var to=document.getElementById('tab-orders');
+  var ta=document.getElementById('tab-admin');
+  var ti=document.getElementById('tab-inventory');
   var fab=document.getElementById('main-fab');
+  closeMoreMenu();
+  document.getElementById('settings-screen').style.display='none';
+  document.getElementById('my-screen').style.display='none';
+  // Hide all views first
+  var allViews=[cv,ov,av,sv,iv];if(spv)allViews.push(spv);if(pv)allViews.push(pv);
+  for(var i=0;i<allViews.length;i++)if(allViews[i])allViews[i].classList.add('hidden');
+  // Deactivate all tabs
+  var allTabs=[tc,to,ta,ti];for(var j=0;j<allTabs.length;j++)if(allTabs[j])allTabs[j].classList.remove('active');
+  fab.classList.add('hidden');
 
-    document.getElementById('settings-screen').style.display='none';
-    document.getElementById('my-screen').style.display='none';
   if(tab==='clients'){
-    cv.classList.remove('hidden');ov.classList.add('hidden');av.classList.add('hidden');sv.classList.add('hidden');iv.classList.add('hidden');;if(spv)spv.classList.add('hidden');if(pv)pv.classList.add('hidden');
-    tc.classList.add('active');to.classList.remove('active');ts.classList.remove('active');if(ta)ta.classList.remove('active');if(ti)ti.classList.remove('active');if(tp)tp.classList.remove('active');if(tsp)tsp.classList.remove('active');
+    cv.classList.remove('hidden');tc.classList.add('active');
     fab.classList.remove('hidden');fab.textContent='+';fab.onclick=function(){openForm()};
     document.getElementById('topbar-title').textContent='客户管理';
     loadClients();
-  }else if(tab==='sales'){
-    cv.classList.add('hidden');ov.classList.add('hidden');av.classList.add('hidden');sv.classList.remove('hidden');iv.classList.add('hidden');;if(spv)spv.classList.add('hidden');if(pv)pv.classList.add('hidden');
-    if(tc)tc.classList.remove('active');to.classList.remove('active');ts.classList.add('active');if(ta)ta.classList.remove('active');if(ti)ti.classList.remove('active');if(tp)tp.classList.remove('active');if(tsp)tsp.classList.remove('active');
-    fab.classList.remove('hidden');fab.textContent='+';fab.onclick=function(){openSalesForm()};
-    document.getElementById('topbar-title').textContent='销售管理';
-    if(!allClients.length)loadClients().then(function(){});  // ensure clients for selects
-    switchSalesTab('leads');
-  }else if(tab==='admin'){
-    cv.classList.add('hidden');ov.classList.add('hidden');av.classList.remove('hidden');iv.classList.add('hidden');;if(spv)spv.classList.add('hidden');if(pv)pv.classList.add('hidden');
-    if(tc)tc.classList.remove('active');if(to)to.classList.remove('active');if(ts)ts.classList.remove('active');if(ta)ta.classList.add('active');if(ti)ti.classList.remove('active');if(tp)tp.classList.remove('active');if(tsp)tsp.classList.remove('active');
-    fab.classList.add('hidden');
-    document.getElementById('topbar-title').textContent='组织架构管理';
-    switchAdminTab('users');
-  }else if(tab==='inventory'){
-    cv.classList.add('hidden');ov.classList.add('hidden');av.classList.add('hidden');sv.classList.add('hidden');iv.classList.remove('hidden');;if(spv)spv.classList.add('hidden');if(pv)pv.classList.add('hidden');
-    if(tc)tc.classList.remove('active');if(to)to.classList.remove('active');if(ts)ts.classList.remove('active');if(ta)ta.classList.remove('active');if(ti)ti.classList.add('active');if(tp)tp.classList.remove('active');if(tsp)tsp.classList.remove('active');
-    fab.classList.add('hidden');
-    document.getElementById('topbar-title').textContent='库存管理';
-    if(!allProducts.length){loadCategories().then(function(){loadWarehouses().then(function(){switchInventoryTab('products')})})}else{switchInventoryTab('products')}
-  }else if(tab==='performance'){
-    cv.classList.add('hidden');ov.classList.add('hidden');av.classList.add('hidden');sv.classList.add('hidden');iv.classList.add('hidden');if(spv)spv.classList.add('hidden');if(pv)pv.classList.remove('hidden');
-    if(tc)tc.classList.remove('active');if(to)to.classList.remove('active');if(ts)ts.classList.remove('active');if(ta)ta.classList.remove('active');if(ti)ti.classList.remove('active');if(tsp)tsp.classList.remove('active');if(tp)tp.classList.add('active');
-    fab.classList.add('hidden');
-    document.getElementById('topbar-title').textContent='绩效管理';
-    if(!allTargets.length)loadTargets().then(function(){switchPerfTab('dashboard')});else switchPerfTab('dashboard');
-  }else if(tab==='suppliers'){
-    cv.classList.add('hidden');ov.classList.add('hidden');av.classList.add('hidden');sv.classList.add('hidden');iv.classList.add('hidden');if(pv)pv.classList.add('hidden');if(spv)spv.classList.remove('hidden');
-    if(tc)tc.classList.remove('active');if(to)to.classList.remove('active');if(ts)ts.classList.remove('active');if(ta)ta.classList.remove('active');if(ti)ti.classList.remove('active');tp=document.getElementById('tab-performance');if(tp)tp.classList.remove('active');if(tsp)tsp.classList.add('active');
-    fab.classList.add('hidden');
-    document.getElementById('topbar-title').textContent='供应商库';
-    loadSuppliers();
-  }else{
-    cv.classList.add('hidden');ov.classList.remove('hidden');av.classList.add('hidden');sv.classList.add('hidden');iv.classList.add('hidden');if(spv)spv.classList.add('hidden');if(pv)pv.classList.add('hidden');
-    to.classList.add('active');tc.classList.remove('active');ts.classList.remove('active');if(ta)ta.classList.remove('active');if(ti)ti.classList.remove('active');if(tp)tp.classList.remove('active');if(tsp)tsp.classList.remove('active');
+  }else if(tab==='orders'){
+    ov.classList.remove('hidden');to.classList.add('active');
     fab.classList.remove('hidden');fab.textContent='+';fab.onclick=function(){openOrderForm()};
-    document.getElementById('topbar-title').textContent='订单管理';
-    renderOrders();
+    document.getElementById('topbar-title').textContent='业务管理';
+    switchBizTab('orders');
+  }else if(tab==='sales'){
+    // Sales accessed via biz-tabs or more-menu → go through orders
+    ov.classList.remove('hidden');to.classList.add('active');
+    fab.classList.remove('hidden');fab.textContent='+';fab.onclick=function(){openSalesForm()};
+    document.getElementById('topbar-title').textContent='业务管理';
+    switchBizTab('sales');
+  }else if(tab==='performance'){
+    // Performance accessed via biz-tabs or more-menu → go through orders
+    ov.classList.remove('hidden');to.classList.add('active');
+    document.getElementById('topbar-title').textContent='业务管理';
+    switchBizTab('performance');
+  }else if(tab==='inventory'){
+    iv.classList.remove('hidden');ti.classList.add('active');
+    document.getElementById('topbar-title').textContent='资源管理';
+    switchResTab('inventory');
+  }else if(tab==='suppliers'){
+    // Suppliers accessed via res-tabs or more-menu → go through inventory
+    iv.classList.remove('hidden');ti.classList.add('active');
+    document.getElementById('topbar-title').textContent='资源管理';
+    switchResTab('suppliers');
+  }else if(tab==='admin'){
+    av.classList.remove('hidden');ta.classList.add('active');
+    document.getElementById('topbar-title').textContent='组织管理';
+    switchAdminTab('users');
   }
 }
 
@@ -2449,7 +2476,7 @@ sb.auth.getSession().then(async function(res){
     if(!currentCompanyId){document.getElementById('login-screen').classList.remove('hidden');return}
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('main-screen').classList.remove('hidden');
-    if(isSuperAdmin)document.getElementById('tab-admin').classList.remove('hidden');
+    if(isSuperAdmin||currentUserRole==='admin')document.getElementById('tab-admin').classList.remove('hidden');
     await loadCustomTypes();
     buildFilterSelect();
     buildTypeGrid();
@@ -2529,7 +2556,7 @@ async function checkPendingCompany(){
  await loadCompanies();
     document.getElementById('pending-screen').classList.add('hidden');
     document.getElementById('main-screen').classList.remove('hidden');
-    if(isSuperAdmin)document.getElementById('tab-admin').classList.remove('hidden');
+    if(isSuperAdmin||currentUserRole==='admin')document.getElementById('tab-admin').classList.remove('hidden');
     switchTab('clients');
   }else if(data[0].status==='rejected'){
     showCompanyRegScreen();
@@ -2713,8 +2740,82 @@ async function deleteRole(id){
   renderAdminUsers();
 }
 
-async function switchAdminTab(tab){
-  currentAdminTab=tab;
+async function switchBizTab(sub){
+  var bt=document.getElementById('biz-tabs');
+  var ov=document.getElementById('order-view');
+  var sv=document.getElementById('sales-view');
+  var pv=document.getElementById('performance-view');
+  var fab=document.getElementById('main-fab');
+  if(!bt)return;
+  var tabs=bt.querySelectorAll('.biz-subtab');
+  for(var i=0;i<tabs.length;i++)tabs[i].classList.remove('active');
+  // Hide sub-views
+  if(sv)sv.classList.add('hidden');if(pv)pv.classList.add('hidden');
+  // Hide order-view internal content
+  var otb=ov.querySelector('.toolbar');if(otb)otb.style.display='none';
+  var ost=ov.querySelector('.order-stats');if(ost)ost.style.display='none';
+  var ogr=document.getElementById('order-grid');if(ogr)ogr.style.display='none';
+  var oem=document.getElementById('order-empty');if(oem)oem.classList.add('hidden');
+  fab.classList.add('hidden');
+  if(sub==='orders'){
+    tabs[0].classList.add('active');
+    if(otb)otb.style.display='';if(ost)ost.style.display='';if(ogr)ogr.style.display='';if(oem)oem.classList.remove('hidden');
+    fab.classList.remove('hidden');fab.textContent='+';fab.onclick=function(){openOrderForm()};
+    renderOrders();
+  }else if(sub==='sales'){
+    tabs[1].classList.add('active');
+    sv.classList.remove('hidden');
+    fab.classList.remove('hidden');fab.textContent='+';fab.onclick=function(){openSalesForm()};
+    if(!allClients.length)loadClients().then(function(){switchSalesTab('leads')});else switchSalesTab('leads');
+  }else if(sub==='performance'){
+    tabs[2].classList.add('active');
+    pv.classList.remove('hidden');
+    if(!allTargets.length)loadTargets().then(function(){switchPerfTab('dashboard')});else switchPerfTab('dashboard');
+  }
+}
+function switchResTab(sub){
+  var rt=document.getElementById('res-tabs');
+  var iv=document.getElementById('inventory-view');
+  var spv=document.getElementById('suppliers-view');
+  if(!rt)return;
+  var tabs=rt.querySelectorAll('.biz-subtab');
+  for(var i=0;i<tabs.length;i++)tabs[i].classList.remove('active');
+  // Hide sub-views
+  if(spv)spv.classList.add('hidden');
+  var itabs=iv.querySelector('.inv-subtabs');if(itabs)itabs.style.display='none';
+  var ipanels=iv.querySelectorAll('.inv-panel');for(var j=0;j<ipanels.length;j++)ipanels[j].classList.remove('active');
+  if(sub==='inventory'){
+    tabs[0].classList.add('active');
+    if(itabs)itabs.style.display='';
+    if(!allProducts.length){loadCategories().then(function(){loadWarehouses().then(function(){switchInventoryTab('products')})})}else{switchInventoryTab('products')}
+  }else if(sub==='suppliers'){
+    tabs[1].classList.add('active');
+    spv.classList.remove('hidden');
+    loadSuppliers();
+  }
+}
+function toggleMoreMenu(){
+  var menu=document.getElementById('more-menu');
+  var overlay=document.getElementById('more-overlay');
+  var isOpen=menu.classList.contains('show');
+  if(isOpen){closeMoreMenu()}else{
+    // Show/hide admin items
+    var isAdmin=currentUserRole==='admin'||currentUserRole==='super_admin';
+    var adminItem=document.getElementById('more-admin');
+    var adminTab=document.getElementById('tab-admin');
+    if(adminItem)adminItem.style.display=isAdmin?'':'none';
+    if(adminTab)adminTab.classList.toggle('hidden',!isAdmin);
+    menu.classList.add('show');overlay.classList.add('show');
+  }
+}
+function closeMoreMenu(){
+  var menu=document.getElementById('more-menu');
+  var overlay=document.getElementById('more-overlay');
+  if(menu)menu.classList.remove('show');
+  if(overlay)overlay.classList.remove('show');
+}
+function switchAdminTab(sub){
+  var panels=document.querySelectorAll('.admin-subpanel');
   var ut=document.getElementById('admin-users');
   var dt=document.getElementById('admin-depts');
   var rt=document.getElementById('admin-roles');
