@@ -2433,7 +2433,8 @@ async function loadAdminData(){
   if(!rerr)allRoles=roles||[];
   // Load all users for admin
   if(currentUserRole==='admin'||currentUserRole==='super_admin'){
-    try{var {data:users,error:uerr}=await sb.rpc('list_all_users');if(!uerr){adminUserList=users||[];allUsers=users||[];populatePerfSelects();}}catch(e){console.warn('list_all_users RPC not available, run multi_tenant.sql');}
+    if(currentUserRole==='super_admin'){try{var {data:rpcUsers,error:rpcErr}=await sb.rpc('list_all_users');if(!rpcErr&&rpcUsers&&rpcUsers.length){adminUserList=rpcUsers;allUsers=rpcUsers;populatePerfSelects();}}catch(e){}}
+    if(!adminUserList.length){var {data:pr}=await sb.from('profiles').select('*').eq('company_id',currentCompanyId);adminUserList=pr||[];allUsers=pr||[];populatePerfSelects();}
   }
 }
 
