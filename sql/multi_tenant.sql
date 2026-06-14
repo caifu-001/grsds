@@ -33,15 +33,18 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES comp
 
 -- companies RLS 策略（依赖 profiles.company_id，必须在 step 2 之后）
 DROP POLICY IF EXISTS "Super admins all companies" ON companies;
+DROP POLICY IF EXISTS "Super admins all companies" ON companies;
 CREATE POLICY "Super admins all companies" ON companies FOR ALL USING (
   EXISTS(SELECT 1 FROM profiles WHERE user_id=auth.uid() AND role='super_admin')
 );
 
 DROP POLICY IF EXISTS "Members see own company" ON companies;
+DROP POLICY IF EXISTS "Members see own company" ON companies;
 CREATE POLICY "Members see own company" ON companies FOR SELECT USING (
   EXISTS(SELECT 1 FROM profiles WHERE user_id=auth.uid() AND company_id=companies.id)
 );
 
+DROP POLICY IF EXISTS "Auth users register company" ON companies;
 DROP POLICY IF EXISTS "Auth users register company" ON companies;
 CREATE POLICY "Auth users register company" ON companies FOR INSERT
   WITH CHECK (auth.role()='authenticated' AND status='pending' AND created_by=auth.uid());
@@ -73,9 +76,11 @@ DROP POLICY IF EXISTS "Users can update own clients" ON clients;
 DROP POLICY IF EXISTS "Users can delete own clients" ON clients;
 DROP POLICY IF EXISTS "Admins manage all clients" ON clients;
 
+DROP POLICY IF EXISTS "Company admins all clients" ON clients;
 CREATE POLICY "Company admins all clients" ON clients FOR ALL USING (
   EXISTS(SELECT 1 FROM profiles WHERE user_id=auth.uid() AND company_id=clients.company_id AND role IN('admin','super_admin'))
 );
+DROP POLICY IF EXISTS "Company users own clients" ON clients;
 CREATE POLICY "Company users own clients" ON clients FOR ALL USING (
   auth.uid()=user_id AND EXISTS(SELECT 1 FROM profiles WHERE user_id=auth.uid() AND company_id=clients.company_id)
 );
@@ -86,9 +91,11 @@ DROP POLICY IF EXISTS "Users can insert own contacts" ON contacts;
 DROP POLICY IF EXISTS "Users can update own contacts" ON contacts;
 DROP POLICY IF EXISTS "Users can delete own contacts" ON contacts;
 
+DROP POLICY IF EXISTS "Company admins all contacts" ON contacts;
 CREATE POLICY "Company admins all contacts" ON contacts FOR ALL USING (
   EXISTS(SELECT 1 FROM profiles WHERE user_id=auth.uid() AND company_id=contacts.company_id AND role IN('admin','super_admin'))
 );
+DROP POLICY IF EXISTS "Company users own contacts" ON contacts;
 CREATE POLICY "Company users own contacts" ON contacts FOR ALL USING (
   auth.uid()=user_id AND EXISTS(SELECT 1 FROM profiles WHERE user_id=auth.uid() AND company_id=contacts.company_id)
 );
@@ -99,9 +106,11 @@ DROP POLICY IF EXISTS "Users can insert own orders" ON orders;
 DROP POLICY IF EXISTS "Users can update own orders" ON orders;
 DROP POLICY IF EXISTS "Users can delete own orders" ON orders;
 
+DROP POLICY IF EXISTS "Company admins all orders" ON orders;
 CREATE POLICY "Company admins all orders" ON orders FOR ALL USING (
   EXISTS(SELECT 1 FROM profiles WHERE user_id=auth.uid() AND company_id=orders.company_id AND role IN('admin','super_admin'))
 );
+DROP POLICY IF EXISTS "Company users own orders" ON orders;
 CREATE POLICY "Company users own orders" ON orders FOR ALL USING (
   auth.uid()=user_id AND EXISTS(SELECT 1 FROM profiles WHERE user_id=auth.uid() AND company_id=orders.company_id)
 );
@@ -110,9 +119,11 @@ CREATE POLICY "Company users own orders" ON orders FOR ALL USING (
 DROP POLICY IF EXISTS "Admins manage departments" ON departments;
 DROP POLICY IF EXISTS "Users view departments" ON departments;
 
+DROP POLICY IF EXISTS "Company admins all departments" ON departments;
 CREATE POLICY "Company admins all departments" ON departments FOR ALL USING (
   EXISTS(SELECT 1 FROM profiles WHERE user_id=auth.uid() AND company_id=departments.company_id AND role IN('admin','super_admin'))
 );
+DROP POLICY IF EXISTS "Company members view departments" ON departments;
 CREATE POLICY "Company members view departments" ON departments FOR SELECT USING (
   EXISTS(SELECT 1 FROM profiles WHERE user_id=auth.uid() AND company_id=departments.company_id)
 );
@@ -122,6 +133,7 @@ DROP POLICY IF EXISTS "Admins manage profiles" ON profiles;
 DROP POLICY IF EXISTS "Users view own profile" ON profiles;
 DROP POLICY IF EXISTS "Users manage own profile" ON profiles;
 
+DROP POLICY IF EXISTS "Users own profile" ON profiles;
 CREATE POLICY "Users own profile" ON profiles FOR ALL USING (auth.uid()=user_id);
 
 -- 5. RPC: 列出本公司用户 (admin/super_admin)
