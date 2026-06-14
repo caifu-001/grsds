@@ -775,7 +775,7 @@ input,select,textarea,button{font-family:inherit}
 </div>
 
 <!-- Settings Page -->
-<div id="settings-screen" style="display:none;min-height:100vh;background:var(--bg)">
+<template id="settings-template"><div id="settings-screen" style="display:none;min-height:100vh;background:var(--bg)">
  <div class="topbar">
   <span>⚙ 设置</span>
   <button class="topbar-btn" onclick="closeSettings()" style="font-size:13px">← 返回</button>
@@ -819,7 +819,7 @@ padding:12px 16px;font-size:14px;font-weight:600;color:var(--text2);margin-top:8
 
  <div style="padding:12px 16px;font-size:14px;font-weight:600;color:var(--text2);margin-top:8px">版本</div>
  <div style="padding:0 16px 40px"><div class="settings-item"><span class="lbl">客户管理系统 v3</span></div></div>
-</div>
+</div></template>
 
 <!-- Company Directory Screen -->
 <div id="dir-screen" class="hidden" style="min-height:100vh;background:var(--bg)">
@@ -1220,7 +1220,7 @@ function pickColor(el,i){
 // === Settings ===
 function openSettings(){
   document.getElementById('main-screen').classList.add('hidden');
-  document.getElementById('settings-screen').style.display='flex';
+  var ss=document.getElementById('settings-screen');if(ss)ss.remove();var tpl=document.getElementById('settings-template');var clone=tpl.content.cloneNode(true);document.body.appendChild(clone);document.getElementById('settings-screen').style.display='flex';
   renderCustomTypes();
 }
 
@@ -1246,7 +1246,7 @@ async function doChangePassword(){
 }
 
 function closeSettings(){
-  document.getElementById('settings-screen').style.display='none';
+  var ss=document.getElementById('settings-screen');if(ss)ss.remove();
   document.getElementById('main-screen').classList.remove('hidden');
 }
 
@@ -2005,7 +2005,7 @@ function switchTab(tab){
   var tsp=document.getElementById('tab-suppliers');
   var fab=document.getElementById('main-fab');
 
-    document.getElementById('settings-screen').style.display='none';
+    var ss=document.getElementById('settings-screen');if(ss)ss.remove();
   if(tab==='clients'){
     cv.classList.remove('hidden');ov.classList.add('hidden');av.classList.add('hidden');sv.classList.add('hidden');iv.classList.add('hidden');;if(spv)spv.classList.add('hidden');if(pv)pv.classList.add('hidden');
     tc.classList.add('active');to.classList.remove('active');ts.classList.remove('active');if(ta)ta.classList.remove('active');if(ti)ti.classList.remove('active');if(tp)tp.classList.remove('active');if(tsp)tsp.classList.remove('active');
