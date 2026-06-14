@@ -4642,7 +4642,7 @@ var supplierEditId=null;
 // Modal injection
 (function(){
   var modals=document.createElement('div');
-  modals.innerHTML='<div id="supplier-modal" class="modal hidden"><div class="modal-box" style="max-width:560px"><div class="modal-head"><span id="sup-modal-title">\u65b0\u5efa\u4f9b\u5e94\u5546</span><span class="modal-close" onclick="closeSupplierForm()">\u00d7</span></div><div class="modal-body"><div class="form-group"><label>\u4f9b\u5e94\u5546\u540d\u79f0</label><input id="sup-name" placeholder="\u5fc5\u586b"></div><div class="form-group"><label>\u8054\u7cfb\u4eba</label><input id="sup-contact-name" placeholder="\u8054\u7cfb\u4eba\u59d3\u540d"></div><div class="form-group"><label>\u8054\u7cfb\u7535\u8bdd</label><div id="sup-phones"></div><button class="btn-sm" style="background:var(--surface);border:1px solid var(--border);margin-top:4px" onclick="addSupPhone()">\uff0b \u6dfb\u52a0\u7535\u8bdd</button></div><div class="form-group"><label>\u4ea7\u54c1\u6e05\u5355</label><div id="sup-products"></div><button class="btn-sm" style="background:var(--surface);border:1px solid var(--border);margin-top:4px" onclick="addSupProduct()">\uff0b \u6dfb\u52a0\u4ea7\u54c1</button></div><div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>\u7c7b\u522b</label><input id="sup-category" placeholder="\u5982\uff1a\u7535\u5b50\u5143\u4ef6" list="sup-cat-list"><datalist id="sup-cat-list"></datalist></div><div><label>\u5408\u4f5c\u6b21\u6570</label><input id="sup-cooperation-count" type="number" min="0"></div></div><div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>\u5408\u4f5c\u7ea7\u522b</label><select id="sup-cooperation-level"><option value="A">A\u7ea7</option><option value="B">B\u7ea7</option><option value="C" selected>C\u7ea7</option><option value="D">D\u7ea7</option><option value="E">E\u7ea7</option></select></div><div><label>\u6b21\u54c1\u7387 (%)</label><input id="sup-defect-rate" type="number" step="0.01" min="0" max="100" value="0"></div></div><div class="form-group"><label>\u5907\u6ce8</label><input id="sup-notes" placeholder="\u53ef\u9009"></div></div><div class="modal-actions"><button class="btn-cancel" onclick="closeSupplierForm()">\u53d6\u6d88</button><button class="btn-delete hidden" id="sup-btn-delete" onclick="deleteSupplier(supplierEditId)">\u5220\u9664</button><button class="btn-save" onclick="saveSupplier()">\u4fdd\u5b58</button></div></div></div>';
+  modals.innerHTML='<div id="supplier-modal" class="modal hidden"><div class="modal-box" style="max-width:560px"><div class="modal-head"><span id="sup-modal-title">\u65b0\u5efa\u4f9b\u5e94\u5546</span><span class="modal-close" onclick="closeSupplierForm()">\u00d7</span></div><div class="modal-body"><div class="form-group"><label>\u4f9b\u5e94\u5546\u540d\u79f0 <span style="font-size:11px;color:var(--text-secondary);font-weight:400">\u2014 \u652f\u6301\u4f01\u4e1a\u540d\u5f55\u81ea\u52a8\u5339\u914d</span></label><div style="position:relative"><input id="sup-name" placeholder="\u5fc5\u586b" autocomplete="off" oninput="onSupNameInput()" onfocus="onSupNameInput()" onkeydown="onSupNameKeydown(event)"><div class="name-suggestions hidden" id="sup-name-suggestions"></div></div></div><div class="form-group"><label>\u8054\u7cfb\u4eba</label><input id="sup-contact-name" placeholder="\u8054\u7cfb\u4eba\u59d3\u540d"></div><div class="form-group"><label>\u8054\u7cfb\u7535\u8bdd</label><div id="sup-phones"></div><button class="btn-sm" style="background:var(--surface);border:1px solid var(--border);margin-top:4px" onclick="addSupPhone()">\uff0b \u6dfb\u52a0\u7535\u8bdd</button></div><div class="form-group"><label>\u4ea7\u54c1\u6e05\u5355</label><div id="sup-products"></div><button class="btn-sm" style="background:var(--surface);border:1px solid var(--border);margin-top:4px" onclick="addSupProduct()">\uff0b \u6dfb\u52a0\u4ea7\u54c1</button></div><div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>\u7c7b\u522b</label><input id="sup-category" placeholder="\u5982\uff1a\u7535\u5b50\u5143\u4ef6" list="sup-cat-list"><datalist id="sup-cat-list"></datalist></div><div><label>\u5408\u4f5c\u6b21\u6570</label><input id="sup-cooperation-count" type="number" min="0"></div></div><div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>\u5408\u4f5c\u7ea7\u522b</label><select id="sup-cooperation-level"><option value="A">A\u7ea7</option><option value="B">B\u7ea7</option><option value="C" selected>C\u7ea7</option><option value="D">D\u7ea7</option><option value="E">E\u7ea7</option></select></div><div><label>\u6b21\u54c1\u7387 (%)</label><input id="sup-defect-rate" type="number" step="0.01" min="0" max="100" value="0"></div></div><div class="form-group"><label>\u5907\u6ce8</label><input id="sup-notes" placeholder="\u53ef\u9009"></div></div><div class="modal-actions"><button class="btn-cancel" onclick="closeSupplierForm()">\u53d6\u6d88</button><button class="btn-delete hidden" id="sup-btn-delete" onclick="deleteSupplier(supplierEditId)">\u5220\u9664</button><button class="btn-save" onclick="saveSupplier()">\u4fdd\u5b58</button></div></div></div>';
   document.body.appendChild(modals);
 })();
 </script>
@@ -4739,6 +4739,100 @@ function selectNameSuggestion(idx){
     showToast('客户 "'+m.name+'" 已存在');
   }
 }
+
+
+// === Supplier Name Autocomplete ===
+var supNameSuggIdx=-1,supNameSuggList=[];
+
+function onSupNameInput(){
+  var inp=document.getElementById('sup-name');
+  var val=(inp.value||'').trim().toLowerCase();
+  var dd=document.getElementById('sup-name-suggestions');
+  if(!val||val.length<1){dd.classList.add('hidden');supNameSuggList=[];supNameSuggIdx=-1;return}
+  var matches=[],seen={};
+  // 1. Existing suppliers
+  for(var i=0;i<allSuppliers.length;i++){
+    var s=allSuppliers[i];
+    var sn=(s.name||'').toLowerCase();
+    if(supplierEditId&&s.id===supplierEditId)continue;
+    if(sn&&sn.indexOf(val)>=0&&!seen[sn]){seen[sn]=1;matches.push({name:s.name,source:'已存供应商',exists:true,id:s.id})}
+  }
+  // 2. Existing clients
+  for(var j=0;j<allClients.length;j++){
+    var cl=allClients[j];
+    var cn=(cl.name||'').toLowerCase();
+    if(cn&&cn.indexOf(val)>=0&&!seen[cn]){seen[cn]=1;matches.push({name:cl.name,source:'已存客户',exists:true,isClient:true})}
+  }
+  // 3. Company directory
+  for(var k=0;k<allCompanies.length;k++){
+    var co=allCompanies[k];
+    var con=(co.name||'').toLowerCase();
+    if(con&&con.indexOf(val)>=0&&!seen[con]){
+      seen[con]=1;
+      var detail=(co.legal_person||'')+(co.reg_capital?' · 注册资本'+co.reg_capital:'');
+      matches.push({name:co.name,source:'企业名录',detail:detail,comp:co});
+    }
+  }
+  matches.sort(function(a,b){
+    var ae=a.name.toLowerCase()===val,be=b.name.toLowerCase()===val;
+    if(ae&&!be)return -1;if(!ae&&be)return 1;
+    if(a.exists&&!b.exists)return -1;if(!a.exists&&b.exists)return 1;
+    return (a.name||'').length-(b.name||'').length;
+  });
+  matches=matches.slice(0,20);
+  if(!matches.length){dd.classList.add('hidden');supNameSuggList=[];supNameSuggIdx=-1;return}
+  supNameSuggList=matches;supNameSuggIdx=-1;
+  var h='',lastSource='';
+  for(var m=0;m<matches.length;m++){
+    var mt=matches[m];
+    if(mt.source!==lastSource){
+      var icon=mt.source==='已存供应商'?'📦':mt.source==='已存客户'?'📋':'📂';
+      h+='<div class="ns-group-label">'+icon+' '+mt.source+'</div>';
+      lastSource=mt.source;
+    }
+    h+='<div class="name-suggestion" data-idx="'+m+'" onmousedown="selectSupNameSuggestion('+m+')"><div><div class="ns-name">'+escHtml(mt.name)+'</div>'+(mt.detail?'<div class="ns-detail">'+escHtml(mt.detail)+'</div>':'')+'</div>'+(mt.exists?'<span class="ns-exists">⚠ 已存在</span>':'<span class="ns-source">点击填充</span>')+'</div>';
+  }
+  dd.innerHTML=h;dd.classList.remove('hidden');
+}
+
+function onSupNameKeydown(e){
+  var dd=document.getElementById('sup-name-suggestions');
+  if(dd.classList.contains('hidden'))return;
+  if(e.key==='ArrowDown'){e.preventDefault();supNameSuggIdx=Math.min(supNameSuggIdx+1,supNameSuggList.length-1);updateSupNameActive()}
+  else if(e.key==='ArrowUp'){e.preventDefault();supNameSuggIdx=Math.max(supNameSuggIdx-1,0);updateSupNameActive()}
+  else if(e.key==='Enter'||e.key==='Tab'){e.preventDefault();if(supNameSuggIdx>=0&&supNameSuggIdx<supNameSuggList.length)selectSupNameSuggestion(supNameSuggIdx)}
+  else if(e.key==='Escape'){dd.classList.add('hidden');supNameSuggIdx=-1}
+}
+
+function updateSupNameActive(){
+  var items=document.querySelectorAll('#sup-name-suggestions .name-suggestion');
+  for(var i=0;i<items.length;i++)items[i].classList.toggle('active',i===supNameSuggIdx);
+  if(supNameSuggIdx>=0)items[supNameSuggIdx].scrollIntoView({block:'nearest'});
+}
+
+function selectSupNameSuggestion(idx){
+  var m=supNameSuggList[idx];if(!m)return;
+  document.getElementById('sup-name').value=m.name;
+  document.getElementById('sup-name-suggestions').classList.add('hidden');
+  supNameSuggList=[];supNameSuggIdx=-1;
+  if(m.comp&&m.comp.legal_person){
+    var cEl=document.getElementById('sup-contact-name');
+    if(!cEl.value.trim())cEl.value=m.comp.legal_person;
+  }
+  if(m.exists){
+    if(m.isClient)showToast('"'+m.name+'" 已是客户，确定要作为供应商添加？');
+    else showToast('供应商 "'+m.name+'" 已存在');
+  }
+}
+
+// Click-outside to close suggestions
+document.addEventListener('click',function(e){
+  var ddSup=document.getElementById('sup-name-suggestions');
+  if(ddSup&&!ddSup.classList.contains('hidden')&&!e.target.closest('#supplier-modal'))ddSup.classList.add('hidden');
+  // Also handle client name suggestions
+  var ns=document.getElementById('name-suggestions');
+  if(ns&&!ns.classList.contains('hidden')&&!e.target.closest('#form-modal'))ns.classList.add('hidden');
+});
 
 </body>
 </html>
