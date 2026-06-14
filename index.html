@@ -4647,7 +4647,7 @@ var supplierEditId=null;
 })();
 </script>
 
-
+<script>
 // === Client Name Autocomplete ===
 var nameSuggIdx=-1,nameSuggList=[];
 
@@ -4739,8 +4739,9 @@ function selectNameSuggestion(idx){
     showToast('客户 "'+m.name+'" 已存在');
   }
 }
+</script>
 
-
+<script>
 // === Supplier Name Autocomplete ===
 var supNameSuggIdx=-1,supNameSuggList=[];
 
@@ -4833,6 +4834,7 @@ document.addEventListener('click',function(e){
   var ns=document.getElementById('name-suggestions');
   if(ns&&!ns.classList.contains('hidden')&&!e.target.closest('#form-modal'))ns.classList.add('hidden');
 });
+</script>
 
 </body>
 </html>
