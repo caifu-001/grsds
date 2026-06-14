@@ -1324,11 +1324,89 @@ async function openMy(){
   // Created
   var created=currentUser.created_at||profile.created_at;
   document.getElementById('my-created').textContent=created?new Date(created).toLocaleDateString('zh-CN'):'-';
+  enableMyEditing();
 }
 
 function closeMy(){
   document.getElementById('my-screen').style.display='none';
   document.getElementById('main-screen').classList.remove('hidden');
+}
+
+// === 我的页面 内联编辑 ===
+function enableMyEditing(){
+  var el,fields;
+  var isAdmin=currentUserRole==='admin'||currentUserRole==='super_admin';
+  // 人人可改
+  fields=[
+    {el:'my-name', col:'display_name', type:'text'},
+    {el:'my-phone', col:'phone', type:'tel'}
+  ];
+  // 管理员可改
+  if(isAdmin){
+    fields.push({el:'my-position', col:'position', type:'text'});
+    fields.push({el:'my-company', col:'_company_id', type:'select', opts:'companies'});
+    fields.push({el:'my-dept', col:'department_id', type:'select', opts:'departments'});
+  }
+  for(var i=0;i<fields.length;i++){
+    var f=fields[i];el=document.getElementById(f.el);
+    if(!el)continue;
+    el.style.cursor='pointer';
+    el.title='点击编辑';
+    el.setAttribute('data-mf',f.col);
+    el.setAttribute('data-mt',f.type);
+    if(f.opts)el.setAttribute('data-mo',f.opts);
+    el.onclick=startMyEdit;
+  }
+}
+function startMyEdit(e){
+  var t=e.target;
+  while(t&&!t.getAttribute('data-mf'))t=t.parentNode;
+  if(!t)return;
+  var col=t.getAttribute('data-mf');
+  var type=t.getAttribute('data-mt');
+  var opt=t.getAttribute('data-mo');
+  var cur=t.textContent==='-'?'':t.textContent;
+  if(type==='select'){
+    var list=opt==='companies'?allCompanies:allDepartments;
+    var sel=document.createElement('select');
+    sel.style.cssText='width:100%;padding:4px 8px;border:1px solid var(--primary);border-radius:6px;font-size:13px;outline:none;background:#fff';
+    sel.innerHTML='<option value="">请选择</option>';
+    for(var i=0;i<list.length;i++){
+      sel.innerHTML+='<option value="'+list[i].id+'"'+(list[i].name===cur?' selected':'')+'>'+list[i].name+'</option>';
+    }
+    sel.onchange=function(){saveMyField(col,sel.value,t.id);};
+    t.innerHTML='';t.appendChild(sel);sel.focus();
+  }else{
+    var inp=document.createElement('input');
+    inp.type=type;inp.value=cur;
+    inp.style.cssText='width:100%;padding:4px 8px;border:1px solid var(--primary);border-radius:6px;font-size:13px;outline:none';
+    var done=function(){
+      var v=inp.value.trim();
+      if(v===cur){t.innerHTML=cur||'-';recallMyEdit(t);return;}
+      saveMyField(col,v,t.id);
+    };
+    inp.onblur=done;
+    inp.onkeydown=function(ev){if(ev.key==='Enter')done();if(ev.key==='Escape'){t.innerHTML=cur||'-';recallMyEdit(t);}};
+    t.innerHTML='';t.appendChild(inp);inp.focus();inp.select();
+  }
+}
+async function saveMyField(col, val, elId){
+  var upd={};var isCompany=false;
+  if(col==='_company_id'){
+    upd.company_id=val;isCompany=true;
+  }else{upd[col]=val;}
+  var {error}=await sb.from('profiles').update(upd).eq('user_id',currentUser.id);
+  if(error){alert('保存失败: '+error.message);return;}
+  if(isCompany){
+    currentCompanyId=val;
+    localStorage.setItem('gr_company_id',val);
+  }
+  openMy();
+}
+function recallMyEdit(el){
+  el.style.cursor='pointer';
+  el.title='点击编辑';
+  el.onclick=startMyEdit;
 }
 
 // === Filter ===
