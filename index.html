@@ -2684,7 +2684,9 @@ async function loadAdminData(){
   if(!rerr)allRoles=roles||[];
   // Load all users for admin
   if(currentUserRole==='admin'||currentUserRole==='super_admin'){
-    if(currentUserRole==='super_admin'){try{var {data:rpcUsers,error:rpcErr}=await sb.rpc('list_all_users');if(!rpcErr&&rpcUsers&&rpcUsers.length){adminUserList=rpcUsers;allUsers=rpcUsers;populatePerfSelects();}}catch(e){}}
+    // 1) 尝试 RPC（含 auth.users 邮箱，所有管理员均可用）
+    try{var {data:rpcUsers,error:rpcErr}=await sb.rpc('list_all_users');if(!rpcErr&&rpcUsers&&rpcUsers.length){adminUserList=rpcUsers;allUsers=rpcUsers;populatePerfSelects();}}catch(e){}
+    // 2) RPC 失败时降级
     if(!adminUserList.length){
       if(currentUserRole==='super_admin'){
         try{var ur=await fetch(SUPABASE_URL+'/rest/v1/profiles?select=*',{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}});if(ur.ok){adminUserList=await ur.json();allUsers=adminUserList;populatePerfSelects();}}catch(e){}
@@ -2693,9 +2695,10 @@ async function loadAdminData(){
         adminUserList=pr||[];allUsers=pr||[];populatePerfSelects();
       }
     }
-    // 超管始终从 Auth API 补全邮箱（profiles 表无 email 字段）
+    // 3) 超管用 Auth API 补全邮箱（RPC 返回数据含邮箱则跳过）
     if(currentUserRole==='super_admin'&&adminUserList.length){
-      try{var aar=await fetch(SUPABASE_URL+'/auth/v1/admin/users',{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}});if(aar.ok){var au=await aar.json(),em={};for(var i=0;i<au.length;i++)em[au[i].id]=au[i].email;for(var i=0;i<adminUserList.length;i++)adminUserList[i].email=em[adminUserList[i].user_id]||null;}}catch(e){}
+      var needEmail=false;for(var i=0;i<adminUserList.length;i++){if(!adminUserList[i].email){needEmail=true;break}}
+      if(needEmail)try{var aar=await fetch(SUPABASE_URL+'/auth/v1/admin/users',{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}});if(aar.ok){var au=await aar.json(),em={};for(var i=0;i<au.length;i++)em[au[i].id]=au[i].email;for(var i=0;i<adminUserList.length;i++)adminUserList[i].email=em[adminUserList[i].user_id]||null;}}catch(e){}
     }
   }
 }
