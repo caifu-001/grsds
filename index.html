@@ -1962,7 +1962,6 @@ async function saveClient(){
     client.user_id=currentUser.id;
     client.company_id=currentCompanyId;
     var {data:nd,error}=await sb.from('clients').insert(client).select('id');
-    var{error}=await sb.from('clients').insert(client).select('id');
     if(error){showToast('添加失败: '+error.message);return}
     clientId=nd[0].id;
   }else{
