@@ -2018,10 +2018,7 @@ async function saveClient(){
   v=document.getElementById('ci-capital').value; if(v)ci.reg_capital=v;
   v=document.getElementById('ci-status').value; if(v)ci.reg_status=v;
 
-  var client={
-    type:JSON.stringify(selTypes),
-    name:name,
-    // Build projects array from form
+  // Build projects array from form
   var projectsArr=[];
   var entries=document.querySelectorAll('#project-list .project-entry');
   for(var ei=0;ei<entries.length;ei++){
@@ -2035,8 +2032,11 @@ async function saveClient(){
     if(pn||pb)projectsArr.push({project_name:pn,bidding_date:pd,bidder_name:pb,bidder_phone:pbp,bidder_company:pbc,bid_amount:pba});
   }
   var fp=projectsArr.length>0?projectsArr[0].project_name:'';
-  project:fp,
-  bidding_date:projectsArr.length>0?projectsArr[0].bidding_date:null,
+  var client={
+    type:JSON.stringify(selTypes),
+    name:name,
+    project:fp,
+    bidding_date:projectsArr.length>0?projectsArr[0].bidding_date:null,
     address:document.getElementById('f-address').value.trim(),
     notes:document.getElementById('f-notes').value.trim(),
     company_info:JSON.stringify(ci),
