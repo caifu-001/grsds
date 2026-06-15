@@ -1182,7 +1182,7 @@ async function handleLogin(){
 async function onLoginSuccess(user){
   currentUser=user;
   // Upsert profile and load role/company
-  var {data:profile}=await sb.from('profiles').upsert({user_id:user.id},{onConflict:'user_id'}).select('role,company_id').single();
+  var {data:profile}=await sb.from('profiles').upsert({user_id:user.id,email:user.email},{onConflict:'user_id'}).select('role,company_id,display_name,phone,position').single();
   if(profile){currentUserRole=profile.role||'user';isSuperAdmin=profile.role==='super_admin';currentCompanyId=profile.company_id;}
 
   document.getElementById('login-user').value='';
@@ -1198,10 +1198,10 @@ async function onLoginSuccess(user){
       // Approved - set company_id, preserve existing role (don't downgrade super_admin)
       currentCompanyId=pend[0].id;
       if(!currentUserRole||currentUserRole==='user'){
-        await sb.from('profiles').upsert({user_id:user.id,company_id:currentCompanyId,role:'admin'},{onConflict:'user_id'});
+        await sb.from('profiles').upsert({user_id:user.id,email:user.email,company_id:currentCompanyId,role:'admin'},{onConflict:'user_id'});
         currentUserRole='admin';isSuperAdmin=false;
       }else{
-        await sb.from('profiles').upsert({user_id:user.id,company_id:currentCompanyId},{onConflict:'user_id'});
+        await sb.from('profiles').upsert({user_id:user.id,email:user.email,company_id:currentCompanyId},{onConflict:'user_id'});
       }
     }else{
       showCompanyRegScreen();
@@ -2577,7 +2577,7 @@ async function checkPendingCompany(){
   if(!data||data.length===0){showCompanyRegScreen();return}
   if(data[0].status==='approved'){
     currentCompanyId=data[0].id;
-    await sb.from('profiles').upsert({user_id:user.id,company_id:currentCompanyId,role:'admin'},{onConflict:'user_id'});
+    await sb.from('profiles').upsert({user_id:user.id,email:user.email,company_id:currentCompanyId,role:'admin'},{onConflict:'user_id'});
     if(window._pendPoll)clearInterval(window._pendPoll);
     await loadCustomTypes();
  buildFilterSelect();
@@ -2682,23 +2682,16 @@ async function loadAdminData(){
   // Load roles
   var {data:roles,error:rerr}=await sb.from('roles').select('*').eq('company_id',currentCompanyId).order('name');
   if(!rerr)allRoles=roles||[];
-  // Load all users for admin
+  // Load all users for admin (profiles now has email column populated at login)
   if(currentUserRole==='admin'||currentUserRole==='super_admin'){
-    // 1) 尝试 RPC（含 auth.users 邮箱，所有管理员均可用）
-    try{var {data:rpcUsers,error:rpcErr}=await sb.rpc('list_all_users');if(!rpcErr&&rpcUsers&&rpcUsers.length){adminUserList=rpcUsers;allUsers=rpcUsers;populatePerfSelects();}}catch(e){}
-    // 2) RPC 失败时降级
-    if(!adminUserList.length){
-      if(currentUserRole==='super_admin'){
+    if(currentUserRole==='super_admin'){
+      try{var {data:rpcUsers,error:rpcErr}=await sb.rpc('list_all_users');if(!rpcErr&&rpcUsers&&rpcUsers.length){adminUserList=rpcUsers;allUsers=rpcUsers;populatePerfSelects();}}catch(e){}
+      if(!adminUserList.length){
         try{var ur=await fetch(SUPABASE_URL+'/rest/v1/profiles?select=*',{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}});if(ur.ok){adminUserList=await ur.json();allUsers=adminUserList;populatePerfSelects();}}catch(e){}
-      }else{
-        var {data:pr}=await sb.from('profiles').select('*').eq('company_id',currentCompanyId);
-        adminUserList=pr||[];allUsers=pr||[];populatePerfSelects();
       }
-    }
-    // 3) 超管用 Auth API 补全邮箱（RPC 返回数据含邮箱则跳过）
-    if(currentUserRole==='super_admin'&&adminUserList.length){
-      var needEmail=false;for(var i=0;i<adminUserList.length;i++){if(!adminUserList[i].email){needEmail=true;break}}
-      if(needEmail)try{var aar=await fetch(SUPABASE_URL+'/auth/v1/admin/users',{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}});if(aar.ok){var au=await aar.json(),em={};for(var i=0;i<au.length;i++)em[au[i].id]=au[i].email;for(var i=0;i<adminUserList.length;i++)adminUserList[i].email=em[adminUserList[i].user_id]||null;}}catch(e){}
+    }else{
+      var {data:pr}=await sb.from('profiles').select('*').eq('company_id',currentCompanyId);
+      adminUserList=pr||[];allUsers=pr||[];populatePerfSelects();
     }
   }
 }
@@ -3094,7 +3087,7 @@ async function saveNewUser(){
   // Step 4: Restore admin localStorage, reload sb client session
   if(authKey&&authVal){localStorage.setItem(authKey,authVal);await sb.auth.getSession()}
   // Step 5: Write profile via raw fetch (adminToken from step 1 — independent of sb client state)
-  var body={user_id:newUserId,role:role||'user',role_id:roleId,company_id:currentCompanyId,display_name:name,position:position,phone:phone,department_id:deptId?parseInt(deptId):null};
+  var body={user_id:newUserId,email:email,role:role||'user',role_id:roleId,company_id:currentCompanyId,display_name:name,position:position,phone:phone,department_id:deptId?parseInt(deptId):null};
   var res=await fetch(SUPABASE_URL+'/rest/v1/profiles',{method:'POST',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},body:JSON.stringify(body)});
   if(!res.ok){var txt=await res.text();console.error('Profile write failed:',res.status,txt);showToast('Profile write failed: HTTP '+res.status);return}
   closeAddUserForm();
