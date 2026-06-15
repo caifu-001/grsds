@@ -2923,7 +2923,7 @@ function openUserEditForm(userId){
   var deptOpts='<option value="">无部门</option>';
   for(var j=0;j<allDepartments.length;j++){deptOpts+='<option value="'+allDepartments[j].id+'"'+((u.department_id===allDepartments[j].id)?' selected':'')+'>'+escHtml(allDepartments[j].name)+'</option>'}
   var roleOpts='<option value="user">普通用户</option><option value="admin">管理员</option>';
-  var baseRoleNames={user:1,admin:1};
+  var baseRoleNames={普通用户:1,管理员:1};
   for(var k=0;k<allRoles.length;k++){if(baseRoleNames[allRoles[k].name])continue;roleOpts+='<option value="r_'+allRoles[k].id+'"'+((u.role_id===allRoles[k].id)?' selected':'')+'>'+escHtml(allRoles[k].name)+'</option>'}
   var div=document.createElement('div');div.className='confirm-overlay';div.id='user-edit-modal';
   div.innerHTML='<div class="confirm-box" style="max-width:420px;max-height:80vh;overflow-y:auto"><p style="font-weight:600;margin-bottom:12px">编辑员工 - '+escHtml(u.display_name||u.email)+'</p>'+
