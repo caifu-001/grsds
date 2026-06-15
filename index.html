@@ -3034,8 +3034,18 @@ async function saveUserEdit(userId){
     role:role,role_id:roleId,
     status:document.getElementById('uedit-status').value
   };
-  var {error}=await sb.from('profiles').update(data).eq('user_id',userId);
-  if(error){showToast('保存失败: '+error.message);return}
+  var error=null;
+  if(isSuperAdmin){
+    var ur=await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(userId),{
+      method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},
+      body:JSON.stringify(data)
+    });
+    if(!ur.ok){var j=await ur.json().catch(function(){});error={message:j&&j.message||ur.statusText}}
+  }else{
+    var res=await sb.from('profiles').update(data).eq('user_id',userId);
+    error=res.error;
+  }
+  if(error){showToast('更新失败: '+error.message);return}
   showToast('已更新');
   for(var i=0;i<adminUserList.length;i++){if(adminUserList[i].user_id===userId){
     adminUserList[i].display_name=data.display_name;
