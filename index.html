@@ -545,6 +545,19 @@ input,select,textarea,button{font-family:inherit}
   .ns-group-label{font-size:11px;color:var(--primary);padding:6px 14px 2px;font-weight:700;text-transform:uppercase}
   .ns-empty{font-size:13px;color:var(--text-secondary);padding:12px 14px;text-align:center}
 
+
+.project-entry{border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;background:#fff}
+.pe-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.pe-num{font-size:13px;font-weight:600;color:var(--primary)}
+.pe-remove{width:24px;height:24px;border:none;background:transparent;color:var(--text3);font-size:18px;cursor:pointer;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.pe-remove:hover{background:#FEE2E2;color:var(--danger)}
+.btn-add-project{padding:6px 14px;border:1px dashed var(--primary);background:transparent;color:var(--primary);border-radius:6px;font-size:13px;cursor:pointer;transition:all .2s}
+.btn-add-project:hover{background:var(--primary-light)}
+.ps-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.ps-header label{font-size:14px;font-weight:600;color:var(--text)}
+.card-projects{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px}
+.card-project-tag{display:inline-flex;align-items:center;gap:3px;font-size:11px;padding:2px 8px;background:var(--primary-light);color:var(--primary);border-radius:10px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.card-project-tag .bidder{color:var(--text2);font-size:10px}
 </style>
 </head>
 <body>
@@ -910,9 +923,9 @@ input,select,textarea,button{font-family:inherit}
 
   <div class="section-title">📝 客户信息</div>
   <div class="form-group" style="position:relative"><label>客户名称 *</label><input id="f-name" placeholder="公司/单位名称" autocomplete="off" oninput="onClientNameInput()" onfocus="onClientNameInput()" onblur="setTimeout(function(){document.getElementById('name-suggestions').classList.add('hidden')},200)" onkeydown="onNameKeydown(event)"><div class="name-suggestions hidden" id="name-suggestions"></div></div>
-  <div class="form-row">
-   <div class="form-group"><label>近期项目</label><input id="f-project" placeholder="项目名称"></div>
-   <div class="form-group"><label>招标日期</label><input type="date" id="f-bidding-date"></div>
+  <div class="projects-section">
+   <div class="ps-header"><label>近期项目</label><button type="button" class="btn-add-project" onclick="addProjectEntry()">+ 添加项目</button></div>
+   <div id="project-list"></div>
   </div>
   <div class="form-group"><label>客户地址</label><input id="f-address" placeholder="详细地址"></div>
   <div class="form-group"><label>备注</label><textarea id="f-notes" placeholder="客户备注信息..."></textarea></div>
@@ -1648,7 +1661,15 @@ function renderList(){
   var q=(document.getElementById('search-input').value||'').trim().toLowerCase();
   var list=allClients;
   if(q) list=list.filter(function(c){
-    var arr=[c.name,c.project,c.address,c.notes];
+    var arr=[c.name,c.address,c.notes];
+    if(c.project)arr.push(c.project); // legacy
+    var projs2=[];
+    try{projs2=JSON.parse(c.projects||'[]');if(!Array.isArray(projs2))projs2=[];}catch(e){projs2=[]}
+    for(var pi=0;pi<projs2.length;pi++){
+      arr.push(projs2[pi].project_name||'');
+      arr.push(projs2[pi].bidder_name||'');
+      arr.push(projs2[pi].bidder_company||'');
+    }
     var types=parseTypes(c.type);
     arr=arr.concat(types);
     var contacts=allContacts.filter(function(co){return co.client_id===c.id});
@@ -1713,7 +1734,18 @@ function renderList(){
         (badges?'<div class="card-types">'+badges+'</div>':'')+
         '<div class="card-name">'+h(c.name)+'</div>'+
         (c.address?'<div class="card-addr">📍 '+h(c.address)+'</div>':'')+
-        (c.project?'<div class="card-project">📋 '+h(c.project)+(date?' · '+date:'')+'</div>':'')+
+        (function(){
+      var projs=[];
+      try{projs=JSON.parse(c.projects||'[]');if(!Array.isArray(projs))projs=[];}catch(e){projs=[]}
+      if(projs.length===0&&c.project)projs=[{project_name:c.project,bidding_date:c.bidding_date||''}];
+      if(projs.length===0)return '';
+      var tags='<div class="card-projects">';
+      for(var pi=0;pi<projs.length;pi++){
+        var p=projs[pi],pname=p.project_name||'',bd=p.bidder_name||'';
+        tags+='<span class="card-project-tag" title="'+(bd?'中标人:'+h(bd):'')+'">📋 '+h(pname)+(bd?' · '+h(bd):'')+'</span>';
+      }
+      return tags+'</div>';
+    })()+
         (contactHtml?'<div class="card-contact">'+contactHtml+'</div>':'');
       var osum=getClientOrderSummary(c.id);
       if(osum.count>0)html+='<div class="card-contact" style="justify-content:space-between"><span style="font-size:11px;color:var(--text3)">📦 '+osum.count+'个订单</span><span style="font-size:12px;color:var(--primary);font-weight:600">'+formatMoney(osum.total)+'</span></div>';
@@ -1783,8 +1815,8 @@ async function openForm(id){
   document.getElementById('form-title').textContent=id?'编辑客户':'添加客户';
   document.getElementById('btn-delete').classList.toggle('hidden',!id);
   document.getElementById('type-err').textContent='';
-  document.getElementById('f-name').value='';document.getElementById('f-project').value='';
-  document.getElementById('f-bidding-date').value='';document.getElementById('f-address').value='';
+  document.getElementById('f-name').value='';
+  document.getElementById('f-address').value='';formProjects=[];document.getElementById('project-list').innerHTML='';
   document.getElementById('f-notes').value='';
   formContacts=[];
 
@@ -1792,8 +1824,14 @@ async function openForm(id){
     var c=allClients.find(function(x){return x.id===id});
     if(c){
       document.getElementById('f-name').value=c.name||'';
-      document.getElementById('f-project').value=c.project||'';
-      document.getElementById('f-bidding-date').value=c.bidding_date||'';
+      // Load projects (multi-project format, fallback to legacy)
+      var projs=[];
+      try{projs=JSON.parse(c.projects||'[]');if(!Array.isArray(projs))projs=[];}catch(e){projs=[]}
+      if(projs.length===0&&(c.project||c.bidding_date)){
+        projs=[{project_name:c.project||'',bidding_date:c.bidding_date||'',bidder_name:'',bidder_phone:'',bidder_company:'',bid_amount:''}];
+      }
+      formProjects=projs;
+      for(var pi=0;pi<projs.length;pi++)addProjectEntry(projs[pi]);
       document.getElementById('f-address').value=c.address||'';
       document.getElementById('f-notes').value=c.notes||'';
       setSelectedTypes(parseTypes(c.type));
@@ -1873,6 +1911,41 @@ async function updateContactCount(clientId){
 }
 
 // === Save ===
+
+var formProjects=[];
+function addProjectEntry(prefill){
+  prefill=prefill||{};
+  var list=document.getElementById('project-list');
+  var idx=list.children.length+1;
+  var div=document.createElement('div');
+  div.className='project-entry';
+  div.innerHTML=
+    '<div class="pe-header"><span class="pe-num">项目 '+idx+'</span><button type="button" class="pe-remove" onclick="removeProjectEntry(this)">×</button></div>'+
+    '<div class="form-row">'+
+      '<div class="form-group"><label>项目名称</label><input class="pe-project" placeholder="项目名称" value="'+h(prefill.project_name||'')+'"></div>'+
+      '<div class="form-group"><label>招标日期</label><input type="date" class="pe-bidding-date" value="'+(prefill.bidding_date||'')+'"></div>'+
+    '</div>'+
+    '<div class="form-row">'+
+      '<div class="form-group"><label>中标人</label><input class="pe-bidder" placeholder="中标人姓名" value="'+h(prefill.bidder_name||'')+'"></div>'+
+      '<div class="form-group"><label>中标人电话</label><input class="pe-bidder-phone" placeholder="联系电话" value="'+h(prefill.bidder_phone||'')+'"></div>'+
+    '</div>'+
+    '<div class="form-row">'+
+      '<div class="form-group"><label>中标公司</label><input class="pe-bidder-company" placeholder="中标公司" value="'+h(prefill.bidder_company||'')+'"></div>'+
+      '<div class="form-group"><label>中标金额</label><input class="pe-bid-amount" placeholder="中标金额" value="'+h(prefill.bid_amount||'')+'"></div>'+
+    '</div>';
+  list.appendChild(div);
+  renumberProjects();
+}
+function removeProjectEntry(btn){
+  var entry=btn.closest('.project-entry');
+  if(entry)entry.remove();
+  renumberProjects();
+}
+function renumberProjects(){
+  var entries=document.querySelectorAll('#project-list .project-entry');
+  for(var i=0;i<entries.length;i++)entries[i].querySelector('.pe-num').textContent='项目 '+(i+1);
+}
+
 async function saveClient(){
   if(!selTypes.length){document.getElementById('type-err').textContent='请选择至少一个客户属性';setTimeout(function(){document.getElementById('type-err').textContent=''},3000);return}
   var name=document.getElementById('f-name').value.trim();
@@ -1948,12 +2021,27 @@ async function saveClient(){
   var client={
     type:JSON.stringify(selTypes),
     name:name,
-    project:document.getElementById('f-project').value.trim(),
-    bidding_date:document.getElementById('f-bidding-date').value||null,
+    // Build projects array from form
+  var projectsArr=[];
+  var entries=document.querySelectorAll('#project-list .project-entry');
+  for(var ei=0;ei<entries.length;ei++){
+    var e=entries[ei];
+    var pn=(e.querySelector('.pe-project')||{}).value||'';
+    var pd=(e.querySelector('.pe-bidding-date')||{}).value||null;
+    var pb=(e.querySelector('.pe-bidder')||{}).value||'';
+    var pbp=(e.querySelector('.pe-bidder-phone')||{}).value||'';
+    var pbc=(e.querySelector('.pe-bidder-company')||{}).value||'';
+    var pba=(e.querySelector('.pe-bid-amount')||{}).value||'';
+    if(pn||pb)projectsArr.push({project_name:pn,bidding_date:pd,bidder_name:pb,bidder_phone:pbp,bidder_company:pbc,bid_amount:pba});
+  }
+  var fp=projectsArr.length>0?projectsArr[0].project_name:'';
+  project:fp,
+  bidding_date:projectsArr.length>0?projectsArr[0].bidding_date:null,
     address:document.getElementById('f-address').value.trim(),
     notes:document.getElementById('f-notes').value.trim(),
     company_info:JSON.stringify(ci),
     contact_count:formContacts.length,
+    projects:JSON.stringify(projectsArr),
     updated_at:new Date().toISOString()
   };
 
