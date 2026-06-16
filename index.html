@@ -685,7 +685,7 @@ input,select,textarea,button{font-family:inherit}
   <!-- Contracts Panel -->
   <div class="sales-panel hidden" id="sales-contracts-panel">
    <div class="toolbar" style="position:static">
-    <select id="contract-status-filter" onchange="renderContracts()"><option value="all">全部状态</option><option value="draft">草稿</option><option value="signed">已签署</option><option value="executing">执行中</option><option value="completed">已完成</option><option value="terminated">已终止</option></select>
+    <select id="contract-status-filter" onchange="renderContracts()"><option value="all">全部状态</option><option value="draft">草稿</option><option value="signed">已签署</option><option value="executing">执行中</option><option value="completed">已完成</option><option value="terminated">已终止</option><option value="expiring">即将到期</option></select>
     <div class="search-wrap"><input id="contract-search" placeholder="搜索合同..." oninput="renderContracts()"></div>
    </div>
    <div class="stats-bar" id="contract-stats"></div>
@@ -3330,7 +3330,7 @@ async function doResetPassword(){
 
 // ═══════════ Sales Pipeline ═══════════
 var currentSalesTab='leads';
-var allLeads=[],allQuotations=[],allContracts=[],allPayments=[];
+var allLeads=[],allQuotations=[],allContracts=[],allPayments=[],allQfTemplates=[];
 var allTargets=[],allPerfRecords=[],allCommission=[],allCommissionRules=[];
 var allSuppliers=[],allSupCategories=[];
 var leditId=null,qeditId=null,ceditId=null,peditId=null;
@@ -3473,7 +3473,7 @@ async function toggleLeadFrozen(){
   if(!confirm(freeze?'确认冻结该商机？':'确认解除冻结？'))return;
   var r=await sb.from('leads').update(freeze?{frozen:true,frozen_at:new Date().toISOString(),frozen_by:currentUser.id}:{frozen:false,frozen_at:null,frozen_by:null}).eq('id',leditId);
   if(r.error){showToast('操作失败');return}
-  showToast(freeze?'已冻结':'已解除冻结');closeLeadForm();await loadLeads();
+  showToast(freeze?'已冻结':'已解除冻结');closeLeadForm();await loadLeads();loadQuotations();
 }
 function openLeadForm(id){
   leditId=id||null;
@@ -3599,11 +3599,13 @@ function addFollowUp(prefix){
 
 // ── Quotations ──
 async function loadQuotations(){
-  var grid=document.getElementById('quote-grid');grid.innerHTML='<div class="loading"><span class="spinner"></span>加载中...</div>';
-  var {data,error}=await sb.from('quotations').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
-  if(error){grid.innerHTML='<div class="empty">加载失败</div>';return}
-  allQuotations=data||[];renderQuotations();
+  try{
+    var r=await sb.from('quotations').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
+    if(r.error){console.error('loadQuotations:',r.error);return}
+    allQuotations=r.data||[];
+  }catch(e){console.error('loadQuotations error:',e)}
 }
+
 
 function renderQuotations(){
   var filter=document.getElementById('quote-status-filter').value;
@@ -3611,19 +3613,22 @@ function renderQuotations(){
   var list=allQuotations.slice();
   if(filter!=='all')list=list.filter(function(x){return x.status===filter});
   if(q)list=list.filter(function(x){return (x.title||'').toLowerCase().indexOf(q)>=0||(x.notes||'').toLowerCase().indexOf(q)>=0});
-  var total=list.length,draft=0,sent=0,val=0;
-  for(var i=0;i<list.length;i++){val+=list[i].total_amount||0;if(list[i].status==='draft')draft++;if(list[i].status==='sent')sent++}
-  document.getElementById('quote-stats').innerHTML='<div class="stat-card"><div class="stat-num">'+total+'</div><div class="stat-label">报价数</div></div><div class="stat-card"><div class="stat-num">'+formatMoney(val)+'</div><div class="stat-label">总额</div></div><div class="stat-card"><div class="stat-num">'+(total-draft)+'</div><div class="stat-label">已发出</div></div>';
+  var total=list.length,draft=0,sent=0,approved=0,val=0;
+  for(var i=0;i<list.length;i++){val+=list[i].total_amount||0;if(list[i].status==='draft')draft++;else if(list[i].status==='sent')sent++;else if(list[i].status==='approved')approved++}
+  document.getElementById('quote-stats').innerHTML='<div class="stat-card"><div class="stat-num">'+total+'</div><div class="stat-label">报价数</div></div><div class="stat-card"><div class="stat-num">'+formatMoney(val)+'</div><div class="stat-label">总金额</div></div><div class="stat-card"><div class="stat-num">'+draft+'</div><div class="stat-label">草稿</div></div><div class="stat-card"><div class="stat-num">'+approved+'</div><div class="stat-label">已批准</div></div>';
   var grid=document.getElementById('quote-grid'),empty=document.getElementById('quote-empty');
   if(!list.length){grid.innerHTML='';empty.classList.remove('hidden');return}
   empty.classList.add('hidden');
-  var h='';
+  var h='',statusMap={draft:'草稿',sent:'已发送',approved:'已批准',rejected:'已拒绝',expired:'已过期',converted:'已转订单'};
   for(var i=0;i<list.length;i++){
-    var qt=list[i],sc={'draft':'sb-draft','sent':'sb-sent','accepted':'sb-accepted','rejected':'sb-rejected','expired':'sb-expired'}[qt.status]||'sb-draft';
-    var cn='';var cl=allClients.find(function(x){return x.id===qt.client_id});if(cl)cn=cl.name;
+    var qt=list[i],sc='sb-'+qt.status;
+    var cn='';var cl=allClients.find(function(x){return x.id===qt.client_id});if(cl)cn=escHtml(cl.name);
     h+='<div class="pipe-card" onclick="openQuoteForm(\''+qt.id+'\')"><div class="pc-header"><span class="pc-name">'+escHtml(qt.title)+'</span><span class="pc-amount">'+formatMoney(qt.total_amount||0)+'</span></div>';
-    if(cn)h+='<div class="pc-company">🏢 '+escHtml(cn)+'</div>';
-    h+='<div class="pc-meta"><span class="status-badge '+sc+'">'+({draft:'草稿',sent:'已发送',accepted:'已接受',rejected:'已拒绝',expired:'已过期'}[qt.status]||qt.status)+'</span>'+(qt.valid_until?'<span>截止: '+qt.valid_until+'</span>':'')+'</div>';
+    if(cn)h+='<div class="pc-company">\ud83c\udfe2 '+cn+'</div>';
+    var meta=[];
+    if(qt.discount_rate>0)meta.push('<span style=\'color:#EF4444\'>折扣 '+qt.discount_rate+'%</span>');
+    if(qt.tax_rate>0)meta.push('<span>税 '+qt.tax_rate+'%</span>');
+    h+='<div class="pc-meta"><span class="status-badge '+sc+'">'+(statusMap[qt.status]||qt.status)+'</span>'+(qt.valid_until?'<span>有效期: '+qt.valid_until+'</span>':'')+meta.join(' ')+'</div>';
     h+='</div>';
   }
   grid.innerHTML=h;
@@ -3633,23 +3638,81 @@ function openQuoteForm(id){
   qeditId=id||null;qfItems=[];
   document.getElementById('quote-form-title').textContent=id?'编辑报价':'创建报价';
   document.getElementById('quote-btn-delete').classList.toggle('hidden',!id);
+  document.getElementById('quote-btn-convert').classList.toggle('hidden',!id||!(id&&allQuotations.find(function(x){return x.id===id&&x.status==='approved'})));
   document.getElementById('qf-title').value='';
   document.getElementById('qf-valid-until').value='';
+  document.getElementById('qf-discount-rate').value='0';
+  document.getElementById('qf-tax-rate').value='0';
   document.getElementById('qf-status').value='draft';
   document.getElementById('qf-notes').value='';
+  document.getElementById('qf-total').textContent=String.fromCharCode(165)+'0.00';
+  document.getElementById('qf-discount-amount').textContent='-'+String.fromCharCode(165)+'0.00';
+  document.getElementById('qf-tax-amount').textContent=String.fromCharCode(165)+'0.00';
+  document.getElementById('qf-grand-total').textContent=String.fromCharCode(165)+'0.00';
   var csel=document.getElementById('qf-client');
   csel.innerHTML='<option value="">选择客户...</option>';
   for(var i=0;i<allClients.length;i++)csel.innerHTML+='<option value="'+allClients[i].id+'">'+escHtml(allClients[i].name)+'</option>';
+  var tsel=document.getElementById('qf-template');
+  tsel.innerHTML='<option value="">不使用模板</option>';
+  for(var i=0;i<allQfTemplates.length;i++)tsel.innerHTML+='<option value="'+allQfTemplates[i].id+'">'+escHtml(allQfTemplates[i].name)+'</option>';
   if(id){var qt=allQuotations.find(function(x){return x.id===id});if(qt){
     document.getElementById('qf-title').value=qt.title||'';
     document.getElementById('qf-valid-until').value=qt.valid_until||'';
+    document.getElementById('qf-discount-rate').value=qt.discount_rate||0;
+    document.getElementById('qf-tax-rate').value=qt.tax_rate||0;
     document.getElementById('qf-status').value=qt.status||'draft';
     document.getElementById('qf-notes').value=qt.notes||'';
     csel.value=qt.client_id||'';
     qfItems=qt.items||[];if(typeof qfItems==='string')qfItems=JSON.parse(qfItems);
   }}
   renderQfItems();
+  updateQfTotals();
   document.getElementById('quote-modal').classList.remove('hidden');
+}
+function updateQfTotals(){
+  var subtotal=0;for(var i=0;i<qfItems.length;i++)subtotal+=(qfItems[i].qty||0)*(qfItems[i].price||0);
+  var dr=parseFloat(document.getElementById('qf-discount-rate').value)||0;
+  var da=dr>0?Math.round(subtotal*dr/100*100)/100:0;
+  var ad=subtotal-da;
+  var tr=parseFloat(document.getElementById('qf-tax-rate').value)||0;
+  var ta=tr>0?Math.round(ad*tr/100*100)/100:0;
+  var gt=ad+ta;
+  document.getElementById('qf-total').textContent=String.fromCharCode(165)+gt.toFixed(2);
+  document.getElementById('qf-discount-amount').textContent='-'+String.fromCharCode(165)+da.toFixed(2);
+  document.getElementById('qf-tax-amount').textContent=String.fromCharCode(165)+ta.toFixed(2);
+  document.getElementById('qf-grand-total').textContent=String.fromCharCode(165)+gt.toFixed(2);
+}
+function applyQfTemplate(){
+  var tid=document.getElementById('qf-template').value;if(!tid)return;
+  var tpl=allQfTemplates.find(function(x){return x.id==parseInt(tid)});if(!tpl)return;
+  if(tpl.items&&tpl.items.length){qfItems=JSON.parse(JSON.stringify(tpl.items));renderQfItems()}
+  if(tpl.discount_rate)document.getElementById('qf-discount-rate').value=tpl.discount_rate;
+  if(tpl.tax_rate)document.getElementById('qf-tax-rate').value=tpl.tax_rate;
+  updateQfTotals();
+}
+function saveContractTemplate(){var n=prompt('模板名称:');if(!n)return;
+  var items=[];for(var i=0;i<qfItems.length;i++)items.push({name:qfItems[i].name||'',spec:qfItems[i].spec||'',unit:qfItems[i].unit||'',qty:qfItems[i].qty||1,price:qfItems[i].price||0});
+  var dr=parseFloat(document.getElementById('qf-discount-rate').value)||0;
+  var tr=parseFloat(document.getElementById('qf-tax-rate').value)||0;
+  sb.from('quote_templates').insert({company_id:currentCompanyId,name:n,items:items,discount_rate:dr,tax_rate:tr,created_at:new Date().toISOString()}).then(function(r){if(r.error)showToast('保存模板失败');else{loadQfTemplates();showToast('模板已保存')}});
+}
+function loadQfTemplates(){
+  sb.from('quote_templates').select('*').eq('company_id',currentCompanyId).order('name').then(function(r){allQfTemplates=r.data||[]});
+}
+function convertQuoteToOrder(){
+  if(!qeditId)return;
+  var qt=allQuotations.find(function(x){return x.id===qeditId});if(!qt)return;
+  confirmDialog('将此报价转为订单？',async function(){
+    var amountEnc=await encryptAmount((qt.total_amount||0).toFixed(2));
+    var order={company_id:currentCompanyId,user_id:currentUser.id,client_id:qt.client_id,
+      order_number:'ORD-'+Date.now().toString(36).toUpperCase(),
+      project_name:qt.title,amount_enc:amountEnc,
+      stage:'谈判中',notes:'从报价 '+qt.title+' 转换',created_at:new Date().toISOString()};
+    var r=await sb.from('orders').insert(order);
+    if(r.error){showToast('转换失败: '+r.error.message);return}
+    await sb.from('quotations').update({status:'converted',updated_at:new Date().toISOString()}).eq('id',qeditId);
+    closeQuoteForm();await loadQuotations();await loadOrders();showToast('报价已转为订单');
+  });
 }
 function closeQuoteForm(){document.getElementById('quote-modal').classList.add('hidden');qeditId=null;qfItems=[]}
 
@@ -3671,20 +3734,28 @@ function qfDeleteItem(i){qfItems.splice(i,1);renderQfItems()}
 async function saveQuote(){
   var title=document.getElementById('qf-title').value.trim();if(!title){showToast('请输入报价标题');return}
   var cid=document.getElementById('qf-client').value;if(!cid){showToast('请选择关联客户');return}
-  var total=0;for(var i=0;i<qfItems.length;i++)total+=(qfItems[i].qty||0)*(qfItems[i].price||0);
+  var subtotal=0;for(var i=0;i<qfItems.length;i++)subtotal+=(qfItems[i].qty||0)*(qfItems[i].price||0);
+  var discountRate=parseFloat(document.getElementById('qf-discount-rate').value)||0;
+  var discountAmount=discountRate>0?Math.round(subtotal*discountRate/100*100)/100:0;
+  var afterDiscount=subtotal-discountAmount;
+  var taxRate=parseFloat(document.getElementById('qf-tax-rate').value)||0;
+  var taxAmount=taxRate>0?Math.round(afterDiscount*taxRate/100*100)/100:0;
+  var grandTotal=afterDiscount+taxAmount;
   var data={
     company_id:currentCompanyId,user_id:currentUser.id,title:title,client_id:cid,
-    items:qfItems,total_amount:total,
+    items:qfItems,subtotal:subtotal,total_amount:grandTotal,
+    discount_rate:discountRate,discount_amount:discountAmount,
+    tax_rate:taxRate,tax_amount:taxAmount,
     status:document.getElementById('qf-status').value,
     valid_until:document.getElementById('qf-valid-until').value||null,
     notes:document.getElementById('qf-notes').value.trim(),
     updated_at:new Date().toISOString()
   };
   var error;
-  if(qeditId){var {error:err}=await sb.from('quotations').update(data).eq('id',qeditId);error=err}
-  else{data.created_at=new Date().toISOString();var {error:err2}=await sb.from('quotations').insert(data);error=err2}
+  if(qeditId){var r=await sb.from('quotations').update(data).eq('id',qeditId);error=r.error}
+  else{data.created_at=new Date().toISOString();var r2=await sb.from('quotations').insert(data);error=r2.error}
   if(error){showToast('保存失败: '+error.message);return}
-  closeQuoteForm();loadQuotations();showToast(qeditId?'报价已更新':'报价已创建');
+  closeQuoteForm();await loadQuotations();showToast(qeditId?'报价已更新':'报价已创建');
 }
 
 function confirmDeleteQuote(){if(qeditId)confirmDialog('确定删除该报价？',async function(){await sb.from('quotations').delete().eq('id',qeditId);closeQuoteForm();loadQuotations();showToast('报价已删除')})}
@@ -3701,11 +3772,20 @@ function renderContracts(){
   var filter=document.getElementById('contract-status-filter').value;
   var q=(document.getElementById('contract-search').value||'').trim().toLowerCase();
   var list=allContracts.slice();
-  if(filter!=='all')list=list.filter(function(x){return x.status===filter});
+  if(filter!=='all')list=list.filter(function(x){return (filter==='expiring'?isContractExpiring(x):x.status===filter)});
   if(q)list=list.filter(function(x){return (x.title||'').toLowerCase().indexOf(q)>=0||(x.contract_no||'').toLowerCase().indexOf(q)>=0||(x.notes||'').toLowerCase().indexOf(q)>=0});
-  var total=list.length,signed=0,val=0;
-  for(var i=0;i<list.length;i++){val+=list[i].total_amount||0;if(list[i].status==='signed'||list[i].status==='executing')signed++}
-  document.getElementById('contract-stats').innerHTML='<div class="stat-card"><div class="stat-num">'+total+'</div><div class="stat-label">合同数</div></div><div class="stat-card"><div class="stat-num">'+formatMoney(val)+'</div><div class="stat-label">总金额</div></div><div class="stat-card"><div class="stat-num">'+signed+'</div><div class="stat-label">生效中</div></div>';
+  var total=list.length,signed=0,val=0,expiring=0;
+  var today=new Date();today.setHours(0,0,0,0);
+  for(var i=0;i<list.length;i++){
+    val+=list[i].total_amount||list[i].amount||0;
+    if(list[i].status==='signed'||list[i].status==='executing')signed++;
+    if(list[i].end_date){
+      var ed=new Date(list[i].end_date);ed.setHours(0,0,0,0);
+      var diffDays=Math.ceil((ed-today)/(1000*60*60*24));
+      if(diffDays<=30&&diffDays>=0)expiring++;
+    }
+  }
+  document.getElementById('contract-stats').innerHTML='<div class="stat-card"><div class="stat-num">'+total+'</div><div class="stat-label">合同数</div></div><div class="stat-card"><div class="stat-num">'+formatMoney(val)+'</div><div class="stat-label">总金额</div></div><div class="stat-card"><div class="stat-num" style="color:#10B981">'+signed+'</div><div class="stat-label">生效中</div></div><div class="stat-card"><div class="stat-num" style="color:#F59E0B">'+expiring+'</div><div class="stat-label">即将到期</div></div>';
   var grid=document.getElementById('contract-grid'),empty=document.getElementById('contract-empty');
   if(!list.length){grid.innerHTML='';empty.classList.remove('hidden');return}
   empty.classList.add('hidden');
@@ -3713,12 +3793,38 @@ function renderContracts(){
   for(var i=0;i<list.length;i++){
     var ct=list[i],sc={'draft':'sb-draft','signed':'sb-signed','executing':'sb-executing','completed':'sb-completed','terminated':'sb-terminated'}[ct.status]||'sb-draft';
     var cn='';var cl=allClients.find(function(x){return x.id===ct.client_id});if(cl)cn=cl.name;
-    h+='<div class="pipe-card" onclick="openContractForm(\''+ct.id+'\')"><div class="pc-header"><span class="pc-name">'+escHtml(ct.title)+'</span><span class="pc-amount">'+formatMoney(ct.total_amount||0)+'</span></div>';
-    if(cn)h+='<div class="pc-company">🏢 '+escHtml(cn)+'</div>';
-    h+='<div class="pc-meta">'+(ct.contract_no?'<span>📋 '+escHtml(ct.contract_no)+'</span>':'')+'<span class="status-badge '+sc+'">'+({draft:'草稿',signed:'已签署',executing:'执行中',completed:'已完成',terminated:'已终止'}[ct.status]||ct.status)+'</span>'+(ct.sign_date?'<span>签署: '+ct.sign_date+'</span>':'')+(ct.end_date?'<span>到期: '+ct.end_date+'</span>':'')+'</div>';
+    var paid=ct.paid_amount||0,total=ct.total_amount||ct.amount||1;
+    var pct=Math.round(paid/total*100);
+    var expiryHtml='';
+    if(ct.end_date){
+      var ed=new Date(ct.end_date);ed.setHours(0,0,0,0);
+      var dd=Math.ceil((ed-today)/(1000*60*60*24));
+      if(dd<0)expiryHtml=' <span style=\'background:#FEE2E2;color:#DC2626;padding:1px 6px;border-radius:3px;font-size:11px\'>已逾期</span>';
+      else if(dd<=30)expiryHtml=' <span style=\'background:#FEF3C7;color:#D97706;padding:1px 6px;border-radius:3px;font-size:11px\'>'+dd+'天后到期</span>';
+    }
+    var archiveIcon=ct.archive_status==='archived'?' \ud83d\udce6':'';
+    h+='<div class="pipe-card" onclick="openContractForm(\''+ct.id+'\')"><div class="pc-header"><span class="pc-name">'+escHtml(ct.title)+archiveIcon+'</span><span class="pc-amount">'+formatMoney(ct.total_amount||ct.amount||0)+'</span></div>';
+    if(cn)h+='<div class="pc-company">\ud83c\udfe2 '+escHtml(cn)+'</div>';
+    h+='<div class="pc-meta">'+(ct.contract_no?'<span>\ud83d\udccb '+escHtml(ct.contract_no)+'</span>':'')+'<span class="status-badge '+sc+'">'+({draft:'草稿',signed:'已签署',executing:'执行中',completed:'已完成',terminated:'已终止'}[ct.status]||ct.status)+'</span>'+expiryHtml+'</div>';
+    h+='<div style=\'margin:6px 0;background:var(--border);border-radius:4px;height:6px;overflow:hidden\'><div style=\'width:'+pct+'%;height:100%;background:'+(pct>=100?'#10B981':'#4F6EF7')+';border-radius:4px;transition:width .3s\'></div></div>';
+    h+='<div style=\'font-size:11px;color:var(--text2);display:flex;justify-content:space-between\'><span>回款 '+formatMoney(paid)+' / '+formatMoney(total)+' ('+pct+'%)</span><span>'+(ct.end_date?'到期: '+ct.end_date:'')+'</span></div>';
     h+='</div>';
   }
   grid.innerHTML=h;
+}
+function isContractExpiring(ct){
+  if(!ct.end_date)return false;
+  var ed=new Date(ct.end_date),today=new Date();
+  ed.setHours(0,0,0,0);today.setHours(0,0,0,0);
+  var diffDays=Math.ceil((ed-today)/(1000*60*60*24));
+  return diffDays>=0&&diffDays<=30;
+}
+function toggleContractArchive(id,archive){
+  confirmDialog(archive?'确定归档该合同？':'确定取消归档？',async function(){
+    var r=await sb.from('contracts').update({archive_status:archive?'archived':'active',updated_at:new Date().toISOString()}).eq('id',id);
+    if(r.error){showToast('操作失败: '+r.error.message);return}
+    await loadContracts();showToast(archive?'合同已归档':'合同已取消归档');
+  });
 }
 
 function openContractForm(id){
@@ -3734,6 +3840,7 @@ function openContractForm(id){
   document.getElementById('cf-start-date').value='';
   document.getElementById('cf-end-date').value='';
   document.getElementById('cf-status').value='draft';
+  document.getElementById('cf-archive-status').value='active';
   document.getElementById('cf-notes').value='';
   var csel=document.getElementById('cf-client');
   csel.innerHTML='<option value="">选择客户...</option>';
@@ -3741,13 +3848,14 @@ function openContractForm(id){
   if(id){var ct=allContracts.find(function(x){return x.id===id});if(ct){
     document.getElementById('cf-contract-no').value=ct.contract_no||'';
     document.getElementById('cf-title').value=ct.title||'';
-    document.getElementById('cf-amount').value=ct.total_amount||'';
+    document.getElementById('cf-amount').value=ct.total_amount||ct.amount||'';
     document.getElementById('cf-our-party').value=ct.our_party||'';
     document.getElementById('cf-their-party').value=ct.their_party||'';
     document.getElementById('cf-sign-date').value=ct.sign_date||'';
     document.getElementById('cf-start-date').value=ct.start_date||'';
     document.getElementById('cf-end-date').value=ct.end_date||'';
     document.getElementById('cf-status').value=ct.status||'draft';
+    document.getElementById('cf-archive-status').value=ct.archive_status||'active';
     document.getElementById('cf-notes').value=ct.notes||'';
     csel.value=ct.client_id||'';
   }}
@@ -3758,24 +3866,26 @@ function closeContractForm(){document.getElementById('contract-modal').classList
 async function saveContract(){
   var title=document.getElementById('cf-title').value.trim();if(!title){showToast('请输入合同标题');return}
   var cid=document.getElementById('cf-client').value;if(!cid){showToast('请选择关联客户');return}
+  var totalAmount=parseFloat(document.getElementById('cf-amount').value)||0;
   var data={
     company_id:currentCompanyId,user_id:currentUser.id,title:title,client_id:cid,
     contract_no:document.getElementById('cf-contract-no').value.trim(),
-    total_amount:parseFloat(document.getElementById('cf-amount').value)||0,
+    total_amount:totalAmount,
     our_party:document.getElementById('cf-our-party').value.trim(),
     their_party:document.getElementById('cf-their-party').value.trim(),
     sign_date:document.getElementById('cf-sign-date').value||null,
     start_date:document.getElementById('cf-start-date').value||null,
     end_date:document.getElementById('cf-end-date').value||null,
     status:document.getElementById('cf-status').value,
+    archive_status:document.getElementById('cf-archive-status').value||'active',
     notes:document.getElementById('cf-notes').value.trim(),
     updated_at:new Date().toISOString()
   };
   var error;
-  if(ceditId){var {error:err}=await sb.from('contracts').update(data).eq('id',ceditId);error=err}
-  else{data.created_at=new Date().toISOString();var {error:err2}=await sb.from('contracts').insert(data);error=err2}
+  if(ceditId){var r=await sb.from('contracts').update(data).eq('id',ceditId);error=r.error}
+  else{data.created_at=new Date().toISOString();var r2=await sb.from('contracts').insert(data);error=r2.error}
   if(error){showToast('保存失败: '+error.message);return}
-  closeContractForm();loadContracts();showToast(ceditId?'合同已更新':'合同已创建');
+  closeContractForm();await loadContracts();showToast(ceditId?'合同已更新':'合同已创建');
 }
 function confirmDeleteContract(){if(ceditId)confirmDialog('确定删除该合同？',async function(){await sb.from('contracts').delete().eq('id',ceditId);closeContractForm();loadContracts();showToast('合同已删除')})}
 
@@ -4532,18 +4642,29 @@ async function deleteCheckById(id){
   <h3 id="quote-form-title">创建报价</h3>
   <div class="form-group"><label>报价标题 *</label><input id="qf-title" placeholder="如：XXXX项目报价单"></div>
   <div class="form-group"><label>关联客户 *</label><select id="qf-client"><option value="">选择客户...</option></select></div>
+  <div class="form-group"><label>报价模板</label><select id="qf-template" onchange="applyQfTemplate()"><option value="">不使用模板</option></select></div>
   <div class="section-title">📋 明细项目 <button class="add-btn" onclick="addQuoteItem()">＋ 添加行</button></div>
   <div class="quote-items" id="qf-items"></div>
-  <div class="quote-total">合计：<span id="qf-total">¥0.00</span></div>
+  <div class="form-row" style="background:var(--surface);padding:10px;border-radius:8px;margin-bottom:8px">
+   <div class="form-group" style="flex:1"><label>折扣率(%)</label><input id="qf-discount-rate" type="number" min="0" max="100" placeholder="0" oninput="updateQfTotals()" style="width:80px"></div>
+   <div class="form-group" style="flex:1"><label>税率(%)</label><input id="qf-tax-rate" type="number" min="0" max="100" placeholder="0" oninput="updateQfTotals()" style="width:80px"></div>
+  </div>
+  <div style="text-align:right;font-size:13px;color:var(--text2);margin-bottom:8px">
+   小计：<span id="qf-total">¥0.00</span> &nbsp;
+   折扣：<span id="qf-discount-amount" style="color:#EF4444">-¥0.00</span> &nbsp;
+   税额：<span id="qf-tax-amount">¥0.00</span>
+  </div>
+  <div class="quote-total">合计：<span id="qf-grand-total">¥0.00</span></div>
   <div class="form-row">
    <div class="form-group"><label>有效截止</label><input id="qf-valid-until" type="date"></div>
-   <div class="form-group"><label>状态</label><select id="qf-status"><option value="draft">草稿</option><option value="sent">已发送</option><option value="accepted">已接受</option><option value="rejected">已拒绝</option><option value="expired">已过期</option></select></div>
+   <div class="form-group"><label>状态</label><select id="qf-status"><option value="draft">草稿</option><option value="sent">已发送</option><option value="approved">已批准</option><option value="rejected">已拒绝</option><option value="expired">已过期</option></select></div>
   </div>
   <div class="form-group"><label>备注</label><textarea id="qf-notes" rows="2" placeholder="备注..."></textarea></div>
   <div class="modal-actions">
-   <button id="lead-btn-freeze" class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
+   <button class="btn-sm btn-sm-muted" onclick="saveContractTemplate()" style="margin-right:auto">💾 保存为模板</button>
    <button class="btn-cancel" onclick="closeQuoteForm()">取消</button>
    <button class="btn-delete hidden" id="quote-btn-delete" onclick="confirmDeleteQuote()">删除</button>
+   <button class="btn-convert hidden" id="quote-btn-convert" onclick="convertQuoteToOrder()" style="background:#10B981;color:#fff">转为订单</button>
    <button class="btn-save" onclick="saveQuote()">保存</button>
   </div>
  </div>
