@@ -1410,13 +1410,14 @@ async function handleLogin(){
       if(r.data.user&&!r.data.session){er.textContent='请联系管理员关闭邮件确认';return}
       await onLoginSuccess(r.data.user);
     }
-  }catch(e){er.textContent='网络错误'}
+  }catch(e){er.textContent='登录失败: '+(e.message||e.toString());console.error('handleLogin error:',e)}
   finally{btn.disabled=false;btn.textContent=loginMode==='register'?'注册':'登录'}
 }
 async function onLoginSuccess(user){
   currentUser=user;
   // Upsert profile and load role/company
-  var {data:profile}=await sb.from('profiles').upsert({user_id:user.id,email:user.email},{onConflict:'user_id'}).select('role,company_id,display_name,phone,position').single();
+  var profile=null;
+  try{var r2=await sb.from('profiles').upsert({user_id:user.id,email:user.email},{onConflict:'user_id'}).select('role,company_id,display_name,phone,position').single();profile=r2.data}catch(e){console.error('profile upsert failed:',e);throw new Error('无法加载用户档案: '+(e.message||JSON.stringify(e)))}
   if(profile){currentUserRole=profile.role||'user';isSuperAdmin=profile.role==='super_admin';currentCompanyId=profile.company_id;}
 
   document.getElementById('login-user').value='';
