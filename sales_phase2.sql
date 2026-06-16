@@ -16,13 +16,13 @@ ALTER TABLE quotations ADD COLUMN IF NOT EXISTS converted_to_order_id BIGINT;
 ALTER TABLE quotations DROP CONSTRAINT IF EXISTS quotes_status_check;
 ALTER TABLE quotations ADD CONSTRAINT quotes_status_check CHECK (status IN ('draft','sent','approved','rejected','expired','converted'));
 
-COMMENT ON COLUMN quotes.discount_rate IS '折扣率 0-100';
-COMMENT ON COLUMN quotes.discount_amount IS '折扣金额';
-COMMENT ON COLUMN quotes.subtotal IS '折扣前小计';
-COMMENT ON COLUMN quotes.tax_rate IS '税率(%)';
-COMMENT ON COLUMN quotes.tax_amount IS '税额';
-COMMENT ON COLUMN quotes.valid_until IS '报价有效期';
-COMMENT ON COLUMN quotes.converted_to_order_id IS '转换后的订单ID';
+COMMENT ON COLUMN quotations.discount_rate IS '折扣率 0-100';
+COMMENT ON COLUMN quotations.discount_amount IS '折扣金额';
+COMMENT ON COLUMN quotations.subtotal IS '折扣前小计';
+COMMENT ON COLUMN quotations.tax_rate IS '税率(%)';
+COMMENT ON COLUMN quotations.tax_amount IS '税额';
+COMMENT ON COLUMN quotations.valid_until IS '报价有效期';
+COMMENT ON COLUMN quotations.converted_to_order_id IS '转换后的订单ID';
 
 -- 2. 报价模板表
 CREATE TABLE IF NOT EXISTS quote_templates (
