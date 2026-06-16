@@ -3136,6 +3136,7 @@ function formatMoney(v){
   if(v>=10000)return (v/10000).toFixed(1)+'万';
   return v.toFixed(0);
 }
+var fmtNum=formatMoney;
 
 // === Delete Order ===
 function confirmDeleteOrder(){document.getElementById('order-confirm').classList.remove('hidden');orderDeleteId=orderEditId}
@@ -4379,7 +4380,7 @@ function openContractForm(id){
   document.getElementById('cf-start-date').value='';
   document.getElementById('cf-end-date').value='';
   document.getElementById('cf-status').value='draft';
-  document.getElementById('cf-archive-status').value='active';
+  var el=document.getElementById('cf-archive-status');if(el)el.value='active';
   document.getElementById('cf-notes').value='';
   var csel=document.getElementById('cf-client');
   csel.innerHTML='<option value="">选择客户...</option>';
@@ -5232,6 +5233,8 @@ async function deleteCheckById(id){
   <div class="form-row">
    <div class="form-group"><label>结束日期</label><input id="cf-end-date" type="date"></div>
    <div class="form-group"><label>状态</label><select id="cf-status"><option value="draft">草稿</option><option value="signed">已签署</option><option value="executing">执行中</option><option value="completed">已完成</option><option value="terminated">已终止</option></select></div>
+   </div>
+   <input id="cf-archive-status" type="hidden" value="active"><input id="cf-discount" type="hidden" value="0"><input id="cf-tax" type="hidden" value="0">
   </div>
   <div class="form-group"><label>备注</label><textarea id="cf-notes" rows="2" placeholder="备注..."></textarea></div>
   <div class="modal-actions">
