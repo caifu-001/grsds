@@ -3728,8 +3728,16 @@ async function saveDept(){
   var parentId=parseInt(document.getElementById('dept-parent').value)||null;
   var selCid=isSuperAdmin?document.getElementById('dept-company'):null;
   var payload={name:name,parent_id:parentId,company_id:selCid&&selCid.value?parseInt(selCid.value):currentCompanyId};
-  if(deptFormId){var{error}=await sb.from('departments').update(payload).eq('id',deptFormId);if(error){alert('保存失败: '+error.message);return}}
-  else{var{error}=await sb.from('departments').insert(payload);if(error){alert('创建失败: '+error.message);return}}
+  if(isSuperAdmin||currentUserRole==='admin'){
+    var prefix=deptFormId?'PATCH':'POST';
+    var url=deptFormId?SUPABASE_URL+'/rest/v1/departments?id=eq.'+deptFormId:SUPABASE_URL+'/rest/v1/departments';
+    try{var dr=await fetch(url,{method:prefix,headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(payload)});
+    if(!dr.ok){var dj=await dr.json().catch(function(){});alert('保存失败: '+(dj&&dj.message||dr.statusText));return}}
+    catch(e){alert('网络错误: '+e.message);return}
+  }else{
+    if(deptFormId){var{error}=await sb.from('departments').update(payload).eq('id',deptFormId);if(error){alert('保存失败: '+error.message);return}}
+    else{var{error}=await sb.from('departments').insert(payload);if(error){alert('创建失败: '+error.message);return}}
+  }
   document.getElementById('dept-form-modal').remove();
   await loadAdminData();renderAdminDepts();
 }
@@ -3738,7 +3746,14 @@ async function deleteDept(id,name){
   if(!confirm('确定删除部门「'+name+'」？下属用户将变为无部门。'))return;
   // Unlink users first
   await sb.from('profiles').update({department_id:null}).eq('department_id',id);
-  var {error}=await sb.from('departments').delete().eq('id',id);
+  var error=null;
+  if(isSuperAdmin||currentUserRole==='admin'){
+    try{var dr=await fetch(SUPABASE_URL+'/rest/v1/departments?id=eq.'+id,{method:'DELETE',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Prefer':'return=representation'}});
+    if(!dr.ok){var dj=await dr.json().catch(function(){});error={message:dj&&dj.message||dr.statusText}}
+    }catch(e){error={message:e.message}}
+  }else{
+    var res=await sb.from('departments').delete().eq('id',id);error=res.error;
+  }
   if(error){alert('删除失败: '+error.message);return}
   await loadAdminData();renderAdminDepts();
 }
@@ -6334,5 +6349,6 @@ document.addEventListener('click',function(e){
  </div>
 </div>
 
+<div id="toast-container"></div>
 </body>
 </html>
