@@ -568,7 +568,7 @@ input,select,textarea,button{font-family:inherit}
 <div class="more-menu" id="more-menu">
  <button class="more-item" onclick="closeMoreMenu();switchTab('performance')"><span class="mi-icon">🏆</span> 业绩看板</button>
  <!-- 供应商入口已移至库存页面 -->
- <button class="more-item" id="more-admin" onclick="closeMoreMenu();switchTab('admin')"><span class="mi-icon">⚙</span> 组织管理</button>
+ 
  <div class="more-divider"></div>
  <button class="more-item" onclick="closeMoreMenu();showCompanies()"><span class="mi-icon">📂</span> 公司名录</button>
  <button class="more-item" onclick="closeMoreMenu();openSettings()"><span class="mi-icon">🔧</span> 系统设置</button>
@@ -2992,9 +2992,7 @@ function toggleMoreMenu(){
   if(isOpen){closeMoreMenu()}else{
     // Show/hide admin items
     var isAdmin=currentUserRole==='admin'||currentUserRole==='super_admin';
-    var adminItem=document.getElementById('more-admin');
     var adminTab=document.getElementById('tab-admin');
-    if(adminItem)adminItem.style.display=isAdmin?'':'none';
     if(adminTab)adminTab.classList.toggle('hidden',!isAdmin);
     menu.classList.add('show');overlay.classList.add('show');
   }
