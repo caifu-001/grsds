@@ -306,6 +306,24 @@ input,select,textarea,button{font-family:inherit}
 .badge-approved{background:#E8F5E9;color:#2E7D32}
 .badge-rejected{background:#FFEBEE;color:#C62828}
 
+  /* ── Lead Toolbar & Stats ── */
+  .lead-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:4px 16px 8px}
+  .lead-stat-item{background:var(--surface);border-radius:8px;padding:8px;text-align:center;border:1px solid var(--border)}
+  .lead-stat-item .lsi-num{font-size:18px;font-weight:700;color:var(--primary);line-height:1}
+  .lead-stat-item .lsi-label{font-size:10px;color:var(--text-secondary);margin-top:2px}
+  /* Funnel */
+  .funnel-header{font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px}
+  .funnel-bars{display:flex;flex-direction:column;gap:4px}
+  .funnel-bar{display:flex;align-items:center;gap:8px}
+  .fb-label{width:70px;display:flex;justify-content:space-between;font-size:11px;color:var(--text-secondary)}
+  .fb-count{font-weight:700;color:var(--text)}
+  .fb-track{flex:1;height:14px;border-radius:7px;background:var(--bg);overflow:hidden}
+  .fb-fill{height:100%;border-radius:7px;transition:width .8s cubic-bezier(0.25,0.46,0.45,0.94);min-width:2px}
+  .frozen-card{opacity:.6;filter:grayscale(.3)}
+  @media(max-width:640px){
+   .lead-stats{grid-template-columns:repeat(2,1fr)}
+  }
+
 /* ── Sales Pipeline ── */
 .sales-tabs{display:flex;gap:4px;padding:10px 16px 0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .sales-tabs::-webkit-scrollbar{display:none}
@@ -643,7 +661,15 @@ input,select,textarea,button{font-family:inherit}
     <div class="search-wrap"><input id="lead-search" placeholder="搜索线索/公司/联系人..." oninput="renderLeads()"></div>
    </div>
    <div class="stats-bar" id="lead-stats"></div>
-   <div class="client-grid" id="lead-grid"></div>
+   <div class="client-grid" <div id="lead-toolbar" style="display:flex;gap:6px;padding:8px 16px;align-items:center;flex-wrap:wrap">
+    <input id="lead-search" placeholder="搜索线索..." oninput="renderLeads()" style="flex:1;min-width:120px;height:32px;border:1px solid var(--border);border-radius:8px;padding:0 10px;font-size:13px;background:var(--surface);color:var(--text)">
+    <select id="lead-stage-filter" onchange="renderLeads()" style="height:32px;border:1px solid var(--border);border-radius:8px;padding:0 8px;font-size:13px;background:var(--surface);color:var(--text)">
+     <option value="all">全部阶段</option><option value="初步沟通">初步沟通</option><option value="需求方案">需求方案</option><option value="报价阶段">报价阶段</option><option value="商务谈判">商务谈判</option><option value="签约成交">签约成交</option>
+    </select>
+   </div>
+   <div id="sales-funnel" style="margin:4px 16px 8px"></div>
+   <div id="lead-stats" class="lead-stats" style="display:none"></div>
+   id="lead-grid"></div>
    <div class="empty hidden" id="lead-empty"><div class="empty-icon">🎯</div>暂无线索<br><span style="font-size:12px;color:var(--text3)">点击右下角 ＋ 添加线索</span></div>
   </div>
   <!-- Quotations Panel -->
@@ -971,6 +997,7 @@ input,select,textarea,button{font-family:inherit}
   <button class="add-phone-btn" style="margin-top:8px;margin-bottom:12px" onclick="addContact()">＋ 添加联系人</button>
 
   <div class="modal-actions">
+   <button id="lead-btn-freeze" class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
    <button class="btn-delete hidden" id="btn-delete" onclick="confirmDelete()">删除客户</button>
    <button class="btn-cancel" onclick="closeForm()">取消</button>
    <button class="btn-save" onclick="saveClient()">保存</button>
@@ -1003,6 +1030,7 @@ input,select,textarea,button{font-family:inherit}
   <div class="form-group"><label>备注</label><textarea id="of-notes" placeholder="订单备注..."></textarea></div>
 
   <div class="modal-actions">
+   <button id="lead-btn-freeze" class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
    <button class="btn-delete hidden" id="order-btn-delete" onclick="confirmDeleteOrder()">删除订单</button>
    <button class="btn-cancel" onclick="closeOrderForm()">取消</button>
    <button class="btn-save" onclick="saveOrder()">保存</button>
@@ -1046,6 +1074,7 @@ input,select,textarea,button{font-family:inherit}
   <div class="form-group"><label>部门</label><select id="add-user-dept"><option value="">无部门</option></select></div>
   <div class="form-group"><label>角色</label><select id="add-user-role"><option value="user">普通用户</option><option value="admin">管理员</option></select></div>
   <div class="modal-actions">
+   <button id="lead-btn-freeze" class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
    <button class="btn-cancel" onclick="closeAddUserForm()">取消</button>
    <button class="btn-save" onclick="saveNewUser()">创建</button>
   </div>
@@ -3334,28 +3363,62 @@ async function loadLeads(){
 }
 
 function renderLeads(){
-  var filter=document.getElementById('lead-status-filter').value;
+  var filter=document.getElementById('lead-stage-filter');var fv=filter?filter.value:'all';
+  var oldFilter=document.getElementById('lead-status-filter');if(!filter&&oldFilter)fv=oldFilter.value;
+  if(fv===undefined)fv='all';
   var q=(document.getElementById('lead-search').value||'').trim().toLowerCase();
   var list=allLeads.slice();
-  if(filter!=='all')list=list.filter(function(l){return l.status===filter});
+  if(fv!=='all')list=list.filter(function(l){return l.stage===fv||l.status===fv});
   if(q)list=list.filter(function(l){return (l.name||'').toLowerCase().indexOf(q)>=0||(l.company_name||'').toLowerCase().indexOf(q)>=0||(l.contact_name||'').toLowerCase().indexOf(q)>=0||(l.contact_phone||'').indexOf(q)>=0});
+  // sort: frozen at bottom
+  list.sort(function(a,b){return (b.frozen?0:1)-(a.frozen?0:1)||(new Date(b.updated_at||b.created_at||0))-(new Date(a.updated_at||a.created_at||0))});
   // Stats
-  var total=list.length,won=0,val=0;
-  for(var i=0;i<list.length;i++){val+=list[i].estimated_value||0;if(list[i].status==='won')won++}
-  document.getElementById('lead-stats').innerHTML='<div class="stat-card"><div class="stat-num">'+total+'</div><div class="stat-label">线索总数</div></div><div class="stat-card"><div class="stat-num">'+formatMoney(val)+'</div><div class="stat-label">预估总额</div></div><div class="stat-card"><div class="stat-num">'+won+'</div><div class="stat-label">已赢单</div></div>';
+  var total=list.length,won=0,frozen=0,val=0;
+  for(var i=0;i<list.length;i++){val+=list[i].estimated_value||list[i].amount||0;if(list[i].status==='won'||list[i].stage==='签约成交')won++;if(list[i].frozen)frozen++}
+  var stats=document.getElementById('lead-stats');if(stats){stats.style.display=list.length?'':'none';
+  stats.innerHTML='<div class="lead-stat-item"><span class="lsi-num">'+total+'</span><span class="lsi-label">线索总数</span></div><div class="lead-stat-item"><span class="lsi-num">'+formatMoney(val)+'</span><span class="lsi-label">预估总额</span></div><div class="lead-stat-item"><span class="lsi-num">'+won+'</span><span class="lsi-label">已成交</span></div><div class="lead-stat-item"><span class="lsi-num">'+frozen+'</span><span class="lsi-label">冻结中</span></div>';}
+  // Funnel
+  var funnel=document.getElementById('sales-funnel');
+  if(funnel&&list.length){
+    var stages=['初步沟通','需求方案','报价阶段','商务谈判','签约成交'];
+    var scols=['#1565C0','#E65100','#6B21A8','#92400E','#166534'];
+    var counts={};for(var k=0;k<stages.length;k++)counts[stages[k]]=0;
+    for(var m=0;m<list.length;m++){var s=list[m].stage||'';if(counts[s]!==undefined)counts[s]++}
+    var maxCount=Math.max.apply(null,stages.map(function(s){return counts[s]}),1);
+    var fh='<div class="funnel-header">📊 销售漏斗</div><div class="funnel-bars">';
+    for(var n=0;n<stages.length;n++){
+      var pct=maxCount?Math.round(counts[stages[n]]/maxCount*100):0;
+      fh+='<div class="funnel-bar"><div class="fb-label"><span>'+stages[n]+'</span><span class="fb-count">'+counts[stages[n]]+'</span></div><div class="fb-track"><div class="fb-fill" style="width:'+pct+'%;background:'+scols[n]+'"></div></div></div>';
+    }
+    fh+='</div>';funnel.innerHTML=fh;
+  }
   // Grid
   var grid=document.getElementById('lead-grid'),empty=document.getElementById('lead-empty');
   if(!list.length){grid.innerHTML='';empty.classList.remove('hidden');return}
   empty.classList.add('hidden');
   var h='';
-  for(var i=0;i<list.length;i++){
-    var l=list[i],sc=lsClass(l.status);
-    h+='<div class="pipe-card" onclick="openLeadForm(\''+l.id+'\')" style="--card-bar:'+lsColor(l.status)+'">';
-    h+='<div class="pc-header"><span class="pc-name">'+escHtml(l.name)+'</span><span class="pc-amount">'+formatMoney(l.estimated_value||0)+'</span></div>';
-    if(l.company_name)h+='<div class="pc-company">🏢 '+escHtml(l.company_name)+'</div>';
-    if(l.contact_name)h+='<div class="pc-meta"><span>👤 '+escHtml(l.contact_name)+'</span>'+ (l.contact_phone?'<span>📞 '+escHtml(l.contact_phone)+'</span>':'')+'</div>';
-    h+='<div class="pc-tags"><span class="status-badge '+sc+'">'+lsLabel(l.status)+'</span>'+(l.probability?'<span class="status-badge" style="background:#F1F5F9;color:#475569">'+l.probability+'%</span>':'')+(l.source?'<span class="status-badge" style="background:#F1F5F9;color:#475569">'+escHtml(l.source)+'</span>':'')+'</div>';
-    h+='</div>';
+  for(var j=0;j<list.length;j++){
+    var l=list[j];
+    var stage=l.stage||l.status||'初步沟通';
+    var prob=l.probability||l.win_probability||10;
+    var probColor=prob>=80?'var(--success)':prob>=50?'var(--primary)':prob>=30?'var(--warning)':'var(--danger)';
+    var scMap={'初步沟通':'#1565C0','需求方案':'#E65100','报价阶段':'#6B21A8','商务谈判':'#92400E','签约成交':'#166534','won':'#166534','赢单':'#166534','lost':'#991B1B','输单':'#991B1B'};
+    var sc=scMap[stage]||lsColor(l.status)||'#475569';
+    var comps=(l.competitors||[]).length,fls=(l.follow_ups||[]).length;
+    var frozenBadge=l.frozen?' <span class="status-badge sb-cancelled">已冻结</span>':'';
+    var overdueBadge='';
+    if(fls>0&&!l.frozen){var now=new Date();var overdue=l.follow_ups.some(function(f){return !f.completed&&new Date(f.date)<now;});if(overdue)overdueBadge=' <span class="status-badge sb-overdue">跟进逾期</span>';}
+    var onclick='openLeadForm('+JSON.stringify(l.id)+')';
+    h+='<div class="pipe-card'+(l.frozen?' frozen-card':'')+'" onclick="'+onclick+'" style="--card-bar:'+sc+'">';
+    h+='<div class="pc-header"><span class="pc-name">'+escHtml(l.name||'未命名')+frozenBadge+overdueBadge+'</span><span class="pc-amount">'+formatMoney(l.estimated_value||l.amount||0)+'</span></div>';
+    if(l.company_name||l.company)h+='<div class="pc-company">'+escHtml(l.company_name||l.company||'')+'</div>';
+    if(l.contact_name)h+='<div class="pc-meta"><span>👤 '+escHtml(l.contact_name)+'</span>'+(l.contact_phone?'<span>📞 '+escHtml(l.contact_phone)+'</span>':'')+'</div>';
+    h+='<div style="display:flex;align-items:center;gap:8px;margin:6px 0"><span class="status-badge '+lsClass(l.status)+'">'+stage+'</span>';
+    h+='<span style="font-size:12px;color:'+probColor+';font-weight:700">'+prob+'%</span>';
+    h+='<div style="flex:1;height:4px;border-radius:2px;background:var(--border);overflow:hidden"><div style="height:100%;width:'+prob+'%;background:'+probColor+';border-radius:2px"></div></div></div>';
+    h+='<div class="pc-meta">';
+    h+=(l.expected_close_date?'<span>📅 '+l.expected_close_date+'</span>':'')+(comps>0?'<span>⚔ '+comps+'竞品</span>':'')+(fls>0?'<span>📋 '+fls+'跟进</span>':'');
+    h+='</div></div>';
   }
   grid.innerHTML=h;
 }
@@ -3364,44 +3427,107 @@ function lsClass(s){ return {'new':'sb-new','contacted':'sb-contacted','qualifie
 function lsLabel(s){ return {'new':'新线索','contacted':'已联系','qualified':'已确认','proposal':'报价中','negotiation':'谈判中','won':'赢单','lost':'输单'}[s]||s;}
 function lsColor(s){ return {'new':'#1565C0','contacted':'#E65100','qualified':'#2E7D32','proposal':'#6B21A8','negotiation':'#92400E','won':'#166534','lost':'#991B1B'}[s]||'#1565C0';}
 
+
+// ── Competitor & Follow-up Plan State ──
+var leadCompetitors=[],leadFollowUps=[];
+function addCompetitor(){
+  leadCompetitors.push({name:'',strength:'',weakness:'',note:''});
+  renderCompetitors();
+}
+function removeCompetitor(i){leadCompetitors.splice(i,1);renderCompetitors()}
+function renderCompetitors(){
+  var el=document.getElementById('lf-competitors');if(!el)return;var h='';
+  for(var i=0;i<leadCompetitors.length;i++){
+    var c=leadCompetitors[i];
+    h+='<div class="project-entry"><div class="pe-header"><span class="pe-num">竞品 #'+(i+1)+'</span><button class="pe-remove" onclick="removeCompetitor('+i+')">&times;</button></div>';
+    h+='<input placeholder="竞品名称" value="'+escHtml(c.name)+'" oninput="leadCompetitors['+i+'].name=this.value" style="width:100%;margin-bottom:6px">';
+    h+='<div class="form-row"><input placeholder="优势" value="'+escHtml(c.strength)+'" oninput="leadCompetitors['+i+'].strength=this.value"><input placeholder="劣势" value="'+escHtml(c.weakness)+'" oninput="leadCompetitors['+i+'].weakness=this.value"></div>';
+    h+='<input placeholder="备注" value="'+escHtml(c.note)+'" oninput="leadCompetitors['+i+'].note=this.value" style="width:100%">';
+    h+='</div>';
+  }
+  el.innerHTML=h;
+}
+function addFollowUpPlan(){
+  leadFollowUps.push({type:'电话',date:new Date().toISOString().slice(0,10),content:'',next_step:'',completed:false});
+  renderFollowUpPlans();
+}
+function removeFollowUpPlan(i){leadFollowUps.splice(i,1);renderFollowUpPlans()}
+function renderFollowUpPlans(){
+  var el=document.getElementById('lf-follows');if(!el)return;var h='';
+  for(var i=0;i<leadFollowUps.length;i++){
+    var f=leadFollowUps[i];
+    h+='<div class="project-entry"><div class="pe-header"><span class="pe-num">跟进 #'+(i+1)+'</span><button class="pe-remove" onclick="removeFollowUpPlan('+i+')">&times;</button></div>';
+    h+='<div style="display:flex;gap:6px;margin-bottom:6px"><select onchange="leadFollowUps['+i+'].type=this.value" style="flex:1"><option value="电话"'+(f.type==='电话'?' selected':'')+'>电话</option><option value="拜访"'+(f.type==='拜访'?' selected':'')+'>拜访</option><option value="邮件"'+(f.type==='邮件'?' selected':'')+'>邮件</option><option value="会议"'+(f.type==='会议'?' selected':'')+'>会议</option><option value="微信"'+(f.type==='微信'?' selected':'')+'>微信</option><option value="其他"'+(f.type==='其他'?' selected':'')+'>其他</option></select>';
+    h+='<input type="date" value="'+escHtml(f.date)+'" onchange="leadFollowUps['+i+'].date=this.value" style="flex:1">';
+    h+='<label style="display:flex;align-items:center;gap:4px;font-size:12px"><input type="checkbox"'+(f.completed?' checked':'')+' onchange="leadFollowUps['+i+'].completed=this.checked">完成</label></div>';
+    h+='<input placeholder="跟进内容" value="'+escHtml(f.content)+'" oninput="leadFollowUps['+i+'].content=this.value" style="width:100%;margin-bottom:4px">';
+    h+='<input placeholder="下一步计划" value="'+escHtml(f.next_step)+'" oninput="leadFollowUps['+i+'].next_step=this.value" style="width:100%">';
+    h+='</div>';
+  }
+  el.innerHTML=h;
+}
+async function toggleLeadFrozen(){
+  if(!leditId)return;
+  var l=allLeads.find(function(x){return x.id===leditId});if(!l)return;
+  var freeze=!l.frozen;
+  if(!confirm(freeze?'确认冻结该商机？':'确认解除冻结？'))return;
+  var r=await sb.from('leads').update(freeze?{frozen:true,frozen_at:new Date().toISOString(),frozen_by:currentUser.id}:{frozen:false,frozen_at:null,frozen_by:null}).eq('id',leditId);
+  if(r.error){showToast('操作失败');return}
+  showToast(freeze?'已冻结':'已解除冻结');closeLeadForm();await loadLeads();
+}
 function openLeadForm(id){
   leditId=id||null;
   document.getElementById('lead-form-title').textContent=id?'编辑线索':'添加线索';
   document.getElementById('lead-btn-delete').classList.toggle('hidden',!id);
-  lfFollowUps=[];
+  document.getElementById('lead-btn-freeze').classList.toggle('hidden',!id);
+  lfFollowUps=[];leadCompetitors=[];leadFollowUps=[];
   document.getElementById('lf-follows').innerHTML='';
+  document.getElementById('lf-competitors').innerHTML='';
   document.getElementById('lf-name').value='';
   document.getElementById('lf-company').value='';
   document.getElementById('lf-source').value='';
   document.getElementById('lf-contact-name').value='';
   document.getElementById('lf-contact-phone').value='';
   document.getElementById('lf-value').value='';
-  document.getElementById('lf-probability').value='10';
-  document.getElementById('lf-status').value='new';
+  document.getElementById('lf-expected-date').value='';
+  document.getElementById('lf-probability').value='10';document.getElementById('lf-prob-val').textContent='10%';
+  document.getElementById('lf-status').value='初步沟通';
   document.getElementById('lf-notes').value='';
+  // owner dropdown
+  var os=document.getElementById('lf-owner');
+  os.innerHTML='<option value="">当前用户</option>';
+  if(adminUserList&&adminUserList.length)for(var i=0;i<adminUserList.length;i++)os.innerHTML+='<option value="'+adminUserList[i].user_id+'">'+(adminUserList[i].display_name||adminUserList[i].email||adminUserList[i].user_id)+'</option>';
   // Populate client link dropdown
   var sel=document.getElementById('lf-link-client');
   sel.innerHTML='<option value="">不关联</option>';
-  for(var i=0;i<allClients.length;i++)sel.innerHTML+='<option value="'+allClients[i].id+'">'+escHtml(allClients[i].name)+'</option>';
+  for(var j=0;j<allClients.length;j++)sel.innerHTML+='<option value="'+allClients[j].id+'">'+escHtml(allClients[j].name)+'</option>';
   sel.value='';
   if(!allClients.length)loadClients().then(function(){
     var s=document.getElementById('lf-link-client');s.innerHTML='<option value="">不关联</option>';
-    for(var j=0;j<allClients.length;j++)s.innerHTML+='<option value="'+allClients[j].id+'">'+escHtml(allClients[j].name)+'</option>';
+    for(var k=0;k<allClients.length;k++)s.innerHTML+='<option value="'+allClients[k].id+'">'+escHtml(allClients[k].name)+'</option>';
   });
   if(id){
     var lead=allLeads.find(function(l){return l.id===id});
     if(lead){
       document.getElementById('lf-name').value=lead.name||'';
-      document.getElementById('lf-company').value=lead.company_name||'';
+      document.getElementById('lf-company').value=lead.company_name||lead.company||'';
       document.getElementById('lf-source').value=lead.source||'';
       document.getElementById('lf-contact-name').value=lead.contact_name||'';
       document.getElementById('lf-contact-phone').value=lead.contact_phone||'';
-      document.getElementById('lf-value').value=lead.estimated_value||'';
-      document.getElementById('lf-probability').value=lead.probability||10;
-      document.getElementById('lf-status').value=lead.status||'new';
+      document.getElementById('lf-value').value=lead.estimated_value||lead.amount||'';
+      document.getElementById('lf-expected-date').value=lead.expected_close_date||'';
+      document.getElementById('lf-probability').value=lead.probability||lead.win_probability||10;
+      document.getElementById('lf-prob-val').textContent=(lead.probability||lead.win_probability||10)+'%';
+      document.getElementById('lf-status').value=lead.stage||lead.status||'初步沟通';
       document.getElementById('lf-notes').value=lead.notes||'';
+      document.getElementById('lf-owner').value=lead.owner_id||'';
+      document.getElementById('lead-btn-freeze').textContent=lead.frozen?'解除冻结':'冻结';
       sel.value=lead.client_id||'';
-    } loadFollowUps(id);
+      if(lead.competitors){leadCompetitors=lead.competitors.slice();renderCompetitors();}
+      if(lead.follow_ups){leadFollowUps=(lead.follow_ups||[]).slice();renderFollowUpPlans();}else{loadFollowUps(id);}
+    }
+  }else{
+    document.getElementById('lead-btn-freeze').textContent='冻结';
   }
   document.getElementById('lead-modal').classList.remove('hidden');
 }
@@ -3409,6 +3535,7 @@ function closeLeadForm(){document.getElementById('lead-modal').classList.add('hi
 
 async function saveLead(){
   var name=document.getElementById('lf-name').value.trim();if(!name){showToast('请输入线索名称');return}
+  var stage=document.getElementById('lf-status').value;
   var data={
     company_id:currentCompanyId,user_id:currentUser.id,name:name,
     company_name:document.getElementById('lf-company').value.trim(),
@@ -3416,9 +3543,14 @@ async function saveLead(){
     contact_name:document.getElementById('lf-contact-name').value.trim(),
     contact_phone:document.getElementById('lf-contact-phone').value.trim(),
     estimated_value:parseFloat(document.getElementById('lf-value').value)||0,
+    expected_close_date:document.getElementById('lf-expected-date').value||null,
     probability:parseInt(document.getElementById('lf-probability').value)||10,
-    status:document.getElementById('lf-status').value,
+    status:stage==='赢单'?'won':stage==='输单'?'lost':stage,
+    stage:stage,
     notes:document.getElementById('lf-notes').value.trim(),
+    owner_id:document.getElementById('lf-owner').value||currentUser.id,
+    competitors:leadCompetitors,
+    follow_ups:leadFollowUps,
     updated_at:new Date().toISOString()
   };
   // Client link
@@ -4353,12 +4485,12 @@ async function deleteCheckById(id){
 </script>
 <!-- Lead Modal -->
 <div class="modal-overlay hidden" id="lead-modal">
- <div class="modal-sheet">
+ <div class="modal-sheet" style="max-height:90vh;overflow-y:auto">
   <h3 id="lead-form-title">添加线索</h3>
-  <div class="form-group"><label>线索名称 *</label><input id="lf-name" placeholder="请输入线索/项目名称"></div>
+  <div class="form-group"><label>线索/项目名称 *</label><input id="lf-name" placeholder="请输入线索/项目名称"></div>
   <div class="form-row">
    <div class="form-group"><label>客户公司</label><input id="lf-company" placeholder="客户公司名"></div>
-   <div class="form-group"><label>来源</label><select id="lf-source"><option value="">请选择</option><option value="展会">展会</option><option value="转介绍">转介绍</option><option value="网络">网络</option><option value="陌拜">陌拜</option><option value="其他">其他</option></select></div>
+   <div class="form-group"><label>来源</label><select id="lf-source"><option value="">请选择</option><option value="展会">展会</option><option value="转介绍">转介绍</option><option value="网络推广">网络推广</option><option value="电话营销">电话营销</option><option value="陌拜">陌拜</option><option value="其他">其他</option></select></div>
   </div>
   <div class="form-row">
    <div class="form-group"><label>联系人</label><input id="lf-contact-name" placeholder="姓名"></div>
@@ -4366,16 +4498,27 @@ async function deleteCheckById(id){
   </div>
   <div class="form-row">
    <div class="form-group"><label>预估金额(元)</label><input id="lf-value" type="number" step="0.01" placeholder="0"></div>
-   <div class="form-group"><label>赢率(%)</label><input id="lf-probability" type="number" min="0" max="100" value="10"></div>
+   <div class="form-group"><label>预期成交日</label><input id="lf-expected-date" type="date"></div>
   </div>
-  <div class="form-group"><label>状态</label><select id="lf-status"><option value="new">新线索</option><option value="contacted">已联系</option><option value="qualified">已确认</option><option value="proposal">报价中</option><option value="negotiation">谈判中</option><option value="won">赢单</option><option value="lost">输单</option></select></div>
+  <div class="form-row">
+   <div class="form-group"><label>销售阶段</label><select id="lf-status"><option value="初步沟通">初步沟通</option><option value="需求方案">需求方案</option><option value="报价阶段">报价阶段</option><option value="商务谈判">商务谈判</option><option value="签约成交">签约成交</option><option value="赢单">赢单</option><option value="输单">输单</option></select></div>
+   <div class="form-group"><label>赢率(%)</label><input id="lf-probability" type="range" min="0" max="100" value="10" oninput="document.getElementById('lf-prob-val').textContent=this.value+'%'" style="width:100%;margin-top:6px"><div id="lf-prob-val" style="text-align:center;font-size:20px;font-weight:700;color:var(--primary)">10%</div></div>
+  </div>
+  <div class="form-row">
+   <div class="form-group"><label>负责人</label><select id="lf-owner"><option value="">当前用户</option></select></div>
+   <div class="form-group"></div>
+  </div>
   <div class="form-group"><label>备注</label><textarea id="lf-notes" rows="2" placeholder="跟进备注..."></textarea></div>
+  <!-- Competitors -->
+  <div class="section-title" style="margin-top:12px">⚔ 竞品记录 <button class="add-btn" onclick="addCompetitor()">＋ 新增</button></div>
+  <div id="lf-competitors"></div>
   <!-- Follow-ups for this lead -->
-  <div class="section-title" style="margin-top:12px">📋 跟进记录 <button class="add-btn" onclick="addFollowUp('lead','lf')">＋ 新增</button></div>
+  <div class="section-title" style="margin-top:12px">📋 跟进计划 <button class="add-btn" onclick="addFollowUpPlan()">＋ 新增</button></div>
   <div id="lf-follows"></div>
   <div class="section-title">🔗 关联客户</div>
   <div class="link-select-row"><select id="lf-link-client"><option value="">不关联</option></select><button onclick="convertLeadToClient()">转为客户</button></div>
   <div class="modal-actions">
+   <button id="lead-btn-freeze" class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
    <button class="btn-cancel" onclick="closeLeadForm()">取消</button>
    <button class="btn-delete hidden" id="lead-btn-delete" onclick="confirmDeleteLead()">删除</button>
    <button class="btn-save" onclick="saveLead()">保存</button>
@@ -4398,6 +4541,7 @@ async function deleteCheckById(id){
   </div>
   <div class="form-group"><label>备注</label><textarea id="qf-notes" rows="2" placeholder="备注..."></textarea></div>
   <div class="modal-actions">
+   <button id="lead-btn-freeze" class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
    <button class="btn-cancel" onclick="closeQuoteForm()">取消</button>
    <button class="btn-delete hidden" id="quote-btn-delete" onclick="confirmDeleteQuote()">删除</button>
    <button class="btn-save" onclick="saveQuote()">保存</button>
@@ -4431,6 +4575,7 @@ async function deleteCheckById(id){
   </div>
   <div class="form-group"><label>备注</label><textarea id="cf-notes" rows="2" placeholder="备注..."></textarea></div>
   <div class="modal-actions">
+   <button id="lead-btn-freeze" class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
    <button class="btn-cancel" onclick="closeContractForm()">取消</button>
    <button class="btn-delete hidden" id="contract-btn-delete" onclick="confirmDeleteContract()">删除</button>
    <button class="btn-save" onclick="saveContract()">保存</button>
@@ -4459,6 +4604,7 @@ async function deleteCheckById(id){
   </div>
   <div class="form-group"><label>备注</label><textarea id="pf-notes" rows="2" placeholder="备注..."></textarea></div>
   <div class="modal-actions">
+   <button id="lead-btn-freeze" class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
    <button class="btn-cancel" onclick="closePaymentForm()">取消</button>
    <button class="btn-delete hidden" id="payment-btn-delete" onclick="confirmDeletePayment()">删除</button>
    <button class="btn-save" onclick="savePayment()">保存</button>
@@ -4495,6 +4641,7 @@ async function deleteCheckById(id){
   </div>
   <div class="form-group"><label>描述</label><textarea id="pfm-desc" rows="2" placeholder="产品描述..."></textarea></div>
   <div class="modal-actions">
+   <button id="lead-btn-freeze" class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
    <button class="btn-cancel" onclick="closeProductForm()">取消</button>
    <button class="btn-delete hidden" id="product-btn-delete" onclick="deleteProduct()">删除</button>
    <button class="btn-save" onclick="saveProduct()">保存</button>
@@ -4510,6 +4657,7 @@ async function deleteCheckById(id){
   <div class="form-group"><label>描述</label><input id="cat-desc" placeholder="分类描述"></div>
   <div id="cat-list" style="margin-top:12px"></div>
   <div class="modal-actions">
+   <button id="lead-btn-freeze" class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
    <button class="btn-cancel" onclick="closeCategoryForm()">取消</button>
    <button class="btn-save" onclick="saveCategory()">保存</button>
   </div>
@@ -4524,6 +4672,7 @@ async function deleteCheckById(id){
   <div class="form-group"><label>地址</label><input id="wh-addr" placeholder="仓库地址"></div>
   <div class="form-group"><label>描述</label><textarea id="wh-desc" rows="2" placeholder="备注..."></textarea></div>
   <div class="modal-actions">
+   <button id="lead-btn-freeze" class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
    <button class="btn-cancel" onclick="closeWarehouseForm()">取消</button>
    <button class="btn-delete hidden" id="warehouse-btn-delete" onclick="deleteWarehouse()">删除</button>
    <button class="btn-save" onclick="saveWarehouse()">保存</button>
@@ -4549,6 +4698,7 @@ async function deleteCheckById(id){
   </div>
   <div class="form-group"><label>备注</label><textarea id="srm-remark" rows="2" placeholder="备注..."></textarea></div>
   <div class="modal-actions">
+   <button id="lead-btn-freeze" class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
    <button class="btn-cancel" onclick="closeStockRecordForm()">取消</button>
    <button class="btn-save" onclick="saveStockRecord()">保存</button>
   </div>
@@ -4569,6 +4719,7 @@ async function deleteCheckById(id){
   </div>
   <div class="form-group"><label><input type="checkbox" id="alm-enabled" checked> 启用预警</label></div>
   <div class="modal-actions">
+   <button id="lead-btn-freeze" class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
    <button class="btn-cancel" onclick="closeAlertForm()">取消</button>
    <button class="btn-delete hidden" id="alert-btn-delete" onclick="deleteAlert()">删除</button>
    <button class="btn-save" onclick="saveAlert()">保存</button>
@@ -4594,6 +4745,7 @@ async function deleteCheckById(id){
    <div class="check-sum-card"><div class="cs-val" style="color:var(--danger)" id="chm-diff">0</div><div class="cs-label">差异</div></div>
   </div>
   <div class="modal-actions">
+   <button id="lead-btn-freeze" class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
    <button class="btn-cancel" onclick="closeCheckForm()">取消</button>
    <button class="btn-delete hidden" id="check-btn-delete" onclick="deleteCheck()">删除</button>
    <button class="btn-save" onclick="saveCheck()">保存</button>
