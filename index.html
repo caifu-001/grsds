@@ -1210,7 +1210,7 @@ input,select,textarea,button{font-family:inherit}
    <div class="form-group"><label>岗位</label><input id="add-user-position" placeholder="如：销售经理"></div>
    <div class="form-group"><label>手机</label><input id="add-user-phone" placeholder="手机号"></div>
   </div>
-  <div class="form-group" id="add-user-company-wrap"><label>归属公司</label><select id="add-user-company"><option value="">--</option></select></div>
+  <div class="form-group" id="add-user-company-wrap"><label>归属公司 (仅超管)</label><input id="add-user-company" list="add-company-list" placeholder="输入或选择公司" autocomplete="off" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;box-sizing:border-box"><datalist id="add-company-list"></datalist></div>
   <div class="form-group"><label>部门</label><select id="add-user-dept"><option value="">无部门</option></select></div>
   <div class="form-group"><label>角色</label><select id="add-user-role"><option value="user">普通用户</option><option value="admin">管理员</option></select></div>
   <div class="modal-actions">
@@ -3597,17 +3597,19 @@ function renderAdminUsers(){
   var list=adminUserList.filter(function(u){return !q||(u.email||'').toLowerCase().indexOf(q)>=0||(u.display_name||'').toLowerCase().indexOf(q)>=0||(u.position||'').toLowerCase().indexOf(q)>=0;});
   var el=document.getElementById('admin-user-list');
   if(list.length===0){el.innerHTML='<div class="empty-state">暂无员工</div>';return}
-  var h='<table class="user-table"><thead><tr><th>姓名</th><th>邮箱</th><th>部门</th><th>岗位</th><th>状态</th><th>手机</th><th>角色</th><th>操作</th></tr></thead><tbody>';
+  var h='<table class="user-table"><thead><tr><th>姓名</th><th>邮箱</th><th>公司</th><th>部门</th><th>岗位</th><th>状态</th><th>手机</th><th>角色</th><th>操作</th></tr></thead><tbody>';
   for(var i=0;i<list.length;i++){
     var u=list[i];
     var deptName='-';
     for(var j=0;j<allDepartments.length;j++){if(allDepartments[j].id===u.department_id){deptName=allDepartments[j].name;break}}
+    var companyName='-';for(var ci=0;ci<(typeof allAdminCompanies!=='undefined'?allAdminCompanies:allCompanies||[]).length;ci++){var cab=typeof allAdminCompanies!=='undefined'?allAdminCompanies:allCompanies||[];if(cab[ci].id===u.company_id){companyName=cab[ci].name;break}}
     var roleName=u.role||'user';
     if(u.role_id&&allRoles){for(var k=0;k<allRoles.length;k++){if(allRoles[k].id===u.role_id){roleName=allRoles[k].name;break}}}
     var status=u.status||'active';
     var statusLabel={active:'在职',inactive:'停用',leave:'离职'}[status]||status;
     h+='<tr><td><strong>'+escHtml(u.display_name||'-')+'</strong></td>';
     h+='<td>'+escHtml(u.email||'-')+'</td>';
+    h+='<td>'+escHtml(companyName)+'</td>';
     h+='<td>'+escHtml(deptName)+'</td>';
     h+='<td>'+escHtml(u.position||'-')+'</td>';
     h+='<td><span class="badge-status '+status+'">'+statusLabel+'</span></td>';
@@ -3794,8 +3796,7 @@ function openAddUserForm(){
   var cw=document.getElementById('add-user-company-wrap');
   var cs=document.getElementById('add-user-company');
   if(isSuperAdmin&&allAdminCompanies&&allAdminCompanies.length){
-    cw.style.display='';cs.innerHTML='<option value="">--</option>';
-    for(var i=0;i<allAdminCompanies.length;i++){cs.innerHTML+='<option value="'+allAdminCompanies[i].id+'">'+escHtml(allAdminCompanies[i].name)+'</option>';}
+    cw.style.display='';var dl=document.getElementById('add-company-list');if(dl){dl.innerHTML='';for(var i=0;i<allAdminCompanies.length;i++)dl.innerHTML+='<option value="'+escHtml(allAdminCompanies[i].name)+'">';}
   }else{cw.style.display='none';}
   // Populate dept dropdown
   var s=document.getElementById('add-user-dept');s.innerHTML='<option value="">无部门</option>';
@@ -3837,7 +3838,7 @@ async function saveNewUser(){
   // Step 4: Restore admin localStorage, reload sb client session
   if(authKey&&authVal){localStorage.setItem(authKey,authVal);await sb.auth.getSession()}
   // Step 5: Write profile via raw fetch (adminToken from step 1 — independent of sb client state)
-  var selCompanyId=isSuperAdmin?document.getElementById('add-user-company').value:null;
+  var selCompanyId=null;if(isSuperAdmin){var cname=document.getElementById('add-user-company').value.trim();if(cname){var found=null;var cab=typeof allAdminCompanies!=='undefined'?allAdminCompanies:allCompanies||[];for(var i=0;i<cab.length;i++){if(cab[i].name===cname){found=cab[i];break}}if(found){selCompanyId=found.id}else{showToast('未找到公司: '+cname);return}}}
   var body={user_id:newUserId,email:email,role:role||'user',role_id:roleId,company_id:selCompanyId||currentCompanyId,display_name:name,position:position,phone:phone,department_id:deptId?parseInt(deptId):null};
   var res=await fetch(SUPABASE_URL+'/rest/v1/profiles',{method:'POST',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},body:JSON.stringify(body)});
   if(!res.ok){var txt=await res.text();console.error('Profile write failed:',res.status,txt);showToast('Profile write failed: HTTP '+res.status);return}
@@ -4235,6 +4236,7 @@ function applyQfTemplate(){
   if(tpl.tax_rate)document.getElementById('qf-tax-rate').value=tpl.tax_rate;
   updateQfTotals();
 }
+function removeContractFile(){document.getElementById('cf-file').value='';document.getElementById('cf-file-info').classList.add('hidden');}
 function saveContractTemplate(){var n=prompt('模板名称:');if(!n)return;
   var items=[];for(var i=0;i<qfItems.length;i++)items.push({name:qfItems[i].name||'',spec:qfItems[i].spec||'',unit:qfItems[i].unit||'',qty:qfItems[i].qty||1,price:qfItems[i].price||0});
   var dr=parseFloat(document.getElementById('qf-discount-rate').value)||0;
@@ -4286,7 +4288,19 @@ async function saveQuote(){
   var taxRate=parseFloat(document.getElementById('qf-tax-rate').value)||0;
   var taxAmount=taxRate>0?Math.round(afterDiscount*taxRate/100*100)/100:0;
   var grandTotal=afterDiscount+taxAmount;
-  var data={
+    // Handle file upload
+  var fileUrl='',fileName='';
+  var fileEl=document.getElementById('cf-file');
+  if(fileEl&&fileEl.files&&fileEl.files.length>0){
+    var fl=fileEl.files[0];
+    var ext=fl.name.split('.').pop();
+    var fpath='contract_files/'+currentCompanyId+'/'+Date.now()+'.'+ext;
+    var fresp=await fetch(SUPABASE_URL+'/storage/v1/object/'+fpath,{method:'POST',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY},body:fl});
+    if(fresp.ok){fileUrl=SUPABASE_URL+'/storage/v1/object/public/'+fpath;fileName=fl.name}else{showToast('文件上传失败');return}
+  }else{
+    if(ceditId){var ec=allContracts.find(function(x){return x.id===ceditId});if(ec&&ec.file_url){fileUrl=ec.file_url;fileName=ec.file_name||''}}
+  }
+var data={
     company_id:currentCompanyId,user_id:currentUser.id,title:title,client_id:cid,
     items:qfItems,subtotal:subtotal,total_amount:grandTotal,
     discount_rate:discountRate,discount_amount:discountAmount,
@@ -4349,6 +4363,7 @@ function renderContracts(){
     }
     var archiveIcon=ct.archive_status==='archived'?' \ud83d\udce6':'';
     h+='<div class="pipe-card" onclick="openContractForm(\''+ct.id+'\')"><div class="pc-header"><span class="pc-name">'+escHtml(ct.title)+archiveIcon+'</span><span class="pc-amount">'+formatMoney(ct.total_amount||ct.amount||0)+'</span></div>';
+    if(ct.file_url&&ct.file_url.indexOf('object/public')>0){var fn=ct.file_name||'下载文件';h+='<div class="pc-file" style="font-size:11px;margin-top:2px"><a href="'+ct.file_url+'" target="_blank" rel="noopener" style="color:var(--primary);text-decoration:none">\ud83d\udcce '+escHtml(fn)+'</a></div>'}
     if(cn)h+='<div class="pc-company">\ud83c\udfe2 '+escHtml(cn)+'</div>';
     h+='<div class="pc-meta">'+(ct.contract_no?'<span>\ud83d\udccb '+escHtml(ct.contract_no)+'</span>':'')+'<span class="status-badge '+sc+'">'+({draft:'草稿',signed:'已签署',executing:'执行中',completed:'已完成',terminated:'已终止'}[ct.status]||ct.status)+'</span>'+expiryHtml+'</div>';
     h+='<div style=\'margin:6px 0;background:var(--border);border-radius:4px;height:6px;overflow:hidden\'><div style=\'width:'+pct+'%;height:100%;background:'+(pct>=100?'#10B981':'#4F6EF7')+';border-radius:4px;transition:width .3s\'></div></div>';
@@ -4386,7 +4401,7 @@ function openContractForm(id){
   document.getElementById('cf-end-date').value='';
   document.getElementById('cf-status').value='draft';
   var el=document.getElementById('cf-archive-status');if(el)el.value='active';
-  document.getElementById('cf-notes').value='';
+  document.getElementById('cf-notes').value='';document.getElementById('cf-file').value='';document.getElementById('cf-file-info').classList.add('hidden');
   var csel=document.getElementById('cf-client');
   csel.innerHTML='<option value="">选择客户...</option>';
   for(var i=0;i<allClients.length;i++)csel.innerHTML+='<option value="'+allClients[i].id+'">'+escHtml(allClients[i].name)+'</option>';
@@ -4401,7 +4416,7 @@ function openContractForm(id){
     document.getElementById('cf-end-date').value=ct.end_date||'';
     document.getElementById('cf-status').value=ct.status||'draft';
     document.getElementById('cf-archive-status').value=ct.archive_status||'active';
-    document.getElementById('cf-notes').value=ct.notes||'';
+    document.getElementById('cf-notes').value=(ct.notes||'').replace(/^\\u5f3f\\u0046\\u0049\\u004c\\u0045__:.*?\\n*/,'');if(ct.file_url){document.getElementById('cf-file-info').classList.remove('hidden');document.getElementById('cf-file-name').textContent=ct.file_name||'已上传'};
     csel.value=ct.client_id||'';
   }}
   document.getElementById('contract-modal').classList.remove('hidden');
@@ -4424,6 +4439,8 @@ async function saveContract(){
     status:document.getElementById('cf-status').value,
     archive_status:document.getElementById('cf-archive-status').value||'active',
     notes:document.getElementById('cf-notes').value.trim(),
+    file_url:fileUrl,
+    file_name:fileName,
     updated_at:new Date().toISOString()
   };
   var error;
@@ -5242,6 +5259,7 @@ async function deleteCheckById(id){
    <input id="cf-archive-status" type="hidden" value="active"><input id="cf-discount" type="hidden" value="0"><input id="cf-tax" type="hidden" value="0">
   </div>
   <div class="form-group"><label>备注</label><textarea id="cf-notes" rows="2" placeholder="备注..."></textarea></div>
+  <div class="form-group"><label>合同电子版</label><div id="cf-file-area"><input type="file" id="cf-file" accept=".pdf,.doc,.docx,.jpg,.png,.zip" style="width:100%"><div id="cf-file-info" class="hidden" style="margin-top:4px;font-size:12px;color:var(--primary)">已上传: <span id="cf-file-name"></span> <a href="#" onclick="removeContractFile();return false" style="color:var(--danger)">移除</a></div></div></div>
   <div class="modal-actions">
    <button id="lead-btn-freeze" class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
    <button class="btn-cancel" onclick="closeContractForm()">取消</button>
