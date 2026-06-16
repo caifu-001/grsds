@@ -24,7 +24,7 @@ COMMENT ON COLUMN leads.frozen IS '是否冻结';
 -- 2. 销售阶段配置表（支持自定义）
 CREATE TABLE IF NOT EXISTS sales_stages (
   id BIGSERIAL PRIMARY KEY,
-  company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  company_id BIGINT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   sort_order INT DEFAULT 0,
   probability INT DEFAULT 0,
@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS sales_stages (
 -- 3. 竞品信息表
 CREATE TABLE IF NOT EXISTS competitor_info (
   id BIGSERIAL PRIMARY KEY,
-  company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  company_id BIGINT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   website TEXT DEFAULT '',
   strengths JSONB DEFAULT '[]',
@@ -72,7 +72,7 @@ ALTER TABLE competitor_info ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "sales_stages_select" ON sales_stages;
 CREATE POLICY "sales_stages_select" ON sales_stages FOR SELECT USING (
-  company_id = (current_setting('request.jwt.claims', true)::jsonb->>'company_id')::UUID
+  company_id = (current_setting('request.jwt.claims', true)::jsonb->>'company_id')::BIGINT
   OR EXISTS (SELECT 1 FROM profiles WHERE user_id = auth.uid() AND role = 'super_admin')
 );
 
@@ -81,24 +81,24 @@ CREATE POLICY "sales_stages_insert" ON sales_stages FOR INSERT WITH CHECK (true)
 
 DROP POLICY IF EXISTS "sales_stages_update" ON sales_stages;
 CREATE POLICY "sales_stages_update" ON sales_stages FOR UPDATE USING (
-  company_id = (current_setting('request.jwt.claims', true)::jsonb->>'company_id')::UUID
+  company_id = (current_setting('request.jwt.claims', true)::jsonb->>'company_id')::BIGINT
   OR EXISTS (SELECT 1 FROM profiles WHERE user_id = auth.uid() AND role = 'super_admin')
 );
 
 DROP POLICY IF EXISTS "sales_stages_delete" ON sales_stages;
 CREATE POLICY "sales_stages_delete" ON sales_stages FOR DELETE USING (
-  company_id = (current_setting('request.jwt.claims', true)::jsonb->>'company_id')::UUID
+  company_id = (current_setting('request.jwt.claims', true)::jsonb->>'company_id')::BIGINT
   OR EXISTS (SELECT 1 FROM profiles WHERE user_id = auth.uid() AND role = 'super_admin')
 );
 
 DROP POLICY IF EXISTS "competitor_info_select" ON competitor_info;
 CREATE POLICY "competitor_info_select" ON competitor_info FOR SELECT USING (
-  company_id = (current_setting('request.jwt.claims', true)::jsonb->>'company_id')::UUID
+  company_id = (current_setting('request.jwt.claims', true)::jsonb->>'company_id')::BIGINT
   OR EXISTS (SELECT 1 FROM profiles WHERE user_id = auth.uid() AND role = 'super_admin')
 );
 
 DROP POLICY IF EXISTS "competitor_info_all" ON competitor_info;
 CREATE POLICY "competitor_info_all" ON competitor_info FOR ALL USING (
-  company_id = (current_setting('request.jwt.claims', true)::jsonb->>'company_id')::UUID
+  company_id = (current_setting('request.jwt.claims', true)::jsonb->>'company_id')::BIGINT
   OR EXISTS (SELECT 1 FROM profiles WHERE user_id = auth.uid() AND role = 'super_admin')
 );
