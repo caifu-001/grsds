@@ -657,22 +657,14 @@ input,select,textarea,button{font-family:inherit}
   <!-- Leads Panel -->
   <div class="sales-panel" id="sales-leads-panel">
    <div class="toolbar" style="position:static">
-    <select id="lead-status-filter" onchange="renderLeads()"><option value="all">全部状态</option><option value="new">新线索</option><option value="contacted">已联系</option><option value="qualified">已确认</option><option value="proposal">报价中</option><option value="negotiation">谈判中</option><option value="won">赢单</option><option value="lost">输单</option></select>
+    <select id="lead-stage-filter" onchange="renderLeads()"><option value="all">全部阶段</option><option value="初步沟通">初步沟通</option><option value="需求方案">需求方案</option><option value="报价阶段">报价阶段</option><option value="商务谈判">商务谈判</option><option value="签约成交">签约成交</option><option value="won">赢单</option><option value="lost">输单</option></select>
     <div class="search-wrap"><input id="lead-search" placeholder="搜索线索/公司/联系人..." oninput="renderLeads()"></div>
    </div>
-   <div class="stats-bar" id="lead-stats"></div>
-   <div class="client-grid" <div id="lead-toolbar" style="display:flex;gap:6px;padding:8px 16px;align-items:center;flex-wrap:wrap">
-    <input id="lead-search" placeholder="搜索线索..." oninput="renderLeads()" style="flex:1;min-width:120px;height:32px;border:1px solid var(--border);border-radius:8px;padding:0 10px;font-size:13px;background:var(--surface);color:var(--text)">
-    <select id="lead-stage-filter" onchange="renderLeads()" style="height:32px;border:1px solid var(--border);border-radius:8px;padding:0 8px;font-size:13px;background:var(--surface);color:var(--text)">
-     <option value="all">全部阶段</option><option value="初步沟通">初步沟通</option><option value="需求方案">需求方案</option><option value="报价阶段">报价阶段</option><option value="商务谈判">商务谈判</option><option value="签约成交">签约成交</option>
-    </select>
-   </div>
    <div id="sales-funnel" style="margin:4px 16px 8px"></div>
-   <div id="lead-stats" class="lead-stats" style="display:none"></div>
-   id="lead-grid"></div>
+   <div class="stats-bar" id="lead-stats"></div>
+   <div class="client-grid" id="lead-grid"></div>
    <div class="empty hidden" id="lead-empty"><div class="empty-icon">🎯</div>暂无线索<br><span style="font-size:12px;color:var(--text3)">点击右下角 ＋ 添加线索</span></div>
-  </div>
-  <!-- Quotations Panel -->
+  </div><!-- Quotations Panel -->
   <div class="sales-panel hidden" id="sales-quotations-panel">
    <div class="toolbar" style="position:static">
     <select id="quote-status-filter" onchange="renderQuotations()"><option value="all">全部状态</option><option value="draft">草稿</option><option value="sent">已发送</option><option value="accepted">已接受</option><option value="rejected">已拒绝</option><option value="expired">已过期</option></select>
