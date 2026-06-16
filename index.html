@@ -576,6 +576,37 @@ input,select,textarea,button{font-family:inherit}
 .card-projects{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px}
 .card-project-tag{display:inline-flex;align-items:center;gap:3px;font-size:11px;padding:2px 8px;background:var(--primary-light);color:var(--primary);border-radius:10px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .card-project-tag .bidder{color:var(--text2);font-size:10px}
+
+/* Dashboard */
+.dashboard-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;padding:12px 16px}
+.dash-card{display:flex;align-items:center;gap:12px;background:var(--card-bg);border-radius:12px;padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,0.06)}
+.dash-card-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;flex-shrink:0}
+.dash-card-body{flex:1;min-width:0}
+.dash-card-value{font-size:22px;font-weight:700;color:var(--text);line-height:1.2}
+.dash-card-label{font-size:12px;color:var(--text3);margin-top:2px}
+.dashboard-sections{display:grid;grid-template-columns:1fr 1fr;gap:0;padding:0 16px;margin-top:8px}
+.dash-section{margin:8px 0}
+.dash-section-header{font-size:13px;font-weight:600;color:var(--text2);margin-bottom:8px}
+.dash-section-body{background:var(--card-bg);border-radius:10px;padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,0.04);min-height:60px}
+.stage-bars{display:flex;flex-direction:column;gap:8px}
+.stage-bar-row{display:flex;align-items:center;gap:8px;font-size:12px}
+.stage-bar-label{width:50px;text-align:right;color:var(--text2);flex-shrink:0}
+.stage-bar-track{flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden}
+.stage-bar-fill{height:100%;border-radius:4px;transition:width .3s}
+.stage-bar-val{width:80px;text-align:right;color:var(--text);font-weight:600;flex-shrink:0;font-size:11px}
+.reminder-list{display:flex;flex-direction:column;gap:6px}
+.reminder-item{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;background:var(--bg);font-size:12px}
+.reminder-item.reminder-overdue{background:#fef2f2}
+.reminder-icon{flex-shrink:0;font-size:14px}
+.reminder-info{flex:1;display:flex;flex-direction:column;min-width:0}
+.reminder-title{font-weight:500;color:var(--text)}
+.reminder-detail{color:var(--text3);font-size:11px}
+.reminder-date{color:var(--text3);flex-shrink:0;font-size:11px}
+.dash-actions{display:flex;flex-wrap:wrap;gap:8px}
+.dash-action-btn{padding:10px 18px;border-radius:10px;border:1px solid var(--border);background:var(--card-bg);color:var(--text);font-size:13px;cursor:pointer;transition:all .15s;font-weight:500}
+.dash-action-btn:hover{background:var(--primary);color:#fff;border-color:var(--primary)}
+@media(max-width:640px){.dashboard-grid{grid-template-columns:1fr 1fr}.dashboard-sections{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -612,7 +643,8 @@ input,select,textarea,button{font-family:inherit}
  <div class="topbar">
   <span id="topbar-title">客户管理</span>
   <div class="topbar-tabs">
-   <button class="topbar-tab active" id="tab-clients" onclick="switchTab('clients')">客户</button>
+   <button class="topbar-tab active" id="tab-home" onclick="switchTab('home')">🏠</button>
+   <button class="topbar-tab" id="tab-clients" onclick="switchTab('clients')">客户</button>
    <button class="topbar-tab" id="tab-orders" onclick="switchTab('orders')">订单</button>
    <button class="topbar-tab" id="tab-inventory" onclick="switchTab('inventory')">库存</button>
    <button class="topbar-tab hidden" id="tab-admin" onclick="switchTab('admin')">管理</button>
@@ -622,7 +654,62 @@ input,select,textarea,button{font-family:inherit}
    <button class="topbar-btn" id="btn-more" onclick="toggleMoreMenu()" title="更多">☰</button>
   </div>
  </div>
- <div id="client-view">
+ <div id="home-view">
+  <div class="dashboard-grid">
+   <div class="dash-card">
+    <div class="dash-card-icon" style="background:linear-gradient(135deg,#4F6EF7,#7B93FF)">👥</div>
+    <div class="dash-card-body">
+     <div class="dash-card-value" id="dash-client-count">-</div>
+     <div class="dash-card-label">客户总数</div>
+    </div>
+   </div>
+   <div class="dash-card">
+    <div class="dash-card-icon" style="background:linear-gradient(135deg,#10B981,#34D399)">📦</div>
+    <div class="dash-card-body">
+     <div class="dash-card-value" id="dash-order-count">-</div>
+     <div class="dash-card-label">本月订单</div>
+    </div>
+   </div>
+   <div class="dash-card">
+    <div class="dash-card-icon" style="background:linear-gradient(135deg,#F59E0B,#FBBF24)">💰</div>
+    <div class="dash-card-body">
+     <div class="dash-card-value" id="dash-revenue">-</div>
+     <div class="dash-card-label">本月销售额</div>
+    </div>
+   </div>
+   <div class="dash-card">
+    <div class="dash-card-icon" style="background:linear-gradient(135deg,#EF4444,#F87171)">🎯</div>
+    <div class="dash-card-body">
+     <div class="dash-card-value" id="dash-leads-count">-</div>
+     <div class="dash-card-label">活跃线索</div>
+    </div>
+   </div>
+  </div>
+  <div class="dashboard-sections">
+   <div class="dash-section">
+    <div class="dash-section-header">📊 销售概览</div>
+    <div class="dash-section-body" id="dash-sales-overview">
+     <div class="empty-state">加载中...</div>
+    </div>
+   </div>
+   <div class="dash-section">
+    <div class="dash-section-header">⏰ 待处理提醒</div>
+    <div class="dash-section-body" id="dash-reminders">
+     <div class="empty-state">加载中...</div>
+    </div>
+   </div>
+  </div>
+  <div class="dash-section" style="margin:12px 16px">
+   <div class="dash-section-header">⚡ 快捷操作</div>
+   <div class="dash-actions">
+    <button class="dash-action-btn" onclick="switchTab('clients');setTimeout(function(){openForm()},300)">➕ 新增客户</button>
+    <button class="dash-action-btn" onclick="switchTab('orders');setTimeout(function(){openOrderForm()},300)">📦 创建订单</button>
+    <button class="dash-action-btn" onclick="switchTab('sales');setTimeout(function(){openLeadForm()},300)">🎯 新建线索</button>
+    <button class="dash-action-btn" onclick="switchTab('inventory')">📋 库存管理</button>
+   </div>
+  </div>
+ </div>
+ <div id="client-view" class="hidden">
   <div class="toolbar">
    <select id="filter-select" onchange="onFilterChange()"><option value="all">全部类型</option></select>
    <div class="search-wrap"><input id="search-input" placeholder="搜索客户..." oninput="renderList()"></div>
@@ -1262,7 +1349,7 @@ async function onLoginSuccess(user){
   document.getElementById('main-screen').classList.remove('hidden');
   if(isSuperAdmin||currentUserRole==='admin')document.getElementById('tab-admin').classList.remove('hidden');
   if(isSuperAdmin){document.getElementById('admin-tab-companies-manage').classList.remove('hidden');document.getElementById('admin-tab-companies').classList.remove('hidden');}
-  switchTab('clients');
+  switchTab('home');
 }
 async function doLogout(){await sb.auth.signOut();currentUser=null;allClients=[];allContacts=[];customTypes=[];document.getElementById('main-screen').classList.add('hidden');document.getElementById('login-screen').classList.remove('hidden')}
 
@@ -2329,6 +2416,54 @@ function stageColor(stage){
 }
 
 // === Tab Switching ===
+function loadHomeDashboard(){
+  var now=new Date();
+  var mStart=new Date(now.getFullYear(),now.getMonth(),1).toISOString();
+  sb.from('clients').select('id',{count:'exact',head:true}).eq('company_id',currentCompanyId).then(function(r){
+    document.getElementById('dash-client-count').textContent=r.count||0;
+  }).catch(function(){document.getElementById('dash-client-count').textContent='-';});
+  sb.from('orders').select('id',{count:'exact',head:true}).eq('company_id',currentCompanyId).gte('created_at',mStart).then(function(r){
+    document.getElementById('dash-order-count').textContent=r.count||0;
+  }).catch(function(){document.getElementById('dash-order-count').textContent='-';});
+  sb.from('orders').select('amount').eq('company_id',currentCompanyId).gte('created_at',mStart).not('stage','eq','已取消').then(function(r){
+    var sum=0;if(r.data)for(var i=0;i<r.data.length;i++)sum+=parseFloat(r.data[i].amount)||0;
+    document.getElementById('dash-revenue').textContent='¥'+sum.toLocaleString('zh-CN',{minimumFractionDigits:0,maximumFractionDigits:0});
+  }).catch(function(){document.getElementById('dash-revenue').textContent='-';});
+  sb.from('leads').select('id',{count:'exact',head:true}).eq('company_id',currentCompanyId).in('status',['new','contacted','qualified']).then(function(r){
+    document.getElementById('dash-leads-count').textContent=r.count||0;
+  }).catch(function(){document.getElementById('dash-leads-count').textContent='-';});
+  var ovEl=document.getElementById('dash-sales-overview');
+  sb.from('orders').select('stage,amount').eq('company_id',currentCompanyId).gte('created_at',mStart).then(function(r){
+    if(!r.data||!r.data.length){ovEl.innerHTML='<div class="empty-state">本月暂无订单</div>';return}
+    var stages={};var total=0;
+    for(var i=0;i<r.data.length;i++){var s=r.data[i].stage||'未知';var a=parseFloat(r.data[i].amount)||0;stages[s]=(stages[s]||0)+a;total+=a}
+    var colors={'谈判中':'#F59E0B','已签约':'#3B82F6','执行中':'#8B5CF6','已完成':'#10B981','已取消':'#EF4444'};
+    var h='<div class="stage-bars">';
+    var order=['谈判中','已签约','执行中','已完成','已取消'];
+    for(var j=0;j<order.length;j++){var s=order[j];var v=stages[s]||0;var pct=total>0?Math.round(v/total*100):0;
+      h+='<div class="stage-bar-row"><span class="stage-bar-label">'+s+'</span><div class="stage-bar-track"><div class="stage-bar-fill" style="width:'+pct+'%;background:'+(colors[s]||'#999')+'"></div></div><span class="stage-bar-val">¥'+v.toLocaleString('zh-CN',{minimumFractionDigits:0,maximumFractionDigits:0})+'</span></div>';
+    }
+    h+='</div>';ovEl.innerHTML=h;
+    document.getElementById('dash-revenue').textContent='¥'+total.toLocaleString('zh-CN',{minimumFractionDigits:0,maximumFractionDigits:0});
+  }).catch(function(){ovEl.innerHTML='<div class="empty-state">加载失败</div>';});
+  var remEl=document.getElementById('dash-reminders');
+  sb.from('contracts').select('id,title,next_reminder_date,unpaid_amount,customer_name').eq('company_id',currentCompanyId).not('archive_status','eq','archived').order('next_reminder_date',{ascending:true}).limit(5).then(function(r){
+    var today=now.toISOString().slice(0,10);
+    if(!r.data||!r.data.length){remEl.innerHTML='<div class="empty-state">🎉 暂无待处理提醒</div>';return}
+    var hasReminder=false;
+    var h='<div class="reminder-list">';
+    for(var i=0;i<r.data.length;i++){
+      var c=r.data[i];
+      if(!c.next_reminder_date)continue;
+      hasReminder=true;
+      var d=new Date(c.next_reminder_date);var isOver=c.next_reminder_date<today;
+      h+='<div class="reminder-item'+(isOver?' reminder-overdue':'')+'"><span class="reminder-icon">'+(isOver?'🔴':'🟡')+'</span><div class="reminder-info"><span class="reminder-title">'+escHtml(c.title||'合同#'+c.id)+'</span><span class="reminder-detail">'+escHtml(c.customer_name||'')+(c.unpaid_amount?' · ¥'+c.unpaid_amount.toLocaleString('zh-CN'):'')+'</span></div><span class="reminder-date">'+d.toLocaleDateString('zh-CN')+'</span></div>';
+    }
+    h+='</div>';
+    if(!hasReminder)h='<div class="empty-state">🎉 暂无待处理提醒</div>';
+    remEl.innerHTML=h;
+  }).catch(function(){remEl.innerHTML='<div class="empty-state">加载提醒失败</div>';});
+}
 function switchTab(tab){
   var cv=document.getElementById('client-view');
   var ov=document.getElementById('order-view');
@@ -2346,12 +2481,21 @@ function switchTab(tab){
   document.getElementById('settings-screen').style.display='none';
   document.getElementById('my-screen').style.display='none';
   // Hide all views first
-  var allViews=[cv,ov,av,sv,iv];if(spv)allViews.push(spv);if(pv)allViews.push(pv);
+  var hv_d=document.getElementById('home-view');
+  var allViews=[hv_d,cv,ov,av,sv,iv];if(spv)allViews.push(spv);if(pv)allViews.push(pv);
   for(var i=0;i<allViews.length;i++)if(allViews[i])allViews[i].classList.add('hidden');
   // Deactivate all tabs
   var allTabs=[tc,to,ta,ti];for(var j=0;j<allTabs.length;j++)if(allTabs[j])allTabs[j].classList.remove('active');
   fab.classList.add('hidden');
 
+    var hv=document.getElementById('home-view');
+  if(tab==='home'){
+    hv.classList.remove('hidden');
+    document.getElementById('tab-home').classList.add('active');
+    document.getElementById('topbar-title').textContent='仪表盘';
+    document.getElementById('main-fab').classList.add('hidden');
+    loadDashboard();
+  }else 
   if(tab==='clients'){
     cv.classList.remove('hidden');tc.classList.add('active');
     fab.classList.remove('hidden');fab.textContent='+';fab.onclick=function(){openForm()};
@@ -2709,7 +2853,7 @@ async function checkPendingCompany(){
     document.getElementById('main-screen').classList.remove('hidden');
     if(isSuperAdmin||currentUserRole==='admin')document.getElementById('tab-admin').classList.remove('hidden');
   if(isSuperAdmin){document.getElementById('admin-tab-companies-manage').classList.remove('hidden');document.getElementById('admin-tab-companies').classList.remove('hidden');}
-    switchTab('clients');
+    switchTab('home');
   }else if(data[0].status==='rejected'){
     showCompanyRegScreen();
   }
