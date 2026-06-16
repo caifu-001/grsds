@@ -4442,6 +4442,18 @@ async function saveContract(){
   var title=document.getElementById('cf-title').value.trim();if(!title){showToast('请输入合同标题');return}
   var cid=document.getElementById('cf-client').value;if(!cid){showToast('请选择关联客户');return}
   var totalAmount=parseFloat(document.getElementById('cf-amount').value)||0;
+  var fileUrl='',fileName='';
+  var fileEl=document.getElementById('cf-file');
+  if(fileEl&&fileEl.files&&fileEl.files.length>0){
+    var fl=fileEl.files[0];
+    var ext=fl.name.split('.').pop();
+    var fpath='contract_files/'+currentCompanyId+'/'+Date.now()+'.'+ext;
+    try{var fresp=await fetch(SUPABASE_URL+'/storage/v1/object/'+fpath,{method:'POST',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY},body:fl});
+    if(fresp.ok){fileUrl=SUPABASE_URL+'/storage/v1/object/public/'+fpath;fileName=fl.name}else{showToast('文件上传失败');return}}
+    catch(e){showToast('文件上传失败: '+e.message);return}
+  }else{
+    if(ceditId){var ec=allContracts.find(function(x){return x.id===ceditId});if(ec&&ec.file_url){fileUrl=ec.file_url;fileName=ec.file_name||''}}
+  }
   var data={
     company_id:currentCompanyId,user_id:currentUser.id,title:title,client_id:cid,
     contract_no:document.getElementById('cf-contract-no').value.trim(),
