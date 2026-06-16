@@ -778,8 +778,8 @@ input,select,textarea,button{font-family:inherit}
    <button class="admin-subtab active" onclick="switchAdminTab('users')">员工管理</button>
    <button class="admin-subtab" onclick="switchAdminTab('depts')">部门管理</button>
    <button class="admin-subtab" onclick="switchAdminTab('roles')">角色管理</button>
-   <button class="admin-subtab" onclick="switchAdminTab('companies_manage')">公司管理</button>
-   <button class="admin-subtab" id="admin-tab-companies" onclick="switchAdminTab('companies')">公司审核</button>
+   <button class="admin-subtab hidden" id="admin-tab-companies-manage" onclick="switchAdminTab('companies_manage')">公司管理</button>
+   <button class="admin-subtab hidden" id="admin-tab-companies" onclick="switchAdminTab('companies')">公司审核</button>
   </div>
 
   <!-- User Management -->
@@ -1240,6 +1240,7 @@ async function onLoginSuccess(user){
  await loadCompanies();
   document.getElementById('main-screen').classList.remove('hidden');
   if(isSuperAdmin||currentUserRole==='admin')document.getElementById('tab-admin').classList.remove('hidden');
+  if(isSuperAdmin){document.getElementById('admin-tab-companies-manage').classList.remove('hidden');document.getElementById('admin-tab-companies').classList.remove('hidden');}
   switchTab('clients');
 }
 async function doLogout(){await sb.auth.signOut();currentUser=null;allClients=[];allContacts=[];customTypes=[];document.getElementById('main-screen').classList.add('hidden');document.getElementById('login-screen').classList.remove('hidden')}
@@ -2605,6 +2606,7 @@ sb.auth.getSession().then(async function(res){
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('main-screen').classList.remove('hidden');
     if(isSuperAdmin||currentUserRole==='admin')document.getElementById('tab-admin').classList.remove('hidden');
+  if(isSuperAdmin){document.getElementById('admin-tab-companies-manage').classList.remove('hidden');document.getElementById('admin-tab-companies').classList.remove('hidden');}
     await loadCustomTypes();
     buildFilterSelect();
     buildTypeGrid();
@@ -2685,6 +2687,7 @@ async function checkPendingCompany(){
     document.getElementById('pending-screen').classList.add('hidden');
     document.getElementById('main-screen').classList.remove('hidden');
     if(isSuperAdmin||currentUserRole==='admin')document.getElementById('tab-admin').classList.remove('hidden');
+  if(isSuperAdmin){document.getElementById('admin-tab-companies-manage').classList.remove('hidden');document.getElementById('admin-tab-companies').classList.remove('hidden');}
     switchTab('clients');
   }else if(data[0].status==='rejected'){
     showCompanyRegScreen();
