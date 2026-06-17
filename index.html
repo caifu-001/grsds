@@ -4572,7 +4572,7 @@ function switchInventoryTab(t){
   document.querySelectorAll('.inv-subtab').forEach(function(b){b.classList.remove('active')});
   document.querySelectorAll('.inv-panel').forEach(function(p){p.classList.remove('active')});
   var btns=document.querySelectorAll('.inv-subtab');
-  var idx={products:0,records:1,alerts:2,checks:3,warehouses:4}[t]||0;
+  var idx={products:0,records:1,alerts:2,checks:3,warehouses:4,transfers:5,ledger:6}[t]||0;
   if(btns[idx])btns[idx].classList.add('active');
   var panel=document.getElementById('inv-'+t);
   if(panel)panel.classList.add('active');
