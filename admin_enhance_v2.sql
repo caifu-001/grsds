@@ -2,6 +2,15 @@
 -- 执行前确认已存在: companies, departments, profiles, roles
 
 -- ============================================================
+-- 0. PREREQUISITE: is_super_admin function (幂等)
+-- ============================================================
+CREATE OR REPLACE FUNCTION is_super_admin(uid UUID) RETURNS BOOLEAN AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM profiles WHERE user_id = uid AND role = 'super_admin'
+  );
+$$ LANGUAGE sql SECURITY DEFINER;
+
+-- ============================================================
 -- 1. OPERATION LOGS (操作日志)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS operation_logs (
