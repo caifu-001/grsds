@@ -6,6 +6,7 @@
 <title>客户管理系统</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -783,6 +784,13 @@ input,select,textarea,button{font-family:inherit}
 .birthday-card .bd-date{font-size:12px;color:var(--text2)}
 .birthday-card .bd-client{font-size:11px;color:var(--text3)}
 
+/* Chart containers */
+.chart-row{display:flex;gap:12px;margin:12px 16px;flex-wrap:wrap}
+.chart-row .chart-card{flex:1;min-width:300px;background:var(--card);border-radius:12px;padding:16px;box-shadow:var(--shadow)}
+.chart-card .chart-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px}
+.chart-card canvas{max-height:260px}
+.chart-card-wide{flex:2!important;min-width:450px!important}
+
 </style>
 </head>
 <body>
@@ -862,6 +870,31 @@ input,select,textarea,button{font-family:inherit}
      <div class="dash-card-value" id="dash-leads-count">-</div>
      <div class="dash-card-label">活跃线索</div>
     </div>
+   </div>
+  </div>
+  <!-- Charts Row -->
+  <div class="chart-row">
+   <div class="chart-card chart-card-wide">
+    <div class="chart-title">📈 近6月销售趋势</div>
+    <canvas id="chart-revenue-trend"></canvas>
+   </div>
+   <div class="chart-card">
+    <div class="chart-title">🎯 线索阶段分布</div>
+    <canvas id="chart-lead-funnel"></canvas>
+   </div>
+  </div>
+  <div class="chart-row">
+   <div class="chart-card">
+    <div class="chart-title">🏷️ 客户类型分布</div>
+    <canvas id="chart-client-types"></canvas>
+   </div>
+   <div class="chart-card">
+    <div class="chart-title">📊 本月业绩对比</div>
+    <canvas id="chart-perf-compare"></canvas>
+   </div>
+   <div class="chart-card">
+    <div class="chart-title">🔄 订单状态分布</div>
+    <canvas id="chart-order-status"></canvas>
    </div>
   </div>
   <div class="dashboard-sections">
@@ -2892,7 +2925,139 @@ function loadHomeDashboard(){
     if(!hasReminder)h='<div class="empty-state">🎉 暂无待处理提醒</div>';
     remEl.innerHTML=h;
   }).catch(function(){remEl.innerHTML='<div class="empty-state">加载提醒失败</div>';});
+  // Render dashboard charts
+  renderDashboardCharts();
 }
+
+// ============================================================
+// DASHBOARD CHARTS (Chart.js)
+// ============================================================
+var _chartInstances={};
+function _destroyChart(key){
+  if(_chartInstances[key]){_chartInstances[key].destroy();_chartInstances[key]=null;}
+}
+function _destroyAllCharts(){
+  for(var k in _chartInstances){_destroyChart(k);}
+}
+
+async function renderDashboardCharts(){
+  try{
+    var now=new Date();
+    var thisMonth=now.getMonth();
+    var thisYear=now.getFullYear();
+    
+    // ── 1. Revenue Trend (6-month line) ──
+    var months=[];
+    for(var i=5;i>=0;i--){
+      var d=new Date(thisYear,thisMonth-i,1);
+      months.push({year:d.getFullYear(),month:d.getMonth()+1,label:d.getMonth()+1+'月'});
+    }
+    var revData=[];
+    for(var ri=0;ri<months.length;ri++){
+      var mStart=new Date(months[ri].year,months[ri].month-1,1).toISOString();
+      var mEnd=new Date(months[ri].year,months[ri].month,0,23,59,59).toISOString();
+      var r=await sb.from('orders').select('amount')
+        .eq('company_id',currentCompanyId)
+        .gte('created_at',mStart).lte('created_at',mEnd).not('stage','eq','已取消');
+      var sum=0;
+      if(r.data)for(var j=0;j<r.data.length;j++)sum+=parseFloat(r.data[j].amount)||0;
+      revData.push(sum);
+    }
+    _destroyChart('revenue');
+    var ctx1=document.getElementById('chart-revenue-trend');
+    if(ctx1){
+      _chartInstances.revenue=new Chart(ctx1,{
+        type:'line',
+        data:{labels:months.map(function(m){return m.label}),
+          datasets:[{label:'销售额',data:revData,borderColor:'#4F6EF7',backgroundColor:'rgba(79,110,247,0.08)',fill:true,tension:0.35,pointRadius:4,pointBackgroundColor:'#4F6EF7'}]},
+        options:{responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{display:false}},
+          scales:{y:{ticks:{callback:function(v){return v>=10000?'¥'+(v/10000).toFixed(1)+'万':v>=1000?'¥'+(v/1000).toFixed(1)+'k':'¥'+v}}}}}});
+    }
+
+    // ── 2. Lead Distribution (horizontal bar) ──
+    var stages=['new','assigned','contacted','qualified','negotiation','won','lost'];
+    var stageLabels=['新线索','已分配','已联系','已确认','谈判中','赢单','输单'];
+    var stageColors=['#1565C0','#1E88E5','#E65100','#2E7D32','#6B21A8','#166534','#991B1B'];
+    var leadCounts=[];
+    for(var si=0;si<stages.length;si++){
+      var lr=await sb.from('lead_pool').select('id',{count:'exact',head:true}).eq('company_id',currentCompanyId).eq('status',stages[si]);
+      leadCounts.push(lr.count||0);
+    }
+    _destroyChart('leadFunnel');
+    var ctx2=document.getElementById('chart-lead-funnel');
+    if(ctx2){
+      _chartInstances.leadFunnel=new Chart(ctx2,{
+        type:'bar',
+        data:{labels:stageLabels,datasets:[{label:'数量',data:leadCounts,backgroundColor:stageColors,borderRadius:4}]},
+        options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{display:false}},
+          scales:{x:{ticks:{stepSize:1}}}}});
+    }
+
+    // ── 3. Client Type Distribution (doughnut) ──
+    var cr=await sb.from('clients').select('type').eq('company_id',currentCompanyId);
+    var typeMap={};
+    if(cr.data)for(var ci=0;ci<cr.data.length;ci++){var tp=cr.data[ci].type||'未分类';typeMap[tp]=(typeMap[tp]||0)+1}
+    var typeLabels=Object.keys(typeMap);
+    var typeValues=typeLabels.map(function(t){return typeMap[t]});
+    _destroyChart('clientTypes');
+    var ctx3=document.getElementById('chart-client-types');
+    if(ctx3){
+      _chartInstances.clientTypes=new Chart(ctx3,{
+        type:'doughnut',
+        data:{labels:typeLabels,datasets:[{data:typeValues,
+          backgroundColor:['#4F6EF7','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899','#06B6D4','#F97316','#84CC16','#6366F1']}]},
+        options:{responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}}}}});
+    }
+
+    // ── 4. Performance Comparison (this month) ──
+    // Load targets if not already loaded
+    if(!allTargets||!allTargets.length){
+      try{var tq=await sb.from('sales_targets').select('*').eq('company_id',currentCompanyId).eq('target_year',thisYear);allTargets=tq.data||[];}catch(ee){allTargets=[];}
+    }
+    var pmStart=new Date(thisYear,thisMonth,1).toISOString();
+    var pmEnd=new Date(thisYear,thisMonth+1,0,23,59,59).toISOString();
+    var pr=await sb.from('orders').select('amount').eq('company_id',currentCompanyId).gte('created_at',pmStart).lte('created_at',pmEnd).not('stage','eq','已取消');
+    var actualTotal=0;
+    if(pr.data)for(var pi=0;pi<pr.data.length;pi++)actualTotal+=parseFloat(pr.data[pi].amount)||0;
+    var targetTotal2=0;
+    for(var ti=0;ti<(allTargets||[]).length;ti++){
+      var tt=allTargets[ti];
+      if(tt.target_year===thisYear&&tt.target_month===thisMonth+1)targetTotal2+=parseFloat(tt.amount)||0;
+    }
+    _destroyChart('perfCompare');
+    var ctx4=document.getElementById('chart-perf-compare');
+    if(ctx4){
+      _chartInstances.perfCompare=new Chart(ctx4,{
+        type:'bar',
+        data:{labels:['实际业绩','目标业绩'],datasets:[{data:[actualTotal,targetTotal2],
+          backgroundColor:['#4F6EF7','rgba(79,110,247,0.2)'],borderColor:['#4F6EF7','#4F6EF7'],borderWidth:1,borderRadius:6}]},
+        options:{responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{display:false}},
+          scales:{y:{ticks:{callback:function(v){return v>=10000?'¥'+(v/10000).toFixed(1)+'万':'¥'+v;}}}}}});
+    }
+
+    // ── 5. Order Status Distribution (doughnut) ──
+    var thisMonthStart=new Date(thisYear,thisMonth,1).toISOString();
+    var or=await sb.from('orders').select('stage').eq('company_id',currentCompanyId).gte('created_at',thisMonthStart);
+    var stageMap={};var orderStages=['谈判中','已签约','执行中','已完成','已取消'];
+    if(or.data)for(var oi=0;oi<or.data.length;oi++){var os=or.data[oi].stage||'未知';stageMap[os]=(stageMap[os]||0)+1}
+    var osValues=orderStages.map(function(s){return stageMap[s]||0});
+    _destroyChart('orderStatus');
+    var ctx5=document.getElementById('chart-order-status');
+    if(ctx5){
+      _chartInstances.orderStatus=new Chart(ctx5,{
+        type:'doughnut',
+        data:{labels:orderStages,datasets:[{data:osValues,
+          backgroundColor:['#3B82F6','#10B981','#8B5CF6','#F59E0B','#EF4444']}]},
+        options:{responsive:true,maintainAspectRatio:false,cutout:'65%',
+          plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}}}}});
+    }
+  }catch(e){console.warn('Dashboard charts render failed:',e);}
+}
+
 function switchReportsTab(sub){
   var panels={'sales':'rp-sales-panel','clients':'rp-clients-panel','collections':'rp-collections-panel','orders':'rp-orders-panel'};
   var tabs=document.querySelectorAll('#reports-tabs-bar .biz-subtab');
@@ -3206,6 +3371,7 @@ function switchTab(tab){
   var ti=document.getElementById('tab-inventory');
   var fab=document.getElementById('main-fab');
   closeMoreMenu();
+  _destroyAllCharts();
   document.getElementById('settings-screen').style.display='none';
   document.getElementById('my-screen').style.display='none';
   // Hide all views first
