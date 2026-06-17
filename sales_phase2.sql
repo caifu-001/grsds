@@ -54,7 +54,6 @@ COMMENT ON COLUMN contracts.archive_status IS '归档状态: active/archived/exp
 COMMENT ON COLUMN contracts.quote_id IS '关联报价ID';
 
 -- 4. 初始化已存在合同的金额
-UPDATE contracts SET total_amount = COALESCE(amount, 0) WHERE total_amount = 0 AND amount > 0;
 UPDATE contracts SET unpaid_amount = total_amount - COALESCE(paid_amount, 0) WHERE unpaid_amount = 0;
 
 -- 5. RLS 策略
