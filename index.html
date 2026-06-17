@@ -1361,9 +1361,8 @@ input,select,textarea,button{font-family:inherit}
     <div id="attach-list"></div>
     <div class="attach-upload">
       <input type="file" id="attach-file" onchange="handleAttachFile(this)" multiple style="font-size:12px">
-      <span style="font-size:11px;color:var(--text3)">选文件即可（占位存储）</span>
+      <span style="font-size:11px;color:var(--text3)">选文件即可上传</span>
     </div>
-    <div style="font-size:10px;color:var(--warning);margin-top:4px">提示：如需完整上传，请先在 Supabase 创建 "client-attachments" Storage bucket</div>
   </div>
 
   <div class="section-title">👤 联系人</div>
@@ -7369,19 +7368,30 @@ function renderClientAttachments(){
   el.innerHTML=html;
 }
 
-function handleAttachFile(input){
+async function handleAttachFile(input){
   var files=input.files;
   if(!files||!files.length)return;
+  var bucket='client-attachments';
   for(var i=0;i<files.length;i++){
     var f=files[i];
-    // Placeholder URL - real upload would use supabase storage
-    clientAttachments.push({name:f.name,size:f.size,type:f.type,url:'#placeholder-'+Date.now()+'-'+i});
+    var safeName=f.name.replace(/[^a-zA-Z0-9._\u4e00-\u9fff-]/g,'_');
+    var filePath=currentCompanyId+'/'+Date.now()+'_'+safeName;
+    try{
+      var {data,error}=await sb.storage.from(bucket).upload(filePath,f,{cacheControl:'3600',upsert:false});
+      if(error){showToast('\u4e0a\u4f20\u5931\u8d25: '+error.message);continue}
+      var {data:urlData}=sb.storage.from(bucket).getPublicUrl(filePath);
+      clientAttachments.push({name:f.name,size:f.size,type:f.type,url:urlData.publicUrl,path:filePath});
+    }catch(e){showToast('\u4e0a\u4f20\u5f02\u5e38: '+e.message)}
   }
   renderClientAttachments();
   input.value='';
 }
 
-function removeAttachment(idx){clientAttachments.splice(idx,1);renderClientAttachments()}
+async function removeAttachment(idx){
+  var a=clientAttachments[idx];
+  if(a&&a.path){try{await sb.storage.from('client-attachments').remove([a.path])}catch(e){}}
+  clientAttachments.splice(idx,1);renderClientAttachments();
+}
 
 </script>
 
