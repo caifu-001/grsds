@@ -976,8 +976,8 @@ input,select,textarea,button{font-family:inherit}
    </div>
    <div id="sales-funnel" style="margin:4px 16px 8px"></div>
    <div class="stats-bar" id="lead-stats"></div>
-   <div class="client-grid" id="lead-grid"></div>
-   <div class="empty hidden" id="lead-empty"><div class="empty-icon">🎯</div>暂无线索<br><span style="font-size:12px;color:var(--text3)">点击右下角 ＋ 添加线索</span></div>
+   <div class="client-grid" id="sales-lead-grid"></div>
+   <div class="empty hidden" id="sales-lead-empty"><div class="empty-icon">🎯</div>暂无线索<br><span style="font-size:12px;color:var(--text3)">点击右下角 ＋ 添加线索</span></div>
   </div><!-- Quotations Panel -->
   <div class="sales-panel hidden" id="sales-quotations-panel">
    <div class="toolbar" style="position:static">
@@ -1370,7 +1370,7 @@ input,select,textarea,button{font-family:inherit}
   <button class="add-phone-btn" style="margin-top:8px;margin-bottom:12px" onclick="addContact()">＋ 添加联系人</button>
 
   <div class="modal-actions">
-   <button id="lead-btn-freeze" class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
+   <button class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
    <button class="btn-delete hidden" id="btn-delete" onclick="confirmDelete()">删除客户</button>
    <button class="btn-cancel" onclick="closeForm()">取消</button>
    <button class="btn-save" onclick="saveClient()">保存</button>
@@ -1403,7 +1403,7 @@ input,select,textarea,button{font-family:inherit}
   <div class="form-group"><label>备注</label><textarea id="of-notes" placeholder="订单备注..."></textarea></div>
 
   <div class="modal-actions">
-   <button id="lead-btn-freeze" class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
+   <button class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
    <button class="btn-delete hidden" id="order-btn-delete" onclick="confirmDeleteOrder()">删除订单</button>
    <button class="btn-cancel" onclick="closeOrderForm()">取消</button>
    <button class="btn-save" onclick="saveOrder()">保存</button>
@@ -1447,7 +1447,7 @@ input,select,textarea,button{font-family:inherit}
   <div class="form-group"><label>部门</label><select id="add-user-dept"><option value="">无部门</option></select></div>
   <div class="form-group"><label>角色</label><select id="add-user-role"><option value="user">普通用户</option><option value="admin">管理员</option></select></div>
   <div class="modal-actions">
-   <button id="lead-btn-freeze" class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
+   <button class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
    <button class="btn-cancel" onclick="closeAddUserForm()">取消</button>
    <button class="btn-save" onclick="saveNewUser()">创建</button>
   </div>
@@ -5690,29 +5690,29 @@ async function deleteSettlement(){
 <!-- Lead Modal -->
 <div class="modal-overlay hidden" id="lead-modal">
  <div class="modal-sheet" style="max-height:90vh;overflow-y:auto">
-  <h3 id="lead-form-title">添加线索</h3>
-  <div class="form-group"><label>线索/项目名称 *</label><input id="lf-name" placeholder="请输入线索/项目名称"></div>
+  <h3 class="dummy-form-title">添加线索</h3>
+  <div class="form-group"><label>线索/项目名称 *</label><input id="old-lf-name" placeholder="请输入线索/项目名称"></div>
   <div class="form-row">
-   <div class="form-group"><label>客户公司</label><input id="lf-company" placeholder="客户公司名"></div>
-   <div class="form-group"><label>来源</label><select id="lf-source"><option value="">请选择</option><option value="展会">展会</option><option value="转介绍">转介绍</option><option value="网络推广">网络推广</option><option value="电话营销">电话营销</option><option value="陌拜">陌拜</option><option value="其他">其他</option></select></div>
+   <div class="form-group"><label>客户公司</label><input id="old-lf-company" placeholder="客户公司名"></div>
+   <div class="form-group"><label>来源</label><select id="old-lf-source"><option value="">请选择</option><option value="展会">展会</option><option value="转介绍">转介绍</option><option value="网络推广">网络推广</option><option value="电话营销">电话营销</option><option value="陌拜">陌拜</option><option value="其他">其他</option></select></div>
   </div>
   <div class="form-row">
-   <div class="form-group"><label>联系人</label><input id="lf-contact-name" placeholder="姓名"></div>
-   <div class="form-group"><label>联系电话</label><input id="lf-contact-phone" placeholder="手机号"></div>
+   <div class="form-group"><label>联系人</label><input id="old-lf-contact-name" placeholder="姓名"></div>
+   <div class="form-group"><label>联系电话</label><input id="old-lf-contact-phone" placeholder="手机号"></div>
   </div>
   <div class="form-row">
-   <div class="form-group"><label>预估金额(元)</label><input id="lf-value" type="number" step="0.01" placeholder="0"></div>
-   <div class="form-group"><label>预期成交日</label><input id="lf-expected-date" type="date"></div>
+   <div class="form-group"><label>预估金额(元)</label><input id="old-lf-value" type="number" step="0.01" placeholder="0"></div>
+   <div class="form-group"><label>预期成交日</label><input id="old-lf-expected-date" type="date"></div>
   </div>
   <div class="form-row">
-   <div class="form-group"><label>销售阶段</label><select id="lf-status"><option value="初步沟通">初步沟通</option><option value="需求方案">需求方案</option><option value="报价阶段">报价阶段</option><option value="商务谈判">商务谈判</option><option value="签约成交">签约成交</option><option value="赢单">赢单</option><option value="输单">输单</option></select></div>
-   <div class="form-group"><label>赢率(%)</label><input id="lf-probability" type="range" min="0" max="100" value="10" oninput="document.getElementById('lf-prob-val').textContent=this.value+'%'" style="width:100%;margin-top:6px"><div id="lf-prob-val" style="text-align:center;font-size:20px;font-weight:700;color:var(--primary)">10%</div></div>
+   <div class="form-group"><label>销售阶段</label><select id="old-lf-status"><option value="初步沟通">初步沟通</option><option value="需求方案">需求方案</option><option value="报价阶段">报价阶段</option><option value="商务谈判">商务谈判</option><option value="签约成交">签约成交</option><option value="赢单">赢单</option><option value="输单">输单</option></select></div>
+   <div class="form-group"><label>赢率(%)</label><input id="old-lf-probability" type="range" min="0" max="100" value="10" oninput="document.getElementById('lf-prob-val').textContent=this.value+'%'" style="width:100%;margin-top:6px"><div id="lf-prob-val" style="text-align:center;font-size:20px;font-weight:700;color:var(--primary)">10%</div></div>
   </div>
   <div class="form-row">
-   <div class="form-group"><label>负责人</label><select id="lf-owner"><option value="">当前用户</option></select></div>
+   <div class="form-group"><label>负责人</label><select id="old-lf-owner"><option value="">当前用户</option></select></div>
    <div class="form-group"></div>
   </div>
-  <div class="form-group"><label>备注</label><textarea id="lf-notes" rows="2" placeholder="跟进备注..."></textarea></div>
+  <div class="form-group"><label>备注</label><textarea id="old-lf-notes" rows="2" placeholder="跟进备注..."></textarea></div>
   <!-- Competitors -->
   <div class="section-title" style="margin-top:12px">⚔ 竞品记录 <button class="add-btn" onclick="addCompetitor()">＋ 新增</button></div>
   <div id="lf-competitors"></div>
@@ -5722,9 +5722,9 @@ async function deleteSettlement(){
   <div class="section-title">🔗 关联客户</div>
   <div class="link-select-row"><select id="lf-link-client"><option value="">不关联</option></select><button onclick="convertLeadToClient()">转为客户</button></div>
   <div class="modal-actions">
-   <button id="lead-btn-freeze" class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
+   <button class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
    <button class="btn-cancel" onclick="closeLeadForm()">取消</button>
-   <button class="btn-delete hidden" id="lead-btn-delete" onclick="confirmDeleteLead()">删除</button>
+   <button class="btn-delete hidden" class="dummy-btn-delete" onclick="confirmDeleteLead()">删除</button>
    <button class="btn-save" onclick="saveLead()">保存</button>
   </div>
  </div>
@@ -5793,7 +5793,7 @@ async function deleteSettlement(){
   <div class="form-group"><label>备注</label><textarea id="cf-notes" rows="2" placeholder="备注..."></textarea></div>
   <div class="form-group"><label>合同电子版</label><div id="cf-file-area"><input type="file" id="cf-file" accept=".pdf,.doc,.docx,.jpg,.png,.zip" style="width:100%"><div id="cf-file-info" class="hidden" style="margin-top:4px;font-size:12px;color:var(--primary)">已上传: <a id="cf-file-link" href="#" target="_blank" style="color:var(--primary);text-decoration:underline"><span id="cf-file-name"></span></a> <a href="#" onclick="removeContractFile();return false" style="color:var(--danger)">移除</a></div></div></div>
   <div class="modal-actions">
-   <button id="lead-btn-freeze" class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
+   <button class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
    <button class="btn-cancel" onclick="closeContractForm()">取消</button>
    <button class="btn-delete hidden" id="contract-btn-delete" onclick="confirmDeleteContract()">删除</button>
    <button class="btn-save" onclick="saveContract()">保存</button>
@@ -5822,7 +5822,7 @@ async function deleteSettlement(){
   </div>
   <div class="form-group"><label>备注</label><textarea id="pf-notes" rows="2" placeholder="备注..."></textarea></div>
   <div class="modal-actions">
-   <button id="lead-btn-freeze" class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
+   <button class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
    <button class="btn-cancel" onclick="closePaymentForm()">取消</button>
    <button class="btn-delete hidden" id="payment-btn-delete" onclick="confirmDeletePayment()">删除</button>
    <button class="btn-save" onclick="savePayment()">保存</button>
@@ -5859,7 +5859,7 @@ async function deleteSettlement(){
   </div>
   <div class="form-group"><label>描述</label><textarea id="pfm-desc" rows="2" placeholder="产品描述..."></textarea></div>
   <div class="modal-actions">
-   <button id="lead-btn-freeze" class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
+   <button class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
    <button class="btn-cancel" onclick="closeProductForm()">取消</button>
    <button class="btn-delete hidden" id="product-btn-delete" onclick="deleteProduct()">删除</button>
    <button class="btn-save" onclick="saveProduct()">保存</button>
@@ -5875,7 +5875,7 @@ async function deleteSettlement(){
   <div class="form-group"><label>描述</label><input id="cat-desc" placeholder="分类描述"></div>
   <div id="cat-list" style="margin-top:12px"></div>
   <div class="modal-actions">
-   <button id="lead-btn-freeze" class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
+   <button class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
    <button class="btn-cancel" onclick="closeCategoryForm()">取消</button>
    <button class="btn-save" onclick="saveCategory()">保存</button>
   </div>
@@ -5890,7 +5890,7 @@ async function deleteSettlement(){
   <div class="form-group"><label>地址</label><input id="wh-addr" placeholder="仓库地址"></div>
   <div class="form-group"><label>描述</label><textarea id="wh-desc" rows="2" placeholder="备注..."></textarea></div>
   <div class="modal-actions">
-   <button id="lead-btn-freeze" class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
+   <button class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
    <button class="btn-cancel" onclick="closeWarehouseForm()">取消</button>
    <button class="btn-delete hidden" id="warehouse-btn-delete" onclick="deleteWarehouse()">删除</button>
    <button class="btn-save" onclick="saveWarehouse()">保存</button>
@@ -5916,7 +5916,7 @@ async function deleteSettlement(){
   </div>
   <div class="form-group"><label>备注</label><textarea id="srm-remark" rows="2" placeholder="备注..."></textarea></div>
   <div class="modal-actions">
-   <button id="lead-btn-freeze" class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
+   <button class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
    <button class="btn-cancel" onclick="closeStockRecordForm()">取消</button>
    <button class="btn-save" onclick="saveStockRecord()">保存</button>
   </div>
@@ -5937,7 +5937,7 @@ async function deleteSettlement(){
   </div>
   <div class="form-group"><label><input type="checkbox" id="alm-enabled" checked> 启用预警</label></div>
   <div class="modal-actions">
-   <button id="lead-btn-freeze" class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
+   <button class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
    <button class="btn-cancel" onclick="closeAlertForm()">取消</button>
    <button class="btn-delete hidden" id="alert-btn-delete" onclick="deleteAlert()">删除</button>
    <button class="btn-save" onclick="saveAlert()">保存</button>
@@ -5963,7 +5963,7 @@ async function deleteSettlement(){
    <div class="check-sum-card"><div class="cs-val" style="color:var(--danger)" id="chm-diff">0</div><div class="cs-label">差异</div></div>
   </div>
   <div class="modal-actions">
-   <button id="lead-btn-freeze" class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
+   <button class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
    <button class="btn-cancel" onclick="closeCheckForm()">取消</button>
    <button class="btn-delete hidden" id="check-btn-delete" onclick="deleteCheck()">删除</button>
    <button class="btn-save" onclick="saveCheck()">保存</button>
