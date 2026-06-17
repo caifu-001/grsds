@@ -1528,11 +1528,11 @@ input,select,textarea,button{font-family:inherit}
    <div class="client-360-badges" id="c360-badges"></div>
   </div>
   <div class="client-360-tabs">
-   <button class="client-360-tab active" onclick="switchClient360Tab('overview')">概览</button>
-   <button class="client-360-tab" onclick="switchClient360Tab('contacts')">联系人</button>
-   <button class="client-360-tab" onclick="switchClient360Tab('orders')">订单</button>
-   <button class="client-360-tab" onclick="switchClient360Tab('engagements')">跟进</button>
-   <button class="client-360-tab" onclick="switchClient360Tab('lifecycle')">生命周期</button>
+   <button class="client-360-tab active" data-tab="overview" onclick="switchClient360Tab('overview')">概览</button>
+   <button class="client-360-tab" data-tab="contacts" onclick="switchClient360Tab('contacts')">联系人</button>
+   <button class="client-360-tab" data-tab="orders" onclick="switchClient360Tab('orders')">订单</button>
+   <button class="client-360-tab" data-tab="engagements" onclick="switchClient360Tab('engagements')">跟进</button>
+   <button class="client-360-tab" data-tab="lifecycle" onclick="switchClient360Tab('lifecycle')">生命周期</button>
   </div>
   <div class="client-360-body" id="c360-body"></div>
  </div>
@@ -2057,6 +2057,7 @@ async function loadClients(){
     var {data:cd}=await sb.from('contacts').select('*').eq('company_id',currentCompanyId);
     allContacts=(cd||[]);
     await loadOrders();
+    checkBirthdayReminders();
     _clientOrderCache={};
     renderList();
   }catch(e){grid.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div>加载失败</div>';statsBar.innerHTML=''}
@@ -6698,6 +6699,11 @@ async function openClient360(clientId){
   // Load orders
   var {data:orders}=await sb.from('orders').select('*').eq('client_id',clientId).eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
   c360Orders=orders||[];
+  for(var oi=0;oi<c360Orders.length;oi++){
+    c360Orders[oi]._amount=c360Orders[oi].amount||0;
+    var dec=await decryptAmount(c360Orders[oi].amount_enc||'');
+    if(dec)c360Orders[oi]._amount=parseFloat(dec)||0;
+  }
   switchClient360Tab('overview');
   document.getElementById('client360-modal').classList.remove('hidden');
 }
@@ -6705,10 +6711,9 @@ async function openClient360(clientId){
 function switchClient360Tab(tab){
   c360ActiveTab=tab;
   var tabs=document.querySelectorAll('.client-360-tab');
-  for(var i=0;i<tabs.length;i++)tabs[i].classList.toggle('active',tabs[i].textContent.indexOf(tab==='overview'?'概览':tab==='contacts'?'联系人':tab==='orders'?'订单':tab==='engagements'?'跟进':'生命周期')>=0);
+  for(var i=0;i<tabs.length;i++)tabs[i].classList.toggle('active',tabs[i].getAttribute('data-tab')===tab);
   var c=allClients.find(function(x){return x.id===c360ClientId});
   if(!c)return;
-  var body=document.getElementById('c360-body');
   if(tab==='overview')renderClient360Overview(c,c360Orders);
   else if(tab==='contacts')renderClient360Contacts(c);
   else if(tab==='orders')renderClient360Orders(c);
@@ -6719,7 +6724,7 @@ function switchClient360Tab(tab){
 function renderClient360Overview(c,orders){
   var stageMap={prospect:'潜在客户',qualified:'合格线索',deal:'成交客户',atrisk:'流失预警',churned:'流失客户',repurchase:'复购客户'};
   var totalRev=0,paidCount=0;
-  for(var i=0;i<orders.length;i++){totalRev+=parseFloat(orders[i].amount_enc?0:(orders[i].amount||0));if(orders[i].stage==='已完成')paidCount++}
+  for(var i=0;i<orders.length;i++){totalRev+=parseFloat(orders[i].amount||0)||parseFloat(orders[i]._amount||0);if(orders[i].stage==='已完成')paidCount++}
   var lastEng='无';
   (async function(){
     var {data}=await sb.from('engagement_logs').select('created_at').eq('client_id',c.id).eq('company_id',currentCompanyId).order('created_at',{ascending:false}).limit(1);
@@ -7139,6 +7144,8 @@ function checkBirthdayReminders(){
 function showBirthdayReminder(contacts){
   var el=document.getElementById('birthday-reminders');
   if(!el)return;
+  var section=document.getElementById('birthday-section');
+  if(section)section.style.display='block';
   var html='';
   for(var i=0;i<contacts.length;i++){
     var b=contacts[i];
