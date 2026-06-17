@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -1108,7 +1108,7 @@ input,select,textarea,button{font-family:inherit}
 <!-- Admin View -->
  <div id="admin-view" class="hidden">
   <div class="admin-tabs">
-   <button class="admin-subtab active" onclick="switchAdminTab('users')">员工管理</button>
+   <button class="admin-subtab active" onclick="switchAdminTab('users')">账号管理</button>
    <button class="admin-subtab" onclick="switchAdminTab('depts')">部门管理</button>
    <button class="admin-subtab" onclick="switchAdminTab('roles')">角色管理</button>
    <button class="admin-subtab" id="admin-tab-perms" onclick="switchAdminTab('perms')">权限矩阵</button>
@@ -7932,7 +7932,7 @@ async function renderAdminEmployees(){
   // Build dept filter options
   var ds=document.getElementById('emp-dept-filter');
   ds.innerHTML='<option value="">全部部门</option>';
-  if(allDepts)for(var i=0;i<allDepts.length;i++){var d=allDepts[i];ds.innerHTML+='<option value="'+escHtml(d.id)+'">'+escHtml(d.name)+'</option>';}
+  if(allDepartments)for(var i=0;i<allDepartments.length;i++){var d=allDepartments[i];ds.innerHTML+='<option value="'+escHtml(d.id)+'">'+escHtml(d.name)+'</option>';}
   ds.value=df;
   var list=allUsers||[];
   if(df)list=list.filter(function(u){return u.dept_id==df;});
@@ -7941,7 +7941,7 @@ async function renderAdminEmployees(){
   var h='<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="border-bottom:2px solid var(--border)"><th style="padding:10px 8px;text-align:left">姓名</th><th style="padding:10px 8px;text-align:left">邮箱</th><th style="padding:10px 8px;text-align:left">角色</th><th style="padding:10px 8px;text-align:left">部门</th><th style="padding:10px 8px;text-align:left">数据范围</th><th style="padding:10px 8px;text-align:left">状态</th><th style="padding:10px 8px;text-align:center">操作</th></tr></thead><tbody>';
   for(var j=0;j<list.length;j++){
     var u=list[j];var dn=u.display_name||'';var em=u.email||'';var rn=u.role||'';var did=u.dept_id||'';
-    var deptName='';for(var k=0;k<(allDepts||[]).length;k++){if(allDepts[k].id==did){deptName=allDepts[k].name;break;}}
+    var deptName='';for(var k=0;k<(allDepartments||[]).length;k++){if(allDepartments[k].id==did){deptName=allDepartments[k].name;break;}}
     var scopes={own:'仅自己',dept:'本部门',all:'全部'};var dsLabel=scopes[u.data_scope]||'全部';
     var statusLabel=u.status==='inactive'?'<span style="color:#ef4444">离职</span>':'<span style="color:#10b981">在职</span>';
     h+='<tr style="border-bottom:1px solid var(--border)"><td style="padding:8px">'+escHtml(dn)+'</td><td style="padding:8px">'+escHtml(em)+'</td><td style="padding:8px">'+escHtml(rn)+'</td><td style="padding:8px">'+escHtml(deptName)+'</td><td style="padding:8px;font-size:12px;color:var(--text3)">'+dsLabel+'</td><td style="padding:8px">'+statusLabel+' <a href="javascript:void(0)" style="font-size:11px;margin-left:6px" onclick="toggleEmpStatus(\''+u.user_id+'\',\''+(u.status==='active'?'inactive':'active')+'\')">'+(u.status==='active'?'设为离职':'设为在职')+'</a></td><td style="padding:8px;text-align:center"><a href="javascript:void(0)" onclick="editEmployee(\''+u.user_id+'\')" style="color:var(--primary);font-size:13px">编辑</a></td></tr>';
@@ -7960,7 +7960,7 @@ function openEmployeeForm(){
   for(var i=0;i<allRoles.length;i++)rs.innerHTML+='<option value="'+escHtml(allRoles[i].name)+'">'+escHtml(allRoles[i].name)+'</option>';
   // Populate depts
   var ds=document.getElementById('ef-dept');ds.innerHTML='<option value="">未分配</option>';
-  if(allDepts)for(var j=0;j<allDepts.length;j++)ds.innerHTML+='<option value="'+allDepts[j].id+'">'+escHtml(allDepts[j].name)+'</option>';
+  if(allDepartments)for(var j=0;j<allDepartments.length;j++)ds.innerHTML+='<option value="'+allDepartments[j].id+'">'+escHtml(allDepartments[j].name)+'</option>';
   // Populate reassign
   var rs2=document.getElementById('ef-reassign');rs2.innerHTML='<option value="">回收公共池</option>';
   if(allUsers)for(var k=0;k<allUsers.length;k++)rs2.innerHTML+='<option value="'+allUsers[k].user_id+'">'+escHtml(allUsers[k].display_name||allUsers[k].email)+'</option>';
@@ -7978,7 +7978,7 @@ async function editEmployee(uid){
   for(var j=0;j<allRoles.length;j++){rs.innerHTML+='<option value="'+escHtml(allRoles[j].name)+'"'+(allRoles[j].name===u.role?' selected':'')+'>'+escHtml(allRoles[j].name)+'</option>';}
   // Populate depts
   var ds=document.getElementById('ef-dept');ds.innerHTML='<option value="">未分配</option>';
-  if(allDepts)for(var k=0;k<allDepts.length;k++){ds.innerHTML+='<option value="'+allDepts[k].id+'"'+(allDepts[k].id==u.dept_id?' selected':'')+'>'+escHtml(allDepts[k].name)+'</option>';}
+  if(allDepartments)for(var k=0;k<allDepartments.length;k++){ds.innerHTML+='<option value="'+allDepartments[k].id+'"'+(allDepartments[k].id==u.dept_id?' selected':'')+'>'+escHtml(allDepartments[k].name)+'</option>';}
   // Reassign row
   var rs2=document.getElementById('ef-reassign');rs2.innerHTML='<option value="">回收公共池</option>';
   if(allUsers)for(var m=0;m<allUsers.length;m++){if(allUsers[m].user_id!==uid)rs2.innerHTML+='<option value="'+allUsers[m].user_id+'">'+escHtml(allUsers[m].display_name||allUsers[m].email)+'</option>';}
