@@ -4251,7 +4251,7 @@ function applyQfTemplate(){
   if(tpl.tax_rate)document.getElementById('qf-tax-rate').value=tpl.tax_rate;
   updateQfTotals();
 }
-function removeContractFile(){document.getElementById('cf-file').value='';document.getElementById('cf-file-info').classList.add('hidden');}
+function removeContractFile(){document.getElementById('cf-file').value='';document.getElementById('cf-file-info').classList.add('hidden');document.getElementById('cf-file-link').href='#';}
 function saveContractTemplate(){var n=prompt('模板名称:');if(!n)return;
   var items=[];for(var i=0;i<qfItems.length;i++)items.push({name:qfItems[i].name||'',spec:qfItems[i].spec||'',unit:qfItems[i].unit||'',qty:qfItems[i].qty||1,price:qfItems[i].price||0});
   var dr=parseFloat(document.getElementById('qf-discount-rate').value)||0;
@@ -4431,7 +4431,7 @@ function openContractForm(id){
     document.getElementById('cf-end-date').value=ct.end_date||'';
     document.getElementById('cf-status').value=ct.status||'draft';
     document.getElementById('cf-archive-status').value=ct.archive_status||'active';
-    document.getElementById('cf-notes').value=(ct.notes||'').replace(/^\\u5f3f\\u0046\\u0049\\u004c\\u0045__:.*?\\n*/,'');if(ct.file_url){document.getElementById('cf-file-info').classList.remove('hidden');document.getElementById('cf-file-name').textContent=ct.file_name||'已上传'};
+    document.getElementById('cf-notes').value=(ct.notes||'').replace(/^\\u5f3f\\u0046\\u0049\\u004c\\u0045__:.*?\\n*/,'');if(ct.file_url){document.getElementById('cf-file-info').classList.remove('hidden');document.getElementById('cf-file-name').textContent=ct.file_name||'已上传';document.getElementById('cf-file-link').href=ct.file_url};
     csel.value=ct.client_id||'';
   }}
   document.getElementById('contract-modal').classList.remove('hidden');
@@ -5286,7 +5286,7 @@ async function deleteCheckById(id){
    <input id="cf-archive-status" type="hidden" value="active"><input id="cf-discount" type="hidden" value="0"><input id="cf-tax" type="hidden" value="0">
   </div>
   <div class="form-group"><label>备注</label><textarea id="cf-notes" rows="2" placeholder="备注..."></textarea></div>
-  <div class="form-group"><label>合同电子版</label><div id="cf-file-area"><input type="file" id="cf-file" accept=".pdf,.doc,.docx,.jpg,.png,.zip" style="width:100%"><div id="cf-file-info" class="hidden" style="margin-top:4px;font-size:12px;color:var(--primary)">已上传: <span id="cf-file-name"></span> <a href="#" onclick="removeContractFile();return false" style="color:var(--danger)">移除</a></div></div></div>
+  <div class="form-group"><label>合同电子版</label><div id="cf-file-area"><input type="file" id="cf-file" accept=".pdf,.doc,.docx,.jpg,.png,.zip" style="width:100%"><div id="cf-file-info" class="hidden" style="margin-top:4px;font-size:12px;color:var(--primary)">已上传: <a id="cf-file-link" href="#" target="_blank" style="color:var(--primary);text-decoration:underline"><span id="cf-file-name"></span></a> <a href="#" onclick="removeContractFile();return false" style="color:var(--danger)">移除</a></div></div></div>
   <div class="modal-actions">
    <button id="lead-btn-freeze" class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
    <button class="btn-cancel" onclick="closeContractForm()">取消</button>
