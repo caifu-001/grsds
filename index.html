@@ -461,6 +461,17 @@ input,select,textarea,button{font-family:inherit}
   .role-card .rc-name{font-weight:600;font-size:15px;color:var(--text)}
   .role-card .rc-perms{font-size:12px;color:var(--text-secondary);margin-top:4px}
   .role-card .rc-actions{display:flex;gap:6px}
+  .perm-matrix{width:100%;border-collapse:collapse;font-size:13px;border-radius:10px;overflow:hidden}
+  .perm-matrix th{padding:10px 12px;text-align:center;font-weight:600;color:var(--text-secondary);background:var(--bg);border-bottom:2px solid var(--border);white-space:nowrap}
+  .perm-matrix th:first-child{text-align:left;min-width:120px}
+  .perm-matrix td{padding:0;border-bottom:1px solid var(--border);text-align:center}
+  .pm-role-name{padding:10px 14px;font-weight:600;font-size:14px;color:var(--text);white-space:nowrap;text-align:left}
+  .pm-badge{display:inline-block;font-size:10px;color:var(--text-secondary);background:var(--bg);padding:1px 6px;border-radius:8px;vertical-align:middle;margin-left:4px}
+  .pm-cell{padding:8px 6px;min-width:72px;font-size:12px;font-weight:600;border-radius:4px;margin:4px;cursor:default;transition:opacity .15s}
+  .pm-editable{cursor:pointer}
+  .pm-editable:hover{opacity:0.8}
+  .pm-readonly{opacity:0.7;cursor:not-allowed}
+  .perm-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin:0 2px 0 8px;vertical-align:middle}
   .user-table{width:100%;border-collapse:collapse;font-size:13px}
   .user-table th{padding:10px 12px;text-align:left;font-weight:600;color:var(--text-secondary);border-bottom:2px solid var(--border);background:var(--bg)}
   .user-table td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text)}
@@ -1099,6 +1110,7 @@ input,select,textarea,button{font-family:inherit}
    <button class="admin-subtab active" onclick="switchAdminTab('users')">员工管理</button>
    <button class="admin-subtab" onclick="switchAdminTab('depts')">部门管理</button>
    <button class="admin-subtab" onclick="switchAdminTab('roles')">角色管理</button>
+   <button class="admin-subtab" id="admin-tab-perms" onclick="switchAdminTab('perms')">权限矩阵</button>
    <button class="admin-subtab hidden" id="admin-tab-companies-manage" onclick="switchAdminTab('companies_manage')">公司管理</button>
    <button class="admin-subtab hidden" id="admin-tab-companies" onclick="switchAdminTab('companies')">公司审核</button>
   </div>
@@ -1140,6 +1152,12 @@ input,select,textarea,button{font-family:inherit}
     <button class="btn-save" style="padding:8px 16px;font-size:13px" onclick="openRoleForm()">+ 新建角色</button>
    </div>
    <div id="admin-role-list"></div>
+  </div>
+
+  <!-- Permission Matrix -->
+  <div id="admin-perms" class="admin-panel hidden">
+   <div style="margin-bottom:10px;font-size:13px;color:var(--text3)">点击单元格切换权限级别：<span class="perm-dot" style="background:#e5e7eb"></span>无 <span class="perm-dot" style="background:#93c5fd"></span>查看 <span class="perm-dot" style="background:#60a5fa"></span>查看/编辑 <span class="perm-dot" style="background:#4F6EF7"></span>完全控制</div>
+   <div id="admin-perms-grid" style="overflow-x:auto"></div>
   </div>
  </div>
 
@@ -3920,6 +3938,84 @@ async function loadAdminData(){
 }
 
 /* ── Roles ── */
+// Permission matrix - default role permission levels
+var DEFAULT_ROLE_PERMS={
+  super_admin:{clients:'full',orders:'full',sales:'full',inventory:'full',admin:'full',reports:'full'},
+  admin:{clients:'full',orders:'full',sales:'full',inventory:'full',admin:'full',reports:'full'},
+  manager:{clients:'view_edit',orders:'view_edit',sales:'view',inventory:'view',admin:'none',reports:'view'},
+  user:{clients:'view',orders:'view',sales:'none',inventory:'none',admin:'none',reports:'view'}
+};
+var PERM_LEVELS=['none','view','view_edit','full'];
+var PERM_LABELS={none:'无',view:'查看',view_edit:'查看/编辑',full:'完全控制'};
+var PERM_COLORS={none:'#e5e7eb',view:'#93c5fd',view_edit:'#60a5fa',full:'#4F6EF7'};
+var PERM_TEXT_COLORS={none:'#6b7280',view:'#1e40af',view_edit:'#fff',full:'#fff'};
+
+function renderAdminPerms(){
+  var el=document.getElementById('admin-perms-grid');
+  if(!el)return;
+  var modules=['clients','orders','sales','inventory','admin','reports'];
+  var modNames={clients:'客户',orders:'订单',sales:'销售',inventory:'库存',admin:'系统',reports:'报表'};
+  
+  // Build role list: default roles + custom roles
+  var roles=[];
+  var defaultKeys=Object.keys(DEFAULT_ROLE_PERMS);
+  for(var i=0;i<defaultKeys.length;i++){
+    roles.push({name:defaultKeys[i],perms:DEFAULT_ROLE_PERMS[defaultKeys[i]],isDefault:true,id:null});
+  }
+  // Custom roles from DB
+  for(var j=0;j<allRoles.length;j++){
+    var rp=allRoles[j].permissions;
+    if(typeof rp==='string')rp=JSON.parse(rp);
+    roles.push({name:allRoles[j].name,perms:rp||{},isDefault:false,id:allRoles[j].id});
+  }
+  
+  var h='<table class="perm-matrix"><thead><tr><th>角色</th>';
+  for(var k=0;k<modules.length;k++)h+='<th>'+modNames[modules[k]]+'</th>';
+  h+='</tr></thead><tbody>';
+  
+  for(var ri=0;ri<roles.length;ri++){
+    var role=roles[ri];
+    h+='<tr><td class="pm-role-name">'+escHtml(role.name)+(role.isDefault?' <span class="pm-badge">默认</span>':'')+'</td>';
+    for(var mi=0;mi<modules.length;mi++){
+      var lvl=role.perms[modules[mi]]||'none';
+      var bg=PERM_COLORS[lvl]||PERM_COLORS.none;
+      var tc=PERM_TEXT_COLORS[lvl]||PERM_TEXT_COLORS.none;
+      var label=PERM_LABELS[lvl]||'无';
+      if(role.isDefault){
+        h+='<td class="pm-cell pm-readonly" style="background:'+bg+';color:'+tc+'">'+label+'</td>';
+      }else{
+        h+='<td class="pm-cell pm-editable" style="background:'+bg+';color:'+tc+'" onclick="cyclePermLevel(this,\''+role.id+',\''+modules[mi]+'\')" title="点击切换">'+label+'</td>';
+      }
+    }
+    h+='</tr>';
+  }
+  h+='</tbody></table>';
+  el.innerHTML=h;
+}
+
+async function cyclePermLevel(cell,roleId,module){
+  // Find role and cycle permission level
+  var role=allRoles.find(function(x){return x.id===parseInt(roleId)});
+  if(!role)return;
+  var perms=role.permissions;
+  if(typeof perms==='string')perms=JSON.parse(perms);
+  perms=perms||{};
+  var cur=perms[module]||'none';
+  var idx=PERM_LEVELS.indexOf(cur);
+  var next=PERM_LEVELS[(idx+1)%PERM_LEVELS.length];
+  perms[module]=next;
+  
+  // Save to DB
+  var {error}=await sb.from('roles').update({permissions:perms,updated_at:new Date().toISOString()}).eq('id',parseInt(roleId));
+  if(error){showToast('保存失败: '+error.message);return;}
+  role.permissions=perms;
+  
+  // Update cell display
+  cell.style.background=PERM_COLORS[next];
+  cell.style.color=PERM_TEXT_COLORS[next];
+  cell.textContent=PERM_LABELS[next];
+}
+
 function renderAdminRoles(){
   var el=document.getElementById('admin-role-list');
   if(!allRoles.length){el.innerHTML='<div class="empty-state">暂无自定义角色</div>';return}
@@ -4074,16 +4170,18 @@ async function switchAdminTab(tab){
   var ut=document.getElementById('admin-users');
   var dt=document.getElementById('admin-depts');
   var rt=document.getElementById('admin-roles');
+  var pt=document.getElementById('admin-perms');
   var ct=document.getElementById('admin-companies');
   var cm=document.getElementById('admin-companies-manage');
   var subs=document.querySelectorAll('.admin-subtab');
-  ut.classList.add('hidden');dt.classList.add('hidden');rt.classList.add('hidden');ct.classList.add('hidden');if(cm)cm.classList.add('hidden');
+  ut.classList.add('hidden');dt.classList.add('hidden');rt.classList.add('hidden');if(pt)pt.classList.add('hidden');ct.classList.add('hidden');if(cm)cm.classList.add('hidden');
   for(var i=0;i<subs.length;i++)subs[i].classList.remove('active');
   if(tab==='users'){ut.classList.remove('hidden');subs[0].classList.add('active');await loadAdminData();renderAdminUsers();}
   else if(tab==='depts'){dt.classList.remove('hidden');subs[1].classList.add('active');await loadAdminData();renderAdminDepts();}
   else if(tab==='roles'){rt.classList.remove('hidden');subs[2].classList.add('active');await loadAdminData();renderAdminRoles();}
-  else if(tab==='companies_manage'){cm.classList.remove('hidden');subs[3].classList.add('active');await loadAdminCompanies();renderAdminCompanies();}
-  else if(tab==='companies'){ct.classList.remove('hidden');subs[4].classList.add('active');loadPendingCompanies();}
+  else if(tab==='perms'){pt.classList.remove('hidden');subs[3].classList.add('active');await loadAdminData();renderAdminPerms();}
+  else if(tab==='companies_manage'){cm.classList.remove('hidden');subs[4].classList.add('active');await loadAdminCompanies();renderAdminCompanies();}
+  else if(tab==='companies'){ct.classList.remove('hidden');subs[5].classList.add('active');loadPendingCompanies();}
 }
 
 /* ── Users ── */
