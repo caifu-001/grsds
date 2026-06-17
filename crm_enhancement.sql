@@ -20,11 +20,12 @@ ALTER TABLE contacts ADD COLUMN IF NOT EXISTS relationship_to TEXT;
 ALTER TABLE contacts ADD COLUMN IF NOT EXISTS notes TEXT;
 
 -- ── 3. 跟进记录表 ──
+-- 注: clients.id/contacts.id 为 UUID 类型
 CREATE TABLE IF NOT EXISTS engagement_logs (
   id BIGSERIAL PRIMARY KEY,
   company_id INTEGER REFERENCES companies(id) ON DELETE CASCADE,
-  client_id INTEGER REFERENCES clients(id) ON DELETE CASCADE,
-  contact_id INTEGER REFERENCES contacts(id) ON DELETE SET NULL,
+  client_id UUID REFERENCES clients(id) ON DELETE CASCADE,
+  contact_id UUID REFERENCES contacts(id) ON DELETE SET NULL,
   type TEXT NOT NULL DEFAULT '跟进' CHECK (type IN ('跟进','电话','邮件','会议','拜访','微信','其他')),
   content TEXT,
   outcome TEXT,
@@ -62,7 +63,7 @@ CREATE TABLE IF NOT EXISTS lead_pool (
   max_recycle_count INTEGER DEFAULT 3,
   recycle_days INTEGER DEFAULT 30,
   last_follow_up TIMESTAMPTZ,
-  converted_client_id INTEGER REFERENCES clients(id) ON DELETE SET NULL,
+  converted_client_id UUID REFERENCES clients(id) ON DELETE SET NULL,
   converted_at TIMESTAMPTZ,
   notes TEXT,
   tags JSONB DEFAULT '[]',
@@ -85,7 +86,7 @@ CREATE POLICY "Company access lead_pool" ON lead_pool FOR ALL USING (
 CREATE TABLE IF NOT EXISTS lifecycle_logs (
   id BIGSERIAL PRIMARY KEY,
   company_id INTEGER REFERENCES companies(id) ON DELETE CASCADE,
-  client_id INTEGER REFERENCES clients(id) ON DELETE CASCADE,
+  client_id UUID REFERENCES clients(id) ON DELETE CASCADE,
   from_stage TEXT,
   to_stage TEXT NOT NULL,
   reason TEXT,
@@ -114,7 +115,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- ── 7. 补充 orders 缺列 (如之前未执行 fix_orders_columns.sql) ──
+-- ── 7. 补充 orders 缺列 ──
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS amount NUMERIC(12,2);
 CREATE INDEX IF NOT EXISTS idx_orders_company_id ON orders(company_id);
