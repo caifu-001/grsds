@@ -666,6 +666,123 @@ input,select,textarea,button{font-family:inherit}
 @keyframes toastIn{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
 @media(max-width:640px){.notif-panel{width:100vw}.toast{max-width:90vw;right:8px}}
 
+/* ── Client 360 Modal ── */
+.client-360-overlay{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:310;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.client-360-sheet{background:#fff;width:100%;max-width:480px;border-radius:20px 20px 0 0;max-height:95vh;overflow:hidden;display:flex;flex-direction:column;animation:slideUp .3s cubic-bezier(.16,1,.3,1)}
+.client-360-header{padding:16px 16px 0;text-align:center}
+.client-360-name{font-size:20px;font-weight:700;margin-bottom:8px}
+.client-360-badges{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:4px}
+.client-360-tabs{display:flex;border-bottom:2px solid var(--border);padding:0 12px;gap:0;flex-shrink:0}
+.client-360-tab{flex:1;padding:12px 4px;text-align:center;font-size:13px;font-weight:600;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;margin-bottom:-2px;transition:color .2s;background:none;border-top:none;border-left:none;border-right:none}
+.client-360-tab.active{color:var(--primary);border-bottom-color:var(--primary)}
+.client-360-body{flex:1;overflow-y:auto;padding:12px 16px 20px}
+.client-360-close{position:absolute;top:14px;right:14px;font-size:22px;cursor:pointer;color:var(--text3);background:none;border:none;z-index:2}
+.c360-card{background:var(--bg);border-radius:12px;padding:14px;margin-bottom:10px;border:1px solid var(--border)}
+.c360-card-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.c360-info-row{display:flex;padding:6px 0;font-size:13px;align-items:flex-start;gap:8px}
+.c360-info-label{color:var(--text3);white-space:nowrap;min-width:60px;font-size:12px}
+.c360-info-value{color:var(--text);word-break:break-all}
+.c360-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+.c360-stat-item{text-align:center;background:var(--card);border-radius:10px;padding:10px 6px;box-shadow:var(--shadow)}
+.c360-stat-num{font-size:20px;font-weight:700;color:var(--primary)}
+.c360-stat-label{font-size:10px;color:var(--text3);margin-top:2px}
+.c360-contact-item{background:var(--bg);border-radius:12px;padding:12px;margin-bottom:8px;border:1px solid var(--border)}
+.c360-contact-name{font-size:15px;font-weight:600;color:var(--text)}
+.c360-contact-info{font-size:12px;color:var(--text2);margin-top:4px;display:flex;flex-wrap:wrap;gap:4px 12px}
+.c360-contact-badges{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
+
+/* ── Tags Chips ── */
+.tag-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:14px;font-size:12px;font-weight:500;background:var(--primary-light);color:var(--primary);white-space:nowrap}
+.tag-chip .tag-remove{cursor:pointer;font-size:14px;line-height:1;opacity:.6;margin-left:2px}
+.tag-chip .tag-remove:hover{opacity:1}
+.tag-input-wrap{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 0}
+.tag-input-wrap input{border:none;outline:none;font-size:13px;flex:1;min-width:80px;padding:4px}
+.tag-suggestions{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0}
+.tag-suggestion{padding:3px 10px;border-radius:12px;font-size:11px;background:var(--bg);color:var(--text2);cursor:pointer;border:1px solid var(--border);transition:all .15s}
+.tag-suggestion:active{background:var(--primary-light);color:var(--primary);border-color:var(--primary)}
+
+/* ── Grade Badge ── */
+.grade-badge{font-size:12px;padding:3px 12px;border-radius:12px;font-weight:700;color:#fff;letter-spacing:.5px}
+.grade-badge.A{background:linear-gradient(135deg,#F59E0B,#EF4444)}
+.grade-badge.B{background:linear-gradient(135deg,#3B82F6,#6366F1)}
+.grade-badge.C{background:linear-gradient(135deg,#10B981,#34D399)}
+.grade-select{display:flex;gap:6px;margin-top:4px}
+.grade-option{flex:1;padding:6px;text-align:center;border:2px solid var(--border);border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;transition:all .15s;background:#fff}
+.grade-option.A.selected{border-color:#EF4444;background:#FEF2F2;color:#EF4444}
+.grade-option.B.selected{border-color:#3B82F6;background:#EFF6FF;color:#3B82F6}
+.grade-option.C.selected{border-color:#10B981;background:#ECFDF5;color:#10B981}
+
+/* ── Lifecycle ── */
+.lifecycle-badge{font-size:11px;padding:3px 10px;border-radius:10px;font-weight:600;color:#fff}
+.lifecycle-badge.prospect{background:#94A3B8}
+.lifecycle-badge.qualified{background:#6366F1}
+.lifecycle-badge.deal{background:#10B981}
+.lifecycle-badge.atrisk{background:#F59E0B}
+.lifecycle-badge.churned{background:#EF4444}
+.lifecycle-badge.repurchase{background:#8B5CF6}
+.lifecycle-timeline{padding:8px 0}
+.lifecycle-event{display:flex;gap:10px;padding:8px 0;border-left:2px solid var(--border);margin-left:8px;padding-left:16px;position:relative}
+.lifecycle-event::before{content:'';position:absolute;left:-5px;top:14px;width:8px;height:8px;border-radius:50%;background:var(--primary)}
+.lifecycle-event .le-date{font-size:11px;color:var(--text3);white-space:nowrap;min-width:70px}
+.lifecycle-event .le-content{font-size:13px;color:var(--text)}
+.lifecycle-event .le-change{font-size:12px;color:var(--primary);font-weight:500}
+
+/* ── Engagement Timeline ── */
+.engagement-timeline{padding:8px 0}
+.engagement-item{display:flex;gap:10px;padding:10px 0;border-left:2px solid var(--primary);margin-left:8px;padding-left:16px;position:relative}
+.engagement-item::before{content:'';position:absolute;left:-4.5px;top:14px;width:7px;height:7px;border-radius:50%;background:var(--primary)}
+.engagement-item .eg-date{font-size:11px;color:var(--text3);white-space:nowrap;min-width:72px}
+.engagement-item .eg-body{flex:1;font-size:13px;color:var(--text)}
+.engagement-item .eg-type{font-size:10px;padding:1px 6px;border-radius:6px;background:var(--primary-light);color:var(--primary);white-space:nowrap;margin-right:4px}
+.engagement-item .eg-content{margin-top:4px;line-height:1.5}
+.engagement-item .eg-outcome{font-size:11px;color:var(--success);margin-top:2px}
+.engagement-item .eg-next{font-size:11px;color:var(--warning);margin-top:2px}
+.engagement-item .eg-delete{font-size:10px;color:var(--danger);cursor:pointer;float:right;background:none;border:none}
+.engagement-form{background:var(--bg);border-radius:12px;padding:14px;margin-top:10px;border:1px solid var(--border)}
+.engagement-form h4{font-size:14px;margin-bottom:10px;color:var(--text)}
+.engagement-form select,.engagement-form input,.engagement-form textarea{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;margin-bottom:8px;outline:none;background:#fff}
+.engagement-form textarea{min-height:60px;resize:vertical}
+.engagement-form select:focus,.engagement-form input:focus,.engagement-form textarea:focus{border-color:var(--primary)}
+
+/* ── Leads View ── */
+.lead-card{background:var(--card);border-radius:12px;padding:14px;margin-bottom:8px;box-shadow:var(--shadow);border:1px solid var(--border);cursor:pointer;transition:transform .15s}
+.lead-card:active{transform:scale(.98)}
+.lead-card .lead-name{font-size:15px;font-weight:700;margin-bottom:4px}
+.lead-card .lead-contact{font-size:12px;color:var(--text2);margin-bottom:4px;display:flex;flex-wrap:wrap;gap:8px}
+.lead-card .lead-meta{font-size:11px;color:var(--text3);display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px}
+.lead-status-badge{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;color:#fff}
+.lead-status-badge.new{background:#6366F1}
+.lead-status-badge.assigned{background:#3B82F6}
+.lead-status-badge.contacted{background:#F59E0B}
+.lead-status-badge.qualified{background:#10B981}
+.lead-status-badge.converted{background:#8B5CF6}
+.lead-status-badge.recycled{background:#EF4444}
+.lead-status-badge.junk{background:#94A3B8}
+.lead-actions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.lead-actions button{padding:5px 12px;border-radius:6px;font-size:11px;border:1px solid var(--border);cursor:pointer;background:#fff;color:var(--text);font-weight:500;transition:all .15s}
+.lead-actions button:active{background:var(--bg);transform:scale(.95)}
+.lead-actions .btn-lead-primary{background:var(--primary);color:#fff;border-color:var(--primary)}
+.lead-actions .btn-lead-danger{color:var(--danger);border-color:var(--danger)}
+.lead-import-area{background:var(--bg);border-radius:12px;padding:14px;border:2px dashed var(--border);margin:10px 0}
+.lead-import-area textarea{width:100%;min-height:120px;font-size:12px;font-family:monospace;border:1px solid var(--border);border-radius:8px;padding:8px;resize:vertical;outline:none}
+.lead-import-area .hint{font-size:11px;color:var(--text3);margin-top:6px}
+
+/* ── Attachment ── */
+.attach-list{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.attach-item{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg);border-radius:8px;border:1px solid var(--border);font-size:12px}
+.attach-item .attach-name{flex:1;color:var(--text);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.attach-item .attach-remove{color:var(--danger);cursor:pointer;font-size:14px;background:none;border:none}
+.attach-upload{display:flex;gap:6px;align-items:center;margin-top:4px}
+.attach-upload input[type="file"]{font-size:12px}
+
+/* ── Birthday ── */
+.birthday-card{background:linear-gradient(135deg,#FEF3C7,#FDE68A);border-radius:12px;padding:12px 14px;margin-bottom:8px;border:1px solid #FCD34D;display:flex;align-items:center;gap:12px}
+.birthday-card .bd-icon{font-size:28px}
+.birthday-card .bd-info{flex:1}
+.birthday-card .bd-name{font-size:14px;font-weight:600;color:var(--text)}
+.birthday-card .bd-date{font-size:12px;color:var(--text2)}
+.birthday-card .bd-client{font-size:11px;color:var(--text3)}
+
 </style>
 </head>
 <body>
@@ -679,6 +796,7 @@ input,select,textarea,button{font-family:inherit}
  
  <div class="more-divider"></div>
  <button class="more-item" onclick="closeMoreMenu();showCompanies()"><span class="mi-icon">📂</span> 公司名录</button>
+ <button class="more-item" onclick="closeMoreMenu();showLeads()"><span class="mi-icon">🎯</span> 线索公海</button>
  <button class="more-item" onclick="closeMoreMenu();openSettings()"><span class="mi-icon">🔧</span> 系统设置</button>
  <button class="more-item" onclick="closeMoreMenu();doRefresh()"><span class="mi-icon">↻</span> 刷新数据</button>
  <div class="more-divider"></div>
@@ -758,6 +876,10 @@ input,select,textarea,button{font-family:inherit}
     <div class="dash-section-body" id="dash-reminders">
      <div class="empty-state">加载中...</div>
     </div>
+   </div>
+   <div class="dash-section" id="birthday-section" style="display:none">
+    <div class="dash-section-header">🎂 生日提醒</div>
+    <div class="dash-section-body" id="birthday-reminders"></div>
    </div>
   </div>
   <div class="dash-section" style="margin:12px 16px">
@@ -1132,6 +1254,66 @@ input,select,textarea,button{font-family:inherit}
           </div>
         </div>
 
+  <!-- New Fields -->
+  <div class="company-info-section" style="margin-top:12px">
+    <div class="ci-title">基本信息</div>
+    <div class="ci-grid">
+      <div class="ci-field"><label class="ci-label">行业</label><select class="ci-input" id="f-industry" style="padding:5px 8px"><option value="">请选择</option><option value="信息技术">信息技术</option><option value="制造业">制造业</option><option value="建筑业">建筑业</option><option value="金融">金融</option><option value="教育">教育</option><option value="医疗">医疗</option><option value="政府">政府</option><option value="能源">能源</option><option value="零售">零售</option><option value="物流">物流</option><option value="房地产">房地产</option><option value="其他">其他</option></select></div>
+      <div class="ci-field"><label class="ci-label">规模</label><select class="ci-input" id="f-scale" style="padding:5px 8px"><option value="">请选择</option><option value="小微企业">小微企业</option><option value="中小企业">中小企业</option><option value="中型企业">中型企业</option><option value="大型企业">大型企业</option><option value="集团企业">集团企业</option></select></div>
+      <div class="ci-field"><label class="ci-label">来源</label><select class="ci-input" id="f-source" style="padding:5px 8px"><option value="">请选择</option><option value="自主开发">自主开发</option><option value="客户介绍">客户介绍</option><option value="展会">展会</option><option value="网络推广">网络推广</option><option value="电话营销">电话营销</option><option value="合作伙伴">合作伙伴</option><option value="线索转化">线索转化</option><option value="其他">其他</option></select></div>
+    </div>
+  </div>
+
+  <div class="company-info-section" style="margin-top:12px">
+    <div class="ci-title">评级信息</div>
+    <div class="ci-grid">
+      <div class="ci-field"><label class="ci-label">信用等级</label><select class="ci-input" id="f-credit-rating" style="padding:5px 8px"><option value="">请选择</option><option value="AAA">AAA</option><option value="AA">AA</option><option value="A">A</option><option value="BBB">BBB</option><option value="BB">BB</option><option value="B">B</option><option value="C">C</option></select></div>
+      <div class="ci-field"><label class="ci-label">客户分级</label><div class="grade-select" id="grade-select"><div class="grade-option A" onclick="selectGrade('A')">A</div><div class="grade-option B" onclick="selectGrade('B')">B</div><div class="grade-option C" onclick="selectGrade('C')">C</div></div><input type="hidden" id="f-grade"></div>
+    </div>
+  </div>
+
+  <div class="company-info-section" style="margin-top:12px">
+    <div class="ci-title">标签</div>
+    <div class="tag-input-wrap" id="tag-input-area">
+      <div id="tag-chips"></div>
+      <input id="tag-input" placeholder="输入标签后回车..." onkeydown="if(event.key==='Enter'){event.preventDefault();addTag(this.value.trim());this.value=''}">
+    </div>
+    <div class="tag-suggestions">
+      <span class="tag-suggestion" onclick="addTag('重点客户')">重点客户</span>
+      <span class="tag-suggestion" onclick="addTag('长期合作')">长期合作</span>
+      <span class="tag-suggestion" onclick="addTag('新开发')">新开发</span>
+      <span class="tag-suggestion" onclick="addTag('高利润')">高利润</span>
+      <span class="tag-suggestion" onclick="addTag('需维护')">需维护</span>
+      <span class="tag-suggestion" onclick="addTag('战略伙伴')">战略伙伴</span>
+      <span class="tag-suggestion" onclick="addTag('年框')">年框</span>
+      <span class="tag-suggestion" onclick="addTag('潜在')">潜在</span>
+    </div>
+  </div>
+
+  <div class="company-info-section" style="margin-top:12px">
+    <div class="ci-title">生命周期</div>
+    <div class="ci-grid">
+      <div class="ci-field"><label class="ci-label">当前阶段</label>
+        <select class="ci-input" id="f-lifecycle-stage" style="padding:5px 8px" disabled>
+          <option value="prospect">潜在客户</option><option value="qualified">合格线索</option>
+          <option value="deal">成交客户</option><option value="atrisk">流失预警</option>
+          <option value="churned">流失客户</option><option value="repurchase">复购客户</option>
+        </select>
+        <span style="font-size:10px;color:var(--text3)">只读，变更请通过客户360视图</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="company-info-section" style="margin-top:12px">
+    <div class="ci-title">附件</div>
+    <div id="attach-list"></div>
+    <div class="attach-upload">
+      <input type="file" id="attach-file" onchange="handleAttachFile(this)" multiple style="font-size:12px">
+      <span style="font-size:11px;color:var(--text3)">选文件即可（占位存储）</span>
+    </div>
+    <div style="font-size:10px;color:var(--warning);margin-top:4px">提示：如需完整上传，请先在 Supabase 创建 "client-attachments" Storage bucket</div>
+  </div>
+
   <div class="section-title">👤 联系人</div>
   <div id="contacts-container"></div>
   <button class="add-phone-btn" style="margin-top:8px;margin-bottom:12px" onclick="addContact()">＋ 添加联系人</button>
@@ -1337,6 +1519,96 @@ input,select,textarea,button{font-family:inherit}
   </div>
  </div>
 
+<!-- ====== Client 360 Modal ====== -->
+<div class="client-360-overlay hidden" id="client360-modal">
+ <div class="client-360-sheet">
+  <button class="client-360-close" onclick="closeClient360()">✕</button>
+  <div class="client-360-header">
+   <div class="client-360-name" id="c360-name">-</div>
+   <div class="client-360-badges" id="c360-badges"></div>
+  </div>
+  <div class="client-360-tabs">
+   <button class="client-360-tab active" onclick="switchClient360Tab('overview')">概览</button>
+   <button class="client-360-tab" onclick="switchClient360Tab('contacts')">联系人</button>
+   <button class="client-360-tab" onclick="switchClient360Tab('orders')">订单</button>
+   <button class="client-360-tab" onclick="switchClient360Tab('engagements')">跟进</button>
+   <button class="client-360-tab" onclick="switchClient360Tab('lifecycle')">生命周期</button>
+  </div>
+  <div class="client-360-body" id="c360-body"></div>
+ </div>
+</div>
+
+<!-- ====== Leads View ====== -->
+<div id="leads-view" class="hidden">
+ <div class="stats-bar" id="leads-stats-bar"></div>
+ <div class="toolbar" style="position:static">
+  <select id="lead-pool-filter" onchange="renderLeads()"><option value="all">全部状态</option><option value="new">新线索</option><option value="assigned">已分配</option><option value="contacted">已联系</option><option value="converted">已转化</option><option value="recycled">已回收</option><option value="junk">无效</option></select>
+  <div class="search-wrap"><input id="lead-pool-search" placeholder="搜索线索..." oninput="renderLeads()"></div>
+ </div>
+ <div style="display:flex;gap:6px;padding:6px 16px 10px">
+  <button class="btn-sm btn-sm-primary" onclick="openLeadForm()">＋ 新线索</button>
+  <button class="btn-sm" style="background:#fff;color:var(--text);border:1px solid var(--border)" onclick="openLeadImport()">📥 批量导入</button>
+  <button class="btn-sm" style="background:#fff;color:var(--danger);border:1px solid var(--danger)" onclick="recycleStale()">♻ 回收超时</button>
+ </div>
+ <div class="client-grid" id="lead-grid"></div>
+ <div class="empty hidden" id="lead-empty"><div class="empty-icon">🎯</div>暂无线索<br><span style="font-size:12px;color:var(--text3)">点击「+ 新线索」开始添加</span></div>
+</div>
+
+<!-- Lead Form Modal -->
+<div class="modal-overlay hidden" id="lead-form-modal">
+ <div class="modal-sheet">
+  <h3 id="lead-form-title">新建线索</h3>
+  <div class="form-group"><label>公司/单位名称 *</label><input id="lf-name" placeholder="线索名称"></div>
+  <div class="form-group"><label>联系人</label><input id="lf-contact-name" placeholder="联系人姓名"></div>
+  <div class="form-group"><label>联系人电话</label><input id="lf-contact-phone" placeholder="手机号"></div>
+  <div class="form-group"><label>联系人邮箱</label><input id="lf-contact-email" placeholder="邮箱"></div>
+  <div class="form-row">
+   <div class="form-group"><label>来源</label><select id="lf-source"><option value="">请选择</option><option value="自主开发">自主开发</option><option value="客户介绍">客户介绍</option><option value="展会">展会</option><option value="网络推广">网络推广</option><option value="电话营销">电话营销</option><option value="合作伙伴">合作伙伴</option><option value="其他">其他</option></select></div>
+   <div class="form-group"><label>行业</label><select id="lf-industry"><option value="">请选择</option><option value="信息技术">信息技术</option><option value="制造业">制造业</option><option value="建筑业">建筑业</option><option value="金融">金融</option><option value="教育">教育</option><option value="医疗">医疗</option><option value="政府">政府</option><option value="能源">能源</option><option value="零售">零售</option><option value="其他">其他</option></select></div>
+  </div>
+  <div class="form-row">
+   <div class="form-group"><label>规模</label><select id="lf-scale"><option value="">请选择</option><option value="小微企业">小微企业</option><option value="中小企业">中小企业</option><option value="中型企业">中型企业</option><option value="大型企业">大型企业</option><option value="集团企业">集团企业</option></select></div>
+   <div class="form-group"><label>最大回收次数</label><input type="number" id="lf-max-recycle" value="3" min="1" max="10"></div>
+  </div>
+  <div class="form-row">
+   <div class="form-group"><label>回收天数</label><input type="number" id="lf-recycle-days" value="30" min="1"></div>
+   <div class="form-group"><label>状态</label><select id="lf-status"><option value="new">新线索</option><option value="assigned">已分配</option><option value="contacted">已联系</option><option value="junk">无效</option></select></div>
+  </div>
+  <div class="form-group"><label>备注</label><textarea id="lf-notes" placeholder="备注信息..." rows="2"></textarea></div>
+  <div class="modal-actions">
+   <button class="btn-delete hidden" id="lead-btn-delete" onclick="deleteLead(leadEditId)">删除线索</button>
+   <button class="btn-cancel" onclick="closeLeadForm()">取消</button>
+   <button class="btn-save" onclick="saveLead()">保存</button>
+  </div>
+ </div>
+</div>
+
+<!-- Lead Assign Modal -->
+<div class="modal-overlay hidden" id="lead-assign-modal">
+ <div class="modal-sheet">
+  <h3>分配线索</h3>
+  <div class="form-group"><label>分配至</label><select id="la-user-select"></select></div>
+  <div class="modal-actions">
+   <button class="btn-cancel" onclick="document.getElementById('lead-assign-modal').classList.add('hidden')">取消</button>
+   <button class="btn-save" onclick="doAssignLead()">确定</button>
+  </div>
+ </div>
+</div>
+
+<!-- Lead Import Modal -->
+<div class="modal-overlay hidden" id="lead-import-modal">
+ <div class="modal-sheet">
+  <h3>批量导入线索</h3>
+  <div class="lead-import-area">
+   <textarea id="li-csv" placeholder="粘贴CSV内容，格式：&#10;名称,联系人,手机,邮箱,来源,行业,规模,备注&#10;ABC公司,张三,13800138000,zs@abc.com,展会,信息技术,中小企业,意向强烈"></textarea>
+   <div class="hint">每行一条线索，字段用英文逗号分隔。第一行将被跳过（如含表头）。</div>
+  </div>
+  <div class="modal-actions">
+   <button class="btn-cancel" onclick="document.getElementById('lead-import-modal').classList.add('hidden')">取消</button>
+   <button class="btn-save" onclick="importLeads()">导入</button>
+  </div>
+ </div>
+</div>
 
 <script>
 // Supabase
@@ -1353,6 +1625,8 @@ let loginMode='login',currentUser=null,allClients=[],allContacts=[],allCompanies
 let allUsers=[];
 let editId=null,deleteId=null,formContacts=[],pendingImport=null;
 let moveContactIdx=-1,moveContactObj=null;
+let clientTags=[],clientAttachments=[],leadEditId=null,leadAssignId=null,allLeads=[];
+let c360ClientId=null,c360ActiveTab='overview',c360Orders=[];
 
 function h(s){return s?s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'):''}
 function showToast(msg){var t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(function(){t.remove()},2600)}
@@ -1814,6 +2088,20 @@ function showCompanies(){
   document.getElementById('dir-screen').classList.remove('hidden');
   renderDir();
 }
+
+async function showLeads(){
+  closeMoreMenu();
+  document.getElementById('settings-screen').style.display='none';
+  document.getElementById('my-screen').style.display='none';
+  var allViews=document.querySelectorAll('#main-screen > div[id$="-view"]');
+  for(var i=0;i<allViews.length;i++)allViews[i].classList.add('hidden');
+  document.getElementById('home-view').classList.add('hidden');
+  var lv=document.getElementById('leads-view');
+  if(lv)lv.classList.remove('hidden');
+  document.getElementById('topbar-title').textContent='线索公海';
+  document.getElementById('main-fab').classList.add('hidden');
+  await loadLeads();
+}
 function closeDir(){
   document.getElementById('dir-screen').classList.add('hidden');
   document.getElementById('main-screen').classList.remove('hidden');
@@ -1954,9 +2242,10 @@ function renderList(){
         }
         if(contacts.length>shown)contactHtml+='<span style="font-size:11px;color:var(--text3)">等'+contacts.length+'人</span>';
       }
-      html+='<div class="client-card" onclick="openForm(\''+c.id+'\')">'+
+      var gradeBadge='';if(c.grade)gradeBadge='<span class="grade-badge '+h(c.grade)+'">'+h(c.grade)+'级</span>';
+      html+='<div class="client-card" onclick="openClient360(\''+c.id+'\')">'+
         (badges?'<div class="card-types">'+badges+'</div>':'')+
-        '<div class="card-name">'+h(c.name)+'</div>'+
+        '<div class="card-name">'+h(c.name)+(gradeBadge?' '+gradeBadge:'')+'</div>'+
         (c.address?'<div class="card-addr">📍 '+h(c.address)+'</div>':'')+
         (function(){
       var projs=[];
@@ -2059,6 +2348,19 @@ async function openForm(id){
       document.getElementById('f-address').value=c.address||'';
       document.getElementById('f-notes').value=c.notes||'';
       setSelectedTypes(parseTypes(c.type));
+      // Load new fields
+      var fIndustry=document.getElementById('f-industry');if(fIndustry)fIndustry.value=c.industry||'';
+      var fScale=document.getElementById('f-scale');if(fScale)fScale.value=c.scale||'';
+      var fSource=document.getElementById('f-source');if(fSource)fSource.value=c.source||'';
+      var fCredit=document.getElementById('f-credit-rating');if(fCredit)fCredit.value=c.credit_rating||'';
+      var fGrade=document.getElementById('f-grade');if(fGrade)fGrade.value=c.grade||'';updateGradeSelect(c.grade||'');
+      var fLifecycle=document.getElementById('f-lifecycle-stage');if(fLifecycle)fLifecycle.value=c.lifecycle_stage||'prospect';
+      // Load tags
+      try{clientTags=JSON.parse(c.tags||'[]');if(!Array.isArray(clientTags))clientTags=[]}catch(e){clientTags=[]}
+      renderClientTags();
+      // Load attachments
+      try{clientAttachments=JSON.parse(c.attachments||'[]');if(!Array.isArray(clientAttachments))clientAttachments=[]}catch(e){clientAttachments=[]}
+      renderClientAttachments();
       // Load company_info
       var ciStr=c.company_info||'{}';
       try{var ci=JSON.parse(ciStr);displayCompanyInfo(ci);}
@@ -2086,6 +2388,13 @@ async function openForm(id){
   }else{
     setSelectedTypes([]);
     displayCompanyInfo({});
+    clientTags=[];clientAttachments=[];renderClientTags();renderClientAttachments();
+    var fIndustry=document.getElementById('f-industry');if(fIndustry)fIndustry.value='';
+    var fScale=document.getElementById('f-scale');if(fScale)fScale.value='';
+    var fSource=document.getElementById('f-source');if(fSource)fSource.value='';
+    var fCredit=document.getElementById('f-credit-rating');if(fCredit)fCredit.value='';
+    var fGrade=document.getElementById('f-grade');if(fGrade)fGrade.value='';updateGradeSelect('');
+    var fLifecycle=document.getElementById('f-lifecycle-stage');if(fLifecycle)fLifecycle.value='prospect';
   }
   refCt();
   document.getElementById('form-modal').classList.remove('hidden');
@@ -2256,6 +2565,12 @@ async function saveClient(){
     if(pn||pb)projectsArr.push({project_name:pn,bidding_date:pd,bidder_name:pb,bidder_phone:pbp,bidder_company:pbc,bid_amount:pba});
   }
   var fp=projectsArr.length>0?projectsArr[0].project_name:'';
+  // Collect new fields
+  var fIndustry=document.getElementById('f-industry');
+  var fScale=document.getElementById('f-scale');
+  var fSource=document.getElementById('f-source');
+  var fCredit=document.getElementById('f-credit-rating');
+  var fGrade=document.getElementById('f-grade');
   var client={
     type:JSON.stringify(selTypes),
     name:name,
@@ -2263,6 +2578,14 @@ async function saveClient(){
     bidding_date:projectsArr.length>0?projectsArr[0].bidding_date:null,
     address:document.getElementById('f-address').value.trim(),
     notes:document.getElementById('f-notes').value.trim(),
+    industry:fIndustry?fIndustry.value:'',
+    scale:fScale?fScale.value:'',
+    source:fSource?fSource.value:'',
+    credit_rating:fCredit?fCredit.value:'',
+    grade:fGrade?fGrade.value:'',
+    lifecycle_stage:(function(){var ls=document.getElementById('f-lifecycle-stage');return ls?ls.value:'prospect'})(),
+    tags:JSON.stringify(clientTags||[]),
+    attachments:JSON.stringify(clientAttachments||[]),
     company_info:JSON.stringify(ci),
     contact_count:formContacts.length,
     projects:JSON.stringify(projectsArr),
@@ -2886,7 +3209,8 @@ function switchTab(tab){
   document.getElementById('my-screen').style.display='none';
   // Hide all views first
   var hv_d=document.getElementById('home-view');var rv_r=document.getElementById('reports-view');
-  var allViews=[hv_d,cv,ov,rv_r,av,sv,iv];if(spv)allViews.push(spv);if(pv)allViews.push(pv);
+  var lv=document.getElementById('leads-view');
+  var allViews=[hv_d,cv,ov,rv_r,av,sv,iv];if(spv)allViews.push(spv);if(pv)allViews.push(pv);if(lv)allViews.push(lv);
   for(var i=0;i<allViews.length;i++)if(allViews[i])allViews[i].classList.add('hidden');
   // Deactivate all tabs
   var tr=document.getElementById('tab-reports');var thm=document.getElementById('tab-home');
@@ -6352,6 +6676,531 @@ document.addEventListener('click',function(e){
   var ns=document.getElementById('name-suggestions');
   if(ns&&!ns.classList.contains('hidden')&&!e.target.closest('#form-modal'))ns.classList.add('hidden');
 });
+
+// ============ NEW: Client 360 Functions ============
+function closeClient360(){
+  document.getElementById('client360-modal').classList.add('hidden');
+  c360ClientId=null;
+}
+
+async function openClient360(clientId){
+  c360ClientId=clientId;
+  var c=allClients.find(function(x){return x.id===clientId});
+  if(!c){showToast('客户不存在');return}
+  // Load client data
+  var badgeHtml='';
+  if(c.grade)badgeHtml+='<span class="grade-badge '+h(c.grade)+'">'+h(c.grade)+'级</span>';
+  var stageMap={prospect:'潜在客户',qualified:'合格线索',deal:'成交客户',atrisk:'流失预警',churned:'流失客户',repurchase:'复购客户'};
+  var stage=c.lifecycle_stage||'prospect';
+  badgeHtml+=' <span class="lifecycle-badge '+h(stage)+'">'+(stageMap[stage]||stage)+'</span>';
+  document.getElementById('c360-name').textContent=c.name||'';
+  document.getElementById('c360-badges').innerHTML=badgeHtml;
+  // Load orders
+  var {data:orders}=await sb.from('orders').select('*').eq('client_id',clientId).eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
+  c360Orders=orders||[];
+  switchClient360Tab('overview');
+  document.getElementById('client360-modal').classList.remove('hidden');
+}
+
+function switchClient360Tab(tab){
+  c360ActiveTab=tab;
+  var tabs=document.querySelectorAll('.client-360-tab');
+  for(var i=0;i<tabs.length;i++)tabs[i].classList.toggle('active',tabs[i].textContent.indexOf(tab==='overview'?'概览':tab==='contacts'?'联系人':tab==='orders'?'订单':tab==='engagements'?'跟进':'生命周期')>=0);
+  var c=allClients.find(function(x){return x.id===c360ClientId});
+  if(!c)return;
+  var body=document.getElementById('c360-body');
+  if(tab==='overview')renderClient360Overview(c,c360Orders);
+  else if(tab==='contacts')renderClient360Contacts(c);
+  else if(tab==='orders')renderClient360Orders(c);
+  else if(tab==='engagements')renderClient360Engagements(c.id);
+  else if(tab==='lifecycle')renderClient360Lifecycle(c.id);
+}
+
+function renderClient360Overview(c,orders){
+  var stageMap={prospect:'潜在客户',qualified:'合格线索',deal:'成交客户',atrisk:'流失预警',churned:'流失客户',repurchase:'复购客户'};
+  var totalRev=0,paidCount=0;
+  for(var i=0;i<orders.length;i++){totalRev+=parseFloat(orders[i].amount_enc?0:(orders[i].amount||0));if(orders[i].stage==='已完成')paidCount++}
+  var lastEng='无';
+  (async function(){
+    var {data}=await sb.from('engagement_logs').select('created_at').eq('client_id',c.id).eq('company_id',currentCompanyId).order('created_at',{ascending:false}).limit(1);
+    if(data&&data.length)lastEng=new Date(data[0].created_at).toLocaleDateString('zh-CN');
+    document.getElementById('c360-last-engage').textContent=lastEng;
+  })();
+  var html='<div class="c360-card"><div class="c360-card-title">📋 基本信息</div>';
+  var rows=[
+    ['行业',c.industry||'-'],['规模',c.scale||'-'],['来源',c.source||'-'],
+    ['信用等级',c.credit_rating||'-'],['客户等级',c.grade?c.grade+'级':'-'],
+    ['生命周期',stageMap[c.lifecycle_stage||'prospect']||'-'],
+    ['地址',c.address||'-'],['备注',c.notes||'-']
+  ];
+  for(var j=0;j<rows.length;j++)html+='<div class="c360-info-row"><span class="c360-info-label">'+rows[j][0]+'</span><span class="c360-info-value">'+h(rows[j][1])+'</span></div>';
+  html+='</div>';
+  html+='<div class="c360-card"><div class="c360-card-title">📊 统计</div><div class="c360-stats">';
+  html+='<div class="c360-stat-item"><div class="c360-stat-num">'+orders.length+'</div><div class="c360-stat-label">订单数</div></div>';
+  html+='<div class="c360-stat-item"><div class="c360-stat-num">'+formatMoney(totalRev)+'</div><div class="c360-stat-label">成交额</div></div>';
+  html+='<div class="c360-stat-item"><div class="c360-stat-num" id="c360-last-engage">'+lastEng+'</div><div class="c360-stat-label">最近跟进</div></div>';
+  html+='</div></div>';
+  // Tags
+  var tags=[];
+  try{tags=JSON.parse(c.tags||'[]');if(!Array.isArray(tags))tags=[]}catch(e){tags=[]}
+  if(tags.length>0){
+    html+='<div class="c360-card"><div class="c360-card-title">🏷 标签</div>';
+    for(var k=0;k<tags.length;k++)html+='<span class="tag-chip">'+h(tags[k])+'</span> ';
+    html+='</div>';
+  }
+  document.getElementById('c360-body').innerHTML=html;
+}
+
+function renderClient360Contacts(c){
+  var contacts=allContacts.filter(function(co){return co.client_id===c.id});
+  var html='';
+  if(contacts.length===0)html='<div class="empty" style="padding:40px">暂无联系人</div>';
+  else{
+    for(var i=0;i<contacts.length;i++){
+      var co=contacts[i];
+      var dm=co.is_decision_maker?' ⭐':'',bd='';
+      if(co.birthday){var bdDate=new Date(co.birthday);if(!isNaN(bdDate.getTime()))bd='<span style="font-size:11px;color:var(--warning)">🎂 '+bdDate.toLocaleDateString('zh-CN')+'</span>'}
+      var rel=co.relationship_to?'<span style="font-size:11px;color:var(--text3)">关系: '+h(co.relationship_to)+'</span>':'';
+      var phs=[],lls=[],ems=[];
+      try{phs=JSON.parse(co.phone||'[]');if(!Array.isArray(phs))phs=[co.phone||'']}catch(e){phs=['']}
+      try{lls=JSON.parse(co.landline||'[]');if(!Array.isArray(lls))lls=[]}catch(e){lls=[]}
+      try{ems=JSON.parse(co.email||'[]');if(!Array.isArray(ems))ems=[]}catch(e){ems=[]}
+      html+='<div class="c360-contact-item"><div class="c360-contact-name">'+h(co.name||'未命名')+dm+'</div>';
+      html+='<div class="c360-contact-info">';
+      if(co.dept)html+='<span>🏢 '+h(co.dept)+'</span>';
+      if(co.position)html+='<span>💼 '+h(co.position)+'</span>';
+      if(phs.length&&phs[0])html+='<span>📞 '+h(phs.join(' / '))+'</span>';
+      if(lls.length&&lls[0])html+='<span>🖥 '+h(lls.join(' / '))+'</span>';
+      if(ems.length&&ems[0])html+='<span>📧 '+h(ems.join(' / '))+'</span>';
+      html+='</div><div class="c360-contact-badges">'+bd+rel+'</div></div>';
+    }
+  }
+  document.getElementById('c360-body').innerHTML=html;
+}
+
+function renderClient360Orders(c){
+  var orders=c360Orders||[];
+  var html='';
+  if(orders.length===0)html='<div class="empty" style="padding:40px">暂无订单</div>';
+  else{
+    for(var i=0;i<orders.length;i++){
+      var o=orders[i],stage=o.stage||'谈判中';
+      var stageColor={谈判中:'#F59E0B',已签约:'#3B82F6',执行中:'#8B5CF6',已完成:'#10B981',已取消:'#EF4444'};
+      html+='<div class="c360-card" style="cursor:pointer" onclick="openOrderForm(\''+o.id+'\')"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-weight:600">'+h(o.order_number||'')+'</span><span style="font-size:10px;padding:2px 8px;border-radius:8px;background:'+(stageColor[stage]||'#94A3B8')+';color:#fff">'+h(stage)+'</span></div>';
+      if(o.project_name)html+='<div style="font-size:13px;margin-top:4px">📋 '+h(o.project_name)+'</div>';
+      html+='<div style="font-size:12px;color:var(--text3);margin-top:4px">'+formatMoney(parseFloat(o.amount||0))+(o.start_date?' · '+o.start_date:'')+'</div></div>';
+    }
+  }
+  document.getElementById('c360-body').innerHTML=html;
+}
+
+async function renderClient360Engagements(clientId){
+  var {data:logs}=await sb.from('engagement_logs').select('*').eq('client_id',clientId).eq('company_id',currentCompanyId).order('created_at',{ascending:false});
+  var html='<div style="margin-bottom:12px"><button class="btn-sm btn-sm-primary" onclick="toggleEngagementForm()" id="btn-new-engage">+ 新增跟进</button></div>';
+  html+='<div class="engagement-form hidden" id="engagement-form"><h4>新增跟进记录</h4>';
+  html+='<select id="eg-type"><option value="电话">电话</option><option value="拜访">拜访</option><option value="邮件">邮件</option><option value="会议">会议</option><option value="微信">微信</option><option value="其他">其他</option></select>';
+  html+='<textarea id="eg-content" placeholder="跟进内容..."></textarea>';
+  html+='<input id="eg-outcome" placeholder="结果（可选）">';
+  html+='<input id="eg-next-step" placeholder="下一步计划（可选）">';
+  html+='<input type="date" id="eg-next-date">';
+  html+='<div style="display:flex;gap:6px;margin-top:8px"><button class="btn-sm btn-sm-primary" onclick="saveEngagement(\''+clientId+'\')">保存</button><button class="btn-sm" style="background:var(--bg);border:1px solid var(--border)" onclick="toggleEngagementForm()">取消</button></div></div>';
+  html+='<div class="engagement-timeline" id="engagement-list">';
+  if(logs&&logs.length>0){
+    for(var i=0;i<logs.length;i++){
+      var l=logs[i];
+      html+='<div class="engagement-item"><div class="eg-date">'+new Date(l.created_at).toLocaleDateString('zh-CN')+'</div><div class="eg-body"><span class="eg-type">'+h(l.type)+'</span>'+h(l.content||'')+(l.outcome?'<div class="eg-outcome">✅ '+h(l.outcome)+'</div>':'')+(l.next_step?'<div class="eg-next">📌 下一步: '+h(l.next_step)+(l.next_date?' ('+l.next_date+')':'')+'</div>':'')+'<button class="eg-delete" onclick="deleteEngagement(\''+l.id+'\')">删除</button></div></div>';
+    }
+  }else{html+='<div class="empty" style="padding:20px">暂无跟进记录</div>'}
+  html+='</div>';
+  document.getElementById('c360-body').innerHTML=html;
+}
+
+function toggleEngagementForm(){
+  document.getElementById('engagement-form').classList.toggle('hidden');
+}
+
+async function saveEngagement(clientId){
+  var type=document.getElementById('eg-type').value;
+  var content=document.getElementById('eg-content').value.trim();
+  if(!content){showToast('请输入跟进内容');return}
+  var outcome=document.getElementById('eg-outcome').value.trim();
+  var nextStep=document.getElementById('eg-next-step').value.trim();
+  var nextDate=document.getElementById('eg-next-date').value||null;
+  var {error}=await sb.from('engagement_logs').insert({company_id:currentCompanyId,client_id:clientId,type:type,content:content,outcome:outcome||null,next_step:nextStep||null,next_date:nextDate,created_by:currentUser.id});
+  if(error){showToast('保存失败: '+error.message);return}
+  autoCheckLifecycle(clientId);
+  renderClient360Engagements(clientId);
+  showToast('已保存');
+}
+
+async function deleteEngagement(id){
+  await sb.from('engagement_logs').delete().eq('id',id);
+  renderClient360Engagements(c360ClientId);
+  showToast('已删除');
+}
+
+async function renderClient360Lifecycle(clientId){
+  var c=allClients.find(function(x){return x.id===clientId});
+  var current=c?c.lifecycle_stage:'prospect';
+  var stageMap={prospect:'潜在客户',qualified:'合格线索',deal:'成交客户',atrisk:'流失预警',churned:'流失客户',repurchase:'复购客户'};
+  var allStages=['prospect','qualified','deal','atrisk','churned','repurchase'];
+  var {data:logs}=await sb.from('lifecycle_logs').select('*').eq('client_id',clientId).eq('company_id',currentCompanyId).order('created_at',{ascending:false});
+  var html='<div class="c360-card"><div class="c360-card-title">🔄 变更阶段</div>';
+  html+='<select id="lc-new-stage" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:14px;margin-bottom:8px">';
+  for(var i=0;i<allStages.length;i++)html+='<option value="'+allStages[i]+'"'+(allStages[i]===current?' selected':'')+'>'+stageMap[allStages[i]]+'</option>';
+  html+='</select>';
+  html+='<input id="lc-reason" placeholder="变更原因（可选）" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:13px;margin-bottom:8px">';
+  html+='<button class="btn-sm btn-sm-primary" style="width:100%" onclick="changeLifecycle(\''+clientId+'\')">确认变更</button></div>';
+  html+='<div class="lifecycle-timeline">';
+  if(logs&&logs.length>0){
+    for(var j=0;j<logs.length;j++){
+      var l=logs[j];
+      html+='<div class="lifecycle-event"><div class="le-date">'+new Date(l.created_at).toLocaleDateString('zh-CN')+'</div><div class="le-content"><span class="le-change">'+(stageMap[l.from_stage]||l.from_stage)+' → '+(stageMap[l.to_stage]||l.to_stage)+'</span>'+(l.reason?'<div style="font-size:12px;color:var(--text2);margin-top:2px">'+h(l.reason)+'</div>':'')+'</div></div>';
+    }
+  }else{html+='<div class="empty" style="padding:20px">暂无阶段变更记录</div>'}
+  html+='</div>';
+  document.getElementById('c360-body').innerHTML=html;
+}
+
+async function changeLifecycle(clientId,newStage){
+  if(!newStage)newStage=document.getElementById('lc-new-stage').value;
+  var reason=document.getElementById('lc-reason').value.trim();
+  var c=allClients.find(function(x){return x.id===clientId});
+  var fromStage=c?c.lifecycle_stage||'prospect':'prospect';
+  if(fromStage===newStage){showToast('阶段未变化');return}
+  var {error}=await sb.from('clients').update({lifecycle_stage:newStage,updated_at:new Date().toISOString()}).eq('id',clientId);
+  if(error){showToast('变更失败: '+error.message);return}
+  await sb.from('lifecycle_logs').insert({company_id:currentCompanyId,client_id:clientId,from_stage:fromStage,to_stage:newStage,reason:reason||null,created_by:currentUser.id});
+  // Update local data
+  if(c){c.lifecycle_stage=newStage}
+  renderClient360Lifecycle(clientId);
+  showToast('已变更');
+  loadClients();
+}
+
+async function autoCheckLifecycle(clientId){
+  var c=allClients.find(function(x){return x.id===clientId});
+  if(!c)return;
+  // Check orders
+  var {data:orders}=await sb.from('orders').select('*').eq('client_id',clientId).eq('company_id',currentCompanyId);
+  var hasOrder=orders&&orders.length>0;
+  // Check last engagement
+  var {data:lastEng}=await sb.from('engagement_logs').select('created_at').eq('client_id',clientId).eq('company_id',currentCompanyId).order('created_at',{ascending:false}).limit(1);
+  var newStage=c.lifecycle_stage||'prospect';
+  var now=new Date();
+  if(hasOrder&&newStage==='prospect'){newStage='deal';}
+  else if(!hasOrder&&newStage==='deal'){newStage='prospect';}
+  if(lastEng&&lastEng.length>0){
+    var lastDate=new Date(lastEng[0].created_at);
+    var daysSince=(now-lastDate)/(86400000);
+    if(daysSince>90&&newStage!=='churned'&&newStage!=='repurchase'){newStage='churned';}
+    else if(daysSince>30&&daysSince<=90&&newStage!=='atrisk'&&newStage!=='churned'&&newStage!=='repurchase'){newStage='atrisk';}
+    if(daysSince<=30&&newStage==='churned'){newStage='repurchase';}
+  }
+  if(newStage!==(c.lifecycle_stage||'prospect')){
+    var from=c.lifecycle_stage||'prospect';
+    await sb.from('clients').update({lifecycle_stage:newStage,updated_at:new Date().toISOString()}).eq('id',clientId);
+    await sb.from('lifecycle_logs').insert({company_id:currentCompanyId,client_id:clientId,from_stage:from,to_stage:newStage,reason:'自动检测',created_by:currentUser.id});
+    c.lifecycle_stage=newStage;
+  }
+}
+
+// ============ NEW: Lead Pool Functions ============
+async function loadLeads(){
+  var {data,error}=await sb.from('lead_pool').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
+  if(error){console.error('loadLeads:',error);return}
+  allLeads=data||[];
+  renderLeads();
+}
+
+function renderLeads(){
+  var list=allLeads||[];
+  var q=(document.getElementById('lead-pool-search')||{}).value||'';
+  q=q.trim().toLowerCase();
+  var filter=(document.getElementById('lead-pool-filter')||{}).value||'all';
+  if(q)list=list.filter(function(l){return(l.name||'').toLowerCase().indexOf(q)>=0||(l.contact_name||'').toLowerCase().indexOf(q)>=0||(l.contact_phone||'').indexOf(q)>=0});
+  if(filter!=='all')list=list.filter(function(l){return l.status===filter});
+  // Stats
+  var total=allLeads.length,assigned=0,converted=0;
+  for(var i=0;i<allLeads.length;i++){if(allLeads[i].status==='assigned'||allLeads[i].status==='contacted')assigned++;if(allLeads[i].status==='converted')converted++}
+  var statsBar=document.getElementById('leads-stats-bar');
+  var convRate=total>0?Math.round(converted/total*100):0;
+  if(statsBar)statsBar.innerHTML='<div class="stat-card"><div class="stat-num">'+list.length+'</div><div class="stat-label">'+(filter!=='all'||q?'筛选结果':'全部线索')+'</div></div><div class="stat-card"><div class="stat-num">'+assigned+'</div><div class="stat-label">已分配</div></div><div class="stat-card"><div class="stat-num">'+convRate+'%</div><div class="stat-label">转化率</div></div>';
+  var grid=document.getElementById('lead-grid'),empty=document.getElementById('lead-empty');
+  if(!list.length){grid.innerHTML='';empty.classList.remove('hidden');return}
+  empty.classList.add('hidden');
+  var statusMap={new:'新线索',assigned:'已分配',contacted:'已联系',converted:'已转化',recycled:'已回收',junk:'无效'};
+  var html='';
+  for(var i=0;i<list.length;i++){
+    var l=list[i];
+    var assignee='';
+    if(l.assigned_to&&allUsers){var u=allUsers.find(function(x){return x.user_id===l.assigned_to});assignee=u?(u.display_name||u.email||''):''}
+    html+='<div class="lead-card">';
+    html+='<div class="lead-name">'+h(l.name)+'</div>';
+    html+='<div class="lead-contact">';
+    if(l.contact_name)html+='<span>👤 '+h(l.contact_name)+'</span>';
+    if(l.contact_phone)html+='<span>📞 '+h(l.contact_phone)+'</span>';
+    if(l.contact_email)html+='<span>📧 '+h(l.contact_email)+'</span>';
+    html+='</div>';
+    html+='<div class="lead-meta">';
+    html+='<span class="lead-status-badge '+h(l.status)+'">'+(statusMap[l.status]||l.status)+'</span>';
+    if(l.source)html+='<span>来源: '+h(l.source)+'</span>';
+    if(assignee)html+='<span>分配: '+h(assignee)+'</span>';
+    if(l.last_follow_up)html+='<span>跟进: '+l.last_follow_up+'</span>';
+    html+='</div>';
+    html+='<div class="lead-actions">';
+    if(l.status!=='converted')html+='<button class="btn-lead-primary" onclick="event.stopPropagation();openLeadForm(\''+l.id+'\')">编辑</button>';
+    if(l.status==='new')html+='<button onclick="event.stopPropagation();assignLead(\''+l.id+'\')">分配</button>';
+    if(l.status==='assigned'||l.status==='contacted')html+='<button class="btn-lead-primary" onclick="event.stopPropagation();convertLeadToClient(\''+l.id+'\')">转客户</button>';
+    html+='<button class="btn-lead-danger" onclick="event.stopPropagation();deleteLead(\''+l.id+'\')">删除</button>';
+    html+='</div></div>';
+  }
+  grid.innerHTML=html;
+}
+
+function openLeadForm(id){
+  leadEditId=id||null;
+  document.getElementById('lead-form-title').textContent=id?'编辑线索':'新建线索';
+  document.getElementById('lead-btn-delete').classList.toggle('hidden',!id);
+  document.getElementById('lf-name').value='';
+  document.getElementById('lf-contact-name').value='';
+  document.getElementById('lf-contact-phone').value='';
+  document.getElementById('lf-contact-email').value='';
+  document.getElementById('lf-source').value='';
+  document.getElementById('lf-industry').value='';
+  document.getElementById('lf-scale').value='';
+  document.getElementById('lf-max-recycle').value='3';
+  document.getElementById('lf-recycle-days').value='30';
+  document.getElementById('lf-status').value='new';
+  document.getElementById('lf-notes').value='';
+  if(id){
+    var l=allLeads.find(function(x){return x.id===id});
+    if(l){
+      document.getElementById('lf-name').value=l.name||'';
+      document.getElementById('lf-contact-name').value=l.contact_name||'';
+      document.getElementById('lf-contact-phone').value=l.contact_phone||'';
+      document.getElementById('lf-contact-email').value=l.contact_email||'';
+      document.getElementById('lf-source').value=l.source||'';
+      document.getElementById('lf-industry').value=l.industry||'';
+      document.getElementById('lf-scale').value=l.scale||'';
+      document.getElementById('lf-max-recycle').value=l.max_recycle_count||3;
+      document.getElementById('lf-recycle-days').value=l.recycle_days||30;
+      document.getElementById('lf-status').value=l.status||'new';
+      document.getElementById('lf-notes').value=l.notes||'';
+    }
+  }
+  document.getElementById('lead-form-modal').classList.remove('hidden');
+}
+
+function closeLeadForm(){document.getElementById('lead-form-modal').classList.add('hidden');leadEditId=null}
+
+async function saveLead(){
+  var name=document.getElementById('lf-name').value.trim();
+  if(!name){showToast('请输入线索名称');return}
+  var lead={
+    name:name,
+    contact_name:document.getElementById('lf-contact-name').value.trim(),
+    contact_phone:document.getElementById('lf-contact-phone').value.trim(),
+    contact_email:document.getElementById('lf-contact-email').value.trim(),
+    source:document.getElementById('lf-source').value,
+    industry:document.getElementById('lf-industry').value,
+    scale:document.getElementById('lf-scale').value,
+    max_recycle_count:parseInt(document.getElementById('lf-max-recycle').value)||3,
+    recycle_days:parseInt(document.getElementById('lf-recycle-days').value)||30,
+    status:document.getElementById('lf-status').value,
+    notes:document.getElementById('lf-notes').value.trim(),
+    updated_at:new Date().toISOString()
+  };
+  if(!leadEditId){
+    lead.company_id=currentCompanyId;
+    lead.created_by=currentUser.id;
+    var {error}=await sb.from('lead_pool').insert(lead);
+    if(error){showToast('创建失败: '+error.message);return}
+  }else{
+    var {error}=await sb.from('lead_pool').update(lead).eq('id',leadEditId);
+    if(error){showToast('更新失败: '+error.message);return}
+  }
+  closeLeadForm();
+  loadLeads();
+  showToast(leadEditId?'已更新':'已创建');
+}
+
+async function deleteLead(id){
+  if(!id)return;
+  if(leadEditId===id)closeLeadForm();
+  await sb.from('lead_pool').delete().eq('id',id);
+  loadLeads();
+  showToast('已删除');
+}
+
+function assignLead(id){
+  leadAssignId=id;
+  var sel=document.getElementById('la-user-select');
+  sel.innerHTML='<option value="">选择用户</option>';
+  for(var i=0;i<allUsers.length;i++)sel.innerHTML+='<option value="'+allUsers[i].user_id+'">'+(allUsers[i].display_name||allUsers[i].email||allUsers[i].user_id)+'</option>';
+  document.getElementById('lead-assign-modal').classList.remove('hidden');
+}
+
+async function doAssignLead(){
+  var userId=document.getElementById('la-user-select').value;
+  if(!userId){showToast('请选择用户');return}
+  var {error}=await sb.from('lead_pool').update({assigned_to:userId,assigned_at:new Date().toISOString(),status:'assigned',updated_at:new Date().toISOString()}).eq('id',leadAssignId);
+  document.getElementById('lead-assign-modal').classList.add('hidden');
+  if(error){showToast('分配失败: '+error.message);return}
+  loadLeads();showToast('已分配');
+}
+
+async function convertLeadToClient(id){
+  var l=allLeads.find(function(x){return x.id===id});
+  if(!l)return;
+  var client={name:l.name,type:'[]',address:'',notes:l.notes||'',industry:l.industry||'',scale:l.scale||'',source:l.source||'',lifecycle_stage:'prospect',user_id:currentUser.id,company_id:currentCompanyId};
+  var {data:cd,error}=await sb.from('clients').insert(client).select('id');
+  if(error){showToast('转化失败: '+error.message);return}
+  var clientId=cd[0].id;
+  // Create contact if contact info exists
+  if(l.contact_name||l.contact_phone||l.contact_email){
+    await sb.from('contacts').insert({client_id:clientId,name:l.contact_name||'',phone:JSON.stringify(l.contact_phone?[l.contact_phone]:['']),email:JSON.stringify(l.contact_email?[l.contact_email]:['']),company_id:currentCompanyId,user_id:currentUser.id});
+  }
+  // Update lead
+  await sb.from('lead_pool').update({status:'converted',converted_client_id:clientId,converted_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',id);
+  loadClients();loadLeads();
+  showToast('已转化为客户');
+}
+
+function openLeadImport(){
+  document.getElementById('li-csv').value='';
+  document.getElementById('lead-import-modal').classList.remove('hidden');
+}
+
+async function importLeads(){
+  var raw=document.getElementById('li-csv').value.trim();
+  if(!raw){showToast('请粘贴CSV内容');return}
+  var lines=raw.split('\n').filter(function(l){return l.trim()});
+  var start=0;
+  // Skip header if first line looks like header
+  if(lines[0]&&(lines[0].indexOf('名称')>=0||lines[0].indexOf('name')>=0))start=1;
+  var imported=0;
+  for(var i=start;i<lines.length;i++){
+    var cols=lines[i].split(',');
+    if(!cols[0]||!cols[0].trim())continue;
+    var lead={name:cols[0].trim(),contact_name:(cols[1]||'').trim(),contact_phone:(cols[2]||'').trim(),contact_email:(cols[3]||'').trim(),source:(cols[4]||'').trim(),industry:(cols[5]||'').trim(),scale:(cols[6]||'').trim(),notes:(cols[7]||'').trim(),status:'new',company_id:currentCompanyId,created_by:currentUser.id};
+    var {error}=await sb.from('lead_pool').insert(lead);
+    if(!error)imported++;
+  }
+  document.getElementById('lead-import-modal').classList.add('hidden');
+  if(imported>0){loadLeads();showToast('已导入 '+imported+' 条线索')}
+  else showToast('导入失败');
+}
+
+async function recycleStale(){
+  var now=new Date();
+  var recycled=0;
+  for(var i=0;i<allLeads.length;i++){
+    var l=allLeads[i];
+    if(l.status!=='assigned'&&l.status!=='contacted')continue;
+    var days=l.recycle_days||30;
+    var assignedDate=l.assigned_at?new Date(l.assigned_at):null;
+    if(!assignedDate)continue;
+    var elapsed=(now-assignedDate)/(86400000);
+    if(elapsed>=days){
+      var rc=(l.recycle_count||0)+1;
+      var maxRc=l.max_recycle_count||3;
+      if(rc>=maxRc){
+        await sb.from('lead_pool').update({status:'lost',updated_at:new Date().toISOString()}).eq('id',l.id);
+      }else{
+        await sb.from('lead_pool').update({status:'new',assigned_to:null,assigned_at:null,recycled_at:now.toISOString(),recycle_count:rc,updated_at:now.toISOString()}).eq('id',l.id);
+      }
+      recycled++;
+    }
+  }
+  if(recycled>0){loadLeads();showToast('已回收 '+recycled+' 条线索')}
+  else showToast('没有需要回收的线索');
+}
+
+// ============ NEW: Birthday Reminder ============
+function checkBirthdayReminders(){
+  if(!allContacts||!allContacts.length)return;
+  var now=new Date(),today=now.toISOString().slice(5,10); // MM-DD
+  var birthdays=[];
+  for(var i=0;i<allContacts.length;i++){
+    var co=allContacts[i];
+    if(!co.birthday)continue;
+    var bd=co.birthday.slice(5,10);
+    var bDate=new Date(now.getFullYear()+(bd<today?1:0),parseInt(bd.slice(0,2))-1,parseInt(bd.slice(3,5)));
+    var diff=Math.ceil((bDate-now)/86400000);
+    if(diff>=0&&diff<=7){
+      var client=allClients.find(function(c){return c.id===co.client_id});
+      birthdays.push({contact:co,client:client?client.name:'',date:bDate,diff:diff});
+    }
+  }
+  if(birthdays.length>0)showBirthdayReminder(birthdays);
+}
+
+function showBirthdayReminder(contacts){
+  var el=document.getElementById('birthday-reminders');
+  if(!el)return;
+  var html='';
+  for(var i=0;i<contacts.length;i++){
+    var b=contacts[i];
+    html+='<div class="birthday-card"><div class="bd-icon">🎂</div><div class="bd-info"><div class="bd-name">'+h(b.contact.name||'未命名')+'</div><div class="bd-date">'+b.date.toLocaleDateString('zh-CN')+' ('+(b.diff===0?'今天':b.diff+'天后')+')</div>'+(b.client?'<div class="bd-client">'+h(b.client)+'</div>':'')+'</div></div>';
+  }
+  el.innerHTML=html;
+  el.style.display='block';
+}
+
+// ============ NEW: Tag & Attachment Helpers ============
+function selectGrade(grade){
+  var hf=document.getElementById('f-grade');if(hf)hf.value=grade;
+  updateGradeSelect(grade);
+}
+function updateGradeSelect(grade){
+  var opts=document.querySelectorAll('#grade-select .grade-option');
+  for(var i=0;i<opts.length;i++)opts[i].classList.toggle('selected',opts[i].textContent.trim()===grade);
+}
+
+function renderClientTags(){
+  var el=document.getElementById('tag-chips');
+  if(!el)return;
+  var html='';
+  for(var i=0;i<clientTags.length;i++)html+='<span class="tag-chip">'+h(clientTags[i])+'<span class="tag-remove" onclick="removeTag('+i+')">×</span></span>';
+  el.innerHTML=html;
+}
+
+function addTag(tag){
+  if(!tag)return;
+  if(clientTags.indexOf(tag)>=0){showToast('标签已存在');return}
+  clientTags.push(tag);
+  renderClientTags();
+}
+
+function removeTag(idx){clientTags.splice(idx,1);renderClientTags()}
+
+function renderClientAttachments(){
+  var el=document.getElementById('attach-list');
+  if(!el)return;
+  var html='';
+  for(var i=0;i<clientAttachments.length;i++){
+    var a=clientAttachments[i];
+    html+='<div class="attach-item"><span class="attach-name">'+h(a.name||a.file_name||'文件'+(i+1))+'</span><button class="attach-remove" onclick="removeAttachment('+i+')">×</button></div>';
+  }
+  if(!html)html='<span style="font-size:11px;color:var(--text3)">暂无附件</span>';
+  el.innerHTML=html;
+}
+
+function handleAttachFile(input){
+  var files=input.files;
+  if(!files||!files.length)return;
+  for(var i=0;i<files.length;i++){
+    var f=files[i];
+    // Placeholder URL - real upload would use supabase storage
+    clientAttachments.push({name:f.name,size:f.size,type:f.type,url:'#placeholder-'+Date.now()+'-'+i});
+  }
+  renderClientAttachments();
+  input.value='';
+}
+
+function removeAttachment(idx){clientAttachments.splice(idx,1);renderClientAttachments()}
+
 </script>
 
 
