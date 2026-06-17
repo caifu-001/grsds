@@ -2889,7 +2889,8 @@ function switchTab(tab){
   var allViews=[hv_d,cv,ov,rv_r,av,sv,iv];if(spv)allViews.push(spv);if(pv)allViews.push(pv);
   for(var i=0;i<allViews.length;i++)if(allViews[i])allViews[i].classList.add('hidden');
   // Deactivate all tabs
-  var allTabs=[tc,to,ta,ti];for(var j=0;j<allTabs.length;j++)if(allTabs[j])allTabs[j].classList.remove('active');
+  var tr=document.getElementById('tab-reports');var thm=document.getElementById('tab-home');
+  var allTabs=[thm,tc,to,tr,ta,ti];for(var j=0;j<allTabs.length;j++)if(allTabs[j])allTabs[j].classList.remove('active');
   fab.classList.add('hidden');
 
     var hv=document.getElementById('home-view');
@@ -2930,6 +2931,11 @@ function switchTab(tab){
     iv.classList.remove('hidden');ti.classList.add('active');
     document.getElementById('topbar-title').textContent='资源管理';
     switchResTab('suppliers');
+  }else if(tab==='reports'){
+    rv_r.classList.remove('hidden');tr.classList.add('active');
+    fab.classList.add('hidden');
+    document.getElementById('topbar-title').textContent='报表中心';
+    loadReportSummary();switchReportsTab('sales');
   }else if(tab==='admin'){
     av.classList.remove('hidden');ta.classList.add('active');
     document.getElementById('topbar-title').textContent='组织管理';
