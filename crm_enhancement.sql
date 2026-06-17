@@ -9,7 +9,7 @@ ALTER TABLE clients ADD COLUMN IF NOT EXISTS scale TEXT;
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS source TEXT;
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS credit_rating TEXT DEFAULT '未评级';
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS grade TEXT DEFAULT 'C';
-ALTER TABLE clients ADD COLUMN IF NOT EXISTS lifecycle_stage TEXT DEFAULT '意向客户';
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS lifecycle_stage TEXT DEFAULT 'prospect';
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS tags JSONB DEFAULT '[]';
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS attachments JSONB DEFAULT '[]';
 
@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS lead_pool (
   source TEXT DEFAULT '手动录入',
   industry TEXT,
   scale TEXT,
-  status TEXT NOT NULL DEFAULT '新线索' CHECK (status IN ('新线索','已分配','已转化','已废弃')),
+  status TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new','assigned','contacted','converted','recycled','junk')),
   assigned_to UUID REFERENCES auth.users(id),
   assigned_at TIMESTAMPTZ,
   recycled_at TIMESTAMPTZ,

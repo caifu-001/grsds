@@ -2858,7 +2858,7 @@ function loadHomeDashboard(){
     var sum=0;if(r.data)for(var i=0;i<r.data.length;i++)sum+=parseFloat(r.data[i].amount)||0;
     document.getElementById('dash-revenue').textContent='¥'+sum.toLocaleString('zh-CN',{minimumFractionDigits:0,maximumFractionDigits:0});
   }).catch(function(){document.getElementById('dash-revenue').textContent='-';});
-  sb.from('leads').select('id',{count:'exact',head:true}).eq('company_id',currentCompanyId).in('status',['new','contacted','qualified']).then(function(r){
+  sb.from('lead_pool').select('id',{count:'exact',head:true}).eq('company_id',currentCompanyId).in('status',['new','assigned','contacted']).then(function(r){
     document.getElementById('dash-leads-count').textContent=r.count||0;
   }).catch(function(){document.getElementById('dash-leads-count').textContent='-';});
   var ovEl=document.getElementById('dash-sales-overview');
@@ -4361,11 +4361,11 @@ function renderFollowUpPlans(){
 async function toggleLeadFrozen(){
   if(!leditId)return;
   var l=allLeads.find(function(x){return x.id===leditId});if(!l)return;
-  var freeze=!l.frozen;
-  if(!confirm(freeze?'确认冻结该商机？':'确认解除冻结？'))return;
-  var r=await sb.from('leads').update(freeze?{frozen:true,frozen_at:new Date().toISOString(),frozen_by:currentUser.id}:{frozen:false,frozen_at:null,frozen_by:null}).eq('id',leditId);
+  var isJunk=l.status==='junk';
+  if(!confirm(isJunk?'确认恢复该线索？':'确认标记为无效？'))return;
+  var r=await sb.from('lead_pool').update({status:isJunk?'new':'junk',updated_at:new Date().toISOString()}).eq('id',leditId);
   if(r.error){showToast('操作失败');return}
-  showToast(freeze?'已冻结':'已解除冻结');closeLeadForm();await loadLeads();loadQuotations();
+  showToast(isJunk?'已恢复':'已标记无效');closeLeadForm();await loadLeads();
 }
 function openLeadForm(id){
   leditId=id||null;
@@ -4459,7 +4459,7 @@ async function saveLead(){
   closeLeadForm();loadLeads();showToast(leditId?'线索已更新':'线索已创建');
 }
 
-function confirmDeleteLead(){if(leditId)confirmDialog('确定删除该线索？',async function(){await sb.from('leads').delete().eq('id',leditId);closeLeadForm();loadLeads();showToast('线索已删除')})}
+function confirmDeleteLead(){if(leditId)confirmDialog('确定删除该线索？',async function(){await sb.from('lead_pool').delete().eq('id',leditId);closeLeadForm();loadLeads();showToast('线索已删除')})}
 
 async function loadFollowUps(leadId){
   var {data}=await sb.from('follow_ups').select('*').eq('lead_id',leadId).order('created_at',{ascending:false});
