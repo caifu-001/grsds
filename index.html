@@ -2931,6 +2931,15 @@ var rmEm=function(i,e){formContacts[i].emails.splice(e,1);if(!formContacts[i].em
 var upCtEm=function(i,e,v){if(formContacts[i]&&formContacts[i].emails)formContacts[i].emails[e]=(v||'').trim()};
 
 
+function selectGrade(grade){
+  var hf=document.getElementById('f-grade');if(hf)hf.value=grade;
+  updateGradeSelect(grade);
+}
+function updateGradeSelect(grade){
+  var opts=document.querySelectorAll('#grade-select .grade-option');
+  for(var i=0;i<opts.length;i++)opts[i].classList.toggle('selected',opts[i].textContent.trim()===grade);
+}
+
 function renderClientTags(){
   var el=document.getElementById('tag-chips');
   if(!el)return;
@@ -9675,16 +9684,6 @@ function showBirthdayReminder(contacts){
   }
   el.innerHTML=html;
   el.style.display='block';
-}
-
-// ============ NEW: Tag & Attachment Helpers ============
-function selectGrade(grade){
-  var hf=document.getElementById('f-grade');if(hf)hf.value=grade;
-  updateGradeSelect(grade);
-}
-function updateGradeSelect(grade){
-  var opts=document.querySelectorAll('#grade-select .grade-option');
-  for(var i=0;i<opts.length;i++)opts[i].classList.toggle('selected',opts[i].textContent.trim()===grade);
 }
 
 /* ===== EMPLOYEE MANAGEMENT ===== */
