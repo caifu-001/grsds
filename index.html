@@ -5815,9 +5815,9 @@ function openQuoteForm(id){
   var qm=document.getElementById('quote-modal');
   console.log('[DEBUG] quote-modal el:',qm,'className before:',qm?qm.className:'null');
   qm.classList.remove('hidden');
-  qm.style.display='flex';qm.style.zIndex='9999';qm.style.opacity='1';qm.style.visibility='visible';
+  qm.style.display='flex';qm.style.position='fixed';qm.style.zIndex='9999';qm.style.opacity='1';qm.style.visibility='visible';qm.style.top='0';qm.style.right='0';qm.style.bottom='0';qm.style.left='0';
   var cs=getComputedStyle(qm);
-  console.log('[DEBUG] after show: display=',cs.display,'zIndex=',cs.zIndex,'opacity=',cs.opacity,'visibility=',cs.visibility,'width=',cs.width,'height=',cs.height,'position=',cs.position,'pointerEvents=',cs.pointerEvents,'inset=',cs.inset,'offsetParent:',!!qm.offsetParent);
+  console.log('[DEBUG] after show: display=',cs.display,'zIndex=',cs.zIndex,'opacity=',cs.opacity,'visibility=',cs.visibility,'width=',cs.width,'height=',cs.height,'position=',cs.position,'pointerEvents=',cs.pointerEvents,'inset=',cs.inset,'top=',cs.top,'right=',cs.right,'bottom=',cs.bottom,'left=',cs.left,'contain=',cs.contain,'parentEl:',qm.parentElement?qm.parentElement.tagName+'#'+qm.parentElement.id:'null','parentDisplay:',qm.parentElement?getComputedStyle(qm.parentElement).display:'null');
   var rect=qm.getBoundingClientRect();
   console.log('[DEBUG] bounding rect:',rect.x,rect.y,rect.width,rect.height,'top:',rect.top,'left:',rect.left);
   }catch(e){console.error('[DEBUG] openQuoteForm error:',e.message,e.stack);showToast('报价表单加载失败: '+e.message)}
@@ -6021,9 +6021,9 @@ function openContractForm(id){
   var cm=document.getElementById('contract-modal');
   console.log('[DEBUG] openContractForm about to show, el:',!!cm,'className before:',cm?cm.className:'null');
   cm.classList.remove('hidden');
-  cm.style.display='flex';cm.style.zIndex='9999';cm.style.opacity='1';cm.style.visibility='visible';
+  cm.style.display='flex';cm.style.position='fixed';cm.style.zIndex='9999';cm.style.opacity='1';cm.style.visibility='visible';cm.style.top='0';cm.style.right='0';cm.style.bottom='0';cm.style.left='0';
   var cs=getComputedStyle(cm);
-  console.log('[DEBUG] contract after show: display=',cs.display,'zIndex=',cs.zIndex,'opacity=',cs.opacity,'visibility=',cs.visibility,'width=',cs.width,'height=',cs.height,'position=',cs.position,'inset=',cs.inset);
+  console.log('[DEBUG] contract after show: display=',cs.display,'zIndex=',cs.zIndex,'opacity=',cs.opacity,'visibility=',cs.visibility,'width=',cs.width,'height=',cs.height,'position=',cs.position,'inset=',cs.inset,'top=',cs.top,'right=',cs.right,'bottom=',cs.bottom,'left=',cs.left,'parentEl:',cm.parentElement?cm.parentElement.tagName+'#'+cm.parentElement.id:'null','parentDisplay:',cm.parentElement?getComputedStyle(cm.parentElement).display:'null');
   var rect=cm.getBoundingClientRect();
   console.log('[DEBUG] contract rect:',rect.x,rect.y,rect.width,rect.height);
   }catch(e){console.error('[DEBUG] openContractForm error:',e.message,e.stack);showToast('合同表单加载失败: '+e.message)}
@@ -6133,9 +6133,9 @@ function openPaymentForm(id){
   var pm=document.getElementById('payment-modal');
   console.log('[DEBUG] openPaymentForm about to show, el:',!!pm,'className before:',pm?pm.className:'null');
   pm.classList.remove('hidden');
-  pm.style.display='flex';pm.style.zIndex='9999';pm.style.opacity='1';pm.style.visibility='visible';
+  pm.style.display='flex';pm.style.position='fixed';pm.style.zIndex='9999';pm.style.opacity='1';pm.style.visibility='visible';pm.style.top='0';pm.style.right='0';pm.style.bottom='0';pm.style.left='0';
   var cs=getComputedStyle(pm);
-  console.log('[DEBUG] payment after show: display=',cs.display,'zIndex=',cs.zIndex,'opacity=',cs.opacity,'visibility=',cs.visibility,'width=',cs.width,'height=',cs.height);
+  console.log('[DEBUG] payment after show: display=',cs.display,'zIndex=',cs.zIndex,'opacity=',cs.opacity,'visibility=',cs.visibility,'width=',cs.width,'height=',cs.height,'parentEl:',pm.parentElement?pm.parentElement.tagName+'#'+pm.parentElement.id:'null','parentDisplay:',pm.parentElement?getComputedStyle(pm.parentElement).display:'null');
   }catch(e){console.error('[DEBUG] openPaymentForm error:',e.message,e.stack);showToast('回款表单加载失败: '+e.message)}
 }
 function closePaymentForm(){document.getElementById('payment-modal').classList.add('hidden');peditId=null}
