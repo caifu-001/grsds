@@ -5794,7 +5794,11 @@ function openQuoteForm(id){
   }}
   renderQfItems();
   updateQfTotals();
-  document.getElementById('quote-modal').classList.remove('hidden');
+  var qm=document.getElementById('quote-modal');
+  console.log('[DEBUG] quote-modal el:',qm,'className before:',qm?qm.className:'null');
+  qm.classList.remove('hidden');
+  qm.style.display='flex';
+  console.log('[DEBUG] after remove, className:',qm.className,'computed display:',getComputedStyle(qm).display,'offsetParent:',!!qm.offsetParent);
   }catch(e){console.error('[DEBUG] openQuoteForm error:',e.message,e.stack);showToast('报价表单加载失败: '+e.message)}
 }
 function updateQfTotals(){
@@ -5990,7 +5994,7 @@ function openContractForm(id){
     document.getElementById('cf-notes').value=(ct.notes||'').replace(/^\u5f3f\u0046\u0049\u004c\u0045__:.*?\n*/,'');if(ct.file_url){document.getElementById('cf-file-info').classList.remove('hidden');document.getElementById('cf-file-name').textContent=ct.file_name||'已上传';document.getElementById('cf-file-link').href=ct.file_url};
     csel.value=ct.client_id||'';
   }}
-  document.getElementById('contract-modal').classList.remove('hidden');
+  var cm=document.getElementById('contract-modal');cm.classList.remove('hidden');cm.style.display='flex';
   }catch(e){console.error('[DEBUG] openContractForm error:',e.message,e.stack);showToast('合同表单加载失败: '+e.message)}
 }
 function closeContractForm(){document.getElementById('contract-modal').classList.add('hidden');ceditId=null}
@@ -6095,7 +6099,7 @@ function openPaymentForm(id){
     document.getElementById('pf-notes').value=p.notes||'';
     cs.value=p.client_id||'';cs.onchange();setTimeout(function(){document.getElementById('pf-contract').value=p.contract_id||''},200);
   }}
-  document.getElementById('payment-modal').classList.remove('hidden');
+  var pm=document.getElementById('payment-modal');pm.classList.remove('hidden');pm.style.display='flex';
   }catch(e){console.error('[DEBUG] openPaymentForm error:',e.message,e.stack);showToast('回款表单加载失败: '+e.message)}
 }
 function closePaymentForm(){document.getElementById('payment-modal').classList.add('hidden');peditId=null}
@@ -7599,9 +7603,9 @@ async function loadTargets(){
   var u=document.getElementById('perf-target-user');
   var year=y?parseInt(y.value):new Date().getFullYear();
   var uid=u?u.value:'';
-  var q=sb.from('sales_targets').select('*,profiles!user_id(display_name,email)').eq('company_id',currentCompanyId).eq('target_year',year).order('target_month');
+  var q=sb.from('sales_targets').select('*').eq('company_id',currentCompanyId).eq('target_year',year).order('target_month');
   if(uid)q=q.eq('user_id',uid);
-  var r;try{r=await q}catch(e2){r={data:[]};console.warn('[loadTargets] query failed (FK may be missing), fallback to simple query');try{r=await sb.from('sales_targets').select('*').eq('company_id',currentCompanyId).eq('target_year',year).order('target_month');}catch(e3){r={data:[]}}}
+  var r=await q;
   allTargets=r.data||[];
   populatePerfSelects();
   renderTargets();
@@ -7613,11 +7617,12 @@ function renderTargets(){
   if(!allTargets.length){tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-secondary)">暂无目标数据</td></tr>';return;}
   var h='';
   for(var i=0;i<allTargets.length;i++){
-    var t=allTargets[i],p=t.profiles||{};
+    var t=allTargets[i];
+    var uname='';var u=(allUsers||[]).find(function(x){return x.user_id===t.user_id});if(u)uname=u.display_name||u.email||'';
     var actual=getPerfActual(t.user_id,t.target_year,t.target_month);
     var rate=t.amount>0?Math.round(actual/t.amount*100):0;
     var rc=rate>=100?'var(--success)':rate>=60?'var(--warning)':'var(--danger)';
-    h+='<tr><td>'+escHtml(p.display_name||p.email||'')+'</td><td>'+t.target_year+'-'+String(t.target_month).padStart(2,'0')+'</td><td style="font-weight:600">¥'+fmtNum(t.amount)+'</td><td>¥'+fmtNum(actual)+'</td><td style="color:'+rc+';font-weight:600">'+rate+'%</td><td>'+targetStatusBadge(rate)+'</td><td><button class="btn-sm" style="background:var(--surface);border:1px solid var(--border)" onclick="openTargetForm('+t.id+')">编辑</button> <button class="btn-sm" style="background:#fff;color:var(--danger);border:1px solid var(--danger)" onclick="deleteTarget('+t.id+')">删除</button></td></tr>';
+    h+='<tr><td>'+escHtml(uname)+'</td><td>'+t.target_year+'-'+String(t.target_month).padStart(2,'0')+'</td><td style="font-weight:600">¥'+fmtNum(t.amount)+'</td><td>¥'+fmtNum(actual)+'</td><td style="color:'+rc+';font-weight:600">'+rate+'%</td><td>'+targetStatusBadge(rate)+'</td><td><button class="btn-sm" style="background:var(--surface);border:1px solid var(--border)" onclick="openTargetForm('+t.id+')">编辑</button> <button class="btn-sm" style="background:#fff;color:var(--danger);border:1px solid var(--danger)" onclick="deleteTarget('+t.id+')">删除</button></td></tr>';
   }
   tbody.innerHTML=h;
 }
@@ -7772,7 +7777,7 @@ async function loadCommission(){
   var y=parseInt(document.getElementById('perf-comm-year').value);
   var m=parseInt(document.getElementById('perf-comm-month').value);
   var s=document.getElementById('perf-comm-status').value;
-  var q=sb.from('commission_details').select('*,profiles!user_id(display_name,email)').eq('company_id',currentCompanyId).eq('calc_year',y).eq('calc_month',m);
+  var q=sb.from('commission_details').select('*').eq('company_id',currentCompanyId).eq('calc_year',y).eq('calc_month',m);
   if(s)q=q.eq('status',s);
   var r=await q;
   allCommission=r.data||[];
@@ -7787,11 +7792,12 @@ function renderCommission(){
   var total=0,paid=0;
   var h='';
   for(var i=0;i<allCommission.length;i++){
-    var c=allCommission[i],p=c.profiles||{};
+    var c=allCommission[i];
+    var uname='';var u2=(allUsers||[]).find(function(x){return x.user_id===c.user_id});if(u2)uname=u2.display_name||u2.email||'';
     total+=parseFloat(c.commission_amount)||0;
     if(c.status==='paid')paid+=parseFloat(c.commission_amount)||0;
     var statusLabels={pending:'🔶 待确认',confirmed:'✅ 已确认',paid:'💰 已发放'};
-    h+='<tr><td>'+escHtml(p.display_name||p.email||'')+'</td><td>'+c.calc_year+'-'+String(c.calc_month).padStart(2,'0')+'</td><td>¥'+fmtNum(c.actual_amount)+'</td><td>¥'+fmtNum(c.target_amount)+'</td><td>'+(parseFloat(c.target_completion_rate)||0)+'%</td><td style="font-weight:600;color:var(--primary)">¥'+fmtNum(c.commission_amount)+'</td><td>'+(statusLabels[c.status]||c.status)+'</td><td>';
+    h+='<tr><td>'+escHtml(uname)+'</td><td>'+c.calc_year+'-'+String(c.calc_month).padStart(2,'0')+'</td><td>¥'+fmtNum(c.actual_amount)+'</td><td>¥'+fmtNum(c.target_amount)+'</td><td>'+(parseFloat(c.target_completion_rate)||0)+'%</td><td style="font-weight:600;color:var(--primary)">¥'+fmtNum(c.commission_amount)+'</td><td>'+(statusLabels[c.status]||c.status)+'</td><td>';
     if(c.status==='pending')h+='<button class="btn-sm" style="background:var(--success);color:#fff;border:none" onclick="updateCommissionStatus('+c.id+',\'confirmed\')">确认</button> ';
     if(c.status==='confirmed')h+='<button class="btn-sm" style="background:var(--primary);color:#fff;border:none" onclick="updateCommissionStatus('+c.id+',\'paid\')">已发放</button> ';
     h+='<button class="btn-sm" style="background:#fff;color:var(--danger);border:1px solid var(--danger)" onclick="deleteCommission('+c.id+')">删除</button></td></tr>';
