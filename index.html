@@ -2930,6 +2930,61 @@ var addEm=function(i){if(!formContacts[i].emails)formContacts[i].emails=[];formC
 var rmEm=function(i,e){formContacts[i].emails.splice(e,1);if(!formContacts[i].emails.length)formContacts[i].emails=[''];refCt()};
 var upCtEm=function(i,e,v){if(formContacts[i]&&formContacts[i].emails)formContacts[i].emails[e]=(v||'').trim()};
 
+
+function renderClientTags(){
+  var el=document.getElementById('tag-chips');
+  if(!el)return;
+  var html='';
+  for(var i=0;i<clientTags.length;i++)html+='<span class="tag-chip">'+h(clientTags[i])+'<span class="tag-remove" onclick="removeTag('+i+')">×</span></span>';
+  el.innerHTML=html;
+}
+
+function addTag(tag){
+  if(!tag)return;
+  if(clientTags.indexOf(tag)>=0){showToast('标签已存在');return}
+  clientTags.push(tag);
+  renderClientTags();
+}
+
+function removeTag(idx){clientTags.splice(idx,1);renderClientTags()}
+
+function renderClientAttachments(){
+  var el=document.getElementById('attach-list');
+  if(!el)return;
+  var html='';
+  for(var i=0;i<clientAttachments.length;i++){
+    var a=clientAttachments[i];
+    html+='<div class="attach-item"><span class="attach-name">'+h(a.name||a.file_name||'文件'+(i+1))+'</span><button class="attach-remove" onclick="removeAttachment('+i+')">×</button></div>';
+  }
+  if(!html)html='<span style="font-size:11px;color:var(--text3)">暂无附件</span>';
+  el.innerHTML=html;
+}
+
+async function handleAttachFile(input){
+  var files=input.files;
+  if(!files||!files.length)return;
+  var bucket='client-attachments';
+  for(var i=0;i<files.length;i++){
+    var f=files[i];
+    var safeName=f.name.replace(/[^a-zA-Z0-9._\u4e00-\u9fff-]/g,'_');
+    var filePath=currentCompanyId+'/'+Date.now()+'_'+safeName;
+    try{
+      var {data,error}=await sb.storage.from(bucket).upload(filePath,f,{cacheControl:'3600',upsert:false});
+      if(error){showToast('\u4e0a\u4f20\u5931\u8d25: '+error.message);continue}
+      var {data:urlData}=sb.storage.from(bucket).getPublicUrl(filePath);
+      clientAttachments.push({name:f.name,size:f.size,type:f.type,url:urlData.publicUrl,path:filePath});
+    }catch(e){showToast('\u4e0a\u4f20\u5f02\u5e38: '+e.message)}
+  }
+  renderClientAttachments();
+  input.value='';
+}
+
+async function removeAttachment(idx){
+  var a=clientAttachments[idx];
+  if(a&&a.path){try{await sb.storage.from('client-attachments').remove([a.path])}catch(e){}}
+  clientAttachments.splice(idx,1);renderClientAttachments();
+}
+
 async function openForm(id){
   editId=id||null;
   document.getElementById('form-title').textContent=id?'编辑客户':'添加客户';
@@ -9631,61 +9686,6 @@ function updateGradeSelect(grade){
   var opts=document.querySelectorAll('#grade-select .grade-option');
   for(var i=0;i<opts.length;i++)opts[i].classList.toggle('selected',opts[i].textContent.trim()===grade);
 }
-
-function renderClientTags(){
-  var el=document.getElementById('tag-chips');
-  if(!el)return;
-  var html='';
-  for(var i=0;i<clientTags.length;i++)html+='<span class="tag-chip">'+h(clientTags[i])+'<span class="tag-remove" onclick="removeTag('+i+')">×</span></span>';
-  el.innerHTML=html;
-}
-
-function addTag(tag){
-  if(!tag)return;
-  if(clientTags.indexOf(tag)>=0){showToast('标签已存在');return}
-  clientTags.push(tag);
-  renderClientTags();
-}
-
-function removeTag(idx){clientTags.splice(idx,1);renderClientTags()}
-
-function renderClientAttachments(){
-  var el=document.getElementById('attach-list');
-  if(!el)return;
-  var html='';
-  for(var i=0;i<clientAttachments.length;i++){
-    var a=clientAttachments[i];
-    html+='<div class="attach-item"><span class="attach-name">'+h(a.name||a.file_name||'文件'+(i+1))+'</span><button class="attach-remove" onclick="removeAttachment('+i+')">×</button></div>';
-  }
-  if(!html)html='<span style="font-size:11px;color:var(--text3)">暂无附件</span>';
-  el.innerHTML=html;
-}
-
-async function handleAttachFile(input){
-  var files=input.files;
-  if(!files||!files.length)return;
-  var bucket='client-attachments';
-  for(var i=0;i<files.length;i++){
-    var f=files[i];
-    var safeName=f.name.replace(/[^a-zA-Z0-9._\u4e00-\u9fff-]/g,'_');
-    var filePath=currentCompanyId+'/'+Date.now()+'_'+safeName;
-    try{
-      var {data,error}=await sb.storage.from(bucket).upload(filePath,f,{cacheControl:'3600',upsert:false});
-      if(error){showToast('\u4e0a\u4f20\u5931\u8d25: '+error.message);continue}
-      var {data:urlData}=sb.storage.from(bucket).getPublicUrl(filePath);
-      clientAttachments.push({name:f.name,size:f.size,type:f.type,url:urlData.publicUrl,path:filePath});
-    }catch(e){showToast('\u4e0a\u4f20\u5f02\u5e38: '+e.message)}
-  }
-  renderClientAttachments();
-  input.value='';
-}
-
-async function removeAttachment(idx){
-  var a=clientAttachments[idx];
-  if(a&&a.path){try{await sb.storage.from('client-attachments').remove([a.path])}catch(e){}}
-  clientAttachments.splice(idx,1);renderClientAttachments();
-}
-
 
 /* ===== EMPLOYEE MANAGEMENT ===== */
 var empEditId=null;
