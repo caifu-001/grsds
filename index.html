@@ -5760,6 +5760,7 @@ function renderQuotations(){
 }
 
 function openQuoteForm(id){
+  console.log('[DEBUG] openQuoteForm START','id=',id,'qfItems=',qeditId);
   try{
   qeditId=id||null;qfItems=[];
   document.getElementById('quote-form-title').textContent=id?'编辑报价':'创建报价';
@@ -7598,9 +7599,9 @@ async function loadTargets(){
   var u=document.getElementById('perf-target-user');
   var year=y?parseInt(y.value):new Date().getFullYear();
   var uid=u?u.value:'';
-  var q;try{q=sb.from('sales_targets').select('*,profiles!user_id(display_name,email)').eq('company_id',currentCompanyId).eq('target_year',year).order('target_month')}catch(e2){q={data:[]}};
+  var q=sb.from('sales_targets').select('*,profiles!user_id(display_name,email)').eq('company_id',currentCompanyId).eq('target_year',year).order('target_month');
   if(uid)q=q.eq('user_id',uid);
-  var r=await q;
+  var r;try{r=await q}catch(e2){r={data:[]};console.warn('[loadTargets] query failed (FK may be missing), fallback to simple query');try{r=await sb.from('sales_targets').select('*').eq('company_id',currentCompanyId).eq('target_year',year).order('target_month');}catch(e3){r={data:[]}}}
   allTargets=r.data||[];
   populatePerfSelects();
   renderTargets();
@@ -8809,7 +8810,7 @@ function openLeadForm(id){
   document.getElementById('lf-status').value='new';
   document.getElementById('lf-notes').value='';
   if(id){
-    var l=allLeads.find(function(x){return x.id===id});
+    var l=allLeads.find(function(x){return x.id==id||String(x.id)===String(id)});
     if(l){
       document.getElementById('lf-name').value=l.name||'';
       document.getElementById('lf-contact-name').value=l.contact_name||'';
