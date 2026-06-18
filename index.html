@@ -5715,10 +5715,10 @@ function switchSalesTab(tab){
   var fab=document.getElementById('main-fab');
   fab.onclick=function(){openSalesForm()};
   fab.textContent='+';
-  if(tab==='leads'){if(!allLeads.length)loadLeads();else renderLeads()}
-  else if(tab==='quotations'){if(!allQuotations.length)loadQuotations();else renderQuotations()}
-  else if(tab==='contracts'){if(!allContracts.length)loadContracts();else renderContracts()}
-  else if(tab==='payments'){if(!allPayments.length)loadPayments();else renderPayments()}
+  if(tab==='leads'){if(!(allLeads||[]).length)loadLeads();else renderLeads()}
+  else if(tab==='quotations'){if(!(allQuotations||[]).length)loadQuotations();else renderQuotations()}
+  else if(tab==='contracts'){if(!(allContracts||[]).length)loadContracts();else renderContracts()}
+  else if(tab==='payments'){if(!(allPayments||[]).length)loadPayments();else renderPayments()}
 }
 
 
@@ -5727,7 +5727,7 @@ async function loadQuotations(){
   try{
     var r=await sb.from('quotations').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
     if(r.error){console.error('loadQuotations:',r.error);return}
-    allQuotations=r.data||[];
+    allQuotations=r.data||[];renderQuotations();
   }catch(e){console.error('loadQuotations error:',e)}
 }
 
@@ -8660,10 +8660,10 @@ function renderLeads(){
   // Stats
   var total=allLeads.length,assigned=0,converted=0;
   for(var i=0;i<allLeads.length;i++){if(allLeads[i].status==='assigned'||allLeads[i].status==='contacted')assigned++;if(allLeads[i].status==='converted')converted++}
-  var statsBar=document.getElementById('leads-stats-bar');
+  var statsBar=document.getElementById('lead-stats');
   var convRate=total>0?Math.round(converted/total*100):0;
   if(statsBar)statsBar.innerHTML='<div class="stat-card"><div class="stat-num">'+list.length+'</div><div class="stat-label">'+(filter!=='all'||q?'筛选结果':'全部线索')+'</div></div><div class="stat-card"><div class="stat-num">'+assigned+'</div><div class="stat-label">已分配</div></div><div class="stat-card"><div class="stat-num">'+convRate+'%</div><div class="stat-label">转化率</div></div>';
-  var grid=document.getElementById('lead-grid'),empty=document.getElementById('lead-empty');
+  var grid=document.getElementById('sales-lead-grid'),empty=document.getElementById('sales-lead-empty');
   if(!list.length){grid.innerHTML='';empty.classList.remove('hidden');return}
   empty.classList.add('hidden');
   var statusMap={new:'新线索',assigned:'已分配',contacted:'已联系',converted:'已转化',recycled:'已回收',junk:'无效'};
@@ -8846,8 +8846,7 @@ async function saveLead(){
     console.log('[DEBUG saveLead] payload:',JSON.stringify(lead));
     console.log('[DEBUG saveLead] currentCompanyId type:',typeof currentCompanyId,'value:',currentCompanyId);
     var {error}=await sb.from('lead_pool').insert(lead);
-    if(error){console.error('[DEBUG saveLead] full error:',JSON.stringify(error));showToast('创建失败: '+error.message+' ('+error.code+') '+error.details);return}
-    if(error){showToast('创建失败: '+error.message);return}
+    if(error){console.error('[DEBUG saveLead] full error:',JSON.stringify(error));showToast('创建失败');return}
   }else{
     var {error}=await sb.from('lead_pool').update(lead).eq('id',leadEditId);
     if(error){showToast('更新失败: '+error.message);return}
