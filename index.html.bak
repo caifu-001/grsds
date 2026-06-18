@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -401,29 +401,7 @@ input,select,textarea,button{font-family:inherit}
 
 
 /* === Inventory === */
-
-.collab-subtabs{display:flex;gap:6px;padding:6px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap;background:var(--card);border-radius:12px 12px 0 0}
-.collab-subtab{padding:8px 18px;border:none;background:none;font-size:14px;color:var(--text2);cursor:pointer;border-radius:8px 8px 0 0;transition:all .2s;border-bottom:2px solid transparent}
-.collab-subtab:hover{color:var(--primary);background:var(--primary-light)}
-.collab-subtab.active{color:var(--primary);font-weight:700;background:var(--primary-light);border-bottom-color:var(--primary)}
-.collab-panel{padding:16px;background:var(--card);border-radius:0 0 12px 12px}
-.schedule-item,.task-item,.approval-item,.comment-item{background:var(--bg);border-radius:10px;padding:14px;margin-bottom:10px;border-left:4px solid var(--primary)}
-.schedule-item .sch-title,.task-item .task-title,.approval-item .appr-title,.comment-item .cmt-title{font-weight:600;font-size:15px;margin-bottom:4px}
-.schedule-item .sch-meta,.task-item .task-meta,.approval-item .appr-meta,.comment-item .cmt-meta{font-size:12px;color:var(--text2)}
-.task-priority-urgent{border-left-color:#EF4444!important}
-.task-priority-high{border-left-color:#F59E0B!important}
-.task-priority-normal{border-left-color:#4F6EF7!important}
-.task-priority-low{border-left-color:#94A3B8!important}
-.approval-pending{border-left-color:#F59E0B!important;background:#FFFBEB}
-.approval-approved{border-left-color:#10B981!important;background:#F0FDF4}
-.approval-rejected{border-left-color:#EF4444!important;background:#FEF2F2}
-.status-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
-.status-todo{background:#DBEAFE;color:#1D4ED8}
-.status-progress{background:#FEF3C7;color:#92400E}
-.status-done{background:#D1FAE5;color:#065F46}
-.status-cancelled{background:#F1F5F9;color:#64748B}
-
-.inv-subtabs{display:flex;gap:8px;padding:12px 16px 0;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.inv-subtabs{display:flex;gap:8px;padding:12px 16px 0;border-bottom:1px solid var(--border);overflow-x:auto}
 .inv-subtab{padding:7px 18px;border-radius:16px;font-size:13px;font-weight:500;cursor:pointer;border:none;background:var(--surface);color:var(--text-secondary);white-space:nowrap;transition:all .2s}
 .inv-subtab.active{background:var(--primary);color:#fff}
 .inv-panel{display:none;padding:16px}
@@ -666,11 +644,6 @@ input,select,textarea,button{font-family:inherit}
 .report-table td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text)}
 @media(max-width:640px){.chart-bars{gap:2px}.chart-bar-col{min-width:36px}.chart-bar{width:80%}}
 
-/* Reports BI - 新增样式 */
-.report-chart-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.report-metric{font-size:36px;font-weight:700;text-align:center;padding:8px 0}
-@media(max-width:480px){.report-chart-row{grid-template-columns:1fr}}
-
 
 /* Notifications */
 .notif-bell{position:relative;font-size:18px;padding:6px 10px;cursor:pointer;background:none;border:none;border-radius:8px;transition:background .15s;line-height:1;margin-left:auto}
@@ -869,10 +842,8 @@ input,select,textarea,button{font-family:inherit}
    <button class="topbar-tab active" id="tab-home" onclick="switchTab('home')">🏠</button>
    <button class="topbar-tab" id="tab-clients" onclick="switchTab('clients')">客户</button>
    <button class="topbar-tab" id="tab-orders" onclick="switchTab('orders')">订单</button>
-   <button class="topbar-tab" id="tab-collab" onclick="switchTab('collab')">协同</button>
-    <button class="topbar-tab" id="tab-reports" onclick="switchTab('reports')">报表</button>
+   <button class="topbar-tab" id="tab-reports" onclick="switchTab('reports')">报表</button>
    <button class="topbar-tab" id="tab-inventory" onclick="switchTab('inventory')">库存</button>
-<button class="topbar-tab" id="tab-service" onclick="switchTab('service')">售后</button>
    <button class="notif-bell" id="notif-bell" onclick="toggleNotifPanel()" title="通知">🔔<span id="notif-badge" class="notif-badge hidden">0</span></button>
    <button class="topbar-tab hidden" id="tab-admin" onclick="switchTab('admin')">管理</button>
   </div>
@@ -1669,103 +1640,34 @@ input,select,textarea,button{font-family:inherit}
    <button class="biz-subtab" onclick="switchReportsTab('clients')">👥 客户分析</button>
    <button class="biz-subtab" onclick="switchReportsTab('collections')">💳 回款分析</button>
    <button class="biz-subtab" onclick="switchReportsTab('orders')">📦 订单统计</button>
-   <button class="biz-subtab" onclick="switchReportsTab('dashboard')">⚙️ 自定义仪表盘</button>
   </div>
-
-  <!-- ===== 销售报表面板 ===== -->
   <div id="rp-sales-panel" class="report-panel">
    <div class="report-toolbar">
     <select id="rp-sales-year" onchange="renderReportSales()"></select>
-    <select id="rp-sales-quarter" onchange="renderReportSales()"><option value="0">全年</option><option value="1">Q1</option><option value="2">Q2</option><option value="3">Q3</option><option value="4">Q4</option></select>
     <button class="btn-sm" onclick="exportReportCSV('sales')">📥 导出CSV</button>
    </div>
-   <div class="report-chart-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-    <div class="report-chart"><div style="font-weight:600;font-size:13px;margin-bottom:8px">📊 销售漏斗</div><canvas id="rp-sales-salesFunnel" style="max-height:280px"></canvas></div>
-    <div class="report-chart"><div style="font-weight:600;font-size:13px;margin-bottom:8px">🎯 赢单率趋势</div><canvas id="rp-sales-winRate" style="max-height:280px"></canvas></div>
-   </div>
-   <div class="report-chart-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
-    <div class="report-chart"><div style="font-weight:600;font-size:13px;margin-bottom:8px">⏱ 成单周期（天）</div><canvas id="rp-sales-dealCycle" style="max-height:280px"></canvas></div>
-    <div class="report-chart"><div style="font-weight:600;font-size:13px;margin-bottom:8px">💰 成交均价趋势</div><canvas id="rp-sales-avgDealPrice" style="max-height:280px"></canvas></div>
-   </div>
-   <div class="report-chart" style="margin-top:12px"><div style="font-weight:600;font-size:13px;margin-bottom:8px">🗺 区域业绩分布</div><canvas id="rp-sales-regionalPerf" style="max-height:300px"></canvas></div>
+   <div id="rp-sales-chart" class="report-chart"></div>
   </div>
-
-  <!-- ===== 客户分析面板 ===== -->
   <div id="rp-clients-panel" class="report-panel hidden">
    <div class="report-toolbar">
     <select id="rp-clients-year" onchange="renderReportClients()"></select>
-    <select id="rp-clients-quarter" onchange="renderReportClients()"><option value="0">全年</option><option value="1">Q1</option><option value="2">Q2</option><option value="3">Q3</option><option value="4">Q4</option></select>
     <button class="btn-sm" onclick="exportReportCSV('clients')">📥 导出CSV</button>
    </div>
-   <div class="report-chart-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-    <div class="report-chart"><div style="font-weight:600;font-size:13px;margin-bottom:8px">📈 新增客户趋势</div><canvas id="rp-clients-newClientsTrend" style="max-height:280px"></canvas></div>
-    <div class="report-chart"><div style="font-weight:600;font-size:13px;margin-bottom:8px">📉 客户流失分析</div><canvas id="rp-clients-churnAnalysis" style="max-height:280px"></canvas></div>
-   </div>
-   <div class="report-chart-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
-    <div class="report-chart">
-     <div style="font-weight:600;font-size:13px;margin-bottom:8px">🔄 复购率</div>
-     <div class="report-metric" style="font-size:36px;font-weight:700;color:var(--primary);text-align:center;padding:8px 0" id="rp-clients-repurchaseMetric">-</div>
-     <canvas id="rp-clients-repurchaseRate" style="max-height:200px"></canvas>
-    </div>
-    <div class="report-chart"><div style="font-weight:600;font-size:13px;margin-bottom:8px">📡 获客渠道分布</div><canvas id="rp-clients-channelAnalysis" style="max-height:280px"></canvas></div>
-   </div>
-   <div class="report-chart" style="margin-top:12px">
-    <div style="font-weight:600;font-size:13px;margin-bottom:8px">🏷 RFM客户价值矩阵</div>
-    <div style="overflow-x:auto"><table class="report-table" id="rp-clients-rfmTable"><thead><tr><th>客户名称</th><th>最近交易(天)</th><th>订单数</th><th>总金额</th><th>RFM评分</th></tr></thead><tbody><tr><td colspan="5" style="text-align:center;color:var(--text3)">加载中...</td></tr></tbody></table></div>
-   </div>
+   <div id="rp-clients-chart" class="report-chart"></div>
   </div>
-
-  <!-- ===== 回款分析面板 ===== -->
   <div id="rp-collections-panel" class="report-panel hidden">
    <div class="report-toolbar">
     <select id="rp-collections-year" onchange="renderReportCollections()"></select>
-    <select id="rp-collections-quarter" onchange="renderReportCollections()"><option value="0">全年</option><option value="1">Q1</option><option value="2">Q2</option><option value="3">Q3</option><option value="4">Q4</option></select>
     <button class="btn-sm" onclick="exportReportCSV('collections')">📥 导出CSV</button>
    </div>
-   <div class="report-chart-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-    <div class="report-chart"><div style="font-weight:600;font-size:13px;margin-bottom:8px">📋 应收账龄分析</div><canvas id="rp-collections-ARAging" style="max-height:280px"></canvas></div>
-    <div class="report-chart"><div style="font-weight:600;font-size:13px;margin-bottom:8px">📈 月度回款趋势</div><canvas id="rp-collections-paymentTrend" style="max-height:280px"></canvas></div>
-   </div>
-   <div class="report-chart-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
-    <div class="report-chart"><div style="font-weight:600;font-size:13px;margin-bottom:8px">📑 合同金额统计</div><canvas id="rp-collections-contractStats" style="max-height:280px"></canvas></div>
-    <div class="report-chart">
-     <div style="font-weight:600;font-size:13px;margin-bottom:8px">⚠️ 超期未回款合同</div>
-     <div style="overflow-x:auto"><table class="report-table" id="rp-collections-badDebtTable"><thead><tr><th>合同名称</th><th>到期日</th><th>总金额</th><th>已回款</th><th>未回款</th><th>超期天数</th></tr></thead><tbody><tr><td colspan="6" style="text-align:center;color:var(--text3)">加载中...</td></tr></tbody></table></div>
-    </div>
-   </div>
+   <div id="rp-collections-chart" class="report-chart"></div>
   </div>
-
-  <!-- ===== 订单统计面板（Chart.js升级版） ===== -->
   <div id="rp-orders-panel" class="report-panel hidden">
    <div class="report-toolbar">
     <select id="rp-orders-year" onchange="renderReportOrders()"></select>
-    <select id="rp-orders-quarter" onchange="renderReportOrders()"><option value="0">全年</option><option value="1">Q1</option><option value="2">Q2</option><option value="3">Q3</option><option value="4">Q4</option></select>
     <button class="btn-sm" onclick="exportReportCSV('orders')">📥 导出CSV</button>
    </div>
-   <div class="report-chart-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-    <div class="report-chart"><div style="font-weight:600;font-size:13px;margin-bottom:8px">📦 月度订单量</div><canvas id="rp-orders-monthlyOrders" style="max-height:280px"></canvas></div>
-    <div class="report-chart"><div style="font-weight:600;font-size:13px;margin-bottom:8px">✅ 订单完成率</div><canvas id="rp-orders-completeRate" style="max-height:280px"></canvas></div>
-   </div>
-   <div class="report-chart" style="margin-top:12px">
-    <div style="font-weight:600;font-size:13px;margin-bottom:8px">📋 订单明细</div>
-    <div style="overflow-x:auto"><table class="report-table" id="rp-orders-detailTable"><thead><tr><th>月份</th><th>订单数</th><th>已完成</th><th>已取消</th><th>完成率</th></tr></thead><tbody><tr><td colspan="5" style="text-align:center;color:var(--text3)">加载中...</td></tr></tbody></table></div>
-   </div>
-  </div>
-
-  <!-- ===== 自定义仪表盘面板 ===== -->
-  <div id="rp-dashboard-panel" class="report-panel hidden">
-   <div class="report-toolbar">
-    <select id="rp-dashboard-selector" onchange="renderCustomDashboard()"><option value="">新建仪表盘</option></select>
-    <input type="text" id="rp-dashboard-title" placeholder="仪表盘名称" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);font-size:13px;width:160px" value="我的仪表盘">
-    <select id="rp-dashboard-scope" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);font-size:13px">
-     <option value="personal">个人</option><option value="role">角色</option><option value="company">公司</option>
-    </select>
-    <button class="btn-sm" onclick="addDashboardCard()" style="background:var(--primary);color:#fff">➕ 添加卡片</button>
-    <button class="btn-sm" onclick="saveDashboardLayout()">💾 保存布局</button>
-   </div>
-   <div id="rp-dashboard-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;min-height:200px">
-    <div style="text-align:center;color:var(--text3);padding:60px 0;grid-column:1/-1">点击「添加卡片」开始构建你的仪表盘</div>
-   </div>
+   <div id="rp-orders-chart" class="report-chart"></div>
   </div>
  </div>
  <div id="inventory-view" class="hidden">
@@ -1890,261 +1792,6 @@ input,select,textarea,button{font-family:inherit}
 </div>
 
 <!-- ====== Leads View ====== -->
-
- <div id="collab-view" class="hidden">
-  <div class="collab-subtabs">
-   <button class="collab-subtab active" data-ctab="schedule" onclick="switchCollabTab('schedule')">日程</button>
-   <button class="collab-subtab" data-ctab="task" onclick="switchCollabTab('task')">任务</button>
-   <button class="collab-subtab" data-ctab="approval" onclick="switchCollabTab('approval')">审批</button>
-   <button class="collab-subtab" data-ctab="followup" onclick="switchCollabTab('followup')">跟进</button>
-   <button class="collab-subtab" data-ctab="followup" onclick="switchCollabTab('followup')">跟进</button>
-   <button class="collab-subtab" data-ctab="comment" onclick="switchCollabTab('comment')">协作</button>
-   <button class="collab-subtab" data-ctab="msg" onclick="switchCollabTab('msg')">消息</button>
-   <button class="collab-subtab" data-ctab="msg" onclick="switchCollabTab('msg')">消息</button>
-  </div>
-  <div id="collab-schedule-panel" class="collab-panel">
-   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-    <h3 style="font-size:16px;font-weight:700;margin:0">日程安排</h3>
-    <button class="btn-sm btn-sm-primary" onclick="openScheduleForm()">+ 新建日程</button>
-   </div>
-   <div id="schedule-list">加载中...</div>
-  </div>
-  <div id="collab-task-panel" class="collab-panel hidden">
-   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-    <h3 style="font-size:16px;font-weight:700;margin:0">任务管理</h3>
-    <select id="task-filter" onchange="loadTasks()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px">
-     <option value="todo">待办</option><option value="in_progress">进行中</option><option value="done">已完成</option><option value="all">全部</option>
-    </select>
-    <button class="btn-sm btn-sm-primary" onclick="openTaskForm()">+ 新建任务</button>
-   </div>
-   <div id="task-list">加载中...</div>
-  </div>
-  <div id="collab-approval-panel" class="collab-panel hidden">
-   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-    <h3 style="font-size:16px;font-weight:700;margin:0">审批流程</h3>
-    <select id="approval-filter" onchange="loadApprovals()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px">
-     <option value="pending">待审批</option><option value="approved">已通过</option><option value="rejected">已驳回</option><option value="all">全部</option>
-    </select>
-    <button class="btn-sm btn-sm-primary" onclick="openApprovalForm()">+ 发起审批</button>
-   </div>
-   <div id="approval-list">加载中...</div>
-  </div>
-  
-  <div id="collab-followup-panel" class="collab-panel hidden">
-   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-    <h3 style="font-size:16px;font-weight:700;margin:0">跟进记录</h3>
-    <select id="fu-client-filter" onchange="loadFollowups()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px">
-     <option value="">全部客户</option>
-    </select>
-    <select id="fu-type-filter" onchange="loadFollowups()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px">
-     <option value="">全部类型</option>
-     <option value="电话">电话</option><option value="拜访">拜访</option><option value="微信">微信</option><option value="邮件">邮件</option><option value="会议">会议</option><option value="其他">其他</option>
-    </select>
-    <button class="btn-sm btn-sm-primary" onclick="openFollowupForm()">+ 新增跟进</button>
-   </div>
-   <div id="followup-list">加载中...</div>
-  </div>
-
-  <div id="collab-followup-panel" class="collab-panel hidden">
-   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-    <h3 style="font-size:16px;font-weight:700;margin:0">跟进记录</h3>
-    <select id="fu-client-filter" onchange="loadFollowups()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px">
-     <option value="">全部客户</option>
-    </select>
-    <select id="fu-type-filter" onchange="loadFollowups()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px">
-     <option value="">全部类型</option>
-     <option value="电话">电话</option><option value="拜访">拜访</option><option value="微信">微信</option><option value="邮件">邮件</option><option value="会议">会议</option><option value="其他">其他</option>
-    </select>
-    <button class="btn-sm btn-sm-primary" onclick="openFollowupForm()">+ 新增跟进</button>
-   </div>
-   <div id="followup-list">加载中...</div>
-  </div>
-<div id="collab-comment-panel" class="collab-panel hidden">
-   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-    <h3 style="font-size:16px;font-weight:700;margin:0">客户协作</h3>
-    <select id="comment-client-filter" onchange="loadComments()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px">
-     <option value="">全部客户</option>
-    </select>
-    <button class="btn-sm btn-sm-primary" onclick="openCommentForm()">+ 添加评论</button>
-   </div>
-   <div id="comment-list">加载中...</div>
-  </div>
- </div>
-<!-- After-Sales Service View -->
-<div id="service-view" class="hidden">
- <div class="sub-tabs" id="moresubs-after" style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;gap:4px;flex-wrap:wrap">
-  <button class="sub-tab active" onclick="switchServiceTab('tickets')">🎫 工单</button>
-  <button class="sub-tab" onclick="switchServiceTab('visits')">📞 回访</button>
-  <button class="sub-tab" onclick="switchServiceTab('warranty')">🛡️ 质保</button>
-  <button class="sub-tab" onclick="switchServiceTab('kb')">📚 知识库</button>
- </div>
-
- <!-- TICKETS PANEL -->
- <div id="sv-tickets" class="sv-panel">
-  <div class="toolbar" style="flex-wrap:wrap;gap:8px">
-   <select id="ticket-status-filter" onchange="renderTickets()" style="padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:13px;background:var(--card);color:var(--text)">
-    <option value="all">全部状态</option><option value="pending">待处理</option><option value="dispatched">已派单</option><option value="in_progress">处理中</option><option value="completed">已完成</option><option value="confirmed">已确认</option><option value="closed">已关闭</option>
-   </select>
-   <select id="ticket-type-filter" onchange="renderTickets()" style="padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:13px;background:var(--card);color:var(--text)">
-    <option value="all">全部类型</option><option value="complaint">投诉</option><option value="repair">报修</option><option value="service">服务</option><option value="other">其他</option>
-   </select>
-   <div class="search-wrap"><input id="ticket-search" placeholder="搜索工单..." oninput="renderTickets()"></div>
-   <button class="btn-save" style="padding:8px 16px;font-size:13px" onclick="openTicketForm()">+ 新建工单</button>
-  </div>
-  <div id="ticket-grid" class="client-grid"></div>
-  <div class="empty hidden" id="ticket-empty"><div class="empty-icon">🎫</div>暂无工单</div>
- </div>
-
- <!-- VISITS PANEL -->
- <div id="sv-visits" class="sv-panel hidden">
-  <div class="toolbar" style="flex-wrap:wrap;gap:8px">
-   <select id="visit-type-filter" onchange="renderVisits()" style="padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:13px;background:var(--card);color:var(--text)">
-    <option value="all">全部类型</option><option value="post_sale">成交回访</option><option value="care">关怀回访</option><option value="churn">流失回访</option><option value="other">其他</option>
-   </select>
-   <select id="visit-status-filter" onchange="renderVisits()" style="padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:13px;background:var(--card);color:var(--text)">
-    <option value="all">全部状态</option><option value="planned">计划中</option><option value="completed">已完成</option><option value="cancelled">已取消</option>
-   </select>
-   <div class="search-wrap"><input id="visit-search" placeholder="搜索回访..." oninput="renderVisits()"></div>
-   <button class="btn-save" style="padding:8px 16px;font-size:13px" onclick="openVisitForm()">+ 新建回访</button>
-   <button class="btn-sm" style="background:#fff;border:1px solid var(--border)" onclick="openVisitTaskForm()">📅 回访任务</button>
-  </div>
-  <!-- Visit tasks alert bar -->
-  <div id="visit-tasks-alert" style="margin:0 16px 8px;padding:10px 14px;background:#fef3c7;border-radius:8px;font-size:13px;display:none"></div>
-  <div id="visit-grid" class="client-grid"></div>
-  <div class="empty hidden" id="visit-empty"><div class="empty-icon">📞</div>暂无回访记录</div>
- </div>
-
- <!-- WARRANTY PANEL -->
- <div id="sv-warranty" class="sv-panel hidden">
-  <div class="toolbar" style="flex-wrap:wrap;gap:8px">
-   <select id="warranty-status-filter" onchange="renderWarranties()" style="padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:13px;background:var(--card);color:var(--text)">
-    <option value="all">全部状态</option><option value="active">有效</option><option value="expired">已过期</option><option value="void">已作废</option><option value="claimed">已理赔</option>
-   </select>
-   <div class="search-wrap"><input id="warranty-search" placeholder="搜索质保..." oninput="renderWarranties()"></div>
-   <button class="btn-save" style="padding:8px 16px;font-size:13px" onclick="openWarrantyForm()">+ 新建质保</button>
-  </div>
-  <!-- Expiring soon alert -->
-  <div id="warranty-alert" style="margin:0 16px 8px;padding:10px 14px;background:#fee2e2;border-radius:8px;font-size:13px;display:none"></div>
-  <div id="warranty-grid" class="client-grid"></div>
-  <div class="empty hidden" id="warranty-empty"><div class="empty-icon">🛡️</div>暂无质保记录</div>
-
-  <!-- Maintenance Plans -->
-  <div style="margin-top:20px;padding:16px;border-top:2px solid var(--border)">
-   <div class="toolbar" style="margin-bottom:10px">
-    <h3 style="font-size:15px;font-weight:700;margin:0">🔧 维保计划</h3>
-    <button class="btn-sm btn-sm-primary" onclick="openMaintenanceForm()">+ 新建计划</button>
-   </div>
-   <div id="maintenance-grid" class="client-grid"></div>
-   <div class="empty hidden" id="maintenance-empty"><div class="empty-icon">🔧</div>暂无维保计划</div>
-  </div>
- </div>
-
- <!-- KNOWLEDGE BASE PANEL -->
- <div id="sv-kb" class="sv-panel hidden">
-  <div class="toolbar" style="flex-wrap:wrap;gap:8px">
-   <select id="kb-category-filter" onchange="renderKB()" style="padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:13px;background:var(--card);color:var(--text)">
-    <option value="all">全部分类</option><option value="faq">常见问题</option><option value="solution">解决方案</option><option value="script">标准话术</option><option value="policy">政策法规</option><option value="other">其他</option>
-   </select>
-   <div class="search-wrap"><input id="kb-search" placeholder="搜索知识库..." oninput="renderKB()"></div>
-   <button class="btn-save" style="padding:8px 16px;font-size:13px" onclick="openKBForm()">+ 新建文章</button>
-  </div>
-  <div id="kb-grid"></div>
-  <div class="empty hidden" id="kb-empty"><div class="empty-icon">📚</div>暂无知识库文章</div>
- </div>
-
- <!-- TICKET FORM MODAL -->
- <div id="ticket-modal" class="modal-overlay hidden">
-  <div class="modal" style="max-width:560px">
-   <div class="modal-header"><span id="ticket-form-title">新建工单</span><button class="modal-close" onclick="closeTicketForm()">&times;</button></div>
-   <div class="modal-body">
-    <label>标题</label><input id="tf-title" placeholder="工单标题" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:12px">
-    <div style="display:flex;gap:10px;margin-bottom:12px">
-     <div style="flex:1"><label>类型</label><select id="tf-type" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px"><option value="service">服务</option><option value="repair">报修</option><option value="complaint">投诉</option><option value="other">其他</option></select></div>
-     <div style="flex:1"><label>优先级</label><select id="tf-priority" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px"><option value="normal">普通</option><option value="high">高</option><option value="urgent">紧急</option><option value="low">低</option></select></div>
-    </div>
-    <label>关联客户</label><select id="tf-client" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:12px"><option value="">不关联</option></select>
-    <label>工程师/负责人</label><input id="tf-engineer" placeholder="工程师姓名" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:12px">
-    <label>工单描述</label><textarea id="tf-desc" rows="3" placeholder="描述问题详情..." style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:12px;resize:vertical"></textarea>
-    <label>完成备注</label><textarea id="tf-completion" rows="2" placeholder="完工验收备注..." style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:12px;resize:vertical"></textarea>
-    <label>满意度 (1-5)</label><input id="tf-satisfaction" type="number" min="1" max="5" value="5" style="width:80px;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:16px">
-    <button class="btn-save" style="width:100%" onclick="saveTicket()">保存</button>
-   </div>
-  </div>
- </div>
-
- <!-- VISIT FORM MODAL -->
- <div id="visit-modal" class="modal-overlay hidden">
-  <div class="modal" style="max-width:500px">
-   <div class="modal-header"><span id="visit-form-title">新建回访</span><button class="modal-close" onclick="closeVisitForm()">&times;</button></div>
-   <div class="modal-body">
-    <label>回访标题</label><input id="vf-title" placeholder="回访主题" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:12px">
-    <div style="display:flex;gap:10px;margin-bottom:12px">
-     <div style="flex:1"><label>类型</label><select id="vf-type" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px"><option value="care">关怀回访</option><option value="post_sale">成交回访</option><option value="churn">流失回访</option><option value="other">其他</option></select></div>
-     <div style="flex:1"><label>方式</label><select id="vf-method" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px"><option value="phone">电话</option><option value="wechat">微信</option><option value="email">邮件</option><option value="visit">上门</option><option value="other">其他</option></select></div>
-    </div>
-    <label>关联客户</label><select id="vf-client" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:12px"><option value="">不关联</option></select>
-    <label>计划日期</label><input id="vf-planned-date" type="date" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:12px">
-    <label>回访内容</label><textarea id="vf-content" rows="3" placeholder="回访记录..." style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:12px;resize:vertical"></textarea>
-    <label>满意度 (1-5)</label><input id="vf-satisfaction" type="number" min="1" max="5" style="width:80px;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:16px">
-    <button class="btn-save" style="width:100%" onclick="saveVisit()">保存</button>
-   </div>
-  </div>
- </div>
-
- <!-- WARRANTY FORM MODAL -->
- <div id="warranty-modal" class="modal-overlay hidden">
-  <div class="modal" style="max-width:500px">
-   <div class="modal-header"><span id="warranty-form-title">新建质保</span><button class="modal-close" onclick="closeWarrantyForm()">&times;</button></div>
-   <div class="modal-body">
-    <label>产品名称</label><input id="wf-product" placeholder="产品名称" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:12px">
-    <label>序列号</label><input id="wf-serial" placeholder="产品序列号" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:12px">
-    <label>关联客户</label><select id="wf-client" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:12px"><option value="">不关联</option></select>
-    <div style="display:flex;gap:10px;margin-bottom:12px">
-     <div style="flex:1"><label>质保开始</label><input id="wf-start" type="date" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px"></div>
-     <div style="flex:1"><label>质保截止</label><input id="wf-end" type="date" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px"></div>
-    </div>
-    <label>质保类型</label><select id="wf-type" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:12px"><option value="standard">标准质保</option><option value="extended">延保</option><option value="free">免费</option><option value="paid">付费</option></select>
-    <label>质保条款</label><textarea id="wf-terms" rows="2" placeholder="质保条款说明..." style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:12px;resize:vertical"></textarea>
-    <button class="btn-save" style="width:100%" onclick="saveWarranty()">保存</button>
-   </div>
-  </div>
- </div>
-
- <!-- MAINTENANCE FORM MODAL -->
- <div id="maintenance-modal" class="modal-overlay hidden">
-  <div class="modal" style="max-width:500px">
-   <div class="modal-header"><span id="maintenance-form-title">新建维保计划</span><button class="modal-close" onclick="closeMaintenanceForm()">&times;</button></div>
-   <div class="modal-body">
-    <label>产品名称</label><input id="mf-product" placeholder="产品名称" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:12px">
-    <label>关联客户</label><select id="mf-client" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:12px"><option value="">不关联</option></select>
-    <div style="display:flex;gap:10px;margin-bottom:12px">
-     <div style="flex:1"><label>计划类型</label><select id="mf-type" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px"><option value="preventive">预防性维护</option><option value="inspection">巡检</option><option value="corrective">纠正性维修</option><option value="upgrade">升级</option></select></div>
-     <div style="flex:1"><label>周期</label><select id="mf-interval" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px"><option value="weekly">每周</option><option value="monthly">每月</option><option value="quarterly">每季</option><option value="yearly">每年</option></select></div>
-    </div>
-    <label>下次维保日期</label><input id="mf-next" type="date" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:12px">
-    <label>负责人</label><input id="mf-assigned" placeholder="负责人姓名" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:12px">
-    <label>备注</label><textarea id="mf-notes" rows="2" placeholder="维保备注..." style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:16px;resize:vertical"></textarea>
-    <button class="btn-save" style="width:100%" onclick="saveMaintenance()">保存</button>
-   </div>
-  </div>
- </div>
-
- <!-- KB ARTICLE FORM MODAL -->
- <div id="kb-modal" class="modal-overlay hidden">
-  <div class="modal" style="max-width:600px">
-   <div class="modal-header"><span id="kb-form-title">新建知识库文章</span><button class="modal-close" onclick="closeKBForm()">&times;</button></div>
-   <div class="modal-body">
-    <label>标题</label><input id="kbf-title" placeholder="文章标题" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:12px">
-    <div style="display:flex;gap:10px;margin-bottom:12px">
-     <div style="flex:1"><label>分类</label><select id="kbf-category" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px"><option value="faq">常见问题</option><option value="solution">解决方案</option><option value="script">标准话术</option><option value="policy">政策法规</option><option value="other">其他</option></select></div>
-     <div style="flex:1"><label>关联产品</label><input id="kbf-products" placeholder="产品名称(逗号分隔)" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px"></div>
-    </div>
-    <label>标签</label><input id="kbf-tags" placeholder="标签(逗号分隔)" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:12px">
-    <label>内容</label><textarea id="kbf-content" rows="8" placeholder="文章正文..." style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:16px;resize:vertical"></textarea>
-    <button class="btn-save" style="width:100%" onclick="saveKB()">保存</button>
-   </div>
-  </div>
- </div>
 <div id="leads-view" class="hidden">
  <div class="stats-bar" id="leads-stats-bar"></div>
  <div class="toolbar" style="position:static">
@@ -2164,8 +1811,8 @@ input,select,textarea,button{font-family:inherit}
 <div class="modal-overlay hidden" id="lead-form-modal">
  <div class="modal-sheet">
   <h3 id="lead-form-title">新建线索</h3>
-  <div class="form-group" style="position:relative"><label>公司/单位名称 *</label><input id="lf-name" placeholder="搜索或输入公司名称..." autocomplete="off" oninput="onLeadCompanyInput()" onkeydown="onLeadCompanyKey(event)"><div class="name-suggestions hidden" id="lead-name-suggestions"></div></div>
-  <div class="form-group" style="position:relative"><label>联系人 (可从客户库关联)</label><input id="lf-contact-name" placeholder="输入姓名搜索已有联系人..." autocomplete="off" oninput="onLeadContactInput()" onkeydown="onLeadContactKey(event)"><div class="name-suggestions hidden" id="lead-contact-suggestions"></div></div>
+  <div class="form-group"><label>公司/单位名称 *</label><input id="lf-name" placeholder="线索名称"></div>
+  <div class="form-group"><label>联系人</label><input id="lf-contact-name" placeholder="联系人姓名"></div>
   <div class="form-group"><label>联系人电话</label><input id="lf-contact-phone" placeholder="手机号"></div>
   <div class="form-group"><label>联系人邮箱</label><input id="lf-contact-email" placeholder="邮箱"></div>
   <div class="form-row">
@@ -3630,35 +3277,21 @@ async function renderDashboardCharts(){
     }
   }catch(e){console.warn('Dashboard charts render failed:',e);}
 }
-// ============================================================
-// 报表与BI分析模块 — Chart.js 升级版
-// 替换原有报表 JS 函数
-// ============================================================
 
-// 报表图表实例管理
-var _reportCharts={};
-function _destroyReportChart(key){ if(_reportCharts[key]){_reportCharts[key].destroy();_reportCharts[key]=null;} }
-function _destroyAllReportCharts(){ for(var k in _reportCharts)_destroyReportChart(k); }
-
-// ===== Tab 切换 =====
 function switchReportsTab(sub){
-  // 销毁当前活跃tab的所有图表实例
-  _destroyAllReportCharts();
-  var panels={'sales':'rp-sales-panel','clients':'rp-clients-panel','collections':'rp-collections-panel','orders':'rp-orders-panel','dashboard':'rp-dashboard-panel'};
+  var panels={'sales':'rp-sales-panel','clients':'rp-clients-panel','collections':'rp-collections-panel','orders':'rp-orders-panel'};
   var tabs=document.querySelectorAll('#reports-tabs-bar .biz-subtab');
   for(var i=0;i<tabs.length;i++)tabs[i].classList.remove('active');
-  for(var k in panels){var p=document.getElementById(panels[k]);if(p)p.classList.add('hidden');}
+  for(var k in panels){var p=document.getElementById(panels[k]);if(p)p.classList.add('hidden')}
   var active=document.getElementById(panels[sub]);if(active)active.classList.remove('hidden');
-  var idx={'sales':0,'clients':1,'collections':2,'orders':3,'dashboard':4};
+  var idx={'sales':0,'clients':1,'collections':2,'orders':3};
   if(tabs[idx[sub]])tabs[idx[sub]].classList.add('active');
   if(sub==='sales')renderReportSales();
   else if(sub==='clients')renderReportClients();
   else if(sub==='collections')renderReportCollections();
   else if(sub==='orders')renderReportOrders();
-  else if(sub==='dashboard'){renderCustomDashboard();}
 }
 
-// ===== 汇总卡片数据加载 =====
 function loadReportSummary(){
   var now=new Date();var mStart=new Date(now.getFullYear(),now.getMonth(),1).toISOString();
   sb.from('orders').select('amount,stage').eq('company_id',currentCompanyId).gte('created_at',mStart).then(function(r){
@@ -3670,6 +3303,7 @@ function loadReportSummary(){
   sb.from('clients').select('id',{count:'exact',head:true}).eq('company_id',currentCompanyId).gte('created_at',mStart).then(function(r){
     document.getElementById('rp-monthly-clients').textContent=r.count||0;
   }).catch(function(){});
+  // Collection rate: paid vs total from contracts
   sb.from('contracts').select('total_amount,paid_amount').eq('company_id',currentCompanyId).not('archive_status','eq','archived').then(function(r){
     var total=0,paid=0;
     if(r.data)for(var i=0;i<r.data.length;i++){total+=parseFloat(r.data[i].total_amount)||0;paid+=parseFloat(r.data[i].paid_amount)||0}
@@ -3678,745 +3312,140 @@ function loadReportSummary(){
   }).catch(function(){});
 }
 
-// 获取year/quarter筛选范围（返回月份数组）
-function _getReportMonths(yearElId,quarterElId){
-  var year=parseInt(document.getElementById(yearElId).value)||new Date().getFullYear();
-  var quarter=parseInt(document.getElementById(quarterElId||'').value)||0;
+function renderReportSales(){
+  var el=document.getElementById('rp-sales-chart');
+  var year=document.getElementById('rp-sales-year').value||new Date().getFullYear();
+  el.innerHTML='<div class="chart-loading">加载中...</div>';
   var months=[];
-  var startM=1,endM=12;
-  if(quarter>0){startM=(quarter-1)*3+1;endM=Math.min(startM+2,12);}
-  for(var m=startM;m<=endM;m++){
-    months.push({month:m,label:year+'年'+m+'月',shortLabel:m+'月',start:new Date(year,m-1,1).toISOString(),end:new Date(year,m,0,23,59,59).toISOString()});
-  }
-  return {year:year,months:months};
+  for(var m=1;m<=12;m++){months.push({start:new Date(year,m-1,1).toISOString(),end:new Date(year,m,0,23,59,59).toISOString(),label:year+'年'+m+'月'})}
+  var promises=months.map(function(mo,i){
+    return sb.from('orders').select('amount,stage').eq('company_id',currentCompanyId).gte('created_at',mo.start).lte('created_at',mo.end).then(function(r){
+      var sum=0,count=0;if(r.data)for(var j=0;j<r.data.length;j++){sum+=parseFloat(r.data[j].amount)||0;count++}
+      return {label:mo.label.slice(5),sum:sum,count:count};
+    }).catch(function(){return {label:mo.label.slice(5),sum:0,count:0}});
+  });
+  Promise.all(promises).then(function(rows){
+    var maxSum=0;for(var i=0;i<rows.length;i++){if(rows[i].sum>maxSum)maxSum=rows[i].sum}
+    var h='<div class="chart-bars">';
+    for(var i=0;i<rows.length;i++){
+      var r=rows[i];var pct=maxSum>0?Math.round(r.sum/maxSum*100):0;var barH=Math.max(4,pct*2);
+      h+='<div class="chart-bar-col"><div class="chart-bar-val">¥'+r.sum.toLocaleString('zh-CN',{minimumFractionDigits:0,maximumFractionDigits:0})+'</div><div class="chart-bar" style="height:'+barH+'px;background:linear-gradient(180deg,#4F6EF7,#7B93FF)" title="'+r.label+': '+r.count+'单"></div><div class="chart-bar-label">'+r.label+'</div></div>';
+    }
+    h+='</div>';
+    el.innerHTML=h;
+    // Populate year selector
+    var sy=document.getElementById('rp-sales-year');
+    if(!sy.options.length){var cy=new Date().getFullYear();for(var y=cy-3;y<=cy;y++){var o=document.createElement('option');o.value=y;o.textContent=y+'年';if(y===parseInt(year))o.selected=true;sy.appendChild(o)}}
+  });
 }
 
-// 初始化year选择器
-function _initYearSelector(elId,year){
-  var sy=document.getElementById(elId);
-  if(!sy.options.length){
-    var cy=new Date().getFullYear();
-    for(var y=cy-3;y<=cy;y++){var o=document.createElement('option');o.value=y;o.textContent=y+'年';if(y===year)o.selected=true;sy.appendChild(o);}
-  }
+function renderReportClients(){
+  var el=document.getElementById('rp-clients-chart');
+  var year=document.getElementById('rp-clients-year').value||new Date().getFullYear();
+  el.innerHTML='<div class="chart-loading">加载中...</div>';
+  var months=[];
+  for(var m=1;m<=12;m++){months.push({start:new Date(year,m-1,1).toISOString(),end:new Date(year,m,0,23,59,59).toISOString(),label:year+'年'+m+'月'})}
+  // Get client count + type distribution
+  Promise.all([
+    Promise.all(months.map(function(mo){return sb.from('clients').select('id,count',{count:'exact',head:true}).eq('company_id',currentCompanyId).gte('created_at',mo.start).lte('created_at',mo.end).then(function(r){return {label:mo.label.slice(5),count:r.count||0}}).catch(function(){return {label:mo.label.slice(5),count:0}})})),
+    sb.from('clients').select('type').eq('company_id',currentCompanyId).then(function(r){if(!r.data)return[];var types={};for(var i=0;i<r.data.length;i++){var t=r.data[i].type||'未分类';types[t]=(types[t]||0)+1}return types})
+  ]).then(function(results){
+    var monthly=results[0],types=results[1];
+    var maxCount=0;for(var i=0;i<monthly.length;i++){if(monthly[i].count>maxCount)maxCount=monthly[i].count}
+    var h='<div style="font-weight:600;font-size:13px;margin-bottom:8px">月度新增趋势</div><div class="chart-bars">';
+    for(var i=0;i<monthly.length;i++){
+      var mc=monthly[i];var pct=maxCount>0?Math.round(mc.count/maxCount*100):0;var barH=Math.max(4,pct*2);
+      h+='<div class="chart-bar-col"><div class="chart-bar-val">'+mc.count+'</div><div class="chart-bar" style="height:'+barH+'px;background:linear-gradient(180deg,#10B981,#34D399)" title="'+mc.label+'"></div><div class="chart-bar-label">'+mc.label+'</div></div>';
+    }
+    h+='</div><div style="font-weight:600;font-size:13px;margin:16px 0 8px">类型分布</div><div class="type-dist">';
+    var colors=['#4F6EF7','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899','#06B6D4','#84CC16'];
+    var total=0;for(var k in types)total+=types[k];
+    var ci=0;for(var k in types){
+      var pct2=total>0?Math.round(types[k]/total*100):0;
+      h+='<div class="type-dist-item"><span class="td-dot" style="background:'+(colors[ci%colors.length])+'"></span><span class="td-name">'+escHtml(k)+'</span><span class="td-bar-wrap"><span class="td-bar" style="width:'+pct2+'%;background:'+(colors[ci%colors.length])+'"></span></span><span class="td-val">'+types[k]+' ('+pct2+'%)</span></div>';
+      ci++;
+    }
+    h+='</div>';
+    el.innerHTML=h;
+    var sy=document.getElementById('rp-clients-year');
+    if(!sy.options.length){var cy=new Date().getFullYear();for(var y=cy-3;y<=cy;y++){var o=document.createElement('option');o.value=y;o.textContent=y+'年';if(y===parseInt(year))o.selected=true;sy.appendChild(o)}}
+  });
 }
 
-// 构建Supabase查询（超管绕过company_id过滤）
-function _reportQuery(table){
-  var q=sb.from(table).select('*');
-  if(!isSuperAdmin)q=q.eq('company_id',currentCompanyId);
-  return q;
-}
-
-// ============================================================
-// 📈 销售报表
-// ============================================================
-async function renderReportSales(){
-  _destroyAllReportCharts();
-  var sel=_getReportMonths('rp-sales-year','rp-sales-quarter');
-  _initYearSelector('rp-sales-year',sel.year);
-  await Promise.all([
-    renderSalesFunnel(sel.year),
-    renderWinRate(sel),
-    renderDealCycle(sel),
-    renderAvgDealPrice(sel),
-    renderRegionalPerf(sel.year)
-  ]);
-}
-
-async function renderSalesFunnel(year){
-  try{
-    var yStart=new Date(year,0,1).toISOString();
-    var yEnd=new Date(year,11,31,23,59,59).toISOString();
-    var stages=['new','assigned','contacted','qualified','negotiation','won','lost'];
-    var stageLabels=['新线索','已分配','已联系','已确认','谈判中','赢单','输单'];
-    var stageColors=['#1565C0','#1E88E5','#E65100','#2E7D32','#6B21A8','#166534','#991B1B'];
-    var counts=[];
-    for(var si=0;si<stages.length;si++){
-      var r=await _reportQuery('lead_pool').eq('status',stages[si]).gte('created_at',yStart).lte('created_at',yEnd);
-      counts.push((r.data||[]).length);
-    }
-    _destroyReportChart('salesFunnel');
-    var ctx=document.getElementById('rp-sales-salesFunnel');
-    if(ctx){
-      _reportCharts.salesFunnel=new Chart(ctx,{type:'bar',
-        data:{labels:stageLabels,datasets:[{label:'线索数',data:counts,backgroundColor:stageColors,borderRadius:4}]},
-        options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
-          plugins:{legend:{display:false}},
-          scales:{x:{ticks:{stepSize:Math.max(1,Math.ceil(Math.max.apply(null,counts)/6))}}}}});
-    }
-  }catch(e){console.warn('renderSalesFunnel failed:',e);}
-}
-
-async function renderWinRate(sel){
-  try{
-    var labels=[],rates=[];
-    for(var mi=0;mi<sel.months.length;mi++){
-      var mo=sel.months[mi];
-      var won=await _reportQuery('lead_pool').eq('status','won').gte('created_at',mo.start).lte('created_at',mo.end);
-      var lost=await _reportQuery('lead_pool').eq('status','lost').gte('created_at',mo.start).lte('created_at',mo.end);
-      var w=(won.data||[]).length,l=(lost.data||[]).length;
-      var total=w+l;
-      labels.push(mo.shortLabel);
-      rates.push(total>0?Math.round(w/total*100):0);
-    }
-    _destroyReportChart('winRate');
-    var ctx=document.getElementById('rp-sales-winRate');
-    if(ctx){
-      _reportCharts.winRate=new Chart(ctx,{type:'line',
-        data:{labels:labels,datasets:[{label:'赢单率(%)',data:rates,borderColor:'#10B981',backgroundColor:'rgba(16,185,129,0.1)',fill:true,tension:0.35,pointRadius:3,pointBackgroundColor:'#10B981'}]},
-        options:{responsive:true,maintainAspectRatio:false,
-          plugins:{legend:{display:false}},
-          scales:{y:{min:0,max:100,ticks:{callback:function(v){return v+'%'}}}}}});
-    }
-  }catch(e){console.warn('renderWinRate failed:',e);}
-}
-
-async function renderDealCycle(sel){
-  try{
-    var labels=[],cycles=[];
-    for(var mi=0;mi<sel.months.length;mi++){
-      var mo=sel.months[mi];
-      var r=await _reportQuery('orders').select('created_at,updated_at').eq('stage','已完成').gte('created_at',mo.start).lte('created_at',mo.end);
-      var totalDays=0,count=0;
-      if(r.data)for(var i=0;i<r.data.length;i++){
-        var c=new Date(r.data[i].created_at);
-        var u=r.data[i].updated_at?new Date(r.data[i].updated_at):new Date();
-        var days=Math.round((u-c)/(1000*60*60*24));
-        if(days>=0){totalDays+=days;count++;}
-      }
-      labels.push(mo.shortLabel);
-      cycles.push(count>0?Math.round(totalDays/count):0);
-    }
-    _destroyReportChart('dealCycle');
-    var ctx=document.getElementById('rp-sales-dealCycle');
-    if(ctx){
-      _reportCharts.dealCycle=new Chart(ctx,{type:'bar',
-        data:{labels:labels,datasets:[{label:'平均成单天数',data:cycles,backgroundColor:'#8B5CF6',borderRadius:4}]},
-        options:{responsive:true,maintainAspectRatio:false,
-          plugins:{legend:{display:false}},
-          scales:{y:{ticks:{callback:function(v){return v+'天'}}}}}});
-    }
-  }catch(e){console.warn('renderDealCycle failed:',e);}
-}
-
-async function renderAvgDealPrice(sel){
-  try{
-    var labels=[],prices=[];
-    for(var mi=0;mi<sel.months.length;mi++){
-      var mo=sel.months[mi];
-      var r=await _reportQuery('orders').select('amount').not('stage','eq','已取消').gte('created_at',mo.start).lte('created_at',mo.end);
-      var total=0,count=0;
-      if(r.data)for(var i=0;i<r.data.length;i++){total+=parseFloat(r.data[i].amount)||0;count++;}
-      labels.push(mo.shortLabel);
-      prices.push(count>0?Math.round(total/count):0);
-    }
-    _destroyReportChart('avgDealPrice');
-    var ctx=document.getElementById('rp-sales-avgDealPrice');
-    if(ctx){
-      _reportCharts.avgDealPrice=new Chart(ctx,{type:'line',
-        data:{labels:labels,datasets:[{label:'成交均价',data:prices,borderColor:'#F59E0B',backgroundColor:'rgba(245,158,11,0.1)',fill:true,tension:0.35,pointRadius:3,pointBackgroundColor:'#F59E0B'}]},
-        options:{responsive:true,maintainAspectRatio:false,
-          plugins:{legend:{display:false}},
-          scales:{y:{ticks:{callback:function(v){return v>=10000?'¥'+(v/10000).toFixed(1)+'万':'¥'+v;}}}}}});
-    }
-  }catch(e){console.warn('renderAvgDealPrice failed:',e);}
-}
-
-async function renderRegionalPerf(year){
-  try{
-    var yStart=new Date(year,0,1).toISOString();
-    var yEnd=new Date(year,11,31,23,59,59).toISOString();
-    var r=await _reportQuery('clients').select('province').gte('created_at',yStart).lte('created_at',yEnd);
-    var regionMap={};
-    if(r.data)for(var i=0;i<r.data.length;i++){var p=r.data[i].province||'未知';regionMap[p]=(regionMap[p]||0)+1;}
-    var labels=Object.keys(regionMap).sort(function(a,b){return regionMap[b]-regionMap[a];});
-    var values=labels.map(function(k){return regionMap[k];});
-    var regionColors=['#4F6EF7','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899','#06B6D4','#F97316','#84CC16','#6366F1','#A855F7','#14B8A6'];
-    _destroyReportChart('regionalPerf');
-    var ctx=document.getElementById('rp-sales-regionalPerf');
-    if(ctx){
-      _reportCharts.regionalPerf=new Chart(ctx,{type:'doughnut',
-        data:{labels:labels.slice(0,12),datasets:[{data:values.slice(0,12),backgroundColor:regionColors.slice(0,Math.min(labels.length,12))}]},
-        options:{responsive:true,maintainAspectRatio:false,cutout:'60%',
-          plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:10},padding:8}}}}});
-    }
-  }catch(e){console.warn('renderRegionalPerf failed:',e);}
-}
-
-// ============================================================
-// 👥 客户分析
-// ============================================================
-async function renderReportClients(){
-  _destroyAllReportCharts();
-  var sel=_getReportMonths('rp-clients-year','rp-clients-quarter');
-  _initYearSelector('rp-clients-year',sel.year);
-  await Promise.all([
-    renderNewClientsTrend(sel),
-    renderChurnAnalysis(sel),
-    renderRepurchaseRate(sel),
-    renderRFMAnalysis(),
-    renderChannelAnalysis(sel)
-  ]);
-}
-
-async function renderNewClientsTrend(sel){
-  try{
-    var labels=[],counts=[];
-    for(var mi=0;mi<sel.months.length;mi++){
-      var mo=sel.months[mi];
-      var r=await _reportQuery('clients').select('id',{count:'exact',head:true}).gte('created_at',mo.start).lte('created_at',mo.end);
-      labels.push(mo.shortLabel);
-      counts.push(r.count||0);
-    }
-    _destroyReportChart('newClientsTrend');
-    var ctx=document.getElementById('rp-clients-newClientsTrend');
-    if(ctx){
-      _reportCharts.newClientsTrend=new Chart(ctx,{type:'line',
-        data:{labels:labels,datasets:[{label:'新增客户',data:counts,borderColor:'#10B981',backgroundColor:'rgba(16,185,129,0.1)',fill:true,tension:0.35,pointRadius:3,pointBackgroundColor:'#10B981'}]},
-        options:{responsive:true,maintainAspectRatio:false,
-          plugins:{legend:{display:false}},
-          scales:{y:{ticks:{stepSize:Math.max(1,Math.ceil(Math.max.apply(null,counts.concat([1]))/6))}}}}});
-    }
-  }catch(e){console.warn('renderNewClientsTrend failed:',e);}
-}
-
-async function renderChurnAnalysis(sel){
-  try{
-    // 流失定义：该月之前3个月有订单但该月及之后无新订单的客户数
-    var labels=[],churnCounts=[];
-    for(var mi=0;mi<sel.months.length;mi++){
-      var mo=sel.months[mi];
-      // 本月有订单的客户
-      var activeR=await _reportQuery('orders').select('client_id').gte('created_at',mo.start).lte('created_at',mo.end);
-      var activeSet={};if(activeR.data)for(var ai=0;ai<activeR.data.length;ai++)activeSet[activeR.data[ai].client_id]=true;
-      // 过去3个月有订单的客户
-      var threeMonthsAgo=new Date(sel.year,mo.month-4,1).toISOString();
-      var prevR=await _reportQuery('orders').select('client_id').gte('created_at',threeMonthsAgo).lte('created_at',mo.end);
-      var prevSet={};if(prevR.data)for(var pi=0;pi<prevR.data.length;pi++)prevSet[prevR.data[pi].client_id]=true;
-      // 流失 = 过去3个月有但本月无
-      var churn=0;
-      for(var cid in prevSet){if(!activeSet[cid])churn++;}
-      labels.push(mo.shortLabel);
-      churnCounts.push(churn);
-    }
-    _destroyReportChart('churnAnalysis');
-    var ctx=document.getElementById('rp-clients-churnAnalysis');
-    if(ctx){
-      _reportCharts.churnAnalysis=new Chart(ctx,{type:'bar',
-        data:{labels:labels,datasets:[{label:'流失客户数',data:churnCounts,backgroundColor:'#EF4444',borderRadius:4}]},
-        options:{responsive:true,maintainAspectRatio:false,
-          plugins:{legend:{display:false}},
-          scales:{y:{ticks:{stepSize:Math.max(1,Math.ceil(Math.max.apply(null,churnCounts.concat([1]))/6))}}}}});
-    }
-  }catch(e){console.warn('renderChurnAnalysis failed:',e);}
-}
-
-async function renderRepurchaseRate(sel){
-  try{
-    var labels=[],rates=[];
-    for(var mi=0;mi<sel.months.length;mi++){
-      var mo=sel.months[mi];
-      var r=await _reportQuery('orders').select('client_id').gte('created_at',mo.start).lte('created_at',mo.end);
-      var clientOrders={};var repurchase=0,totalClients=0;
-      if(r.data){
-        for(var i=0;i<r.data.length;i++){var cid=r.data[i].client_id;clientOrders[cid]=(clientOrders[cid]||0)+1;}
-        totalClients=Object.keys(clientOrders).length;
-        for(var k in clientOrders){if(clientOrders[k]>=2)repurchase++;}
-      }
-      labels.push(mo.shortLabel);
-      rates.push(totalClients>0?Math.round(repurchase/totalClients*100):0);
-    }
-    // 更新指标卡
-    var lastRate=rates.length>0?rates[rates.length-1]:0;
-    var metricEl=document.getElementById('rp-clients-repurchaseMetric');
-    if(metricEl)metricEl.textContent=lastRate+'%';
-    _destroyReportChart('repurchaseRate');
-    var ctx=document.getElementById('rp-clients-repurchaseRate');
-    if(ctx){
-      _reportCharts.repurchaseRate=new Chart(ctx,{type:'line',
-        data:{labels:labels,datasets:[{label:'复购率(%)',data:rates,borderColor:'#8B5CF6',backgroundColor:'rgba(139,92,246,0.1)',fill:true,tension:0.35,pointRadius:3,pointBackgroundColor:'#8B5CF6'}]},
-        options:{responsive:true,maintainAspectRatio:false,
-          plugins:{legend:{display:false}},
-          scales:{y:{min:0,max:100,ticks:{callback:function(v){return v+'%'}}}}}});
-    }
-  }catch(e){console.warn('renderRepurchaseRate failed:',e);}
-}
-
-async function renderRFMAnalysis(){
-  try{
-    var now=new Date();
-    // 获取所有订单（不限时间）
-    var r=await _reportQuery('orders').select('client_id,amount,created_at');
-    if(!r.data||!r.data.length){document.getElementById('rp-clients-rfmTable').querySelector('tbody').innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text3)">暂无数据</td></tr>';return;}
-    // 获取客户名称映射
-    var cr=await _reportQuery('clients').select('id,name');
-    var clientNames={};if(cr.data)for(var ci=0;ci<cr.data.length;ci++)clientNames[cr.data[ci].id]=cr.data[ci].name||'未知';
-    // 按客户聚合
-    var rfm={};
-    for(var i=0;i<r.data.length;i++){
-      var o=r.data[i];var cid=o.client_id;if(!cid)continue;
-      if(!rfm[cid])rfm[cid]={clientId:cid,recency:99999,frequency:0,monetary:0};
-      var days=(now-new Date(o.created_at))/(1000*60*60*24);
-      if(days<rfm[cid].recency)rfm[cid].recency=Math.round(days);
-      rfm[cid].frequency++;
-      rfm[cid].monetary+=parseFloat(o.amount)||0;
-    }
-    // 计算RFM评分（1-5分）
-    var arr=Object.values(rfm);
-    arr.sort(function(a,b){return a.recency-b.recency;});for(var ri=0;ri<arr.length;ri++)arr[ri].r=Math.ceil((ri+1)/arr.length*5);
-    arr.sort(function(a,b){return a.frequency-b.frequency;});for(var fi=0;fi<arr.length;fi++)arr[fi].f=Math.ceil((fi+1)/arr.length*5);
-    arr.sort(function(a,b){return a.monetary-b.monetary;});for(var mi=0;mi<arr.length;mi++)arr[mi].m=Math.ceil((mi+1)/arr.length*5);
-    // 按R+F+M总分排序,取Top20
-    arr.sort(function(a,b){return (b.r+b.f+b.m)-(a.r+a.f+a.m);});
-    var top=arr.slice(0,20);
-    var tbody=document.getElementById('rp-clients-rfmTable').querySelector('tbody');
-    var html='';
-    for(var ti=0;ti<top.length;ti++){
-      var tr=top[ti];
-      html+='<tr><td>'+escHtml(clientNames[tr.clientId]||'客户#'+tr.clientId)+'</td><td>'+tr.recency+'</td><td>'+tr.frequency+'</td><td>¥'+tr.monetary.toLocaleString('zh-CN',{minimumFractionDigits:0,maximumFractionDigits:0})+'</td><td style="font-weight:700;color:'+(tr.r+tr.f+tr.m>=12?'#10B981':tr.r+tr.f+tr.m>=8?'#F59E0B':'#EF4444')+'">'+(tr.r+tr.f+tr.m)+'分</td></tr>';
-    }
-    tbody.innerHTML=html;
-  }catch(e){console.warn('renderRFMAnalysis failed:',e);}
-}
-
-async function renderChannelAnalysis(sel){
-  try{
-    var start=sel.months[0].start,end=sel.months[sel.months.length-1].end;
-    var r=await _reportQuery('lead_pool').select('source').gte('created_at',start).lte('created_at',end);
-    var sourceMap={};
-    if(r.data)for(var i=0;i<r.data.length;i++){var s=r.data[i].source||'未知';sourceMap[s]=(sourceMap[s]||0)+1;}
-    var labels=Object.keys(sourceMap);
-    var values=labels.map(function(k){return sourceMap[k];});
-    var colors=['#4F6EF7','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899','#06B6D4','#F97316'];
-    _destroyReportChart('channelAnalysis');
-    var ctx=document.getElementById('rp-clients-channelAnalysis');
-    if(ctx){
-      _reportCharts.channelAnalysis=new Chart(ctx,{type:'doughnut',
-        data:{labels:labels,datasets:[{data:values,backgroundColor:colors.slice(0,labels.length)}]},
-        options:{responsive:true,maintainAspectRatio:false,cutout:'60%',
-          plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:10},padding:8}}}}});
-    }
-  }catch(e){console.warn('renderChannelAnalysis failed:',e);}
-}
-
-// ============================================================
-// 💳 回款分析
-// ============================================================
-async function renderReportCollections(){
-  _destroyAllReportCharts();
-  var sel=_getReportMonths('rp-collections-year','rp-collections-quarter');
-  _initYearSelector('rp-collections-year',sel.year);
-  await Promise.all([
-    renderARAging(sel.year),
-    renderPaymentTrend(sel),
-    renderContractStats(sel),
-    renderBadDebt()
-  ]);
-}
-
-async function renderARAging(year){
-  try{
-    var yStart=new Date(year,0,1).toISOString();
-    var yEnd=new Date(year,11,31,23,59,59).toISOString();
-    var now=new Date();
-    var r=await _reportQuery('contracts').select('total_amount,paid_amount,due_date').not('archive_status','eq','archived').gte('created_at',yStart).lte('created_at',yEnd);
-    // 按账龄分组：未到期、1-30天、31-60天、61-90天、90天+
-    var aging={unexpired:0,days30:0,days60:0,days90:0,over90:0};
-    if(r.data)for(var i=0;i<r.data.length;i++){
-      var unpaid=parseFloat(r.data[i].total_amount)-(parseFloat(r.data[i].paid_amount)||0);if(unpaid<=0)continue;
-      var due=r.data[i].due_date?new Date(r.data[i].due_date):now;
-      var overdue=(now-due)/(1000*60*60*24);
-      if(overdue<=0)aging.unexpired+=unpaid;
-      else if(overdue<=30)aging.days30+=unpaid;
-      else if(overdue<=60)aging.days60+=unpaid;
-      else if(overdue<=90)aging.days90+=unpaid;
-      else aging.over90+=unpaid;
-    }
-    _destroyReportChart('ARAging');
-    var ctx=document.getElementById('rp-collections-ARAging');
-    if(ctx){
-      _reportCharts.ARAging=new Chart(ctx,{type:'bar',
-        data:{labels:['未到期','1-30天','31-60天','61-90天','90天以上'],datasets:[
-          {label:'未到期',data:[aging.unexpired,0,0,0,0],backgroundColor:'#10B981',borderRadius:4},
-          {label:'1-30天',data:[0,aging.days30,0,0,0],backgroundColor:'#F59E0B',borderRadius:4},
-          {label:'31-60天',data:[0,0,aging.days60,0,0],backgroundColor:'#F97316',borderRadius:4},
-          {label:'61-90天',data:[0,0,0,aging.days90,0],backgroundColor:'#EF4444',borderRadius:4},
-          {label:'90天以上',data:[0,0,0,0,aging.over90],backgroundColor:'#991B1B',borderRadius:4}
-        ]},
-        options:{responsive:true,maintainAspectRatio:false,
-          plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:9},padding:6}}},
-          scales:{x:{stacked:true},y:{stacked:true,ticks:{callback:function(v){return v>=10000?'¥'+(v/10000).toFixed(1)+'万':'¥'+v;}}}}}});
-    }
-  }catch(e){console.warn('renderARAging failed:',e);}
-}
-
-async function renderPaymentTrend(sel){
-  try{
-    var labels=[],amounts=[];
-    for(var mi=0;mi<sel.months.length;mi++){
-      var mo=sel.months[mi];
-      var r=await _reportQuery('payments').select('amount').gte('payment_date',mo.start).lte('payment_date',mo.end);
+function renderReportCollections(){
+  var el=document.getElementById('rp-collections-chart');
+  var year=document.getElementById('rp-collections-year').value||new Date().getFullYear();
+  el.innerHTML='<div class="chart-loading">加载中...</div>';
+  var months=[];
+  for(var m=1;m<=12;m++){months.push({start:new Date(year,m-1,1).toISOString(),end:new Date(year,m,0,23,59,59).toISOString(),label:year+'年'+m+'月'})}
+  // Get payments by month
+  Promise.all(months.map(function(mo){
+    return sb.from('payments').select('amount').eq('company_id',currentCompanyId).gte('payment_date',mo.start).lte('payment_date',mo.end).then(function(r){
       var sum=0;if(r.data)for(var i=0;i<r.data.length;i++)sum+=parseFloat(r.data[i].amount)||0;
-      labels.push(mo.shortLabel);
-      amounts.push(sum);
+      return {label:mo.label.slice(5),paid:sum};
+    }).catch(function(){return {label:mo.label.slice(5),paid:0}});
+  })).then(function(rows){
+    var maxPaid=0;for(var i=0;i<rows.length;i++){if(rows[i].paid>maxPaid)maxPaid=rows[i].paid}
+    var h='<div class="chart-bars">';
+    for(var i=0;i<rows.length;i++){
+      var r=rows[i];var pct=maxPaid>0?Math.round(r.paid/maxPaid*100):0;var barH=Math.max(4,pct*2);
+      h+='<div class="chart-bar-col"><div class="chart-bar-val">¥'+r.paid.toLocaleString('zh-CN',{minimumFractionDigits:0,maximumFractionDigits:0})+'</div><div class="chart-bar" style="height:'+barH+'px;background:linear-gradient(180deg,#F59E0B,#FBBF24)" title="'+r.label+'"></div><div class="chart-bar-label">'+r.label+'</div></div>';
     }
-    _destroyReportChart('paymentTrend');
-    var ctx=document.getElementById('rp-collections-paymentTrend');
-    if(ctx){
-      _reportCharts.paymentTrend=new Chart(ctx,{type:'line',
-        data:{labels:labels,datasets:[{label:'回款金额',data:amounts,borderColor:'#10B981',backgroundColor:'rgba(16,185,129,0.1)',fill:true,tension:0.35,pointRadius:3,pointBackgroundColor:'#10B981'}]},
-        options:{responsive:true,maintainAspectRatio:false,
-          plugins:{legend:{display:false}},
-          scales:{y:{ticks:{callback:function(v){return v>=10000?'¥'+(v/10000).toFixed(1)+'万':'¥'+v;}}}}}});
-    }
-  }catch(e){console.warn('renderPaymentTrend failed:',e);}
+    h+='</div>';
+    el.innerHTML=h;
+    var sy=document.getElementById('rp-collections-year');
+    if(!sy.options.length){var cy=new Date().getFullYear();for(var y=cy-3;y<=cy;y++){var o=document.createElement('option');o.value=y;o.textContent=y+'年';if(y===parseInt(year))o.selected=true;sy.appendChild(o)}}
+  });
 }
 
-async function renderContractStats(sel){
-  try{
-    var labels=[],totals=[],paids=[];
-    for(var mi=0;mi<sel.months.length;mi++){
-      var mo=sel.months[mi];
-      var r=await _reportQuery('contracts').select('total_amount,paid_amount').gte('created_at',mo.start).lte('created_at',mo.end);
-      var total=0,paid=0;
-      if(r.data)for(var i=0;i<r.data.length;i++){total+=parseFloat(r.data[i].total_amount)||0;paid+=parseFloat(r.data[i].paid_amount)||0;}
-      labels.push(mo.shortLabel);
-      totals.push(total);paids.push(paid);
+function renderReportOrders(){
+  var el=document.getElementById('rp-orders-chart');
+  var year=document.getElementById('rp-orders-year').value||new Date().getFullYear();
+  el.innerHTML='<div class="chart-loading">加载中...</div>';
+  var months=[];
+  for(var m=1;m<=12;m++){months.push({start:new Date(year,m-1,1).toISOString(),end:new Date(year,m,0,23,59,59).toISOString(),label:year+'年'+m+'月'})}
+  Promise.all(months.map(function(mo){
+    return sb.from('orders').select('stage,amount').eq('company_id',currentCompanyId).gte('created_at',mo.start).lte('created_at',mo.end).then(function(r){
+      var total=0,completed=0,cancelled=0;
+      if(r.data)for(var i=0;i<r.data.length;i++){total++;var a=parseFloat(r.data[i].amount)||0;if(r.data[i].stage==='已完成')completed++;if(r.data[i].stage==='已取消')cancelled++}
+      return {label:mo.label.slice(5),total:total,completed:completed,cancelled:cancelled,sum:0};
+    }).catch(function(){return {label:mo.label.slice(5),total:0,completed:0,cancelled:0}});
+  })).then(function(rows){
+    var h='<table class="report-table"><thead><tr><th>月份</th><th>订单数</th><th>已完成</th><th>已取消</th><th>完成率</th></tr></thead><tbody>';
+    for(var i=0;i<rows.length;i++){
+      var r=rows[i];var rate=r.total>0?Math.round(r.completed/r.total*100):0;
+      h+='<tr><td>'+r.label+'</td><td>'+r.total+'</td><td style="color:#10B981">'+r.completed+'</td><td style="color:#EF4444">'+r.cancelled+'</td><td>'+rate+'%</td></tr>';
     }
-    _destroyReportChart('contractStats');
-    var ctx=document.getElementById('rp-collections-contractStats');
-    if(ctx){
-      _reportCharts.contractStats=new Chart(ctx,{type:'bar',
-        data:{labels:labels,datasets:[
-          {label:'合同总金额',data:totals,backgroundColor:'#4F6EF7',borderRadius:4},
-          {label:'已回款金额',data:paids,backgroundColor:'#10B981',borderRadius:4}
-        ]},
-        options:{responsive:true,maintainAspectRatio:false,
-          plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:9},padding:6}}},
-          scales:{y:{ticks:{callback:function(v){return v>=10000?'¥'+(v/10000).toFixed(1)+'万':'¥'+v;}}}}}});
-    }
-  }catch(e){console.warn('renderContractStats failed:',e);}
+    h+='</tbody></table>';
+    el.innerHTML=h;
+    var sy=document.getElementById('rp-orders-year');
+    if(!sy.options.length){var cy=new Date().getFullYear();for(var y=cy-3;y<=cy;y++){var o=document.createElement('option');o.value=y;o.textContent=y+'年';if(y===parseInt(year))o.selected=true;sy.appendChild(o)}}
+  });
 }
 
-async function renderBadDebt(){
-  try{
-    var now=new Date();
-    var r=await _reportQuery('contracts').select('id,total_amount,paid_amount,due_date').not('archive_status','eq','archived').neq('status','已完成');
-    if(!r.data||!r.data.length){document.getElementById('rp-collections-badDebtTable').querySelector('tbody').innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text3)">暂无超期合同</td></tr>';return;}
-    // 筛选超期且未完全回款
-    var badList=[];
-    for(var i=0;i<r.data.length;i++){
-      var c=r.data[i];
-      var unpaid=(parseFloat(c.total_amount)||0)-(parseFloat(c.paid_amount)||0);
-      if(unpaid<=0)continue;
-      var due=c.due_date?new Date(c.due_date):null;
-      if(!due)continue;
-      var overdue=Math.round((now-due)/(1000*60*60*24));
-      if(overdue<=0)continue;
-      badList.push({id:c.id,total:parseFloat(c.total_amount)||0,paid:parseFloat(c.paid_amount)||0,unpaid:unpaid,dueDate:due.toLocaleDateString('zh-CN'),overdueDays:overdue});
-    }
-    badList.sort(function(a,b){return b.overdueDays-a.overdueDays;});
-    var tbody=document.getElementById('rp-collections-badDebtTable').querySelector('tbody');
-    if(!badList.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text3)">暂无超期合同</td></tr>';return;}
-    var html='';
-    for(var bi=0;bi<badList.length;bi++){
-      var b=badList[bi];
-      html+='<tr><td>合同#'+b.id+'</td><td>'+b.dueDate+'</td><td>¥'+b.total.toLocaleString('zh-CN',{minimumFractionDigits:0,maximumFractionDigits:0})+'</td><td style="color:#10B981">¥'+b.paid.toLocaleString('zh-CN',{minimumFractionDigits:0,maximumFractionDigits:0})+'</td><td style="color:#EF4444">¥'+b.unpaid.toLocaleString('zh-CN',{minimumFractionDigits:0,maximumFractionDigits:0})+'</td><td style="color:#EF4444;font-weight:700">'+b.overdueDays+'天</td></tr>';
-    }
-    tbody.innerHTML=html;
-  }catch(e){console.warn('renderBadDebt failed:',e);}
-}
-
-// ============================================================
-// 📦 订单统计（Chart.js升级版）
-// ============================================================
-async function renderReportOrders(){
-  _destroyAllReportCharts();
-  var sel=_getReportMonths('rp-orders-year','rp-orders-quarter');
-  _initYearSelector('rp-orders-year',sel.year);
-  var labels=[],totals=[],completed=[],cancelled=[],rates=[];
-  for(var mi=0;mi<sel.months.length;mi++){
-    var mo=sel.months[mi];
-    var r=await _reportQuery('orders').select('stage').gte('created_at',mo.start).lte('created_at',mo.end);
-    var total=0,cmp=0,can=0;
-    if(r.data)for(var i=0;i<r.data.length;i++){total++;if(r.data[i].stage==='已完成')cmp++;if(r.data[i].stage==='已取消')can++;}
-    labels.push(mo.shortLabel);
-    totals.push(total);completed.push(cmp);cancelled.push(can);
-    rates.push(total>0?Math.round(cmp/total*100):0);
-  }
-  // 柱状图：月度订单量
-  _destroyReportChart('monthlyOrders');
-  var ctx1=document.getElementById('rp-orders-monthlyOrders');
-  if(ctx1){
-    _reportCharts.monthlyOrders=new Chart(ctx1,{type:'bar',
-      data:{labels:labels,datasets:[
-        {label:'订单总数',data:totals,backgroundColor:'#4F6EF7',borderRadius:4},
-        {label:'已完成',data:completed,backgroundColor:'#10B981',borderRadius:4},
-        {label:'已取消',data:cancelled,backgroundColor:'#EF4444',borderRadius:4}
-      ]},
-      options:{responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:9},padding:6}}},
-        scales:{y:{ticks:{stepSize:Math.max(1,Math.ceil(Math.max.apply(null,totals.concat([1]))/6))}}}}});
-  }
-  // 折线图：完成率
-  _destroyReportChart('completeRate');
-  var ctx2=document.getElementById('rp-orders-completeRate');
-  if(ctx2){
-    _reportCharts.completeRate=new Chart(ctx2,{type:'line',
-      data:{labels:labels,datasets:[{label:'完成率(%)',data:rates,borderColor:'#10B981',backgroundColor:'rgba(16,185,129,0.1)',fill:true,tension:0.35,pointRadius:3,pointBackgroundColor:'#10B981'}]},
-      options:{responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{display:false}},
-        scales:{y:{min:0,max:100,ticks:{callback:function(v){return v+'%'}}}}}});
-  }
-  // 明细表
-  var tbody=document.getElementById('rp-orders-detailTable').querySelector('tbody');
-  var thtml='';
-  for(var ti=0;ti<labels.length;ti++){
-    thtml+='<tr><td>'+labels[ti]+'</td><td>'+totals[ti]+'</td><td style="color:#10B981">'+completed[ti]+'</td><td style="color:#EF4444">'+cancelled[ti]+'</td><td>'+rates[ti]+'%</td></tr>';
-  }
-  tbody.innerHTML=thtml;
-}
-
-// ============================================================
-// ⚙️ 自定义仪表盘
-// ============================================================
-var _currentDashboardId=null;
-var _currentDashboardCards=[];
-
-async function renderCustomDashboard(){
-  _destroyAllReportCharts();
-  await loadDashboardList();
-  var sel=document.getElementById('rp-dashboard-selector');
-  var dashId=sel.value;
-  _currentDashboardId=dashId||null;
-  _currentDashboardCards=[];
-  if(!dashId){
-    document.getElementById('rp-dashboard-title').value='我的仪表盘';
-    document.getElementById('rp-dashboard-scope').value='personal';
-    document.getElementById('rp-dashboard-grid').innerHTML='<div style="text-align:center;color:var(--text3);padding:60px 0;grid-column:1/-1">点击「添加卡片」开始构建你的仪表盘</div>';
-    return;
-  }
-  try{
-    var r=await sb.from('custom_dashboards').select('*').eq('id',parseInt(dashId)).single();
-    if(!r.data)return;
-    document.getElementById('rp-dashboard-title').value=r.data.title||'我的仪表盘';
-    document.getElementById('rp-dashboard-scope').value=r.data.scope||'personal';
-    var layout=r.data.layout||[];
-    if(typeof layout==='string')layout=JSON.parse(layout);
-    _currentDashboardCards=layout;
-    var grid=document.getElementById('rp-dashboard-grid');
-    if(!layout.length){grid.innerHTML='<div style="text-align:center;color:var(--text3);padding:60px 0;grid-column:1/-1">仪表盘为空，点击「添加卡片」添加图表</div>';return;}
-    grid.innerHTML='';
-    for(var ci=0;ci<layout.length;ci++){
-      var card=layout[ci];
-      var cardEl=document.createElement('div');
-      cardEl.className='report-chart';
-      cardEl.id='rp-dash-card-'+ci;
-      cardEl.style.position='relative';
-      cardEl.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-weight:600;font-size:12px">'+escHtml(card.title||'图表')+'</span><button style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:14px;padding:0 4px" onclick="removeDashboardCard('+ci+')" title="删除">✕</button></div><canvas id="rp-dash-canvas-'+ci+'" style="max-height:260px"></canvas>';
-      grid.appendChild(cardEl);
-      renderDashboardCard(card,document.getElementById('rp-dash-canvas-'+ci),ci);
-    }
-  }catch(e){console.warn('renderCustomDashboard failed:',e);}
-}
-
-async function loadDashboardList(){
-  try{
-    var sel=document.getElementById('rp-dashboard-selector');
-    var curVal=sel.value;
-    sel.innerHTML='<option value="">新建仪表盘</option>';
-    var r=await sb.from('custom_dashboards').select('id,title').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
-    if(r.data)for(var i=0;i<r.data.length;i++){
-      var o=document.createElement('option');
-      o.value=r.data[i].id;
-      o.textContent=r.data[i].title||'未命名';
-      if(curVal&&parseInt(curVal)===r.data[i].id)o.selected=true;
-      sel.appendChild(o);
-    }
-  }catch(e){console.warn('loadDashboardList failed:',e);}
-}
-
-async function saveDashboardLayout(){
-  var title=document.getElementById('rp-dashboard-title').value||'我的仪表盘';
-  var scope=document.getElementById('rp-dashboard-scope').value||'personal';
-  var layout=_currentDashboardCards;
-  try{
-    if(_currentDashboardId){
-      await sb.from('custom_dashboards').update({title:title,layout:layout,scope:scope,updated_at:new Date().toISOString()}).eq('id',_currentDashboardId);
-    }else{
-      var r=await sb.from('custom_dashboards').insert({company_id:currentCompanyId,user_id:currentUser.id,title:title,layout:layout,scope:scope}).select('id').single();
-      if(r.data){_currentDashboardId=r.data.id;}
-    }
-    alert('仪表盘已保存');
-    loadDashboardList();
-  }catch(e){console.warn('saveDashboardLayout failed:',e);alert('保存失败：'+e.message);}
-}
-
-function addDashboardCard(){
-  var cardTypes=[
-    {type:'salesFunnel',title:'销售漏斗',chart:'bar',desc:'线索状态分布'},
-    {type:'winRate',title:'赢单率趋势',chart:'line',desc:'月度赢单率变化'},
-    {type:'newClients',title:'新增客户趋势',chart:'line',desc:'月度新增客户数'},
-    {type:'paymentTrend',title:'回款趋势',chart:'line',desc:'月度回款金额'},
-    {type:'orderStats',title:'订单统计',chart:'bar',desc:'月度订单量统计'},
-    {type:'channelDist',title:'获客渠道',chart:'doughnut',desc:'线索来源分布'},
-    {type:'regionalDist',title:'区域分布',chart:'doughnut',desc:'客户地域分布'},
-    {type:'contractStats',title:'合同统计',chart:'bar',desc:'合同金额对比'}
-  ];
-  var type=prompt('选择图表类型：\n1.销售漏斗  2.赢单率  3.新增客户\n4.回款趋势  5.订单统计  6.获客渠道\n7.区域分布  8.合同统计\n\n请输入编号(1-8)：','1');
-  var idx=parseInt(type)-1;
-  if(idx<0||idx>=cardTypes.length)return;
-  var ct=cardTypes[idx];
-  var title=prompt('卡片标题：',ct.title)||ct.title;
-  var card={type:ct.type,title:title,chart:ct.chart,desc:ct.desc};
-  _currentDashboardCards.push(card);
-  // 创建新卡片DOM
-  var grid=document.getElementById('rp-dashboard-grid');
-  if(grid.querySelector('[style*="padding:60px"]'))grid.innerHTML='';
-  var ci=_currentDashboardCards.length-1;
-  var cardEl=document.createElement('div');
-  cardEl.className='report-chart';
-  cardEl.id='rp-dash-card-'+ci;
-  cardEl.style.position='relative';
-  cardEl.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-weight:600;font-size:12px">'+escHtml(title)+'</span><button style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:14px;padding:0 4px" onclick="removeDashboardCard('+ci+')" title="删除">✕</button></div><canvas id="rp-dash-canvas-'+ci+'" style="max-height:260px"></canvas>';
-  grid.appendChild(cardEl);
-  renderDashboardCard(card,document.getElementById('rp-dash-canvas-'+ci),ci);
-}
-
-function removeDashboardCard(cardId){
-  _destroyReportChart('dashCanvas_'+cardId);
-  _currentDashboardCards.splice(cardId,1);
-  var el=document.getElementById('rp-dash-card-'+cardId);
-  if(el)el.remove();
-  if(!_currentDashboardCards.length){
-    document.getElementById('rp-dashboard-grid').innerHTML='<div style="text-align:center;color:var(--text3);padding:60px 0;grid-column:1/-1">仪表盘为空，点击「添加卡片」添加图表</div>';
-  }
-}
-
-async function renderDashboardCard(card,canvas,idx){
-  if(!canvas)return;
-  try{
-    var year=new Date().getFullYear();
-    var chartKey='dashCanvas_'+idx;
-    _destroyReportChart(chartKey);
-    var ctx=canvas.getContext('2d');
-    if(card.type==='salesFunnel'){
-      var stages=['new','assigned','contacted','qualified','negotiation','won','lost'];
-      var stageLabels=['新线索','已分配','已联系','已确认','谈判中','赢单','输单'];
-      var stageColors=['#1565C0','#1E88E5','#E65100','#2E7D32','#6B21A8','#166534','#991B1B'];
-      var yStart=new Date(year,0,1).toISOString(),yEnd=new Date(year,11,31,23,59,59).toISOString();
-      var counts=[];
-      for(var si=0;si<stages.length;si++){
-        var lr=await _reportQuery('lead_pool').eq('status',stages[si]).gte('created_at',yStart).lte('created_at',yEnd);
-        counts.push((lr.data||[]).length);
-      }
-      _reportCharts[chartKey]=new Chart(ctx,{type:'bar',data:{labels:stageLabels,datasets:[{label:'数量',data:counts,backgroundColor:stageColors,borderRadius:4}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
-    }else if(card.type==='winRate'){
-      var labels=[],rates=[];
-      for(var m=1;m<=12;m++){
-        var ms=new Date(year,m-1,1).toISOString(),me=new Date(year,m,0,23,59,59).toISOString();
-        var wonR=await _reportQuery('lead_pool').eq('status','won').gte('created_at',ms).lte('created_at',me);
-        var lostR=await _reportQuery('lead_pool').eq('status','lost').gte('created_at',ms).lte('created_at',me);
-        var w=(wonR.data||[]).length,l=(lostR.data||[]).length,total2=w+l;
-        labels.push(m+'月');rates.push(total2>0?Math.round(w/total2*100):0);
-      }
-      _reportCharts[chartKey]=new Chart(ctx,{type:'line',data:{labels:labels,datasets:[{label:'赢单率(%)',data:rates,borderColor:'#10B981',backgroundColor:'rgba(16,185,129,0.1)',fill:true,tension:0.35,pointRadius:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:0,max:100}}}});
-    }else if(card.type==='newClients'){
-      var labels2=[],counts2=[];
-      for(var m2=1;m2<=12;m2++){
-        var ms2=new Date(year,m2-1,1).toISOString(),me2=new Date(year,m2,0,23,59,59).toISOString();
-        var cr2=await _reportQuery('clients').select('id',{count:'exact',head:true}).gte('created_at',ms2).lte('created_at',me2);
-        labels2.push(m2+'月');counts2.push(cr2.count||0);
-      }
-      _reportCharts[chartKey]=new Chart(ctx,{type:'line',data:{labels:labels2,datasets:[{label:'新增客户',data:counts2,borderColor:'#10B981',backgroundColor:'rgba(16,185,129,0.1)',fill:true,tension:0.35,pointRadius:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
-    }else if(card.type==='paymentTrend'){
-      var labels3=[],amounts3=[];
-      for(var m3=1;m3<=12;m3++){
-        var ms3=new Date(year,m3-1,1).toISOString(),me3=new Date(year,m3,0,23,59,59).toISOString();
-        var pr3=await _reportQuery('payments').select('amount').gte('payment_date',ms3).lte('payment_date',me3);
-        var sum3=0;if(pr3.data)for(var pj=0;pj<pr3.data.length;pj++)sum3+=parseFloat(pr3.data[pj].amount)||0;
-        labels3.push(m3+'月');amounts3.push(sum3);
-      }
-      _reportCharts[chartKey]=new Chart(ctx,{type:'line',data:{labels:labels3,datasets:[{label:'回款金额',data:amounts3,borderColor:'#10B981',backgroundColor:'rgba(16,185,129,0.1)',fill:true,tension:0.35,pointRadius:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:function(v){return v>=10000?'¥'+(v/10000).toFixed(1)+'万':'¥'+v;}}}}}});
-    }else if(card.type==='orderStats'){
-      var labels4=[],totals4=[],completed4=[];
-      for(var m4=1;m4<=12;m4++){
-        var ms4=new Date(year,m4-1,1).toISOString(),me4=new Date(year,m4,0,23,59,59).toISOString();
-        var or4=await _reportQuery('orders').select('stage').gte('created_at',ms4).lte('created_at',me4);
-        var t4=0,c4=0;if(or4.data)for(var oj=0;oj<or4.data.length;oj++){t4++;if(or4.data[oj].stage==='已完成')c4++;}
-        labels4.push(m4+'月');totals4.push(t4);completed4.push(c4);
-      }
-      _reportCharts[chartKey]=new Chart(ctx,{type:'bar',data:{labels:labels4,datasets:[{label:'总数',data:totals4,backgroundColor:'#4F6EF7',borderRadius:4},{label:'已完成',data:completed4,backgroundColor:'#10B981',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
-    }else if(card.type==='channelDist'){
-      var sr=await _reportQuery('lead_pool').select('source');
-      var smap={};if(sr.data)for(var sk=0;sk<sr.data.length;sk++){var ss=sr.data[sk].source||'未知';smap[ss]=(smap[ss]||0)+1;}
-      var slabels=Object.keys(smap),svalues=slabels.map(function(k){return smap[k];});
-      var scolors=['#4F6EF7','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899','#06B6D4','#F97316'];
-      _reportCharts[chartKey]=new Chart(ctx,{type:'doughnut',data:{labels:slabels,datasets:[{data:svalues,backgroundColor:scolors.slice(0,slabels.length)}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:9}}}}}});
-    }else if(card.type==='regionalDist'){
-      var rr=await _reportQuery('clients').select('province');
-      var rmap={};if(rr.data)for(var rk=0;rk<rr.data.length;rk++){var pp=rr.data[rk].province||'未知';rmap[pp]=(rmap[pp]||0)+1;}
-      var rlabels=Object.keys(rmap).sort(function(a,b){return rmap[b]-rmap[a];}).slice(0,12);
-      var rvalues=rlabels.map(function(k){return rmap[k];});
-      var rcolors=['#4F6EF7','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899','#06B6D4','#F97316','#84CC16','#6366F1','#A855F7','#14B8A6'];
-      _reportCharts[chartKey]=new Chart(ctx,{type:'doughnut',data:{labels:rlabels,datasets:[{data:rvalues,backgroundColor:rcolors.slice(0,rlabels.length)}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:9}}}}}});
-    }else if(card.type==='contractStats'){
-      var clabels=[],ctotals=[],cpaids=[];
-      for(var cm=1;cm<=12;cm++){
-        var cms=new Date(year,cm-1,1).toISOString(),cme=new Date(year,cm,0,23,59,59).toISOString();
-        var crr=await _reportQuery('contracts').select('total_amount,paid_amount').gte('created_at',cms).lte('created_at',cme);
-        var ctotal=0,cpaid=0;if(crr.data)for(var cj=0;cj<crr.data.length;cj++){ctotal+=parseFloat(crr.data[cj].total_amount)||0;cpaid+=parseFloat(crr.data[cj].paid_amount)||0;}
-        clabels.push(cm+'月');ctotals.push(ctotal);cpaids.push(cpaid);
-      }
-      _reportCharts[chartKey]=new Chart(ctx,{type:'bar',data:{labels:clabels,datasets:[{label:'总额',data:ctotals,backgroundColor:'#4F6EF7',borderRadius:4},{label:'已回',data:cpaids,backgroundColor:'#10B981',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:function(v){return v>=10000?'¥'+(v/10000).toFixed(1)+'万':'¥'+v;}}}}}});
-    }
-  }catch(e){console.warn('renderDashboardCard failed:',e);}
-}
-
-// ============================================================
-// 📥 导出CSV
-// ============================================================
 function exportReportCSV(type){
-  var year,quarter;
-  if(type==='sales'){year=document.getElementById('rp-sales-year').value;quarter=document.getElementById('rp-sales-quarter').value;}
-  else if(type==='clients'){year=document.getElementById('rp-clients-year').value;quarter=document.getElementById('rp-clients-quarter').value;}
-  else if(type==='collections'){year=document.getElementById('rp-collections-year').value;quarter=document.getElementById('rp-collections-quarter').value;}
-  else if(type==='orders'){year=document.getElementById('rp-orders-year').value;quarter=document.getElementById('rp-orders-quarter').value;}
-  else{return;}
-  year=year||new Date().getFullYear();quarter=quarter||'0';
-  var prefix=type+'_'+year+(quarter!=='0'?'_Q'+quarter:'');
-  var sel=_getReportMonths('rp-'+type+'-year','rp-'+type+'-quarter');
-  var csvHeaders,csvData=[];
-  if(type==='sales'){
-    csvHeaders=['月份','线索新','线索已分配','线索已联系','线索已确认','线索谈判','赢单','输单'];
-    // 异步生成比较复杂，简化：收集当前画布中的图表数据
-    var chart=_reportCharts.salesFunnel;
-    if(chart){csvData=[['-','-(详见图表)']];}else{csvData=[['-','-']];}
-  }else if(type==='clients'){
-    csvData=[];var chart2=_reportCharts.newClientsTrend;
-    if(chart2&&chart2.data&&chart2.data.datasets[0]){
-      csvHeaders=['月份','新增客户数'];
-      var d=chart2.data;for(var di=0;di<d.labels.length;di++)csvData.push([d.labels[di],d.datasets[0].data[di]]);
-    }else{csvHeaders=['月份','数据'];csvData=[['无','-']];}
-  }else if(type==='collections'){
-    csvData=[];var chart3=_reportCharts.paymentTrend;
-    if(chart3&&chart3.data&&chart3.data.datasets[0]){
-      csvHeaders=['月份','回款金额'];
-      var d2=chart3.data;for(var dj=0;dj<d2.labels.length;dj++)csvData.push([d2.labels[dj],d2.datasets[0].data[dj]]);
-    }else{csvHeaders=['月份','数据'];csvData=[['无','-']];}
-  }else if(type==='orders'){
-    var tbody=document.getElementById('rp-orders-detailTable');
-    if(tbody){
-      csvHeaders=['月份','订单数','已完成','已取消','完成率'];
-      var rows=tbody.querySelectorAll('tbody tr');
-      for(var ri=0;ri<rows.length;ri++){var cells=rows[ri].querySelectorAll('td');if(cells.length>=5)csvData.push([cells[0].textContent,cells[1].textContent,cells[2].textContent,cells[3].textContent,cells[4].textContent]);}
-    }else{csvHeaders=['月份'];csvData=[['无']];}
+  var el;
+  if(type==='sales'){el=document.getElementById('rp-sales-chart')}
+  else if(type==='clients'){el=document.getElementById('rp-clients-chart')}
+  else if(type==='collections'){el=document.getElementById('rp-collections-chart')}
+  else if(type==='orders'){el=document.getElementById('rp-orders-chart')}
+  if(!el)return;
+  var headers={'sales':['月份','销售额'],'clients':['月份','新增客户'],'collections':['月份','回款金额'],'orders':['月份','订单数','已完成','已取消','完成率']};
+  var csv=headers[type].join(',')+'\n';
+  if(type!=='orders'){
+    var labels=el.querySelectorAll('.chart-bar-label');
+    var vals=el.querySelectorAll('.chart-bar-val');
+    for(var i=0;i<labels.length;i++){
+      var v=vals[i]?vals[i].textContent.replace('¥','').replace(/,/g,''):'0';
+      csv+=labels[i].textContent+','+v+'\n';
+    }
+  }else{
+    var rows=el.querySelectorAll('tbody tr');
+    for(var i=0;i<rows.length;i++){var cells=rows[i].querySelectorAll('td');csv+=cells[0].textContent+','+cells[1].textContent+','+cells[2].textContent+','+cells[3].textContent+','+cells[4].textContent+'\n'}
   }
-  var csv=csvHeaders.join(',')+'\n';
-  for(var ci2=0;ci2<csvData.length;ci2++)csv+=csvData[ci2].map(function(v){return '"'+String(v).replace(/"/g,'""')+'"';}).join(',')+'\n';
   var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
   var url=URL.createObjectURL(blob);
-  var a=document.createElement('a');a.href=url;a.download=prefix+'_report.csv';a.click();
+  var a=document.createElement('a');a.href=url;a.download=type+'_report.csv';a.click();
   URL.revokeObjectURL(url);
 }
 var notifUnread=0;
@@ -4524,7 +3553,6 @@ function showToast(msg,type){
   var colors={info:'#4F6EF7',success:'#10B981',warning:'#F59E0B',error:'#EF4444'};
   var icons={info:'ℹ️',success:'✅',warning:'⚠️',error:'❌'};
   var tc=document.getElementById('toast-container');
-  if(!tc)return;
   var t=document.createElement('div');t.className='toast toast-'+type;
   t.innerHTML='<span class="toast-icon">'+(icons[type]||'')+'</span>'+escHtml(msg);
   t.style.borderLeftColor=colors[type]||'#4F6EF7';
@@ -4570,11 +3598,11 @@ function switchTab(tab){
   // Hide all views first
   var hv_d=document.getElementById('home-view');var rv_r=document.getElementById('reports-view');
   var lv=document.getElementById('leads-view');
-  var allViews=[hv_d,cv,ov,rv_r,av,sv,iv];if(spv)allViews.push(spv);if(pv)allViews.push(pv);if(lv)allViews.push(lv);var colv2=document.getElementById('collab-view');if(colv2)allViews.push(colv2);var sv2=document.getElementById('service-view');if(sv2)allViews.push(sv2);if(purchv)allViews.push(purchv);
+  var allViews=[hv_d,cv,ov,rv_r,av,sv,iv];if(spv)allViews.push(spv);if(pv)allViews.push(pv);if(lv)allViews.push(lv);if(purchv)allViews.push(purchv);
   for(var i=0;i<allViews.length;i++)if(allViews[i])allViews[i].classList.add('hidden');
   // Deactivate all tabs
   var tr=document.getElementById('tab-reports');var thm=document.getElementById('tab-home');
-  var allTabs=[thm,tc,to,document.getElementById('tab-service'),document.getElementById('tab-collab'),tr,ta,ti];for(var j=0;j<allTabs.length;j++)if(allTabs[j])allTabs[j].classList.remove('active');
+  var allTabs=[thm,tc,to,tr,ta,ti];for(var j=0;j<allTabs.length;j++)if(allTabs[j])allTabs[j].classList.remove('active');
   fab.classList.add('hidden');
 
     var hv=document.getElementById('home-view');
@@ -4620,17 +3648,11 @@ function switchTab(tab){
     fab.classList.add('hidden');
     document.getElementById('topbar-title').textContent='报表中心';
     loadReportSummary();switchReportsTab('sales');
-  }else if(tab==='service'){var sv2=document.getElementById('service-view');if(sv2)sv2.classList.remove('hidden');switchServiceTab('tickets');return}
-  if(tab==='admin'){
+  }else if(tab==='admin'){
     av.classList.remove('hidden');ta.classList.add('active');
     document.getElementById('topbar-title').textContent='组织管理';
     switchAdminTab('users');
-  }else if(tab==='collab'){
-  var colv=document.getElementById('collab-view');
-  colv.classList.remove('hidden');document.getElementById('tab-collab').classList.add('active');
-  document.getElementById('topbar-title').textContent='协同办公';
-  switchCollabTab('schedule');
-}
+  }
 }
 
 function handleFab(){
@@ -6109,368 +5131,6 @@ function openSalesForm(){
 }
 
 
-// ═══════════ AFTER-SALES SERVICE ═══════════
-var svEditId=null; var allTickets=[],allVisits=[],allWarranties=[],allMaintenance=[],allKB=[];
-
-function switchServiceTab(sub){
-  var tabs=document.querySelectorAll('#moresubs-after .sub-tab');
-  for(var i=0;i<tabs.length;i++)tabs[i].classList.remove('active');
-  var panels=['sv-tickets','sv-visits','sv-warranty','sv-kb'];
-  for(var j=0;j<panels.length;j++){var p=document.getElementById(panels[j]);if(p)p.classList.add('hidden')}
-  var tp=document.getElementById('sv-'+sub);if(tp)tp.classList.remove('hidden');
-  var btns=document.querySelectorAll('#moresubs-after .sub-tab');
-  var map={tickets:0,visits:1,warranty:2,kb:3};
-  if(btns[map[sub]]!=null)btns[map[sub]].classList.add('active');
-  if(sub==='tickets')loadTickets();
-  else if(sub==='visits'){loadVisits();loadVisitTasks()}
-  else if(sub==='warranty'){loadWarranties();loadMaintenancePlans()}
-  else if(sub==='kb')loadKB();
-}
-
-// ── Tickets ──
-async function loadTickets(){
-  var grid=document.getElementById('ticket-grid');grid.innerHTML='<div class="loading"><span class="spinner"></span>加载中...</div>';
-  var{data,error}=await sb.from('service_tickets').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
-  if(error){grid.innerHTML='<div class="empty">加载失败: '+error.message+'</div>';return}
-  allTickets=data||[];renderTickets();
-}
-function renderTickets(){
-  var list=allTickets||[];
-  var sf=document.getElementById('ticket-status-filter'),tf=document.getElementById('ticket-type-filter');
-  var sr=document.getElementById('ticket-search');
-  if(sf&&sf.value!=='all')list=list.filter(function(x){return x.status===sf.value});
-  if(tf&&tf.value!=='all')list=list.filter(function(x){return x.type===tf.value});
-  if(sr){var sq=sr.value.trim().toLowerCase();if(sq)list=list.filter(function(x){return(x.title||'').toLowerCase().indexOf(sq)>=0||(x.description||'').toLowerCase().indexOf(sq)>=0})}
-  var grid=document.getElementById('ticket-grid'),empty=document.getElementById('ticket-empty');
-  if(!list.length){grid.innerHTML='';empty.classList.remove('hidden');return}
-  empty.classList.add('hidden');
-  var sm={pending:'待处理',dispatched:'已派单',in_progress:'处理中',completed:'已完成',confirmed:'已确认',closed:'已关闭'};
-  var tm={complaint:'投诉',repair:'报修',service:'服务',other:'其他'};
-  var pm={urgent:'🔴紧急',high:'🟠高',normal:'🟢普通',low:'⚪低'};
-  var h='';for(var i=0;i<list.length;i++){var t=list[i];
-    h+='<div class="lead-card" onclick="openTicketForm(\''+t.id+'\')">';
-    h+='<div class="lead-name">'+h(t.title)+' <span style="font-size:11px;color:var(--text3)">#'+(t.ticket_no||t.id)+'</span></div>';
-    h+='<div class="lead-meta"><span class="lead-status-badge '+t.status+'">'+(sm[t.status]||t.status)+'</span>';
-    h+='<span>'+h(tm[t.type]||t.type)+'</span><span>'+h(pm[t.priority]||'')+'</span>';
-    if(t.engineer_name)h+='<span>🔧 '+h(t.engineer_name)+'</span>';
-    h+='</div>';
-    if(t.description)h+='<div style="font-size:12px;color:var(--text2);margin-top:4px">'+h(t.description).substring(0,80)+'</div>';
-    h+='<div class="lead-actions"><button class="btn-lead-primary" onclick="event.stopPropagation();changeTicketStatus(\''+t.id+'\',\''+(t.status==='pending'?'dispatched':t.status==='dispatched'?'in_progress':t.status==='in_progress'?'completed':t.status==='completed'?'confirmed':'closed')+'\')">'+(t.status==='pending'?'派单':t.status==='dispatched'?'开始处理':t.status==='in_progress'?'完工':'关闭')+'</button>';
-    h+='<button onclick="event.stopPropagation();openTicketForm(\''+t.id+'\')">编辑</button><button class="btn-lead-danger" onclick="event.stopPropagation();confirmDeleteTicket(\''+t.id+'\')">删除</button></div></div>';
-  }
-  grid.innerHTML=h;
-}
-function openTicketForm(id){
-  svEditId=id||null;
-  var t=id?allTickets.find(function(x){return x.id===id}):null;
-  document.getElementById('ticket-form-title').textContent=id?'编辑工单':'新建工单';
-  document.getElementById('tf-title').value=t?t.title||'':'';
-  document.getElementById('tf-type').value=t?t.type||'service':'service';
-  document.getElementById('tf-priority').value=t?t.priority||'normal':'normal';
-  document.getElementById('tf-engineer').value=t?t.engineer_name||'':'';
-  document.getElementById('tf-desc').value=t?t.description||'':'';
-  document.getElementById('tf-completion').value=t?t.completion_notes||'':'';
-  document.getElementById('tf-satisfaction').value=t?t.satisfaction_rating||5:5;
-  // Populate client dropdown
-  var cs=document.getElementById('tf-client');cs.innerHTML='<option value="">不关联</option>';
-  if(allClients)for(var i=0;i<allClients.length;i++){var c=allClients[i];cs.innerHTML+='<option value="'+c.id+'"'+(t&&t.client_id===c.id?' selected':'')+'>'+h(c.name)+'</option>'}
-  document.getElementById('ticket-modal').classList.remove('hidden');
-}
-function closeTicketForm(){document.getElementById('ticket-modal').classList.add('hidden');svEditId=null}
-async function saveTicket(){
-  var title=document.getElementById('tf-title').value.trim();if(!title){showToast('请输入标题');return}
-  var data={company_id:currentCompanyId,user_id:currentUser.id,title:title,
-    type:document.getElementById('tf-type').value,priority:document.getElementById('tf-priority').value,
-    client_id:document.getElementById('tf-client').value||null,
-    engineer_name:document.getElementById('tf-engineer').value.trim(),
-    description:document.getElementById('tf-desc').value.trim(),
-    completion_notes:document.getElementById('tf-completion').value.trim(),
-    satisfaction_rating:parseInt(document.getElementById('tf-satisfaction').value)||null,
-    updated_at:new Date().toISOString()};
-  if(!svEditId)data.ticket_no='TK-'+Date.now().toString(36).toUpperCase();
-  var error;
-  if(svEditId){var r=await sb.from('service_tickets').update(data).eq('id',svEditId);error=r.error}
-  else{data.created_at=new Date().toISOString();var r2=await sb.from('service_tickets').insert(data);error=r2.error}
-  if(error){showToast('保存失败: '+error.message);return}
-  closeTicketForm();await loadTickets();showToast(svEditId?'工单已更新':'工单已创建');
-}
-async function changeTicketStatus(id,newStatus){
-  await sb.from('service_tickets').update({status:newStatus,updated_at:new Date().toISOString()}).eq('id',id);
-  loadTickets();showToast('状态已更新');
-}
-
-// ── Visits ──
-async function loadVisits(){
-  var{data,error}=await sb.from('client_visits').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
-  if(error){console.error(error);return}
-  allVisits=data||[];renderVisits();
-}
-function renderVisits(){
-  var list=allVisits||[];
-  var tf=document.getElementById('visit-type-filter'),sf=document.getElementById('visit-status-filter');
-  var sr=document.getElementById('visit-search');
-  if(tf&&tf.value!=='all')list=list.filter(function(x){return x.visit_type===tf.value});
-  if(sf&&sf.value!=='all')list=list.filter(function(x){return x.status===sf.value});
-  if(sr){var sq=sr.value.trim().toLowerCase();if(sq)list=list.filter(function(x){return(x.title||'').toLowerCase().indexOf(sq)>=0||(x.content||'').toLowerCase().indexOf(sq)>=0})}
-  var grid=document.getElementById('visit-grid'),empty=document.getElementById('visit-empty');
-  if(!list.length){grid.innerHTML='';empty.classList.remove('hidden');return}
-  empty.classList.add('hidden');
-  var vm={post_sale:'成交回访',care:'关怀回访',churn:'流失回访',other:'其他'};
-  var mth={phone:'📞',wechat:'💬',email:'📧',visit:'🏠',other:'📋'};
-  var ss={planned:'planning',completed:'success',cancelled:'cancelled'};
-  var h='';for(var i=0;i<list.length;i++){var v=list[i];var cn='';if(v.client_id&&allClients){var cc=allClients.find(function(x){return x.id===v.client_id});cn=cc?cc.name:''}
-    h+='<div class="lead-card">';
-    h+='<div class="lead-name">'+h(v.title||'回访记录')+' <span style="font-size:11px;color:var(--text3)">'+h(cn)+'</span></div>';
-    h+='<div class="lead-meta"><span class="lead-status-badge '+(ss[v.status]||'')+'">'+(v.status==='planned'?'计划中':v.status==='completed'?'已完成':'已取消')+'</span>';
-    h+='<span>'+h(vm[v.visit_type]||v.visit_type)+'</span><span>'+(mth[v.visit_method]||'📋')+' '+h(v.visit_method||'')+'</span>';
-    if(v.planned_date)h+='<span>📅 '+v.planned_date+'</span>';
-    if(v.satisfaction)h+='<span>⭐ '+v.satisfaction+'</span>';
-    h+='</div>';
-    if(v.content)h+='<div style="font-size:12px;color:var(--text2);margin-top:4px">'+h(v.content).substring(0,100)+'</div>';
-    h+='<div class="lead-actions"><button onclick="event.stopPropagation();openVisitForm(\''+v.id+'\')">编辑</button><button class="btn-lead-danger" onclick="event.stopPropagation();confirmDeleteVisit(\''+v.id+'\')">删除</button></div></div>';
-  }
-  grid.innerHTML=h;
-}
-function openVisitForm(id){
-  svEditId=id||null;
-  var v=id?allVisits.find(function(x){return x.id===id}):null;
-  document.getElementById('visit-form-title').textContent=id?'编辑回访':'新建回访';
-  document.getElementById('vf-title').value=v?v.title||'':'';
-  document.getElementById('vf-type').value=v?v.visit_type||'care':'care';
-  document.getElementById('vf-method').value=v?v.visit_method||'phone':'phone';
-  document.getElementById('vf-planned-date').value=v?v.planned_date||'':'';
-  document.getElementById('vf-content').value=v?v.content||'':'';
-  document.getElementById('vf-satisfaction').value=v?v.satisfaction||'':'';
-  var cs=document.getElementById('vf-client');cs.innerHTML='<option value="">不关联</option>';
-  if(allClients)for(var i=0;i<allClients.length;i++){var cc=allClients[i];cs.innerHTML+='<option value="'+cc.id+'"'+(v&&v.client_id===cc.id?' selected':'')+'>'+h(cc.name)+'</option>'}
-  document.getElementById('visit-modal').classList.remove('hidden');
-}
-function closeVisitForm(){document.getElementById('visit-modal').classList.add('hidden');svEditId=null}
-async function saveVisit(){
-  var title=document.getElementById('vf-title').value.trim();if(!title){showToast('请输入标题');return}
-  var data={company_id:currentCompanyId,user_id:currentUser.id,title:title,
-    visit_type:document.getElementById('vf-type').value,visit_method:document.getElementById('vf-method').value,
-    client_id:document.getElementById('vf-client').value||null,
-    planned_date:document.getElementById('vf-planned-date').value||null,
-    content:document.getElementById('vf-content').value.trim(),
-    satisfaction:parseInt(document.getElementById('vf-satisfaction').value)||null,
-    updated_at:new Date().toISOString()};
-  var error;
-  if(svEditId){var r=await sb.from('client_visits').update(data).eq('id',svEditId);error=r.error}
-  else{data.created_at=new Date().toISOString();var r2=await sb.from('client_visits').insert(data);error=r2.error}
-  if(error){showToast('保存失败: '+error.message);return}
-  closeVisitForm();await loadVisits();showToast(svEditId?'回访已更新':'回访已创建');
-}
-
-// ── Visit Tasks ──
-var visitTasks=[];
-async function loadVisitTasks(){
-  var{data,error}=await sb.from('visit_tasks').select('*').eq('company_id',currentCompanyId).order('scheduled_date');
-  if(error){console.error(error);return}
-  visitTasks=data||[];
-  var ab=document.getElementById('visit-tasks-alert');
-  if(visitTasks.length){ab.style.display='block';ab.innerHTML='📅 <b>待办回访任务:</b> '+visitTasks.filter(function(x){return x.status==='pending'}).length+' 个待处理';ab.onclick=function(){showVisitTaskList()}}else ab.style.display='none';
-}
-function openVisitTaskForm(){var n=document.getElementById('vf-title').value||'';var c=prompt('回访任务标题:',n);if(!c)return;
-  var date=prompt('计划日期 (YYYY-MM-DD):',new Date().toISOString().split('T')[0]);if(!date)return;
-  sb.from('visit_tasks').insert([{company_id:currentCompanyId,user_id:currentUser.id,title:c,task_type:'care',scheduled_date:date,status:'pending',created_at:new Date().toISOString()}]).then(function(r){
-    if(r.error)showToast('创建失败: '+r.error.message);else{loadVisitTasks();showToast('回访任务已创建')}
-  });
-}
-function showVisitTaskList(){
-  var rows=visitTasks.map(function(t){return '• '+t.title+' ['+t.scheduled_date+'] '+(t.status==='pending'?'待处理':'已完成')}).join('\n');
-  alert('回访任务列表:\n\n'+rows);
-}
-
-// ── Warranties ──
-async function loadWarranties(){
-  var{data,error}=await sb.from('warranties').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
-  if(error){console.error(error);return}
-  allWarranties=data||[];renderWarranties();
-}
-function renderWarranties(){
-  var list=allWarranties||[];
-  var sf=document.getElementById('warranty-status-filter'),sr=document.getElementById('warranty-search');
-  if(sf&&sf.value!=='all')list=list.filter(function(x){return x.status===sf.value});
-  if(sr){var sq=sr.value.trim().toLowerCase();if(sq)list=list.filter(function(x){return(x.product_name||'').toLowerCase().indexOf(sq)>=0||(x.serial_no||'').toLowerCase().indexOf(sq)>=0})}
-  var grid=document.getElementById('warranty-grid'),empty=document.getElementById('warranty-empty');
-  if(!list.length){grid.innerHTML='';empty.classList.remove('hidden');}else{empty.classList.add('hidden')}
-  // Expiring alert
-  var now=new Date(),expiring=allWarranties.filter(function(w){if(!w.warranty_end||w.status!=='active')return false;var ed=new Date(w.warranty_end);var d=Math.ceil((ed-now)/86400000);return d>=0&&d<=30});
-  var ab=document.getElementById('warranty-alert');
-  if(expiring.length){ab.style.display='block';ab.innerHTML='⚠️ <b>即将到期:</b> '+expiring.length+' 项质保在30天内到期，请关注续费！'}else ab.style.display='none';
-  if(!list.length)return;
-  var ss={active:'🟢有效',expired:'🔴过期',void:'⚫作废',claimed:'🟡理赔'};
-  var h='';for(var i=0;i<list.length;i++){var w=list[i];var cn='';if(w.client_id&&allClients){var cc=allClients.find(function(x){return x.id===w.client_id});cn=cc?cc.name:''}
-    var endLabel=w.warranty_end||'';if(w.status==='active'&&w.warranty_end){var dd=Math.ceil((new Date(w.warranty_end)-now)/86400000);endLabel+=' ('+(dd>0?dd+'天':'已到期')+')'}
-    h+='<div class="lead-card">';
-    h+='<div class="lead-name">'+h(w.product_name)+' <span style="font-size:11px;color:var(--text3)">'+h(cn)+'</span></div>';
-    h+='<div class="lead-meta"><span>'+h(ss[w.status]||w.status)+'</span>';
-    if(w.serial_no)h+='<span># '+h(w.serial_no)+'</span>';
-    h+='<span>📅 '+h(w.warranty_start||'')+' → '+h(endLabel)+'</span>';
-    h+='<span>'+h(w.warranty_type||'')+'</span>';
-    h+='</div>';
-    h+='<div class="lead-actions"><button onclick="event.stopPropagation();openWarrantyForm(\''+w.id+'\')">编辑</button><button class="btn-lead-danger" onclick="event.stopPropagation();confirmDeleteWarranty(\''+w.id+'\')">删除</button></div></div>';
-  }
-  grid.innerHTML=h;
-}
-function openWarrantyForm(id){
-  svEditId=id||null;
-  var w=id?allWarranties.find(function(x){return x.id===id}):null;
-  document.getElementById('warranty-form-title').textContent=id?'编辑质保':'新建质保';
-  document.getElementById('wf-product').value=w?w.product_name||'':'';
-  document.getElementById('wf-serial').value=w?w.serial_no||'':'';
-  document.getElementById('wf-start').value=w?w.warranty_start||'':'';
-  document.getElementById('wf-end').value=w?w.warranty_end||'':'';
-  document.getElementById('wf-type').value=w?w.warranty_type||'standard':'standard';
-  document.getElementById('wf-terms').value=w?w.terms||'':'';
-  var cs=document.getElementById('wf-client');cs.innerHTML='<option value="">不关联</option>';
-  if(allClients)for(var i=0;i<allClients.length;i++){var cc=allClients[i];cs.innerHTML+='<option value="'+cc.id+'"'+(w&&w.client_id===cc.id?' selected':'')+'>'+h(cc.name)+'</option>'}
-  document.getElementById('warranty-modal').classList.remove('hidden');
-}
-function closeWarrantyForm(){document.getElementById('warranty-modal').classList.add('hidden');svEditId=null}
-async function saveWarranty(){
-  var pn=document.getElementById('wf-product').value.trim();if(!pn){showToast('请输入产品名称');return}
-  var data={company_id:currentCompanyId,user_id:currentUser.id,product_name:pn,
-    serial_no:document.getElementById('wf-serial').value.trim(),
-    client_id:document.getElementById('wf-client').value||null,
-    warranty_start:document.getElementById('wf-start').value||null,
-    warranty_end:document.getElementById('wf-end').value||null,
-    warranty_type:document.getElementById('wf-type').value,
-    terms:document.getElementById('wf-terms').value.trim(),
-    updated_at:new Date().toISOString()};
-  var error;
-  if(svEditId){var r=await sb.from('warranties').update(data).eq('id',svEditId);error=r.error}
-  else{data.created_at=new Date().toISOString();var r2=await sb.from('warranties').insert(data);error=r2.error}
-  if(error){showToast('保存失败: '+error.message);return}
-  closeWarrantyForm();await loadWarranties();showToast(svEditId?'质保已更新':'质保已创建');
-}
-
-// ── Maintenance Plans ──
-async function loadMaintenancePlans(){
-  var{data,error}=await sb.from('maintenance_plans').select('*').eq('company_id',currentCompanyId).order('next_maintenance');
-  if(error){console.error(error);return}
-  allMaintenance=data||[];renderMaintenancePlans();
-}
-function renderMaintenancePlans(){
-  var list=allMaintenance||[];
-  var grid=document.getElementById('maintenance-grid'),empty=document.getElementById('maintenance-empty');
-  if(!list.length){grid.innerHTML='';empty.classList.remove('hidden');return}
-  empty.classList.add('hidden');
-  var ss={scheduled:'计划中',in_progress:'进行中',completed:'已完成',overdue:'已逾期',cancelled:'已取消'};
-  var sc={scheduled:'planning',in_progress:'active',completed:'success',overdue:'urgent',cancelled:'cancelled'};
-  var h='';for(var i=0;i<list.length;i++){var m=list[i];var cn='';if(m.client_id&&allClients){var cc=allClients.find(function(x){return x.id===m.client_id});cn=cc?cc.name:''}
-    h+='<div class="lead-card">';
-    h+='<div class="lead-name">🔧 '+h(m.product_name||'维保计划')+' <span style="font-size:11px;color:var(--text3)">'+h(cn)+'</span></div>';
-    h+='<div class="lead-meta"><span class="lead-status-badge '+(sc[m.status]||'')+'">'+h(ss[m.status]||m.status)+'</span>';
-    h+='<span>'+h(m.plan_type||'')+'</span><span>🔄 '+h(m.schedule_interval||'')+'</span>';
-    if(m.next_maintenance)h+='<span>📅 下次: '+m.next_maintenance+'</span>';
-    h+='</div>';
-    h+='<div class="lead-actions"><button onclick="event.stopPropagation();openMaintenanceForm(\''+m.id+'\')">编辑</button><button class="btn-lead-danger" onclick="event.stopPropagation();confirmDeleteMaintenance(\''+m.id+'\')">删除</button></div></div>';
-  }
-  grid.innerHTML=h;
-}
-function openMaintenanceForm(id){
-  svEditId=id||null;
-  var m=id?allMaintenance.find(function(x){return x.id===id}):null;
-  document.getElementById('maintenance-form-title').textContent=id?'编辑维保计划':'新建维保计划';
-  document.getElementById('mf-product').value=m?m.product_name||'':'';
-  document.getElementById('mf-type').value=m?m.plan_type||'preventive':'preventive';
-  document.getElementById('mf-interval').value=m?m.schedule_interval||'monthly':'monthly';
-  document.getElementById('mf-next').value=m?m.next_maintenance||'':'';
-  document.getElementById('mf-assigned').value=m?(getAssignedName(m.assigned_to)||''):'';
-  document.getElementById('mf-notes').value=m?m.notes||'':'';
-  var cs=document.getElementById('mf-client');cs.innerHTML='<option value="">不关联</option>';
-  if(allClients)for(var i=0;i<allClients.length;i++){var cc=allClients[i];cs.innerHTML+='<option value="'+cc.id+'"'+(m&&m.client_id===cc.id?' selected':'')+'>'+h(cc.name)+'</option>'}
-  document.getElementById('maintenance-modal').classList.remove('hidden');
-}
-function closeMaintenanceForm(){document.getElementById('maintenance-modal').classList.add('hidden');svEditId=null}
-async function saveMaintenance(){
-  var pn=document.getElementById('mf-product').value.trim();if(!pn){showToast('请输入产品名称');return}
-  var data={company_id:currentCompanyId,user_id:currentUser.id,product_name:pn,
-    client_id:document.getElementById('mf-client').value||null,
-    plan_type:document.getElementById('mf-type').value,schedule_interval:document.getElementById('mf-interval').value,
-    next_maintenance:document.getElementById('mf-next').value||null,
-    notes:document.getElementById('mf-notes').value.trim(),
-    updated_at:new Date().toISOString()};
-  var error;
-  if(svEditId){var r=await sb.from('maintenance_plans').update(data).eq('id',svEditId);error=r.error}
-  else{data.created_at=new Date().toISOString();var r2=await sb.from('maintenance_plans').insert(data);error=r2.error}
-  if(error){showToast('保存失败: '+error.message);return}
-  closeMaintenanceForm();await loadMaintenancePlans();showToast(svEditId?'维保计划已更新':'维保计划已创建');
-}
-function getAssignedName(uid){if(!uid||!allUsers)return'';var u=allUsers.find(function(x){return x.user_id===uid});return u?(u.display_name||u.email||''):''}
-
-// ── Knowledge Base ──
-async function loadKB(){
-  var{data,error}=await sb.from('kb_articles').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
-  if(error){console.error(error);return}
-  allKB=data||[];renderKB();
-}
-function renderKB(){
-  var list=allKB||[];
-  var cf=document.getElementById('kb-category-filter'),sr=document.getElementById('kb-search');
-  if(cf&&cf.value!=='all')list=list.filter(function(x){return x.category===cf.value});
-  if(sr){var sq=sr.value.trim().toLowerCase();if(sq)list=list.filter(function(x){return(x.title||'').toLowerCase().indexOf(sq)>=0||(x.content||'').toLowerCase().indexOf(sq)>=0||(x.tags||[]).some(function(t){return t.toLowerCase().indexOf(sq)>=0})})}
-  var grid=document.getElementById('kb-grid'),empty=document.getElementById('kb-empty');
-  if(!list.length){grid.innerHTML='';empty.classList.remove('hidden');return}
-  empty.classList.add('hidden');
-  var cm={faq:'❓常见问题',solution:'💡解决方案',script:'📝标准话术',policy:'📜政策法规',other:'📋其他'};
-  var h='';for(var i=0;i<list.length;i++){var k=list[i];
-    h+='<div class="lead-card" style="cursor:pointer" onclick="toggleKBDetail('+k.id+')">';
-    h+='<div class="lead-name">'+h(k.title)+' <span style="font-size:11px;color:var(--text3)">'+h(cm[k.category]||k.category)+'</span></div>';
-    h+='<div class="lead-meta">';
-    if(k.tags&&k.tags.length)h+='<span>'+k.tags.map(function(t){return '#'+t}).join(' ')+'</span>';
-    if(k.related_products)h+='<span>📦 '+h(k.related_products)+'</span>';
-    h+='<span>👁 '+k.view_count+'</span>';
-    h+='</div>';
-    h+='<div id="kb-detail-'+k.id+'" style="display:none;padding:12px 0;font-size:13px;color:var(--text);line-height:1.7;white-space:pre-wrap;border-top:1px solid var(--border);margin-top:8px">'+h(k.content||'')+'</div>';
-    h+='<div class="lead-actions"><button onclick="event.stopPropagation();openKBForm(\''+k.id+'\')">编辑</button><button class="btn-lead-danger" onclick="event.stopPropagation();confirmDeleteKB(\''+k.id+'\')">删除</button></div></div>';
-  }
-  grid.innerHTML=h;
-}
-function toggleKBDetail(id){
-  var el=document.getElementById('kb-detail-'+id);if(!el)return;
-  if(el.style.display==='none'){el.style.display='block';sb.from('kb_articles').update({view_count:((allKB.find(function(x){return x.id===id})||{}).view_count||0)+1}).eq('id',id)}
-  else el.style.display='none';
-}
-function openKBForm(id){
-  svEditId=id||null;
-  var k=id?allKB.find(function(x){return x.id===id}):null;
-  document.getElementById('kb-form-title').textContent=id?'编辑文章':'新建文章';
-  document.getElementById('kbf-title').value=k?k.title||'':'';
-  document.getElementById('kbf-category').value=k?k.category||'faq':'faq';
-  document.getElementById('kbf-products').value=k?k.related_products||'':'';
-  document.getElementById('kbf-tags').value=k?(k.tags||[]).join(','):'';
-  document.getElementById('kbf-content').value=k?k.content||'':'';
-  document.getElementById('kb-modal').classList.remove('hidden');
-}
-function closeKBForm(){document.getElementById('kb-modal').classList.add('hidden');svEditId=null}
-async function saveKB(){
-  var title=document.getElementById('kbf-title').value.trim();if(!title){showToast('请输入标题');return}
-  var tags=(document.getElementById('kbf-tags').value||'').split(',').map(function(t){return t.trim()}).filter(Boolean);
-  var data={company_id:currentCompanyId,user_id:currentUser.id,title:title,
-    category:document.getElementById('kbf-category').value,
-    content:document.getElementById('kbf-content').value.trim(),
-        tags:JSON.stringify(tags),
-    related_products:document.getElementById('kbf-products').value.trim(),
-    updated_at:new Date().toISOString()};
-  var error;
-  if(svEditId){var r=await sb.from('kb_articles').update(data).eq('id',svEditId);error=r.error}
-  else{data.created_at=new Date().toISOString();var r2=await sb.from('kb_articles').insert(data);error=r2.error}
-  if(error){showToast('保存失败: '+error.message);return}
-  closeKBForm();await loadKB();showToast(svEditId?'文章已更新':'文章已创建');
-}
-
-
-// —— After-sales delete helpers
-async function confirmDeleteTicket(id){confirmDialog('确定删除该工单？',async function(){await sb.from('service_tickets').delete().eq('id',id);loadTickets()})}
-async function confirmDeleteVisit(id){confirmDialog('确定删除？',async function(){await sb.from('client_visits').delete().eq('id',id);loadVisits()})}
-async function confirmDeleteWarranty(id){confirmDialog('确定删除？',async function(){await sb.from('warranties').delete().eq('id',id);loadWarranties()})}
-async function confirmDeleteMaintenance(id){confirmDialog('确定删除？',async function(){await sb.from('maintenance_plans').delete().eq('id',id);loadMaintenancePlans()})}
-async function confirmDeleteKB(id){confirmDialog('确定删除？',async function(){await sb.from('kb_articles').delete().eq('id',id);loadKB()})}
-
-
 // ═══════════ INVENTORY ═══════════
 var currentInventoryTab='products';
 var allProducts=[],allCategories=[],allWarehouses=[],allStockRecords=[],allAlerts=[],allChecks=[];
@@ -7211,7 +5871,6 @@ async function deleteTransferById(id){
 
 // ====== Stock Ledger 库存台账 ======
 async function loadStockLedger(){
-  try{
   var pid=(document.getElementById('inv-ledger-product')||{}).value||'';
   var wid=(document.getElementById('inv-ledger-warehouse')||{}).value||'';
   var search=((document.getElementById('inv-ledger-search')||{}).value||'').toLowerCase();
@@ -7219,7 +5878,7 @@ async function loadStockLedger(){
   if(pid)q=q.eq('product_id',pid);
   if(wid)q=q.eq('warehouse_id',wid);
   var r=await q.limit(500);
-  if(r.error){console.error('loadStockLedger:',r.error);showToast('台账加载失败: '+r.error.message);return}
+  if(r.error){console.error(r.error);return}
   var records=r.data||[];
   if(search)records=records.filter(function(sr){var pn=findProductName(sr.product_id).toLowerCase();var bn=(sr.batch_no||'').toLowerCase();return pn.indexOf(search)>=0||bn.indexOf(search)>=0});
   // Build running balance
@@ -7244,7 +5903,6 @@ async function loadStockLedger(){
   for(var k2 in outQty){totalOut+=outQty[k2];totalOutAmt+=outAmt[k2]}
   el.innerHTML='入库合计: <b style="color:var(--success)">'+totalIn.toFixed(2)+'</b> 件 / ¥<b style="color:var(--success)">'+totalInAmt.toFixed(2)+'</b> &nbsp;|&nbsp; 出库合计: <b style="color:var(--danger)">'+totalOut.toFixed(2)+'</b> 件 / ¥<b style="color:var(--danger)">'+totalOutAmt.toFixed(2)+'</b> &nbsp;|&nbsp; 记录数: '+records.length;
   renderLedger();
-  }catch(e){console.error('loadStockLedger error:',e);showToast('台账加载失败: '+e.message)}
 }
 function renderLedger(){
   var el=document.getElementById('ledger-table');if(!el)return;
@@ -7897,7 +6555,7 @@ async function loadTargets(){
   var u=document.getElementById('perf-target-user');
   var year=y?parseInt(y.value):new Date().getFullYear();
   var uid=u?u.value:'';
-  var q;try{q=sb.from('sales_targets').select('*,profiles!user_id(display_name,email)').eq('company_id',currentCompanyId).eq('target_year',year).order('target_month')}catch(e2){q={data:[]}};
+  var q=sb.from('sales_targets').select('*,profiles!user_id(display_name,email)').eq('company_id',currentCompanyId).eq('target_year',year).order('target_month');
   if(uid)q=q.eq('user_id',uid);
   var r=await q;
   allTargets=r.data||[];
@@ -9007,98 +7665,6 @@ function renderLeads(){
   grid.innerHTML=html;
 }
 
-// === Lead Company Name Autocomplete ===
-var leadCompSuggIdx=-1,leadCompSuggList=[];
-function onLeadCompanyInput(){
-  var inp=document.getElementById('lf-name');
-  var val=(inp.value||'').trim().toLowerCase();
-  var dd=document.getElementById('lead-name-suggestions');
-  if(!val||val.length<1){dd.classList.add('hidden');leadCompSuggList=[];leadCompSuggIdx=-1;return}
-  var matches=[],seen={};
-  for(var i=0;i<allCompanies.length;i++){
-    var c=allCompanies[i];var cn=(c.name||'').toLowerCase();
-    if(cn&&cn.indexOf(val)>=0&&!seen[cn]){seen[cn]=1;matches.push(c)}
-  }
-  matches.sort(function(a,b){return (a.name||'').length-(b.name||'').length});
-  matches=matches.slice(0,12);
-  if(!matches.length){dd.classList.add('hidden');leadCompSuggList=[];leadCompSuggIdx=-1;return}
-  leadCompSuggList=matches;leadCompSuggIdx=-1;
-  dd.innerHTML=matches.map(function(c,i){return '<div class="name-suggestion'+(i===leadCompSuggIdx?' active':'')+'" data-idx="'+i+'" onmousedown="selectLeadCompany('+i+')"><div class="ns-name">'+escHtml(c.name)+'</div><div class="ns-detail">'+escHtml(c.base||c.legal_person||'')+'</div></div>'}).join('');
-  dd.classList.remove('hidden');
-}
-function onLeadCompanyKey(e){
-  var dd=document.getElementById('lead-name-suggestions');
-  if(dd.classList.contains('hidden'))return;
-  if(e.key==='ArrowDown'){e.preventDefault();leadCompSuggIdx=Math.min(leadCompSuggIdx+1,leadCompSuggList.length-1);updateLeadCompActive()}
-  else if(e.key==='ArrowUp'){e.preventDefault();leadCompSuggIdx=Math.max(leadCompSuggIdx-1,0);updateLeadCompActive()}
-  else if(e.key==='Enter'||e.key==='Tab'){e.preventDefault();if(leadCompSuggIdx>=0)selectLeadCompany(leadCompSuggIdx)}
-  else if(e.key==='Escape'){dd.classList.add('hidden');leadCompSuggIdx=-1}
-}
-function updateLeadCompActive(){
-  var items=document.querySelectorAll('#lead-name-suggestions .name-suggestion');
-  for(var i=0;i<items.length;i++)items[i].classList.toggle('active',i===leadCompSuggIdx);
-  if(leadCompSuggIdx>=0&&items[leadCompSuggIdx])items[leadCompSuggIdx].scrollIntoView({block:'nearest'});
-}
-function selectLeadCompany(idx){
-  var c=leadCompSuggList[idx];if(!c)return;
-  document.getElementById('lf-name').value=c.name;
-  document.getElementById('lead-name-suggestions').classList.add('hidden');
-  leadCompSuggList=[];leadCompSuggIdx=-1;
-  if(c.industry)document.getElementById('lf-industry').value=c.industry;
-  if(c.scale)document.getElementById('lf-scale').value=c.scale;
-}
-
-// === Lead Contact Autocomplete (from existing clients) ===
-var leadContactSuggIdx=-1,leadContactSuggList=[];
-function onLeadContactInput(){
-  var inp=document.getElementById('lf-contact-name');
-  var val=(inp.value||'').trim().toLowerCase();
-  var dd=document.getElementById('lead-contact-suggestions');
-  if(!val||val.length<1){dd.classList.add('hidden');leadContactSuggList=[];leadContactSuggIdx=-1;return}
-  var matches=[],seen={};
-  for(var i=0;i<allContacts.length;i++){
-    var co=allContacts[i];var cn=(co.name||'').toLowerCase();
-    var key=cn+'|'+co.client_id;
-    if(cn&&cn.indexOf(val)>=0&&!seen[key]){
-      seen[key]=1;
-      var cl=allClients.find(function(x){return x.id===co.client_id});
-      var phones='';
-      try{var ph=JSON.parse(co.phone||'[]');if(ph.length)phones=ph[0]}catch(e){phones=co.phone||''}
-      var emails='';
-      try{var em=JSON.parse(co.email||'[]');if(em.length)emails=em[0]}catch(e){emails=co.email||''}
-      matches.push({name:co.name,phone:phones,email:emails,clientName:cl?cl.name:'',dept:co.dept||'',position:co.position||''});
-    }
-  }
-  matches.sort(function(a,b){return (a.name||'').length-(b.name||'').length});
-  matches=matches.slice(0,12);
-  if(!matches.length){dd.classList.add('hidden');leadContactSuggList=[];leadContactSuggIdx=-1;return}
-  leadContactSuggList=matches;leadContactSuggIdx=-1;
-  dd.innerHTML=matches.map(function(m,i){return '<div class="name-suggestion'+(i===leadContactSuggIdx?' active':'')+'" data-idx="'+i+'" onmousedown="selectLeadContact('+i+')"><div><div class="ns-name">'+escHtml(m.name)+'</div><div class="ns-detail">'+escHtml(m.clientName)+(m.position?' · '+escHtml(m.position):'')+(m.phone?' · '+escHtml(m.phone):'')+'</div></div></div>'}).join('');
-  dd.classList.remove('hidden');
-}
-function onLeadContactKey(e){
-  var dd=document.getElementById('lead-contact-suggestions');
-  if(dd.classList.contains('hidden'))return;
-  if(e.key==='ArrowDown'){e.preventDefault();leadContactSuggIdx=Math.min(leadContactSuggIdx+1,leadContactSuggList.length-1);updateLeadContactActive()}
-  else if(e.key==='ArrowUp'){e.preventDefault();leadContactSuggIdx=Math.max(leadContactSuggIdx-1,0);updateLeadContactActive()}
-  else if(e.key==='Enter'||e.key==='Tab'){e.preventDefault();if(leadContactSuggIdx>=0)selectLeadContact(leadContactSuggIdx)}
-  else if(e.key==='Escape'){dd.classList.add('hidden');leadContactSuggIdx=-1}
-}
-function updateLeadContactActive(){
-  var items=document.querySelectorAll('#lead-contact-suggestions .name-suggestion');
-  for(var i=0;i<items.length;i++)items[i].classList.toggle('active',i===leadContactSuggIdx);
-  if(leadContactSuggIdx>=0&&items[leadContactSuggIdx])items[leadContactSuggIdx].scrollIntoView({block:'nearest'});
-}
-function selectLeadContact(idx){
-  var m=leadContactSuggList[idx];if(!m)return;
-  document.getElementById('lf-contact-name').value=m.name;
-  if(m.phone)document.getElementById('lf-contact-phone').value=m.phone;
-  if(m.email)document.getElementById('lf-contact-email').value=m.email;
-  document.getElementById('lead-contact-suggestions').classList.add('hidden');
-  leadContactSuggList=[];leadContactSuggIdx=-1;
-}
-
-
 function openLeadForm(id){
   leadEditId=id||null;
   document.getElementById('lead-form-title').textContent=id?'编辑线索':'新建线索';
@@ -9256,337 +7822,6 @@ async function recycleStale(){
   }
   if(recycled>0){loadLeads();showToast('已回收 '+recycled+' 条线索')}
   else showToast('没有需要回收的线索');
-}
-
-
-
-// === Collab: Follow-up Records ===
-async function loadFollowups(){
-  if(!currentCompanyId)return;
-  var clientFilter=document.getElementById('fu-client-filter').value;
-  var typeFilter=document.getElementById('fu-type-filter').value;
-  // Populate client filter
-  var sel=document.getElementById('fu-client-filter');
-  if(sel.options.length<=1){
-    for(var i=0;i<allClients.length;i++){var cl=allClients[i];sel.innerHTML+='<option value="'+cl.id+'">'+h(cl.name)+'</option>'}
-  }
-  var q=sb.from('engagement_logs').select('*').eq('company_id',currentCompanyId).order('created_at',{ascending:false});
-  if(clientFilter)q=q.eq('client_id',clientFilter);
-  if(typeFilter)q=q.eq('type',typeFilter);
-  var {data}=await q;
-  var list=document.getElementById('followup-list');
-  if(!data||!data.length){list.innerHTML='<div class="empty" style="padding:20px">暂无跟进记录</div>';return}
-  var h='';
-  for(var i=0;i<data.length;i++){
-    var f=data[i];var cl2=allClients.find(function(x){return x.id===f.client_id});
-    h+='<div class="schedule-item" style="border-left-color:#8B5CF6"><div class="sch-title"><span style="background:#EDE9FE;color:#7C3AED;padding:1px 6px;border-radius:4px;font-size:11px">'+h(f.type||'其他')+'</span> '+(cl2?h(cl2.name):'未知客户')+'</div><div style="font-size:13px;margin:4px 0">'+h(f.content||'')+'</div>'+(f.outcome?'<div style="font-size:12px;color:#10B981">'+h(f.outcome)+'</div>':'')+(f.next_step?'<div class="sch-meta">下一步: '+h(f.next_step)+(f.next_date?' ('+f.next_date+')':'')+'</div>':'')+'<div class="sch-meta">'+new Date(f.created_at).toLocaleString('zh-CN')+'<button class="btn-sm" style="font-size:10px;padding:1px 6px;color:var(--danger);margin-left:8px" onclick="deleteEngagement(''+f.id+'')">删除</button></div></div>';
-  }
-  list.innerHTML=h;
-}
-
-function openFollowupForm(){
-  var h='<div class="modal-overlay" id="followup-modal"><div class="modal-sheet"><h3>新增跟进记录</h3>';
-  h+='<div class="form-group"><label>客户 *</label><select id="fu-client"><option value="">请选择</option>';
-  for(var i=0;i<allClients.length;i++)h+='<option value="'+allClients[i].id+'">'+h(allClients[i].name)+'</option>';
-  h+='</select></div>';
-  h+='<div class="form-group"><label>跟进类型</label><select id="fu-type"><option value="电话">电话</option><option value="拜访">拜访</option><option value="微信">微信</option><option value="邮件">邮件</option><option value="会议">会议</option><option value="其他">其他</option></select></div>';
-  h+='<div class="form-group"><label>跟进内容 *</label><textarea id="fu-content" rows="3" placeholder="请输入跟进内容..."></textarea></div>';
-  h+='<div class="form-group"><label>结果</label><input id="fu-outcome" placeholder="跟进结果（可选）"></div>';
-  h+='<div class="form-row"><div class="form-group"><label>下一步计划</label><input id="fu-next-step" placeholder="下一步"></div><div class="form-group"><label>下次跟进日期</label><input type="date" id="fu-next-date"></div></div>';
-  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">取消</button><button class="btn-save" onclick="saveFollowup()">保存</button></div></div></div>';
-  document.body.insertAdjacentHTML('beforeend',h);
-}
-
-async function saveFollowup(){
-  var clientId=document.getElementById('fu-client').value;
-  var type=document.getElementById('fu-type').value;
-  var content=document.getElementById('fu-content').value.trim();
-  if(!clientId||!content){showToast('请填写客户和内容');return}
-  var outcome=document.getElementById('fu-outcome').value.trim();
-  var nextStep=document.getElementById('fu-next-step').value.trim();
-  var nextDate=document.getElementById('fu-next-date').value||null;
-  var {error}=await sb.from('engagement_logs').insert({company_id:currentCompanyId,client_id:clientId,type:type,content:content,outcome:outcome||null,next_step:nextStep||null,next_date:nextDate,created_by:currentUser.id});
-  document.getElementById('followup-modal').remove();
-  if(error){showToast('保存失败: '+error.message);return}
-  loadFollowups();showToast('已保存');
-}
-
-// === Collab: Department Messages ===
-async function loadMessages(){
-  if(!currentCompanyId)return;
-  var deptFilter=document.getElementById('msg-dept-filter').value;
-  var sel=document.getElementById('msg-dept-filter');
-  if(sel.options.length<=1){
-    for(var i=0;i<allDepartments.length;i++){var d=allDepartments[i];sel.innerHTML+='<option value="'+d.id+'">'+h(d.name)+'</option>'}
-  }
-  var q=sb.from('dept_messages').select('*').eq('company_id',currentCompanyId).order('created_at',{ascending:false});
-  if(deptFilter)q=q.eq('dept_id',deptFilter);
-  var {data}=await q;
-  var list=document.getElementById('msg-list');
-  if(!data||!data.length){list.innerHTML='<div class="empty" style="padding:20px">暂无消息</div>';return}
-  var h='';
-  for(var i=0;i<data.length;i++){
-    var m=data[i];
-    var user=allUsers.find(function(u){return u.user_id===m.user_id});
-    var dept=allDepartments.find(function(d){return d.id===m.dept_id});
-    var userName=user?(user.display_name||user.email||''):'未知';
-    h+='<div class="schedule-item" style="border-left-color:#10B981"><div class="sch-title">'+h(userName)+(dept?' <span style="font-size:11px;color:var(--text3)">@'+h(dept.name)+'</span>':'')+'</div><div style="font-size:14px;margin:4px 0">'+h(m.content)+'</div>'+(m.attachments&&m.attachments.length?'<div style="font-size:11px;color:var(--primary)">附件: '+m.attachments.length+'个</div>':'')+'<div class="sch-meta">'+new Date(m.created_at).toLocaleString('zh-CN')+'</div></div>';
-  }
-  list.innerHTML=h;
-}
-
-function openMsgForm(){
-  var h='<div class="modal-overlay" id="msg-modal"><div class="modal-sheet"><h3>发送部门消息</h3>';
-  h+='<div class="form-group"><label>目标部门</label><select id="msg-dept"><option value="">全公司</option>';
-  for(var i=0;i<allDepartments.length;i++)h+='<option value="'+allDepartments[i].id+'">'+h(allDepartments[i].name)+'</option>';
-  h+='</select></div>';
-  h+='<div class="form-group"><label>消息内容 *</label><textarea id="msg-content" rows="3" placeholder="输入消息..."></textarea></div>';
-  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">取消</button><button class="btn-save" onclick="sendMsg()">发送</button></div></div></div>';
-  document.body.insertAdjacentHTML('beforeend',h);
-}
-
-async function sendMsg(){
-  var deptId=document.getElementById('msg-dept').value||null;
-  var content=document.getElementById('msg-content').value.trim();
-  if(!content){showToast('请输入消息内容');return}
-  var {error}=await sb.from('dept_messages').insert({company_id:currentCompanyId,dept_id:deptId?parseInt(deptId):null,user_id:currentUser.id,content:content});
-  document.getElementById('msg-modal').remove();
-  if(error){showToast('发送失败: '+error.message);return}
-  loadMessages();showToast('已发送');
-}
-
-// Update switchCollabTab to support new tabs
-var _origSwitchCollabTab=switchCollabTab;
-switchCollabTab=function(tab){
-  _origSwitchCollabTab(tab);
-  document.getElementById('collab-followup-panel').classList.toggle('hidden',tab!=='followup');
-  document.getElementById('collab-msg-panel').classList.toggle('hidden',tab!=='msg');
-  if(tab==='followup')loadFollowups();
-  else if(tab==='msg')loadMessages();
-};
-
-// ============== COLLAB OFFICE MODULE ==============
-var collabActiveTab='schedule';
-
-function switchCollabTab(tab){
-  collabActiveTab=tab;
-  var tabs=document.querySelectorAll('.collab-subtab');
-  for(var i=0;i<tabs.length;i++)tabs[i].classList.toggle('active',tabs[i].getAttribute('data-ctab')===tab);
-  document.getElementById('collab-schedule-panel').classList.toggle('hidden',tab!=='schedule');
-  document.getElementById('collab-task-panel').classList.toggle('hidden',tab!=='task');
-  document.getElementById('collab-approval-panel').classList.toggle('hidden',tab!=='approval');
-  document.getElementById('collab-comment-panel').classList.toggle('hidden',tab!=='comment');
-  if(tab==='schedule')loadSchedules();
-  else if(tab==='task')loadTasks();
-  else if(tab==='approval')loadApprovals();
-  else if(tab==='comment')loadComments();
-}
-
-// === 1. Schedules ===
-async function loadSchedules(){
-  if(!currentCompanyId)return;
-  var today=new Date().toISOString().slice(0,10);
-  var {data}=await sb.from('schedules').select('*').eq('company_id',currentCompanyId).gte('start_time',today).order('start_time');
-  var list=document.getElementById('schedule-list');
-  if(!data||!data.length){list.innerHTML='<div class="empty" style="padding:20px">今日暂无日程</div>';return}
-  var h='';
-  for(var i=0;i<data.length;i++){
-    var s=data[i];
-    var time=s.all_day?'全天':new Date(s.start_time).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
-    h+='<div class="schedule-item" style="border-left-color:'+(s.color||'#4F6EF7')+'"><div class="sch-title">'+h(s.title)+' <span style="font-size:11px;color:var(--text3)">'+time+'</span></div>'+(s.description?'<div style="font-size:13px;color:var(--text2)">'+h(s.description)+'</div>':'')+(s.location?'<div class="sch-meta">📍 '+h(s.location)+'</div>':'')+'<div style="margin-top:6px;display:flex;gap:6px"><button class="btn-sm" style="font-size:11px;padding:2px 8px" onclick="editSchedule(''+s.id+'')">编辑</button><button class="btn-sm" style="font-size:11px;padding:2px 8px;color:var(--danger)" onclick="deleteSchedule(''+s.id+'')">删除</button></div></div>';
-  }
-  list.innerHTML=h;
-}
-
-function openScheduleForm(id){
-  var s=id?allSchedules.find(function(x){return x.id===id}):null;
-  var h='<div class="modal-overlay" id="schedule-modal"><div class="modal-sheet"><h3>'+(s?'编辑日程':'新建日程')+'</h3>';
-  h+='<div class="form-group"><label>标题 *</label><input id="sch-title" value="'+(s?escAttr(s.title):'')+'"></div>';
-  h+='<div class="form-row"><div class="form-group"><label>开始时间 *</label><input type="datetime-local" id="sch-start" value="'+(s?s.start_time.slice(0,16):'')+'"></div><div class="form-group"><label>结束时间</label><input type="datetime-local" id="sch-end" value="'+(s&&s.end_time?s.end_time.slice(0,16):'')+'"></div></div>';
-  h+='<div class="form-row"><div class="form-group"><label><input type="checkbox" id="sch-allday" '+(s&&s.all_day?'checked':'')+'> 全天</label></div><div class="form-group"><label>颜色</label><input type="color" id="sch-color" value="'+(s?s.color||'#4F6EF7':'#4F6EF7')+'"></div></div>';
-  h+='<div class="form-group"><label>地点</label><input id="sch-location" value="'+(s?escAttr(s.location||''):'')+'"></div>';
-  h+='<div class="form-group"><label>描述</label><textarea id="sch-desc" rows="2">'+(s?escHtml(s.description||''):'')+'</textarea></div>';
-  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">取消</button><button class="btn-save" onclick="saveSchedule(\''+(s?s.id:'')+'\')">保存</button></div></div></div>';
-  document.body.insertAdjacentHTML('beforeend',h);
-}
-
-async function saveSchedule(id){
-  var title=document.getElementById('sch-title').value.trim();
-  if(!title){showToast('请输入标题');return}
-  var start=document.getElementById('sch-start').value;
-  if(!start){showToast('请选择开始时间');return}
-  var end=document.getElementById('sch-end').value||null;
-  var allDay=document.getElementById('sch-allday').checked;
-  var color=document.getElementById('sch-color').value;
-  var location=document.getElementById('sch-location').value.trim();
-  var desc=document.getElementById('sch-desc').value.trim();
-  var obj={title:title,start_time:new Date(start).toISOString(),end_time:end?new Date(end).toISOString():null,all_day:allDay,color:color,location:location||null,description:desc||null,company_id:currentCompanyId,user_id:currentUser.id};
-  var err;
-  if(id){var r=await sb.from('schedules').update(obj).eq('id',id);err=r.error}
-  else{var r2=await sb.from('schedules').insert(obj);err=r2.error}
-  document.getElementById('schedule-modal').remove();
-  if(err){showToast('保存失败: '+err.message);return}
-  loadSchedules();showToast('已保存');
-}
-
-async function deleteSchedule(id){
-  await sb.from('schedules').delete().eq('id',id);
-  loadSchedules();showToast('已删除');
-}
-
-// === 2. Tasks ===
-async function loadTasks(){
-  if(!currentCompanyId)return;
-  var filter=document.getElementById('task-filter').value;
-  var q=sb.from('tasks').select('*').eq('company_id',currentCompanyId).order('created_at',{ascending:false});
-  if(filter!=='all')q=q.eq('status',filter);
-  var {data}=await q;
-  var list=document.getElementById('task-list');
-  if(!data||!data.length){list.innerHTML='<div class="empty" style="padding:20px">暂无任务</div>';return}
-  var h='';
-  for(var i=0;i<data.length;i++){
-    var t=data[i];
-    var prio=t.priority||'normal';
-    var statusLabel={todo:'待办',in_progress:'进行中',done:'已完成',cancelled:'已取消'}[t.status]||t.status;
-    h+='<div class="task-item task-priority-'+prio+'"><div class="task-title">'+h(t.title)+' <span class="status-badge status-'+(t.status==='in_progress'?'progress':t.status)+'">'+statusLabel+'</span></div>'+(t.description?'<div style="font-size:13px;color:var(--text2)">'+h(t.description)+'</div>':'')+(t.due_date?'<div class="task-meta">📅 截止: '+t.due_date+'</div>':'')+'<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap"><button class="btn-sm" style="font-size:11px;padding:2px 8px" onclick="editTask(''+t.id+'')">编辑</button><button class="btn-sm" style="font-size:11px;padding:2px 8px;color:var(--danger)" onclick="deleteTask(''+t.id+'')">删除</button></div></div>';
-  }
-  list.innerHTML=h;
-}
-
-function openTaskForm(id){
-  var t=id?allTasks.find(function(x){return x.id===id}):null;
-  var h='<div class="modal-overlay" id="task-modal"><div class="modal-sheet"><h3>'+(t?'编辑任务':'新建任务')+'</h3>';
-  h+='<div class="form-group"><label>标题 *</label><input id="ta-title" value="'+(t?escAttr(t.title):'')+'"></div>';
-  h+='<div class="form-group"><label>描述</label><textarea id="ta-desc" rows="2">'+(t?escHtml(t.description||''):'')+'</textarea></div>';
-  h+='<div class="form-row"><div class="form-group"><label>优先级</label><select id="ta-priority"><option value="urgent"'+(t&&t.priority==='urgent'?' selected':'')+'>紧急</option><option value="high"'+(t&&t.priority==='high'?' selected':'')+'>高</option><option value="normal"'+(t&&t.priority==='normal'?' selected':'')+'>普通</option><option value="low"'+(t&&t.priority==='low'?' selected':'')+'>低</option></select></div><div class="form-group"><label>截止日期</label><input type="date" id="ta-due" value="'+(t&&t.due_date?t.due_date:'')+'"></div></div>';
-  h+='<div class="form-row"><div class="form-group"><label>状态</label><select id="ta-status"><option value="todo"'+(t&&t.status==='todo'?' selected':'')+'>待办</option><option value="in_progress"'+(t&&t.status==='in_progress'?' selected':'')+'>进行中</option><option value="done"'+(t&&t.status==='done'?' selected':'')+'>已完成</option></select></div><div class="form-group"><label>分配给</label><select id="ta-assigned">'+(function(){var o='<option value="">自己</option>';for(var k=0;k<allUsers.length;k++){var u=allUsers[k];o+='<option value="'+u.user_id+'"'+(t&&t.assigned_to===u.user_id?' selected':'')+'>'+(u.display_name||u.email||u.user_id)+'</option>'}return o})()+'</select></div></div>';
-  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">取消</button><button class="btn-save" onclick="saveTask(\''+(t?t.id:'')+'\')">保存</button></div></div></div>';
-  document.body.insertAdjacentHTML('beforeend',h);
-}
-
-async function saveTask(id){
-  var title=document.getElementById('ta-title').value.trim();
-  if(!title){showToast('请输入标题');return}
-  var desc=document.getElementById('ta-desc').value.trim();
-  var priority=document.getElementById('ta-priority').value;
-  var due=document.getElementById('ta-due').value||null;
-  var status=document.getElementById('ta-status').value;
-  var assigned=document.getElementById('ta-assigned').value||currentUser.id;
-  var obj={title:title,description:desc||null,priority:priority,due_date:due,status:status,assigned_to:assigned,assigned_by:currentUser.id,company_id:currentCompanyId};
-  if(status==='done')obj.completed_at=new Date().toISOString();
-  var err;
-  if(id){var r=await sb.from('tasks').update(obj).eq('id',id);err=r.error}
-  else{var r2=await sb.from('tasks').insert(obj);err=r2.error}
-  document.getElementById('task-modal').remove();
-  if(err){showToast('保存失败: '+err.message);return}
-  loadTasks();showToast('已保存');
-}
-
-async function deleteTask(id){
-  await sb.from('tasks').delete().eq('id',id);
-  loadTasks();showToast('已删除');
-}
-
-function editTask(id){openTaskForm(id)}
-function editSchedule(id){openScheduleForm(id)}
-
-// === 3. Approvals ===
-async function loadApprovals(){
-  if(!currentCompanyId)return;
-  var filter=document.getElementById('approval-filter').value;
-  var q=sb.from('approval_requests').select('*').eq('company_id',currentCompanyId).order('created_at',{ascending:false});
-  if(filter!=='all')q=q.eq('status',filter);
-  var {data}=await q;
-  var list=document.getElementById('approval-list');
-  if(!data||!data.length){list.innerHTML='<div class="empty" style="padding:20px">暂无审批</div>';return}
-  var h='',statusMap={pending:'待审批',approved:'已通过',rejected:'已驳回',cancelled:'已取消'};
-  for(var i=0;i<data.length;i++){
-    var a=data[i];
-    h+='<div class="approval-item approval-'+(a.status==='pending'?'pending':a.status==='approved'?'approved':a.status==='rejected'?'rejected':'')+'"><div class="appr-title">'+h(a.title)+' <span class="status-badge status-'+(a.status==='pending'?'progress':a.status==='approved'?'done':a.status==='rejected'?'cancelled':'cancelled')+'">'+statusMap[a.status]+'</span></div><div class="appr-meta">'+h(a.type)+' · 步骤 '+a.current_step+'/'+a.total_steps+' · '+new Date(a.created_at).toLocaleDateString('zh-CN')+'</div>'+(a.status==='pending'?'<div style="margin-top:6px"><button class="btn-sm" style="font-size:11px;padding:2px 8px;background:#10B981;color:#fff;border:none;border-radius:4px;margin-right:4px" onclick="approveAction(''+a.id+'','approve')">通过</button><button class="btn-sm" style="font-size:11px;padding:2px 8px;background:#EF4444;color:#fff;border:none;border-radius:4px" onclick="approveAction(''+a.id+'','reject')">驳回</button></div>':'')+'</div>';
-  }
-  list.innerHTML=h;
-}
-
-function openApprovalForm(){
-  var types=['报价审批','合同审批','折扣审批','出差申请','报销申请','客户转移','自定义'];
-  var h='<div class="modal-overlay" id="approval-modal"><div class="modal-sheet"><h3>发起审批</h3>';
-  h+='<div class="form-group"><label>审批类型</label><select id="ap-type">';
-  for(var i=0;i<types.length;i++)h+='<option value="'+types[i]+'">'+types[i]+'</option>';
-  h+='</select></div>';
-  h+='<div class="form-group"><label>标题 *</label><input id="ap-title" placeholder="审批标题"></div>';
-  h+='<div class="form-group"><label>内容说明</label><textarea id="ap-content" rows="3" placeholder="请输入审批内容和理由..."></textarea></div>';
-  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">取消</button><button class="btn-save" onclick="submitApproval()">提交</button></div></div></div>';
-  document.body.insertAdjacentHTML('beforeend',h);
-}
-
-async function submitApproval(){
-  var type=document.getElementById('ap-type').value;
-  var title=document.getElementById('ap-title').value.trim();
-  var content=document.getElementById('ap-content').value.trim();
-  if(!title){showToast('请输入标题');return}
-  var {error}=await sb.from('approval_requests').insert({company_id:currentCompanyId,requestor_id:currentUser.id,title:title,type:type,content:{detail:content||''},status:'pending',total_steps:1});
-  document.getElementById('approval-modal').remove();
-  if(error){showToast('提交失败: '+error.message);return}
-  loadApprovals();showToast('已提交');
-}
-
-async function approveAction(requestId,action){
-  var {data:req}=await sb.from('approval_requests').select('*').eq('id',requestId).single();
-  if(!req){showToast('审批不存在');return}
-  var newStatus=action==='approve'?'approved':'rejected';
-  var {error}=await sb.from('approval_requests').update({status:newStatus,updated_at:new Date().toISOString()}).eq('id',requestId);
-  if(error){showToast('操作失败: '+error.message);return}
-  await sb.from('approval_actions').insert({company_id:currentCompanyId,request_id:requestId,approver_id:currentUser.id,action:action,step:req.current_step||1});
-  loadApprovals();showToast(action==='approve'?'已通过':'已驳回');
-}
-
-// === 4. Client Comments / Collaboration ===
-var commentClientsList=[];
-async function loadComments(){
-  if(!currentCompanyId)return;
-  var clientFilter=document.getElementById('comment-client-filter').value;
-  // Load client options if empty
-  if(!commentClientsList.length){
-    var sel=document.getElementById('comment-client-filter');
-    for(var i=0;i<allClients.length;i++){var cl=allClients[i];sel.innerHTML+='<option value="'+cl.id+'">'+h(cl.name)+'</option>';commentClientsList.push(cl)}
-  }
-  var q=sb.from('client_comments').select('*').eq('company_id',currentCompanyId).order('created_at',{ascending:false});
-  if(clientFilter)q=q.eq('client_id',clientFilter);
-  var {data}=await q;
-  var list=document.getElementById('comment-list');
-  if(!data||!data.length){list.innerHTML='<div class="empty" style="padding:20px">暂无评论</div>';return}
-  var h='';
-  for(var i=0;i<data.length;i++){
-    var cm=data[i];
-    var cl=allClients.find(function(x){return x.id===cm.client_id});
-    h+='<div class="comment-item"><div class="cmt-title">'+h(cm.content)+'</div><div class="cmt-meta">客户: '+(cl?h(cl.name):'未知')+' · '+new Date(cm.created_at).toLocaleString('zh-CN')+'<button class="btn-sm" style="font-size:10px;padding:1px 6px;color:var(--danger);margin-left:8px" onclick="deleteComment(''+cm.id+'')">删除</button></div></div>';
-  }
-  list.innerHTML=h;
-}
-
-function openCommentForm(){
-  var h='<div class="modal-overlay" id="comment-modal"><div class="modal-sheet"><h3>添加客户评论</h3>';
-  h+='<div class="form-group"><label>客户 *</label><select id="cm-client"><option value="">请选择</option>';
-  for(var i=0;i<allClients.length;i++)h+='<option value="'+allClients[i].id+'">'+h(allClients[i].name)+'</option>';
-  h+='</select></div>';
-  h+='<div class="form-group"><label>评论内容 *</label><textarea id="cm-content" rows="3" placeholder="输入评论..."></textarea></div>';
-  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">取消</button><button class="btn-save" onclick="saveComment()">保存</button></div></div></div>';
-  document.body.insertAdjacentHTML('beforeend',h);
-}
-
-async function saveComment(){
-  var clientId=document.getElementById('cm-client').value;
-  var content=document.getElementById('cm-content').value.trim();
-  if(!clientId||!content){showToast('请填写完整信息');return}
-  var {error}=await sb.from('client_comments').insert({company_id:currentCompanyId,client_id:parseInt(clientId),user_id:currentUser.id,content:content});
-  document.getElementById('comment-modal').remove();
-  if(error){showToast('保存失败: '+error.message);return}
-  loadComments();showToast('已保存');
-}
-
-async function deleteComment(id){
-  await sb.from('client_comments').delete().eq('id',id);
-  loadComments();showToast('已删除');
 }
 
 // ============ NEW: Birthday Reminder ============
@@ -10139,6 +8374,5 @@ function extendPermissionMatrix(){
 }
 
 </script>
-<div id="toast-container"></div>
 </body>
 </html>

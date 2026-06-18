@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>台账测试</title>
+<style>
+.inv-subtabs{display:flex;gap:8px;padding:12px 16px;border-bottom:1px solid #ccc;overflow-x:auto}
+.inv-subtab{padding:7px 18px;border-radius:16px;font-size:13px;cursor:pointer;border:none;background:#f0f0f0;white-space:nowrap}
+.inv-subtab.active{background:#4F6EF7;color:#fff}
+.inv-panel{display:none;padding:16px}
+.inv-panel.active{display:block}
+</style></head><body>
+<div class="inv-subtabs">
+ <button class="inv-subtab active" onclick="switchInventoryTab('products')">产品库</button>
+ <button class="inv-subtab" onclick="switchInventoryTab('records')">出入库</button>
+ <button class="inv-subtab" onclick="switchInventoryTab('alerts')">库存预警</button>
+ <button class="inv-subtab" onclick="switchInventoryTab('checks')">盘点</button>
+ <button class="inv-subtab" onclick="switchInventoryTab('warehouses')">仓库</button>
+ <button class="inv-subtab" onclick="switchInventoryTab('transfers')">调拨</button>
+ <button class="inv-subtab" onclick="switchInventoryTab('ledger')">台账</button>
+</div>
+<div class="inv-panel active" id="inv-products">📦 产品库面板</div>
+<div class="inv-panel" id="inv-records">📋 出入库面板</div>
+<div class="inv-panel" id="inv-alerts">⚠️ 库存预警面板</div>
+<div class="inv-panel" id="inv-checks">🔍 盘点面板</div>
+<div class="inv-panel" id="inv-warehouses">🏗️ 仓库面板</div>
+<div class="inv-panel" id="inv-transfers">🔄 调拨面板</div>
+<div class="inv-panel" id="inv-ledger">📊 台账面板 - 全部产品/全部仓库/搜索批次/导出CSV</div>
+<div id="log" style="margin-top:20px;padding:10px;background:#f5f5f5;font-family:monospace;font-size:12px"></div>
+<script>
+function switchInventoryTab(t){
+  document.getElementById('log').textContent += 'switchInventoryTab CALLED: ' + t + '\n';
+  document.querySelectorAll('.inv-subtab').forEach(function(b){b.classList.remove('active')});
+  document.querySelectorAll('.inv-panel').forEach(function(p){p.classList.remove('active')});
+  var btns=document.querySelectorAll('.inv-subtab');
+  var idx={products:0,records:1,alerts:2,checks:3,warehouses:4,transfers:5,ledger:6}[t]||0;
+  if(btns[idx])btns[idx].classList.add('active');
+  var panel=document.getElementById('inv-'+t);
+  if(panel)panel.classList.add('active');
+  document.getElementById('log').textContent += '  idx='+idx+' panel='+(panel?panel.id:'null')+' active='+(panel?panel.classList.contains('active'):'N/A')+'\n';
+}
+</script>
+</body></html>
