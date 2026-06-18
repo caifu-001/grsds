@@ -1897,9 +1897,7 @@ input,select,textarea,button{font-family:inherit}
    <button class="collab-subtab" data-ctab="task" onclick="switchCollabTab('task')">任务</button>
    <button class="collab-subtab" data-ctab="approval" onclick="switchCollabTab('approval')">审批</button>
    <button class="collab-subtab" data-ctab="followup" onclick="switchCollabTab('followup')">跟进</button>
-   <button class="collab-subtab" data-ctab="followup" onclick="switchCollabTab('followup')">跟进</button>
    <button class="collab-subtab" data-ctab="comment" onclick="switchCollabTab('comment')">协作</button>
-   <button class="collab-subtab" data-ctab="msg" onclick="switchCollabTab('msg')">消息</button>
    <button class="collab-subtab" data-ctab="msg" onclick="switchCollabTab('msg')">消息</button>
   </div>
   <div id="collab-schedule-panel" class="collab-panel">
@@ -6178,12 +6176,12 @@ function renderTickets(){
   var pm={urgent:'🔴紧急',high:'🟠高',normal:'🟢普通',low:'⚪低'};
   var h='';for(var i=0;i<list.length;i++){var t=list[i];
     h+='<div class="lead-card" onclick="openTicketForm(\''+t.id+'\')">';
-    h+='<div class="lead-name">'+h(t.title)+' <span style="font-size:11px;color:var(--text3)">#'+(t.ticket_no||t.id)+'</span></div>';
+    h+='<div class="lead-name">'+escHtml(t.title)+' <span style="font-size:11px;color:var(--text3)">#'+(t.ticket_no||t.id)+'</span></div>';
     h+='<div class="lead-meta"><span class="lead-status-badge '+t.status+'">'+(sm[t.status]||t.status)+'</span>';
-    h+='<span>'+h(tm[t.type]||t.type)+'</span><span>'+h(pm[t.priority]||'')+'</span>';
-    if(t.engineer_name)h+='<span>🔧 '+h(t.engineer_name)+'</span>';
+    h+='<span>'+escHtml(tm[t.type]||t.type)+'</span><span>'+escHtml(pm[t.priority]||'')+'</span>';
+    if(t.engineer_name)h+='<span>🔧 '+escHtml(t.engineer_name)+'</span>';
     h+='</div>';
-    if(t.description)h+='<div style="font-size:12px;color:var(--text2);margin-top:4px">'+h(t.description).substring(0,80)+'</div>';
+    if(t.description)h+='<div style="font-size:12px;color:var(--text2);margin-top:4px">'+escHtml(t.description).substring(0,80)+'</div>';
     h+='<div class="lead-actions"><button class="btn-lead-primary" onclick="event.stopPropagation();changeTicketStatus(\''+t.id+'\',\''+(t.status==='pending'?'dispatched':t.status==='dispatched'?'in_progress':t.status==='in_progress'?'completed':t.status==='completed'?'confirmed':'closed')+'\')">'+(t.status==='pending'?'派单':t.status==='dispatched'?'开始处理':t.status==='in_progress'?'完工':'关闭')+'</button>';
     h+='<button onclick="event.stopPropagation();openTicketForm(\''+t.id+'\')">编辑</button><button class="btn-lead-danger" onclick="event.stopPropagation();confirmDeleteTicket(\''+t.id+'\')">删除</button></div></div>';
   }
@@ -6249,13 +6247,13 @@ function renderVisits(){
   var ss={planned:'planning',completed:'success',cancelled:'cancelled'};
   var h='';for(var i=0;i<list.length;i++){var v=list[i];var cn='';if(v.client_id&&allClients){var cc=allClients.find(function(x){return x.id===v.client_id});cn=cc?cc.name:''}
     h+='<div class="lead-card">';
-    h+='<div class="lead-name">'+h(v.title||'回访记录')+' <span style="font-size:11px;color:var(--text3)">'+h(cn)+'</span></div>';
+    h+='<div class="lead-name">'+escHtml(v.title||'回访记录')+' <span style="font-size:11px;color:var(--text3)">'+escHtml(cn)+'</span></div>';
     h+='<div class="lead-meta"><span class="lead-status-badge '+(ss[v.status]||'')+'">'+(v.status==='planned'?'计划中':v.status==='completed'?'已完成':'已取消')+'</span>';
-    h+='<span>'+h(vm[v.visit_type]||v.visit_type)+'</span><span>'+(mth[v.visit_method]||'📋')+' '+h(v.visit_method||'')+'</span>';
+    h+='<span>'+escHtml(vm[v.visit_type]||v.visit_type)+'</span><span>'+(mth[v.visit_method]||'📋')+' '+escHtml(v.visit_method||'')+'</span>';
     if(v.planned_date)h+='<span>📅 '+v.planned_date+'</span>';
     if(v.satisfaction)h+='<span>⭐ '+v.satisfaction+'</span>';
     h+='</div>';
-    if(v.content)h+='<div style="font-size:12px;color:var(--text2);margin-top:4px">'+h(v.content).substring(0,100)+'</div>';
+    if(v.content)h+='<div style="font-size:12px;color:var(--text2);margin-top:4px">'+escHtml(v.content).substring(0,100)+'</div>';
     h+='<div class="lead-actions"><button onclick="event.stopPropagation();openVisitForm(\''+v.id+'\')">编辑</button><button class="btn-lead-danger" onclick="event.stopPropagation();confirmDeleteVisit(\''+v.id+'\')">删除</button></div></div>';
   }
   grid.innerHTML=h;
@@ -6333,11 +6331,11 @@ function renderWarranties(){
   var h='';for(var i=0;i<list.length;i++){var w=list[i];var cn='';if(w.client_id&&allClients){var cc=allClients.find(function(x){return x.id===w.client_id});cn=cc?cc.name:''}
     var endLabel=w.warranty_end||'';if(w.status==='active'&&w.warranty_end){var dd=Math.ceil((new Date(w.warranty_end)-now)/86400000);endLabel+=' ('+(dd>0?dd+'天':'已到期')+')'}
     h+='<div class="lead-card">';
-    h+='<div class="lead-name">'+h(w.product_name)+' <span style="font-size:11px;color:var(--text3)">'+h(cn)+'</span></div>';
-    h+='<div class="lead-meta"><span>'+h(ss[w.status]||w.status)+'</span>';
-    if(w.serial_no)h+='<span># '+h(w.serial_no)+'</span>';
-    h+='<span>📅 '+h(w.warranty_start||'')+' → '+h(endLabel)+'</span>';
-    h+='<span>'+h(w.warranty_type||'')+'</span>';
+    h+='<div class="lead-name">'+escHtml(w.product_name)+' <span style="font-size:11px;color:var(--text3)">'+escHtml(cn)+'</span></div>';
+    h+='<div class="lead-meta"><span>'+escHtml(ss[w.status]||w.status)+'</span>';
+    if(w.serial_no)h+='<span># '+escHtml(w.serial_no)+'</span>';
+    h+='<span>📅 '+escHtml(w.warranty_start||'')+' → '+escHtml(endLabel)+'</span>';
+    h+='<span>'+escHtml(w.warranty_type||'')+'</span>';
     h+='</div>';
     h+='<div class="lead-actions"><button onclick="event.stopPropagation();openWarrantyForm(\''+w.id+'\')">编辑</button><button class="btn-lead-danger" onclick="event.stopPropagation();confirmDeleteWarranty(\''+w.id+'\')">删除</button></div></div>';
   }
@@ -6390,9 +6388,9 @@ function renderMaintenancePlans(){
   var sc={scheduled:'planning',in_progress:'active',completed:'success',overdue:'urgent',cancelled:'cancelled'};
   var h='';for(var i=0;i<list.length;i++){var m=list[i];var cn='';if(m.client_id&&allClients){var cc=allClients.find(function(x){return x.id===m.client_id});cn=cc?cc.name:''}
     h+='<div class="lead-card">';
-    h+='<div class="lead-name">🔧 '+h(m.product_name||'维保计划')+' <span style="font-size:11px;color:var(--text3)">'+h(cn)+'</span></div>';
-    h+='<div class="lead-meta"><span class="lead-status-badge '+(sc[m.status]||'')+'">'+h(ss[m.status]||m.status)+'</span>';
-    h+='<span>'+h(m.plan_type||'')+'</span><span>🔄 '+h(m.schedule_interval||'')+'</span>';
+    h+='<div class="lead-name">🔧 '+escHtml(m.product_name||'维保计划')+' <span style="font-size:11px;color:var(--text3)">'+escHtml(cn)+'</span></div>';
+    h+='<div class="lead-meta"><span class="lead-status-badge '+(sc[m.status]||'')+'">'+escHtml(ss[m.status]||m.status)+'</span>';
+    h+='<span>'+escHtml(m.plan_type||'')+'</span><span>🔄 '+escHtml(m.schedule_interval||'')+'</span>';
     if(m.next_maintenance)h+='<span>📅 下次: '+m.next_maintenance+'</span>';
     h+='</div>';
     h+='<div class="lead-actions"><button onclick="event.stopPropagation();openMaintenanceForm(\''+m.id+'\')">编辑</button><button class="btn-lead-danger" onclick="event.stopPropagation();confirmDeleteMaintenance(\''+m.id+'\')">删除</button></div></div>';
@@ -6447,13 +6445,13 @@ function renderKB(){
   var cm={faq:'❓常见问题',solution:'💡解决方案',script:'📝标准话术',policy:'📜政策法规',other:'📋其他'};
   var h='';for(var i=0;i<list.length;i++){var k=list[i];
     h+='<div class="lead-card" style="cursor:pointer" onclick="toggleKBDetail('+k.id+')">';
-    h+='<div class="lead-name">'+h(k.title)+' <span style="font-size:11px;color:var(--text3)">'+h(cm[k.category]||k.category)+'</span></div>';
+    h+='<div class="lead-name">'+escHtml(k.title)+' <span style="font-size:11px;color:var(--text3)">'+escHtml(cm[k.category]||k.category)+'</span></div>';
     h+='<div class="lead-meta">';
     if(k.tags&&k.tags.length)h+='<span>'+k.tags.map(function(t){return '#'+t}).join(' ')+'</span>';
-    if(k.related_products)h+='<span>📦 '+h(k.related_products)+'</span>';
+    if(k.related_products)h+='<span>📦 '+escHtml(k.related_products)+'</span>';
     h+='<span>👁 '+k.view_count+'</span>';
     h+='</div>';
-    h+='<div id="kb-detail-'+k.id+'" style="display:none;padding:12px 0;font-size:13px;color:var(--text);line-height:1.7;white-space:pre-wrap;border-top:1px solid var(--border);margin-top:8px">'+h(k.content||'')+'</div>';
+    h+='<div id="kb-detail-'+k.id+'" style="display:none;padding:12px 0;font-size:13px;color:var(--text);line-height:1.7;white-space:pre-wrap;border-top:1px solid var(--border);margin-top:8px">'+escHtml(k.content||'')+'</div>';
     h+='<div class="lead-actions"><button onclick="event.stopPropagation();openKBForm(\''+k.id+'\')">编辑</button><button class="btn-lead-danger" onclick="event.stopPropagation();confirmDeleteKB(\''+k.id+'\')">删除</button></div></div>';
   }
   grid.innerHTML=h;
@@ -8974,7 +8972,7 @@ async function loadFollowups(){
   // Populate client filter
   var sel=document.getElementById('fu-client-filter');
   if(sel.options.length<=1){
-    for(var i=0;i<allClients.length;i++){var cl=allClients[i];sel.innerHTML+='<option value="'+cl.id+'">'+h(cl.name)+'</option>'}
+    for(var i=0;i<allClients.length;i++){var cl=allClients[i];sel.innerHTML+='<option value="'+cl.id+'">'+escHtml(cl.name)+'</option>'}
   }
   var q=sb.from('engagement_logs').select('*').eq('company_id',currentCompanyId).order('created_at',{ascending:false});
   if(clientFilter)q=q.eq('client_id',clientFilter);
@@ -8985,7 +8983,7 @@ async function loadFollowups(){
   var h='';
   for(var i=0;i<data.length;i++){
     var f=data[i];var cl2=allClients.find(function(x){return x.id===f.client_id});
-    h+='<div class="schedule-item" style="border-left-color:#8B5CF6"><div class="sch-title"><span style="background:#EDE9FE;color:#7C3AED;padding:1px 6px;border-radius:4px;font-size:11px">'+h(f.type||'其他')+'</span> '+(cl2?h(cl2.name):'未知客户')+'</div><div style="font-size:13px;margin:4px 0">'+h(f.content||'')+'</div>'+(f.outcome?'<div style="font-size:12px;color:#10B981">'+h(f.outcome)+'</div>':'')+(f.next_step?'<div class="sch-meta">下一步: '+h(f.next_step)+(f.next_date?' ('+f.next_date+')':'')+'</div>':'')+'<div class="sch-meta">'+new Date(f.created_at).toLocaleString('zh-CN')+'<button class="btn-sm" style="font-size:10px;padding:1px 6px;color:var(--danger);margin-left:8px" onclick="deleteEngagement(\''+f.id+'\')\">删除</button></div></div>';
+    h+='<div class="schedule-item" style="border-left-color:#8B5CF6"><div class="sch-title"><span style="background:#EDE9FE;color:#7C3AED;padding:1px 6px;border-radius:4px;font-size:11px">'+escHtml(f.type||'其他')+'</span> '+(cl2?escHtml(cl2.name):'未知客户')+'</div><div style="font-size:13px;margin:4px 0">'+escHtml(f.content||'')+'</div>'+(f.outcome?'<div style="font-size:12px;color:#10B981">'+escHtml(f.outcome)+'</div>':'')+(f.next_step?'<div class="sch-meta">下一步: '+escHtml(f.next_step)+(f.next_date?' ('+f.next_date+')':'')+'</div>':'')+'<div class="sch-meta">'+new Date(f.created_at).toLocaleString('zh-CN')+'<button class="btn-sm" style="font-size:10px;padding:1px 6px;color:var(--danger);margin-left:8px" onclick="deleteEngagement(\''+f.id+'\')\">删除</button></div></div>';
   }
   list.innerHTML=h;
 }
@@ -8993,7 +8991,7 @@ async function loadFollowups(){
 function openFollowupForm(){
   var h='<div class="modal-overlay" id="followup-modal"><div class="modal-sheet"><h3>新增跟进记录</h3>';
   h+='<div class="form-group"><label>客户 *</label><select id="fu-client"><option value="">请选择</option>';
-  for(var i=0;i<allClients.length;i++)h+='<option value="'+allClients[i].id+'">'+h(allClients[i].name)+'</option>';
+  for(var i=0;i<allClients.length;i++)h+='<option value="'+allClients[i].id+'">'+escHtml(allClients[i].name)+'</option>';
   h+='</select></div>';
   h+='<div class="form-group"><label>跟进类型</label><select id="fu-type"><option value="电话">电话</option><option value="拜访">拜访</option><option value="微信">微信</option><option value="邮件">邮件</option><option value="会议">会议</option><option value="其他">其他</option></select></div>';
   h+='<div class="form-group"><label>跟进内容 *</label><textarea id="fu-content" rows="3" placeholder="请输入跟进内容..."></textarea></div>';
@@ -9023,7 +9021,7 @@ async function loadMessages(){
   var deptFilter=document.getElementById('msg-dept-filter').value;
   var sel=document.getElementById('msg-dept-filter');
   if(sel.options.length<=1){
-    for(var i=0;i<allDepartments.length;i++){var d=allDepartments[i];sel.innerHTML+='<option value="'+d.id+'">'+h(d.name)+'</option>'}
+    for(var i=0;i<allDepartments.length;i++){var d=allDepartments[i];sel.innerHTML+='<option value="'+d.id+'">'+escHtml(d.name)+'</option>'}
   }
   var q=sb.from('dept_messages').select('*').eq('company_id',currentCompanyId).order('created_at',{ascending:false});
   if(deptFilter)q=q.eq('dept_id',deptFilter);
@@ -9036,7 +9034,7 @@ async function loadMessages(){
     var user=allUsers.find(function(u){return u.user_id===m.user_id});
     var dept=allDepartments.find(function(d){return d.id===m.dept_id});
     var userName=user?(user.display_name||user.email||''):'未知';
-    h+='<div class="schedule-item" style="border-left-color:#10B981"><div class="sch-title">'+h(userName)+(dept?' <span style="font-size:11px;color:var(--text3)">@'+h(dept.name)+'</span>':'')+'</div><div style="font-size:14px;margin:4px 0">'+h(m.content)+'</div>'+(m.attachments&&m.attachments.length?'<div style="font-size:11px;color:var(--primary)">附件: '+m.attachments.length+'个</div>':'')+'<div class="sch-meta">'+new Date(m.created_at).toLocaleString('zh-CN')+'</div></div>';
+    h+='<div class="schedule-item" style="border-left-color:#10B981"><div class="sch-title">'+escHtml(userName)+(dept?' <span style="font-size:11px;color:var(--text3)">@'+escHtml(dept.name)+'</span>':'')+'</div><div style="font-size:14px;margin:4px 0">'+escHtml(m.content)+'</div>'+(m.attachments&&m.attachments.length?'<div style="font-size:11px;color:var(--primary)">附件: '+m.attachments.length+'个</div>':'')+'<div class="sch-meta">'+new Date(m.created_at).toLocaleString('zh-CN')+'</div></div>';
   }
   list.innerHTML=h;
 }
@@ -9044,7 +9042,7 @@ async function loadMessages(){
 function openMsgForm(){
   var h='<div class="modal-overlay" id="msg-modal"><div class="modal-sheet"><h3>发送部门消息</h3>';
   h+='<div class="form-group"><label>目标部门</label><select id="msg-dept"><option value="">全公司</option>';
-  for(var i=0;i<allDepartments.length;i++)h+='<option value="'+allDepartments[i].id+'">'+h(allDepartments[i].name)+'</option>';
+  for(var i=0;i<allDepartments.length;i++)h+='<option value="'+allDepartments[i].id+'">'+escHtml(allDepartments[i].name)+'</option>';
   h+='</select></div>';
   h+='<div class="form-group"><label>消息内容 *</label><textarea id="msg-content" rows="3" placeholder="输入消息..."></textarea></div>';
   h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest(".modal-overlay").remove()">取消</button><button class="btn-save" onclick="sendMsg()">发送</button></div></div></div>';
@@ -9089,7 +9087,7 @@ async function loadSchedules(){
   for(var i=0;i<data.length;i++){
     var s=data[i];
     var time=s.all_day?'全天':new Date(s.start_time).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
-    h+='<div class="schedule-item" style="border-left-color:'+(s.color||'#4F6EF7')+'"><div class="sch-title">'+h(s.title)+' <span style="font-size:11px;color:var(--text3)">'+time+'</span></div>'+(s.description?'<div style="font-size:13px;color:var(--text2)">'+h(s.description)+'</div>':'')+(s.location?'<div class="sch-meta">📍 '+h(s.location)+'</div>':'')+'<div style="margin-top:6px;display:flex;gap:6px"><button class="btn-sm" style="font-size:11px;padding:2px 8px" onclick="editSchedule(\''+s.id+'\')\">编辑</button><button class="btn-sm" style="font-size:11px;padding:2px 8px;color:var(--danger)" onclick="deleteSchedule(\''+s.id+'\')\">删除</button></div></div>';
+    h+='<div class="schedule-item" style="border-left-color:'+(s.color||'#4F6EF7')+'"><div class="sch-title">'+escHtml(s.title)+' <span style="font-size:11px;color:var(--text3)">'+time+'</span></div>'+(s.description?'<div style="font-size:13px;color:var(--text2)">'+escHtml(s.description)+'</div>':'')+(s.location?'<div class="sch-meta">📍 '+escHtml(s.location)+'</div>':'')+'<div style="margin-top:6px;display:flex;gap:6px"><button class="btn-sm" style="font-size:11px;padding:2px 8px" onclick="editSchedule(\''+s.id+'\')\">编辑</button><button class="btn-sm" style="font-size:11px;padding:2px 8px;color:var(--danger)" onclick="deleteSchedule(\''+s.id+'\')\">删除</button></div></div>';
   }
   list.innerHTML=h;
 }
@@ -9144,7 +9142,7 @@ async function loadTasks(){
     var t=data[i];
     var prio=t.priority||'normal';
     var statusLabel={todo:'待办',in_progress:'进行中',done:'已完成',cancelled:'已取消'}[t.status]||t.status;
-    h+='<div class="task-item task-priority-'+prio+'"><div class="task-title">'+h(t.title)+' <span class="status-badge status-'+(t.status==='in_progress'?'progress':t.status)+'">'+statusLabel+'</span></div>'+(t.description?'<div style="font-size:13px;color:var(--text2)">'+h(t.description)+'</div>':'')+(t.due_date?'<div class="task-meta">📅 截止: '+t.due_date+'</div>':'')+'<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap"><button class="btn-sm" style="font-size:11px;padding:2px 8px" onclick="editTask(\''+t.id+'\')\">编辑</button><button class="btn-sm" style="font-size:11px;padding:2px 8px;color:var(--danger)" onclick="deleteTask(\''+t.id+'\')\">删除</button></div></div>';
+    h+='<div class="task-item task-priority-'+prio+'"><div class="task-title">'+escHtml(t.title)+' <span class="status-badge status-'+(t.status==='in_progress'?'progress':t.status)+'">'+statusLabel+'</span></div>'+(t.description?'<div style="font-size:13px;color:var(--text2)">'+escHtml(t.description)+'</div>':'')+(t.due_date?'<div class="task-meta">📅 截止: '+t.due_date+'</div>':'')+'<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap"><button class="btn-sm" style="font-size:11px;padding:2px 8px" onclick="editTask(\''+t.id+'\')\">编辑</button><button class="btn-sm" style="font-size:11px;padding:2px 8px;color:var(--danger)" onclick="deleteTask(\''+t.id+'\')\">删除</button></div></div>';
   }
   list.innerHTML=h;
 }
@@ -9198,7 +9196,7 @@ async function loadApprovals(){
   var h='',statusMap={pending:'待审批',approved:'已通过',rejected:'已驳回',cancelled:'已取消'};
   for(var i=0;i<data.length;i++){
     var a=data[i];
-    h+='<div class="approval-item approval-'+(a.status==='pending'?'pending':a.status==='approved'?'approved':a.status==='rejected'?'rejected':'')+'"><div class="appr-title">'+h(a.title)+' <span class="status-badge status-'+(a.status==='pending'?'progress':a.status==='approved'?'done':a.status==='rejected'?'cancelled':'cancelled')+'">'+statusMap[a.status]+'</span></div><div class="appr-meta">'+h(a.type)+' · 步骤 '+a.current_step+'/'+a.total_steps+' · '+new Date(a.created_at).toLocaleDateString('zh-CN')+'</div>'+(a.status==='pending'?'<div style="margin-top:6px"><button class="btn-sm" style="font-size:11px;padding:2px 8px;background:#10B981;color:#fff;border:none;border-radius:4px;margin-right:4px" onclick="approveAction('+a.id+',\'approve\')">通过</button><button class="btn-sm" style="font-size:11px;padding:2px 8px;background:#EF4444;color:#fff;border:none;border-radius:4px" onclick="approveAction('+a.id+',\'reject\')">驳回</button></div>':'')+'</div>';
+    h+='<div class="approval-item approval-'+(a.status==='pending'?'pending':a.status==='approved'?'approved':a.status==='rejected'?'rejected':'')+'"><div class="appr-title">'+escHtml(a.title)+' <span class="status-badge status-'+(a.status==='pending'?'progress':a.status==='approved'?'done':a.status==='rejected'?'cancelled':'cancelled')+'">'+statusMap[a.status]+'</span></div><div class="appr-meta">'+escHtml(a.type)+' · 步骤 '+a.current_step+'/'+a.total_steps+' · '+new Date(a.created_at).toLocaleDateString('zh-CN')+'</div>'+(a.status==='pending'?'<div style="margin-top:6px"><button class="btn-sm" style="font-size:11px;padding:2px 8px;background:#10B981;color:#fff;border:none;border-radius:4px;margin-right:4px" onclick="approveAction('+a.id+',\'approve\')">通过</button><button class="btn-sm" style="font-size:11px;padding:2px 8px;background:#EF4444;color:#fff;border:none;border-radius:4px" onclick="approveAction('+a.id+',\'reject\')">驳回</button></div>':'')+'</div>';
   }
   list.innerHTML=h;
 }
@@ -9244,7 +9242,7 @@ async function loadComments(){
   // Load client options if empty
   if(!commentClientsList.length){
     var sel=document.getElementById('comment-client-filter');
-    for(var i=0;i<allClients.length;i++){var cl=allClients[i];sel.innerHTML+='<option value="'+cl.id+'">'+h(cl.name)+'</option>';commentClientsList.push(cl)}
+    for(var i=0;i<allClients.length;i++){var cl=allClients[i];sel.innerHTML+='<option value="'+cl.id+'">'+escHtml(cl.name)+'</option>';commentClientsList.push(cl)}
   }
   var q=sb.from('client_comments').select('*').eq('company_id',currentCompanyId).order('created_at',{ascending:false});
   if(clientFilter)q=q.eq('client_id',clientFilter);
@@ -9255,7 +9253,7 @@ async function loadComments(){
   for(var i=0;i<data.length;i++){
     var cm=data[i];
     var cl=allClients.find(function(x){return x.id===cm.client_id});
-    h+='<div class="comment-item"><div class="cmt-title">'+h(cm.content)+'</div><div class="cmt-meta">客户: '+(cl?h(cl.name):'未知')+' · '+new Date(cm.created_at).toLocaleString('zh-CN')+'<button class="btn-sm" style="font-size:10px;padding:1px 6px;color:var(--danger);margin-left:8px" onclick="deleteComment(\''+cm.id+'\')\">删除</button></div></div>';
+    h+='<div class="comment-item"><div class="cmt-title">'+escHtml(cm.content)+'</div><div class="cmt-meta">客户: '+(cl?escHtml(cl.name):'未知')+' · '+new Date(cm.created_at).toLocaleString('zh-CN')+'<button class="btn-sm" style="font-size:10px;padding:1px 6px;color:var(--danger);margin-left:8px" onclick="deleteComment(\''+cm.id+'\')\">删除</button></div></div>';
   }
   list.innerHTML=h;
 }
@@ -9263,7 +9261,7 @@ async function loadComments(){
 function openCommentForm(){
   var h='<div class="modal-overlay" id="comment-modal"><div class="modal-sheet"><h3>添加客户评论</h3>';
   h+='<div class="form-group"><label>客户 *</label><select id="cm-client"><option value="">请选择</option>';
-  for(var i=0;i<allClients.length;i++)h+='<option value="'+allClients[i].id+'">'+h(allClients[i].name)+'</option>';
+  for(var i=0;i<allClients.length;i++)h+='<option value="'+allClients[i].id+'">'+escHtml(allClients[i].name)+'</option>';
   h+='</select></div>';
   h+='<div class="form-group"><label>评论内容 *</label><textarea id="cm-content" rows="3" placeholder="输入评论..."></textarea></div>';
   h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest(".modal-overlay").remove()">取消</button><button class="btn-save" onclick="saveComment()">保存</button></div></div></div>';
