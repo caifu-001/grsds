@@ -4245,6 +4245,7 @@ function showToast(msg,type){
   var colors={info:'#4F6EF7',success:'#10B981',warning:'#F59E0B',error:'#EF4444'};
   var icons={info:'ℹ️',success:'✅',warning:'⚠️',error:'❌'};
   var tc=document.getElementById('toast-container');
+  if(!tc)return;
   var t=document.createElement('div');t.className='toast toast-'+type;
   t.innerHTML='<span class="toast-icon">'+(icons[type]||'')+'</span>'+escHtml(msg);
   t.style.borderLeftColor=colors[type]||'#4F6EF7';
@@ -9066,5 +9067,6 @@ function extendPermissionMatrix(){
 }
 
 </script>
+<div id="toast-container"></div>
 </body>
 </html>
