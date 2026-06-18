@@ -1943,20 +1943,6 @@ input,select,textarea,button{font-family:inherit}
    <div id="followup-list">加载中...</div>
   </div>
 
-  <div id="collab-followup-panel" class="collab-panel hidden">
-   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-    <h3 style="font-size:16px;font-weight:700;margin:0">跟进记录</h3>
-    <select id="fu-client-filter" onchange="loadFollowups()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px">
-     <option value="">全部客户</option>
-    </select>
-    <select id="fu-type-filter" onchange="loadFollowups()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px">
-     <option value="">全部类型</option>
-     <option value="电话">电话</option><option value="拜访">拜访</option><option value="微信">微信</option><option value="邮件">邮件</option><option value="会议">会议</option><option value="其他">其他</option>
-    </select>
-    <button class="btn-sm btn-sm-primary" onclick="openFollowupForm()">+ 新增跟进</button>
-   </div>
-   <div id="followup-list">加载中...</div>
-  </div>
 <div id="collab-comment-panel" class="collab-panel hidden">
    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
     <h3 style="font-size:16px;font-weight:700;margin:0">客户协作</h3>
@@ -9769,6 +9755,7 @@ function extendPermissionMatrix(){
 
 // Stub for defunct freeze buttons (always hidden, prevent ReferenceError)
 function toggleLeadFrozen(){showToast('冻结功能暂未开放')}
+function editForm(id){showToast('表单编辑功能暂未开放')}
 
 </script>
 
