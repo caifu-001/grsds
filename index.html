@@ -77,7 +77,8 @@ input,select,textarea,button{font-family:inherit}
 .fab:active{transform:scale(.9);box-shadow:0 2px 8px rgba(79,110,247,.3)}
 
 .modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:300;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
-.modal-sheet{background:#fff;width:100%;max-width:480px;border-radius:20px 20px 0 0;max-height:92vh;overflow-y:auto;padding:20px 16px 32px;animation:slideUp .3s cubic-bezier(.16,1,.3,1)}
+.modal-sheet{background:#fff;width:100%;max-width:480px;border-radius:20px 20px 0 0;max-height:92vh;overflow-y:auto;padding:20px 16px 32px;animation:slideUp .3s cubic-bezier(.16,1,.3,1);box-sizing:border-box}
+@media(max-width:480px){.modal-sheet{max-width:100%;border-radius:20px 20px 0 0}}
 @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
 .modal-sheet h3{font-size:18px;margin-bottom:16px;text-align:center}
 .modal-close{position:absolute;top:20px;right:16px;font-size:20px;cursor:pointer;color:var(--text3);background:none;border:none}
@@ -99,10 +100,11 @@ input,select,textarea,button{font-family:inherit}
 
 .form-group{margin-bottom:12px}
 .form-group label{display:block;font-size:13px;color:var(--text2);margin-bottom:4px;font-weight:500}
-.form-group input,.form-group select,.form-group textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:15px;outline:none;transition:border .2s;background:#fff}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:15px;outline:none;transition:border .2s;background:#fff;box-sizing:border-box;max-width:100%}
 .form-group textarea{resize:vertical;min-height:70px}
 .form-group input:focus,.form-group textarea:focus{border-color:var(--primary)}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:480px){.form-row{grid-template-columns:1fr}}
 
 .phone-row{display:flex;gap:6px;align-items:center;margin-bottom:6px}
 .phone-row input{flex:1;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:15px;outline:none;transition:border .2s}
@@ -202,7 +204,8 @@ input,select,textarea,button{font-family:inherit}
 .ci-field .ci-input:focus{outline:none;border-color:#4F6EF7}
 .ci-source{font-size:10px;color:var(--success);margin-top:6px}
 /* ── Topbar Tabs ── */
-.topbar-tabs{display:flex;gap:2px;margin:0 8px}
+.topbar-tabs{display:flex;gap:2px;margin:0 8px;overflow-x:auto;white-space:nowrap;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.topbar-tabs::-webkit-scrollbar{display:none}
 .topbar-tab{padding:6px 14px;border-radius:16px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:rgba(255,255,255,.15);color:rgba(255,255,255,.7);transition:all .2s}
 .topbar-tab.active{background:#fff;color:var(--primary)}
 .topbar-tab:active{opacity:.8}
@@ -5882,7 +5885,7 @@ function renderQfItems(){
   document.getElementById('qf-total').textContent=formatMoney(total);
 }
 
-function qfUpdateItem(i,field,val){qfItems[i][field]=val;renderQfItems()}
+function qfUpdateItem(i,field,val){qfItems[i][field]=val;var rows=document.querySelectorAll('#qf-items .quote-item-row');if(rows[i]){rows[i].querySelector('.qi-amount').textContent=formatMoney((qfItems[i].qty||0)*(qfItems[i].price||0))}var t=0;for(var j=0;j<qfItems.length;j++)t+=(qfItems[j].qty||0)*(qfItems[j].price||0);document.getElementById('qf-total').textContent=formatMoney(t)}
 function qfDeleteItem(i){qfItems.splice(i,1);renderQfItems()}
 
 async function saveQuote(){
@@ -8709,10 +8712,11 @@ function renderLeads(){
   // Stats
   var total=allLeads.length,assigned=0,converted=0;
   for(var i=0;i<allLeads.length;i++){if(allLeads[i].status==='assigned'||allLeads[i].status==='contacted')assigned++;if(allLeads[i].status==='converted')converted++}
-  var statsBar=document.getElementById('lead-stats');
+  var statsBar=document.getElementById('lead-stats')||document.getElementById('leads-stats-bar');
   var convRate=total>0?Math.round(converted/total*100):0;
   if(statsBar)statsBar.innerHTML='<div class="stat-card"><div class="stat-num">'+list.length+'</div><div class="stat-label">'+(filter!=='all'||q?'筛选结果':'全部线索')+'</div></div><div class="stat-card"><div class="stat-num">'+assigned+'</div><div class="stat-label">已分配</div></div><div class="stat-card"><div class="stat-num">'+convRate+'%</div><div class="stat-label">转化率</div></div>';
-  var grid=document.getElementById('sales-lead-grid'),empty=document.getElementById('sales-lead-empty');
+  var lv=document.getElementById('leads-view'),inLeadsPool=lv&&!lv.classList.contains('hidden');
+  var grid=inLeadsPool?document.getElementById('lead-grid'):document.getElementById('sales-lead-grid'),empty=inLeadsPool?document.getElementById('lead-empty'):document.getElementById('sales-lead-empty');
   if(!list.length){grid.innerHTML='';empty.classList.remove('hidden');return}
   empty.classList.add('hidden');
   var statusMap={new:'新线索',assigned:'已分配',contacted:'已联系',converted:'已转化',recycled:'已回收',junk:'无效'};
@@ -9244,7 +9248,7 @@ function openApprovalForm(){
   h+='</select></div>';
   h+='<div class="form-group"><label>标题 *</label><input id="ap-title" placeholder="审批标题"></div>';
   h+='<div class="form-group"><label>内容说明</label><textarea id="ap-content" rows="3" placeholder="请输入审批内容和理由..."></textarea></div>';
-  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest(".modal-overlay").remove()">取消</button><button class="btn-save" onclick="submitApproval()">提交</button></div></div></div>';
+  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest(&apos;.modal-overlay&apos;).remove()">取消</button><button class="btn-save" onclick="submitApproval()">提交</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend',h);
 }
 
