@@ -6672,6 +6672,7 @@ async function deleteTransferById(id){
 
 // ====== Stock Ledger 库存台账 ======
 async function loadStockLedger(){
+  try{
   var pid=(document.getElementById('inv-ledger-product')||{}).value||'';
   var wid=(document.getElementById('inv-ledger-warehouse')||{}).value||'';
   var search=((document.getElementById('inv-ledger-search')||{}).value||'').toLowerCase();
@@ -6679,7 +6680,7 @@ async function loadStockLedger(){
   if(pid)q=q.eq('product_id',pid);
   if(wid)q=q.eq('warehouse_id',wid);
   var r=await q.limit(500);
-  if(r.error){console.error(r.error);return}
+  if(r.error){console.error('loadStockLedger:',r.error);showToast('台账加载失败: '+r.error.message);return}
   var records=r.data||[];
   if(search)records=records.filter(function(sr){var pn=findProductName(sr.product_id).toLowerCase();var bn=(sr.batch_no||'').toLowerCase();return pn.indexOf(search)>=0||bn.indexOf(search)>=0});
   // Build running balance
@@ -6704,6 +6705,7 @@ async function loadStockLedger(){
   for(var k2 in outQty){totalOut+=outQty[k2];totalOutAmt+=outAmt[k2]}
   el.innerHTML='入库合计: <b style="color:var(--success)">'+totalIn.toFixed(2)+'</b> 件 / ¥<b style="color:var(--success)">'+totalInAmt.toFixed(2)+'</b> &nbsp;|&nbsp; 出库合计: <b style="color:var(--danger)">'+totalOut.toFixed(2)+'</b> 件 / ¥<b style="color:var(--danger)">'+totalOutAmt.toFixed(2)+'</b> &nbsp;|&nbsp; 记录数: '+records.length;
   renderLedger();
+  }catch(e){console.error('loadStockLedger error:',e);showToast('台账加载失败: '+e.message)}
 }
 function renderLedger(){
   var el=document.getElementById('ledger-table');if(!el)return;
@@ -7356,7 +7358,7 @@ async function loadTargets(){
   var u=document.getElementById('perf-target-user');
   var year=y?parseInt(y.value):new Date().getFullYear();
   var uid=u?u.value:'';
-  var q=sb.from('sales_targets').select('*,profiles!user_id(display_name,email)').eq('company_id',currentCompanyId).eq('target_year',year).order('target_month');
+  var q;try{q=sb.from('sales_targets').select('*,profiles!user_id(display_name,email)').eq('company_id',currentCompanyId).eq('target_year',year).order('target_month')}catch(e2){q={data:[]}};
   if(uid)q=q.eq('user_id',uid);
   var r=await q;
   allTargets=r.data||[];
