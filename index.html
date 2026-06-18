@@ -9092,16 +9092,6 @@ async function sendMsg(){
   loadMessages();showToast('已发送');
 }
 
-// Update switchCollabTab to support new tabs
-var _origSwitchCollabTab=switchCollabTab;
-switchCollabTab=function(tab){
-  _origSwitchCollabTab(tab);
-  document.getElementById('collab-followup-panel').classList.toggle('hidden',tab!=='followup');
-  document.getElementById('collab-msg-panel').classList.toggle('hidden',tab!=='msg');
-  if(tab==='followup')loadFollowups();
-  else if(tab==='msg')loadMessages();
-};
-
 // ============== COLLAB OFFICE MODULE ==============
 var collabActiveTab='schedule';
 
@@ -9109,14 +9099,14 @@ function switchCollabTab(tab){
   collabActiveTab=tab;
   var tabs=document.querySelectorAll('.collab-subtab');
   for(var i=0;i<tabs.length;i++)tabs[i].classList.toggle('active',tabs[i].getAttribute('data-ctab')===tab);
-  document.getElementById('collab-schedule-panel').classList.toggle('hidden',tab!=='schedule');
-  document.getElementById('collab-task-panel').classList.toggle('hidden',tab!=='task');
-  document.getElementById('collab-approval-panel').classList.toggle('hidden',tab!=='approval');
-  document.getElementById('collab-comment-panel').classList.toggle('hidden',tab!=='comment');
+  var panels={schedule:'collab-schedule-panel',task:'collab-task-panel',approval:'collab-approval-panel',comment:'collab-comment-panel',followup:'collab-followup-panel',msg:'collab-msg-panel'};
+  for(var k in panels){var el=document.getElementById(panels[k]);if(el)el.classList.toggle('hidden',tab!==k)}
   if(tab==='schedule')loadSchedules();
   else if(tab==='task')loadTasks();
   else if(tab==='approval')loadApprovals();
   else if(tab==='comment')loadComments();
+  else if(tab==='followup')loadFollowups();
+  else if(tab==='msg')loadMessages();
 }
 
 // === 1. Schedules ===
