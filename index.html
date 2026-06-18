@@ -335,7 +335,7 @@ input,select,textarea,button{font-family:inherit}
 .sales-subtab.active{background:var(--primary);color:#fff}
 .sales-panel{padding:0 16px 80px}
 /* Pipeline Cards */
-.pipe-card{background:var(--card);border-radius:12px;padding:14px;box-shadow:var(--shadow);cursor:pointer;transition:transform .15s,box-shadow .15s;border:1px solid var(--border);position:relative;overflow:hidden;margin-bottom:8px}
+.pipe-card{background:var(--card);border-radius:12px;padding:14px;box-shadow:var(--shadow);cursor:pointer;transition:transform .15s,box-shadow .15s;border:1px solid var(--border);position:relative;overflow:hidden;margin-bottom:8px;box-sizing:border-box;width:100%}
 .pipe-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:4px 0 0 4px}
 .pipe-card:active{transform:scale(.98);box-shadow:var(--shadow-lg)}
 .pipe-card .pc-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
@@ -8696,9 +8696,11 @@ async function autoCheckLifecycle(clientId){
 
 // ============ NEW: Lead Pool Functions ============
 async function loadLeads(){
+  try{
   var {data,error}=await sb.from('lead_pool').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
-  if(error){console.error('loadLeads:',error);return}
+  if(error){console.error('loadLeads:',error);showToast('加载线索失败: '+error.message)}
   allLeads=data||[];
+  }catch(e){console.error('loadLeads exception:',e);allLeads=[]}
   renderLeads();
 }
 
