@@ -4660,6 +4660,7 @@ function switchTab(tab){
     document.getElementById('topbar-title').textContent='业务管理';
     switchBizTab('orders');
   }else if(tab==='sales'){
+    console.log('[DEBUG] switchTab sales, calling switchBizTab');
     // Sales accessed via biz-tabs or more-menu → go through orders
     ov.classList.remove('hidden');to.classList.add('active');
     fab.classList.remove('hidden');fab.textContent='+';fab.onclick=function(){openSalesForm()};
@@ -5362,10 +5363,11 @@ async function switchBizTab(sub){
     fab.classList.remove('hidden');fab.textContent='+';fab.onclick=function(){openOrderForm()};
     renderOrders();
   }else if(sub==='sales'){
+    console.log('[DEBUG] switchBizTab sales branch, allClients.length=',allClients.length);
     tabs[1].classList.add('active');
     sv.classList.remove('hidden');
-    fab.classList.remove('hidden');fab.textContent='+';fab.onclick=function(){openSalesForm()};
-    if(!allClients.length)loadClients().then(function(){switchSalesTab('leads')});else switchSalesTab('leads');
+    fab.classList.remove('hidden');fab.textContent='+';fab.onclick=function(){console.log('[DEBUG] FAB onclick fires');openSalesForm();};
+    if(!allClients.length){console.log('[DEBUG] loading clients then calling switchSalesTab');loadClients().then(function(){console.log('[DEBUG] clients loaded, calling switchSalesTab leads');switchSalesTab('leads')});}else{console.log('[DEBUG] clients already cached, direct switchSalesTab');switchSalesTab('leads');}
   }else if(sub==='performance'){
     tabs[2].classList.add('active');
     pv.classList.remove('hidden');
@@ -6166,6 +6168,7 @@ function confirmDeletePayment(){if(peditId)confirmDialog('确定删除该回款�
 
 // ── Common: openSalesForm (FAB) ──
 function openSalesForm(){
+  console.log('[DEBUG] openSalesForm called, currentSalesTab=',currentSalesTab,'typeof openLeadForm=',typeof openLeadForm);
   if(currentSalesTab==='leads')openLeadForm();
   else if(currentSalesTab==='quotations')openQuoteForm();
   else if(currentSalesTab==='contracts')openContractForm();
