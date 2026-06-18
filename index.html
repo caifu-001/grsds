@@ -8839,7 +8839,10 @@ async function saveLead(){
   if(!leadEditId){
     lead.company_id=currentCompanyId;
     lead.created_by=currentUser.id;
+    console.log('[DEBUG saveLead] payload:',JSON.stringify(lead));
+    console.log('[DEBUG saveLead] currentCompanyId type:',typeof currentCompanyId,'value:',currentCompanyId);
     var {error}=await sb.from('lead_pool').insert(lead);
+    if(error){console.error('[DEBUG saveLead] full error:',JSON.stringify(error));showToast('创建失败: '+error.message+' ('+error.code+') '+error.details);return}
     if(error){showToast('创建失败: '+error.message);return}
   }else{
     var {error}=await sb.from('lead_pool').update(lead).eq('id',leadEditId);
