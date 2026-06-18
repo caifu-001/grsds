@@ -2160,62 +2160,6 @@ input,select,textarea,button{font-family:inherit}
  <div class="empty hidden" id="lead-empty"><div class="empty-icon">🎯</div>暂无线索<br><span style="font-size:12px;color:var(--text3)">点击「+ 新线索」开始添加</span></div>
 </div>
 
-<!-- Lead Form Modal -->
-<div class="modal-overlay hidden" id="lead-form-modal">
- <div class="modal-sheet">
-  <h3 id="lead-form-title">新建线索</h3>
-  <div class="form-group" style="position:relative"><label>公司/单位名称 *</label><input id="lf-name" placeholder="搜索或输入公司名称..." autocomplete="off" oninput="onLeadCompanyInput()" onkeydown="onLeadCompanyKey(event)"><div class="name-suggestions hidden" id="lead-name-suggestions"></div></div>
-  <div class="form-group" style="position:relative"><label>联系人 (可从客户库关联)</label><input id="lf-contact-name" placeholder="输入姓名搜索已有联系人..." autocomplete="off" oninput="onLeadContactInput()" onkeydown="onLeadContactKey(event)"><div class="name-suggestions hidden" id="lead-contact-suggestions"></div></div>
-  <div class="form-group"><label>联系人电话</label><input id="lf-contact-phone" placeholder="手机号"></div>
-  <div class="form-group"><label>联系人邮箱</label><input id="lf-contact-email" placeholder="邮箱"></div>
-  <div class="form-row">
-   <div class="form-group"><label>来源</label><select id="lf-source"><option value="">请选择</option><option value="自主开发">自主开发</option><option value="客户介绍">客户介绍</option><option value="展会">展会</option><option value="网络推广">网络推广</option><option value="电话营销">电话营销</option><option value="合作伙伴">合作伙伴</option><option value="其他">其他</option></select></div>
-   <div class="form-group"><label>行业</label><select id="lf-industry"><option value="">请选择</option><option value="信息技术">信息技术</option><option value="制造业">制造业</option><option value="建筑业">建筑业</option><option value="金融">金融</option><option value="教育">教育</option><option value="医疗">医疗</option><option value="政府">政府</option><option value="能源">能源</option><option value="零售">零售</option><option value="其他">其他</option></select></div>
-  </div>
-  <div class="form-row">
-   <div class="form-group"><label>规模</label><select id="lf-scale"><option value="">请选择</option><option value="小微企业">小微企业</option><option value="中小企业">中小企业</option><option value="中型企业">中型企业</option><option value="大型企业">大型企业</option><option value="集团企业">集团企业</option></select></div>
-   <div class="form-group"><label>最大回收次数</label><input type="number" id="lf-max-recycle" value="3" min="1" max="10"></div>
-  </div>
-  <div class="form-row">
-   <div class="form-group"><label>回收天数</label><input type="number" id="lf-recycle-days" value="30" min="1"></div>
-   <div class="form-group"><label>状态</label><select id="lf-status"><option value="new">新线索</option><option value="assigned">已分配</option><option value="contacted">已联系</option><option value="junk">无效</option></select></div>
-  </div>
-  <div class="form-group"><label>备注</label><textarea id="lf-notes" placeholder="备注信息..." rows="2"></textarea></div>
-  <div class="modal-actions">
-   <button class="btn-delete hidden" id="lead-btn-delete" onclick="deleteLead(leadEditId)">删除线索</button>
-   <button class="btn-cancel" onclick="closeLeadForm()">取消</button>
-   <button class="btn-save" onclick="saveLead()">保存</button>
-  </div>
- </div>
-</div>
-
-<!-- Lead Assign Modal -->
-<div class="modal-overlay hidden" id="lead-assign-modal">
- <div class="modal-sheet">
-  <h3>分配线索</h3>
-  <div class="form-group"><label>分配至</label><select id="la-user-select"></select></div>
-  <div class="modal-actions">
-   <button class="btn-cancel" onclick="document.getElementById('lead-assign-modal').classList.add('hidden')">取消</button>
-   <button class="btn-save" onclick="doAssignLead()">确定</button>
-  </div>
- </div>
-</div>
-
-<!-- Lead Import Modal -->
-<div class="modal-overlay hidden" id="lead-import-modal">
- <div class="modal-sheet">
-  <h3>批量导入线索</h3>
-  <div class="lead-import-area">
-   <textarea id="li-csv" placeholder="粘贴CSV内容，格式：&#10;名称,联系人,手机,邮箱,来源,行业,规模,备注&#10;ABC公司,张三,13800138000,zs@abc.com,展会,信息技术,中小企业,意向强烈"></textarea>
-   <div class="hint">每行一条线索，字段用英文逗号分隔。第一行将被跳过（如含表头）。</div>
-  </div>
-  <div class="modal-actions">
-   <button class="btn-cancel" onclick="document.getElementById('lead-import-modal').classList.add('hidden')">取消</button>
-   <button class="btn-save" onclick="importLeads()">导入</button>
-  </div>
- </div>
-</div>
-
 <script>
 // Supabase
 const SUPABASE_URL='https://jyefbatmmbelrhhzsgva.supabase.co';
@@ -10133,5 +10077,62 @@ function extendPermissionMatrix(){
 
 
 <div id="toast-container"></div>
+
+<!-- Lead Form Modal -->
+<div class="modal-overlay hidden" id="lead-form-modal">
+ <div class="modal-sheet">
+  <h3 id="lead-form-title">新建线索</h3>
+  <div class="form-group" style="position:relative"><label>公司/单位名称 *</label><input id="lf-name" placeholder="搜索或输入公司名称..." autocomplete="off" oninput="onLeadCompanyInput()" onkeydown="onLeadCompanyKey(event)"><div class="name-suggestions hidden" id="lead-name-suggestions"></div></div>
+  <div class="form-group" style="position:relative"><label>联系人 (可从客户库关联)</label><input id="lf-contact-name" placeholder="输入姓名搜索已有联系人..." autocomplete="off" oninput="onLeadContactInput()" onkeydown="onLeadContactKey(event)"><div class="name-suggestions hidden" id="lead-contact-suggestions"></div></div>
+  <div class="form-group"><label>联系人电话</label><input id="lf-contact-phone" placeholder="手机号"></div>
+  <div class="form-group"><label>联系人邮箱</label><input id="lf-contact-email" placeholder="邮箱"></div>
+  <div class="form-row">
+   <div class="form-group"><label>来源</label><select id="lf-source"><option value="">请选择</option><option value="自主开发">自主开发</option><option value="客户介绍">客户介绍</option><option value="展会">展会</option><option value="网络推广">网络推广</option><option value="电话营销">电话营销</option><option value="合作伙伴">合作伙伴</option><option value="其他">其他</option></select></div>
+   <div class="form-group"><label>行业</label><select id="lf-industry"><option value="">请选择</option><option value="信息技术">信息技术</option><option value="制造业">制造业</option><option value="建筑业">建筑业</option><option value="金融">金融</option><option value="教育">教育</option><option value="医疗">医疗</option><option value="政府">政府</option><option value="能源">能源</option><option value="零售">零售</option><option value="其他">其他</option></select></div>
+  </div>
+  <div class="form-row">
+   <div class="form-group"><label>规模</label><select id="lf-scale"><option value="">请选择</option><option value="小微企业">小微企业</option><option value="中小企业">中小企业</option><option value="中型企业">中型企业</option><option value="大型企业">大型企业</option><option value="集团企业">集团企业</option></select></div>
+   <div class="form-group"><label>最大回收次数</label><input type="number" id="lf-max-recycle" value="3" min="1" max="10"></div>
+  </div>
+  <div class="form-row">
+   <div class="form-group"><label>回收天数</label><input type="number" id="lf-recycle-days" value="30" min="1"></div>
+   <div class="form-group"><label>状态</label><select id="lf-status"><option value="new">新线索</option><option value="assigned">已分配</option><option value="contacted">已联系</option><option value="junk">无效</option></select></div>
+  </div>
+  <div class="form-group"><label>备注</label><textarea id="lf-notes" placeholder="备注信息..." rows="2"></textarea></div>
+  <div class="modal-actions">
+   <button class="btn-delete hidden" id="lead-btn-delete" onclick="deleteLead(leadEditId)">删除线索</button>
+   <button class="btn-cancel" onclick="closeLeadForm()">取消</button>
+   <button class="btn-save" onclick="saveLead()">保存</button>
+  </div>
+ </div>
+</div>
+
+<!-- Lead Assign Modal -->
+<div class="modal-overlay hidden" id="lead-assign-modal">
+ <div class="modal-sheet">
+  <h3>分配线索</h3>
+  <div class="form-group"><label>分配至</label><select id="la-user-select"></select></div>
+  <div class="modal-actions">
+   <button class="btn-cancel" onclick="document.getElementById('lead-assign-modal').classList.add('hidden')">取消</button>
+   <button class="btn-save" onclick="doAssignLead()">确定</button>
+  </div>
+ </div>
+</div>
+
+<!-- Lead Import Modal -->
+<div class="modal-overlay hidden" id="lead-import-modal">
+ <div class="modal-sheet">
+  <h3>批量导入线索</h3>
+  <div class="lead-import-area">
+   <textarea id="li-csv" placeholder="粘贴CSV内容，格式：&#10;名称,联系人,手机,邮箱,来源,行业,规模,备注&#10;ABC公司,张三,13800138000,zs@abc.com,展会,信息技术,中小企业,意向强烈"></textarea>
+   <div class="hint">每行一条线索，字段用英文逗号分隔。第一行将被跳过（如含表头）。</div>
+  </div>
+  <div class="modal-actions">
+   <button class="btn-cancel" onclick="document.getElementById('lead-import-modal').classList.add('hidden')">取消</button>
+   <button class="btn-save" onclick="importLeads()">导入</button>
+  </div>
+ </div>
+</div>
+
 </body>
 </html>
