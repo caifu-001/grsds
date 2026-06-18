@@ -91,6 +91,28 @@ CREATE TABLE IF NOT EXISTS client_comments (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- 7. 部门消息 (Department Messages)
+CREATE TABLE IF NOT EXISTS dept_messages (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  company_id BIGINT NOT NULL,
+  dept_id BIGINT,
+  user_id UUID NOT NULL,
+  content TEXT NOT NULL,
+  attachments JSONB DEFAULT '[]',
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- ================================
+-- Helper Functions (MUST be created before RLS policies)
+-- ================================
+CREATE OR REPLACE FUNCTION is_super_admin(uid uuid) RETURNS boolean AS $$
+  SELECT EXISTS (SELECT 1 FROM profiles WHERE user_id = uid AND role = 'super_admin');
+$$ LANGUAGE sql STABLE SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION current_user_role(uid uuid) RETURNS text AS $$
+  SELECT role FROM profiles WHERE user_id = uid;
+$$ LANGUAGE sql STABLE SECURITY DEFINER;
+
 -- ================================
 -- RLS Policies
 -- ================================
@@ -176,14 +198,14 @@ DO $$ BEGIN
   CREATE POLICY client_comments_delete ON client_comments FOR DELETE USING (company_id = (SELECT company_id FROM profiles WHERE user_id = auth.uid()) OR is_super_admin(auth.uid()));
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- Need is_super_admin and current_user_role functions if not exists
-CREATE OR REPLACE FUNCTION is_super_admin(uid uuid) RETURNS boolean AS $$
-  SELECT EXISTS (SELECT 1 FROM profiles WHERE user_id = uid AND role = 'super_admin');
-$$ LANGUAGE sql STABLE SECURITY DEFINER;
-
-CREATE OR REPLACE FUNCTION current_user_role(uid uuid) RETURNS text AS $$
-  SELECT role FROM profiles WHERE user_id = uid;
-$$ LANGUAGE sql STABLE SECURITY DEFINER;
+-- dept_messages RLS
+ALTER TABLE dept_messages ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  CREATE POLICY dept_messages_select ON dept_messages FOR SELECT USING (company_id = (SELECT company_id FROM profiles WHERE user_id = auth.uid()) OR is_super_admin(auth.uid()));
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  CREATE POLICY dept_messages_insert ON dept_messages FOR INSERT WITH CHECK (company_id = (SELECT company_id FROM profiles WHERE user_id = auth.uid()) OR is_super_admin(auth.uid()));
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- Indexes for common queries
 CREATE INDEX IF NOT EXISTS idx_schedules_company_user ON schedules(company_id, user_id);
@@ -193,5 +215,7 @@ CREATE INDEX IF NOT EXISTS idx_tasks_assigned ON tasks(assigned_to);
 CREATE INDEX IF NOT EXISTS idx_approval_requests_company ON approval_requests(company_id);
 CREATE INDEX IF NOT EXISTS idx_approval_requests_status ON approval_requests(status);
 CREATE INDEX IF NOT EXISTS idx_client_comments_client ON client_comments(client_id);
+CREATE INDEX IF NOT EXISTS idx_dept_messages_company ON dept_messages(company_id);
+CREATE INDEX IF NOT EXISTS idx_dept_messages_dept ON dept_messages(dept_id);
 
 NOTIFY pgrst, 'reload schema';
