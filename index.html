@@ -3141,7 +3141,7 @@ function addProjectEntry(prefill){
   renumberProjects();
 }
 function removeProjectEntry(btn){
-  var entry=btn.closest('.project-entry');
+  var entry=btn.closest(".project-entry");
   if(entry)entry.remove();
   renumberProjects();
 }
@@ -4520,7 +4520,7 @@ async function loadNotifs(){
   updateBellBadge();
   // Event delegation for notif clicks
   el.onclick=function(ev){
-    var item=ev.target.closest('.notif-item');
+    var item=ev.target.closest(".notif-item");
     if(!item)return;
     var nid=parseInt(item.getAttribute('data-nid'));
     var link=item.getAttribute('data-link')||'';
@@ -7586,328 +7586,8 @@ async function deleteSettlement(){
   closeSettlementForm();
 }
 
-</script>
 
 
-<!-- Transfer Form Modal -->
-<div class="modal-overlay hidden" id="transfer-modal">
- <div class="modal-sheet">
-  <h3 id="transfer-form-title">新增调拨</h3>
-  <div class="form-row">
-   <div class="form-group"><label>调出仓库 *</label><select id="tfm-from"></select></div>
-   <div class="form-group"><label>调入仓库 *</label><select id="tfm-to"></select></div>
-  </div>
-  <div class="form-group"><label>调拨日期</label><input id="tfm-date" type="date"></div>
-  <div class="form-group"><label>备注</label><textarea id="tfm-notes" rows="2" placeholder="备注..."></textarea></div>
-  <div class="section-title">📦 调拨明细 <button class="add-btn" onclick="addTransferItem()">＋ 添加</button></div>
-  <div id="tfm-items"></div>
-  <div class="modal-actions">
-   <button class="btn-cancel" onclick="closeTransferForm()">取消</button>
-   <button class="btn-delete hidden" id="transfer-btn-delete" onclick="deleteTransfer()">删除</button>
-   <button class="btn-save" onclick="saveTransfer()">保存</button>
-   <button class="btn-convert" id="transfer-btn-confirm" style="background:var(--success);color:#fff" onclick="confirmTransfer()">确认调拨</button>
-  </div>
- </div>
-</div>
-
-<!-- Purchase Order Form Modal -->
-<div class="modal-overlay hidden" id="po-modal">
- <div class="modal-sheet" style="max-width:720px">
-  <h3 id="po-form-title">新建采购单</h3>
-  <div class="form-row">
-   <div class="form-group"><label>供应商 *</label><select id="pof-supplier"><option value="">选择供应商</option></select></div>
-   <div class="form-group"><label>采购单号 *</label><input id="pof-number" placeholder="自动生成或手动输入"></div>
-  </div>
-  <div class="form-row">
-   <div class="form-group"><label>下单日期</label><input id="pof-order-date" type="date"></div>
-   <div class="form-group"><label>预计到货</label><input id="pof-expected-date" type="date"></div>
-  </div>
-  <div class="form-row">
-   <div class="form-group"><label>状态</label><select id="pof-status"><option value="draft">草稿</option><option value="ordered">已下单</option><option value="partial">部分入库</option><option value="received">已入库</option><option value="cancelled">已取消</option></select></div>
-   <div class="form-group"><label>入库仓库</label><select id="pof-warehouse"><option value="">选择仓库</option></select></div>
-  </div>
-  <div class="section-title">📋 采购明细 <button class="add-btn" onclick="addPOItem()">＋ 添加行</button></div>
-  <div id="pof-items" class="quote-items"></div>
-  <div style="text-align:right;font-size:14px;font-weight:600;color:var(--primary);margin:8px 0">合计：<span id="pof-total">¥0.00</span></div>
-  <div class="form-group"><label>备注</label><textarea id="pof-notes" rows="2" placeholder="备注..."></textarea></div>
-  <div class="modal-actions">
-   <button class="btn-cancel" onclick="closePOForm()">取消</button>
-   <button class="btn-delete hidden" id="po-btn-delete" onclick="deletePurchaseOrder()">删除</button>
-   <button class="btn-convert" id="po-btn-receive" style="background:var(--success);color:#fff" onclick="receivePO()">确认入库</button>
-   <button class="btn-save" onclick="savePurchaseOrder()">保存</button>
-  </div>
- </div>
-</div>
-
-<!-- Supplier Settlement Modal -->
-<div class="modal-overlay hidden" id="settlement-modal">
- <div class="modal-sheet">
-  <h3 id="settlement-form-title">供应商结算</h3>
-  <div class="form-row">
-   <div class="form-group"><label>供应商 *</label><select id="sf-supplier"><option value="">选择供应商</option></select></div>
-   <div class="form-group"><label>关联采购单</label><select id="sf-po"><option value="">选择采购单</option></select></div>
-  </div>
-  <div class="form-row">
-   <div class="form-group"><label>结算金额 *</label><input id="sf-amount" type="number" step="0.01" placeholder="0.00"></div>
-   <div class="form-group"><label>结算日期</label><input id="sf-date" type="date"></div>
-  </div>
-  <div class="form-row">
-   <div class="form-group"><label>结算方式</label><select id="sf-method"><option value="bank">银行转账</option><option value="cash">现金</option><option value="wechat">微信</option><option value="alipay">支付宝</option><option value="check">支票</option></select></div>
-   <div class="form-group"><label>状态</label><select id="sf-status"><option value="pending">待结算</option><option value="paid">已结算</option><option value="cancelled">已取消</option></select></div>
-  </div>
-  <div class="form-group"><label>备注</label><textarea id="sf-notes" rows="2" placeholder="备注..."></textarea></div>
-  <div class="modal-actions">
-   <button class="btn-cancel" onclick="closeSettlementForm()">取消</button>
-   <button class="btn-delete hidden" id="settlement-btn-delete" onclick="deleteSettlement()">删除</button>
-   <button class="btn-save" onclick="saveSettlement()">保存</button>
-  </div>
- </div>
-</div>
-
-<!-- Quotation Modal -->
-<div class="modal-overlay hidden" id="quote-modal">
- <div class="modal-sheet">
-  <h3 id="quote-form-title">创建报价</h3>
-  <div class="form-group"><label>报价标题 *</label><input id="qf-title" placeholder="如：XXXX项目报价单"></div>
-  <div class="form-group"><label>关联客户 *</label><select id="qf-client"><option value="">选择客户...</option></select></div>
-  <div class="form-group"><label>报价模板</label><select id="qf-template" onchange="applyQfTemplate()"><option value="">不使用模板</option></select></div>
-  <div class="section-title">📋 明细项目 <button class="add-btn" onclick="addQuoteItem()">＋ 添加行</button></div>
-  <div class="quote-items" id="qf-items"></div>
-  <div class="form-row" style="background:var(--surface);padding:10px;border-radius:8px;margin-bottom:8px">
-   <div class="form-group" style="flex:1"><label>折扣率(%)</label><input id="qf-discount-rate" type="number" min="0" max="100" placeholder="0" oninput="updateQfTotals()" style="width:80px"></div>
-   <div class="form-group" style="flex:1"><label>税率(%)</label><input id="qf-tax-rate" type="number" min="0" max="100" placeholder="0" oninput="updateQfTotals()" style="width:80px"></div>
-  </div>
-  <div style="text-align:right;font-size:13px;color:var(--text2);margin-bottom:8px">
-   小计：<span id="qf-total">¥0.00</span> &nbsp;
-   折扣：<span id="qf-discount-amount" style="color:#EF4444">-¥0.00</span> &nbsp;
-   税额：<span id="qf-tax-amount">¥0.00</span>
-  </div>
-  <div class="quote-total">合计：<span id="qf-grand-total">¥0.00</span></div>
-  <div class="form-row">
-   <div class="form-group"><label>有效截止</label><input id="qf-valid-until" type="date"></div>
-   <div class="form-group"><label>状态</label><select id="qf-status"><option value="draft">草稿</option><option value="sent">已发送</option><option value="approved">已批准</option><option value="rejected">已拒绝</option><option value="expired">已过期</option></select></div>
-  </div>
-  <div class="form-group"><label>备注</label><textarea id="qf-notes" rows="2" placeholder="备注..."></textarea></div>
-  <div class="modal-actions">
-   <button class="btn-sm btn-sm-muted" onclick="saveContractTemplate()" style="margin-right:auto">💾 保存为模板</button>
-   <button class="btn-cancel" onclick="closeQuoteForm()">取消</button>
-   <button class="btn-delete hidden" id="quote-btn-delete" onclick="confirmDeleteQuote()">删除</button>
-   <button class="btn-convert hidden" id="quote-btn-convert" onclick="convertQuoteToOrder()" style="background:#10B981;color:#fff">转为订单</button>
-   <button class="btn-save" onclick="saveQuote()">保存</button>
-  </div>
- </div>
-</div>
-
-<!-- Contract Modal -->
-<div class="modal-overlay hidden" id="contract-modal">
- <div class="modal-sheet">
-  <h3 id="contract-form-title">创建合同</h3>
-  <div class="form-row">
-   <div class="form-group"><label>合同编号</label><input id="cf-contract-no" placeholder="自动生成"></div>
-   <div class="form-group"><label>合同标题 *</label><input id="cf-title" placeholder="合同标题"></div>
-  </div>
-  <div class="form-row">
-   <div class="form-group"><label>关联客户 *</label><select id="cf-client"><option value="">选择客户...</option></select></div>
-   <div class="form-group"><label>合同金额(元)</label><input id="cf-amount" type="number" step="0.01" placeholder="0"></div>
-  </div>
-  <div class="form-row">
-   <div class="form-group"><label>我方主体</label><input id="cf-our-party" placeholder="我方公司名"></div>
-   <div class="form-group"><label>对方主体</label><input id="cf-their-party" placeholder="对方公司名"></div>
-  </div>
-  <div class="form-row">
-   <div class="form-group"><label>签署日期</label><input id="cf-sign-date" type="date"></div>
-   <div class="form-group"><label>开始日期</label><input id="cf-start-date" type="date"></div>
-  </div>
-  <div class="form-row">
-   <div class="form-group"><label>结束日期</label><input id="cf-end-date" type="date"></div>
-   <div class="form-group"><label>状态</label><select id="cf-status"><option value="draft">草稿</option><option value="signed">已签署</option><option value="executing">执行中</option><option value="completed">已完成</option><option value="terminated">已终止</option></select></div>
-   </div>
-   <input id="cf-archive-status" type="hidden" value="active"><input id="cf-discount" type="hidden" value="0"><input id="cf-tax" type="hidden" value="0">
-  </div>
-  <div class="form-group"><label>备注</label><textarea id="cf-notes" rows="2" placeholder="备注..."></textarea></div>
-  <div class="form-group"><label>合同电子版</label><div id="cf-file-area"><input type="file" id="cf-file" accept=".pdf,.doc,.docx,.jpg,.png,.zip" style="width:100%"><div id="cf-file-info" class="hidden" style="margin-top:4px;font-size:12px;color:var(--primary)">已上传: <a id="cf-file-link" href="#" target="_blank" style="color:var(--primary);text-decoration:underline"><span id="cf-file-name"></span></a> <a href="#" onclick="removeContractFile();return false" style="color:var(--danger)">移除</a></div></div></div>
-  <div class="modal-actions">
-   <button class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
-   <button class="btn-cancel" onclick="closeContractForm()">取消</button>
-   <button class="btn-delete hidden" id="contract-btn-delete" onclick="confirmDeleteContract()">删除</button>
-   <button class="btn-save" onclick="saveContract()">保存</button>
-  </div>
- </div>
-</div>
-
-<!-- Payment Modal -->
-<div class="modal-overlay hidden" id="payment-modal">
- <div class="modal-sheet">
-  <h3 id="payment-form-title">添加回款</h3>
-  <div class="form-row">
-   <div class="form-group"><label>关联客户 *</label><select id="pf-client"><option value="">选择客户...</option></select></div>
-   <div class="form-group"><label>关联合同</label><select id="pf-contract"><option value="">选择合同...</option></select></div>
-  </div>
-  <div class="form-row">
-   <div class="form-group"><label>金额(元) *</label><input id="pf-amount" type="number" step="0.01" placeholder="0"></div>
-   <div class="form-group"><label>收款日期</label><input id="pf-date" type="date"></div>
-  </div>
-  <div class="form-row">
-   <div class="form-group"><label>收款方式</label><select id="pf-method"><option value="bank">银行转账</option><option value="cash">现金</option><option value="wechat">微信</option><option value="alipay">支付宝</option><option value="check">支票</option><option value="other">其他</option></select></div>
-   <div class="form-group"><label>状态</label><select id="pf-status"><option value="received">已收款</option><option value="planned">计划中</option><option value="overdue">逾期</option></select></div>
-  </div>
-  <div class="form-row">
-   <div class="form-group"><label>发票号</label><input id="pf-invoice" placeholder="发票号码"></div>
-  </div>
-  <div class="form-group"><label>备注</label><textarea id="pf-notes" rows="2" placeholder="备注..."></textarea></div>
-  <div class="modal-actions">
-   <button class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
-   <button class="btn-cancel" onclick="closePaymentForm()">取消</button>
-   <button class="btn-delete hidden" id="payment-btn-delete" onclick="confirmDeletePayment()">删除</button>
-   <button class="btn-save" onclick="savePayment()">保存</button>
-  </div>
- </div>
-</div>
-
-<!-- Follow-up Modal (inline in lead view) - simplified: add directly in lead form -->
-
-<!-- Product Modal -->
-<div class="modal-overlay hidden" id="product-modal">
- <div class="modal-sheet">
-  <h3 id="product-form-title">添加产品</h3>
-  <div class="form-row">
-   <div class="form-group"><label>产品名称 *</label><input id="pfm-name" placeholder="产品名称"></div>
-   <div class="form-group"><label>产品编码</label><input id="pfm-code" placeholder="SKU"></div>
-  </div>
-  <div class="form-row">
-   <div class="form-group"><label>分类</label><select id="pfm-category"><option value="">选择分类</option></select></div>
-   <div class="form-group"><label>单位</label><input id="pfm-unit" placeholder="个/箱/吨" value="个"></div>
-  </div>
-  <div class="form-row">
-   <div class="form-group"><label>成本价(元)</label><input id="pfm-cost" type="number" step="0.01" placeholder="0"></div>
-   <div class="form-group"><label>销售价(元)</label><input id="pfm-price" type="number" step="0.01" placeholder="0"></div>
-  </div>
-  <div class="form-group"><label>规格参数</label>
-   <div id="pfm-specs"></div>
-   <button class="add-btn" onclick="addSpecRow()">＋ 添加参数</button>
-  </div>
-  <div class="form-group"><label>产品图片</label>
-   <input id="pfm-image-url" placeholder="粘贴图片URL" onkeydown="if(event.key==='Enter'){addProductImage();event.preventDefault()}">
-   <button class="add-btn" onclick="addProductImage()" style="margin-top:4px">＋ 添加图片</button>
-   <div class="image-preview" id="pfm-images"></div>
-  </div>
-  <div class="form-group"><label>描述</label><textarea id="pfm-desc" rows="2" placeholder="产品描述..."></textarea></div>
-  <div class="modal-actions">
-   <button class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
-   <button class="btn-cancel" onclick="closeProductForm()">取消</button>
-   <button class="btn-delete hidden" id="product-btn-delete" onclick="deleteProduct()">删除</button>
-   <button class="btn-save" onclick="saveProduct()">保存</button>
-  </div>
- </div>
-</div>
-
-<!-- Category Modal -->
-<div class="modal-overlay hidden" id="category-modal">
- <div class="modal-sheet">
-  <h3 id="category-form-title">添加分类</h3>
-  <div class="form-group"><label>分类名称 *</label><input id="cat-name" placeholder="如：原材料、成品、半成品"></div>
-  <div class="form-group"><label>描述</label><input id="cat-desc" placeholder="分类描述"></div>
-  <div id="cat-list" style="margin-top:12px"></div>
-  <div class="modal-actions">
-   <button class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
-   <button class="btn-cancel" onclick="closeCategoryForm()">取消</button>
-   <button class="btn-save" onclick="saveCategory()">保存</button>
-  </div>
- </div>
-</div>
-
-<!-- Warehouse Modal -->
-<div class="modal-overlay hidden" id="warehouse-modal">
- <div class="modal-sheet">
-  <h3 id="warehouse-form-title">添加仓库</h3>
-  <div class="form-group"><label>仓库名称 *</label><input id="wh-name" placeholder="如：主仓库、原材料仓"></div>
-  <div class="form-group"><label>地址</label><input id="wh-addr" placeholder="仓库地址"></div>
-  <div class="form-group"><label>描述</label><textarea id="wh-desc" rows="2" placeholder="备注..."></textarea></div>
-  <div class="modal-actions">
-   <button class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
-   <button class="btn-cancel" onclick="closeWarehouseForm()">取消</button>
-   <button class="btn-delete hidden" id="warehouse-btn-delete" onclick="deleteWarehouse()">删除</button>
-   <button class="btn-save" onclick="saveWarehouse()">保存</button>
-  </div>
- </div>
-</div>
-
-<!-- Stock Record Modal -->
-<div class="modal-overlay hidden" id="stock-record-modal">
- <div class="modal-sheet">
-  <h3 id="stock-record-title">出入库</h3>
-  <div class="form-row">
-   <div class="form-group"><label>类型 *</label><select id="srm-type"><option value="in">入库</option><option value="out">出库</option></select></div>
-   <div class="form-group"><label>仓库 *</label><select id="srm-warehouse"><option value="">选择仓库</option></select></div>
-  </div>
-  <div class="form-group"><label>产品 *</label><select id="srm-product"><option value="">选择产品</option></select></div>
-  <div class="form-row">
-   <div class="form-group"><label>数量 *</label><input id="srm-qty" type="number" step="0.01" placeholder="0"></div>
-   <div class="form-group"><label>单价(元)</label><input id="srm-price" type="number" step="0.01" placeholder="0"></div>
-  </div>
-  <div class="form-row">
-   <div class="form-group"><label>批次号</label><input id="srm-batch" placeholder="批次号"></div>
-  </div>
-  <div class="form-group"><label>备注</label><textarea id="srm-remark" rows="2" placeholder="备注..."></textarea></div>
-  <div class="modal-actions">
-   <button class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
-   <button class="btn-cancel" onclick="closeStockRecordForm()">取消</button>
-   <button class="btn-save" onclick="saveStockRecord()">保存</button>
-  </div>
- </div>
-</div>
-
-<!-- Alert Modal -->
-<div class="modal-overlay hidden" id="alert-modal">
- <div class="modal-sheet">
-  <h3 id="alert-form-title">库存预警设置</h3>
-  <div class="form-row">
-   <div class="form-group"><label>产品 *</label><select id="alm-product"><option value="">选择产品</option></select></div>
-   <div class="form-group"><label>仓库</label><select id="alm-warehouse"><option value="">全部仓库</option></select></div>
-  </div>
-  <div class="form-row">
-   <div class="form-group"><label>最低库存</label><input id="alm-min" type="number" step="0.01" placeholder="低于此值预警"></div>
-   <div class="form-group"><label>最高库存</label><input id="alm-max" type="number" step="0.01" placeholder="超过此值预警"></div>
-  </div>
-  <div class="form-group"><label><input type="checkbox" id="alm-enabled" checked> 启用预警</label></div>
-  <div class="modal-actions">
-   <button class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
-   <button class="btn-cancel" onclick="closeAlertForm()">取消</button>
-   <button class="btn-delete hidden" id="alert-btn-delete" onclick="deleteAlert()">删除</button>
-   <button class="btn-save" onclick="saveAlert()">保存</button>
-  </div>
- </div>
-</div>
-
-<!-- Check Modal -->
-<div class="modal-overlay hidden" id="check-modal">
- <div class="modal-sheet">
-  <h3 id="check-form-title">新增盘点</h3>
-  <div class="form-row">
-   <div class="form-group"><label>仓库 *</label><select id="chm-warehouse"><option value="">选择仓库</option></select></div>
-   <div class="form-group"><label>盘点日期</label><input id="chm-date" type="date"></div>
-  </div>
-  <div class="form-group"><label>备注</label><textarea id="chm-remark" rows="2" placeholder="备注..."></textarea></div>
-  <div id="chm-items-title" style="display:none;margin-top:12px;font-weight:600;font-size:14px">盘点明细</div>
-  <div id="chm-items"></div>
-  <div style="margin-top:8px" id="chm-add-btn"></div>
-  <div class="check-summary" id="chm-summary" style="display:none">
-   <div class="check-sum-card"><div class="cs-val" id="chm-total-items">0</div><div class="cs-label">品项数</div></div>
-   <div class="check-sum-card"><div class="cs-val" style="color:var(--success)" id="chm-match">0</div><div class="cs-label">相符</div></div>
-   <div class="check-sum-card"><div class="cs-val" style="color:var(--danger)" id="chm-diff">0</div><div class="cs-label">差异</div></div>
-  </div>
-  <div class="modal-actions">
-   <button class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
-   <button class="btn-cancel" onclick="closeCheckForm()">取消</button>
-   <button class="btn-delete hidden" id="check-btn-delete" onclick="deleteCheck()">删除</button>
-   <button class="btn-save" onclick="saveCheck()">保存</button>
-  </div>
- </div>
-</div>
-
-
-
-<script>
 // === Performance Functions ===
 
 function switchPerfTab(sub){
@@ -8302,10 +7982,7 @@ var ruleEditId=null;
   document.body.appendChild(modals);
   populatePerfSelects();
 })();
-</script>
 
-
-<script>
 // === Supplier Functions ===
 
 async function loadSuppliers(){
@@ -8598,9 +8275,7 @@ var supLinkedClientId=null;var supLinkedClientName='';
   modals.innerHTML='<div id="supplier-modal" class="modal hidden"><div class="modal-box" style="max-width:560px"><div class="modal-head"><span id="sup-modal-title">\u65b0\u5efa\u4f9b\u5e94\u5546</span><span class="modal-close" onclick="closeSupplierForm()">\u00d7</span></div><div class="modal-body"><div class="form-group"><label>\u4f9b\u5e94\u5546\u540d\u79f0 <span style="font-size:11px;color:var(--text-secondary);font-weight:400">\u2014 \u652f\u6301\u4f01\u4e1a\u540d\u5f55\u81ea\u52a8\u5339\u914d</span></label><div style="position:relative"><input id="sup-name" placeholder="\u5fc5\u586b" autocomplete="off" oninput="onSupNameInput()" onfocus="onSupNameInput()" onkeydown="onSupNameKeydown(event)"><div class="name-suggestions hidden" id="sup-name-suggestions"></div></div></div><div class="form-group"><label>\u8054\u7cfb\u4eba</label><input id="sup-contact-name" placeholder="\u8054\u7cfb\u4eba\u59d3\u540d"></div></div><div class="form-group"><label>\u5173\u8054\u5ba2\u6237</label><div style="position:relative"><input id="sup-link-client" placeholder="\u641c\u7d22\u5173\u8054\u5ba2\u6237..." autocomplete="off" oninput="searchSupplierLinkClient()" onkeydown="supLinkClientKeydown(event)"><div class="search-list hidden" id="sup-link-list"></div></div><div id="sup-link-selected" style="display:none;margin-top:4px;padding:6px 10px;background:var(--primary-light);border-radius:6px;font-size:13px"><span id="sup-link-client-name"></span><button class="btn-xs" style="color:var(--text-secondary);margin-left:8px;cursor:pointer" onclick="clearSupLinkClient()">\u00d7</button><button class="btn-xs" style="color:var(--primary);margin-left:8px;cursor:pointer" onclick="importClientContacts()">\u5bfc\u5165\u8054\u7cfb\u4eba</button><div class="search-list hidden" id="sup-contact-picker" style="margin-top:6px;max-height:160px;overflow-y:auto"></div></div><div class="form-group"><label>\u8054\u7cfb\u7535\u8bdd</label><div id="sup-phones"></div><button class="btn-sm" style="background:var(--surface);border:1px solid var(--border);margin-top:4px" onclick="addSupPhone()">\uff0b \u6dfb\u52a0\u7535\u8bdd</button></div><div class="form-group"><label>\u4ea7\u54c1\u6e05\u5355</label><div id="sup-products"></div><button class="btn-sm" style="background:var(--surface);border:1px solid var(--border);margin-top:4px" onclick="addSupProduct()">\uff0b \u6dfb\u52a0\u4ea7\u54c1</button></div><div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>\u7c7b\u522b</label><input id="sup-category" placeholder="\u5982\uff1a\u7535\u5b50\u5143\u4ef6" list="sup-cat-list"><datalist id="sup-cat-list"></datalist></div><div><label>\u5408\u4f5c\u6b21\u6570</label><input id="sup-cooperation-count" type="number" min="0"></div></div><div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>\u5408\u4f5c\u7ea7\u522b</label><select id="sup-cooperation-level"><option value="A">A\u7ea7</option><option value="B">B\u7ea7</option><option value="C" selected>C\u7ea7</option><option value="D">D\u7ea7</option><option value="E">E\u7ea7</option></select></div><div><label>\u6b21\u54c1\u7387 (%)</label><input id="sup-defect-rate" type="number" step="0.01" min="0" max="100" value="0"></div></div><div class="form-group"><label>\u5907\u6ce8</label><input id="sup-notes" placeholder="\u53ef\u9009"></div></div><div class="modal-actions"><button class="btn-cancel" onclick="closeSupplierForm()">\u53d6\u6d88</button><button class="btn-delete hidden" id="sup-btn-delete" onclick="deleteSupplier(supplierEditId)">\u5220\u9664</button><button class="btn-save" onclick="saveSupplier()">\u4fdd\u5b58</button></div></div></div>';
   document.body.appendChild(modals);
 })();
-</script>
 
-<script>
 // === Client Name Autocomplete ===
 var nameSuggIdx=-1,nameSuggList=[];
 
@@ -8692,9 +8367,7 @@ function selectNameSuggestion(idx){
     showToast('客户 "'+m.name+'" 已存在');
   }
 }
-</script>
 
-<script>
 // === Supplier Name Autocomplete ===
 var supNameSuggIdx=-1,supNameSuggList=[];
 
@@ -8780,10 +8453,10 @@ function selectSupNameSuggestion(idx){
 // Click-outside to close suggestions
 document.addEventListener('click',function(e){
   var ddSup=document.getElementById('sup-name-suggestions');
-  if(ddSup&&!ddSup.classList.contains('hidden')&&!e.target.closest('#supplier-modal'))ddSup.classList.add('hidden');
+  if(ddSup&&!ddSup.classList.contains('hidden')&&!e.target.closest("#supplier-modal"))ddSup.classList.add('hidden');
   // Also handle client name suggestions
   var ns=document.getElementById('name-suggestions');
-  if(ns&&!ns.classList.contains('hidden')&&!e.target.closest('#form-modal'))ns.classList.add('hidden');
+  if(ns&&!ns.classList.contains('hidden')&&!e.target.closest("#form-modal"))ns.classList.add('hidden');
 });
 
 // ============ NEW: Client 360 Functions ============
@@ -9343,7 +9016,7 @@ async function loadFollowups(){
   var h='';
   for(var i=0;i<data.length;i++){
     var f=data[i];var cl2=allClients.find(function(x){return x.id===f.client_id});
-    h+='<div class="schedule-item" style="border-left-color:#8B5CF6"><div class="sch-title"><span style="background:#EDE9FE;color:#7C3AED;padding:1px 6px;border-radius:4px;font-size:11px">'+h(f.type||'其他')+'</span> '+(cl2?h(cl2.name):'未知客户')+'</div><div style="font-size:13px;margin:4px 0">'+h(f.content||'')+'</div>'+(f.outcome?'<div style="font-size:12px;color:#10B981">'+h(f.outcome)+'</div>':'')+(f.next_step?'<div class="sch-meta">下一步: '+h(f.next_step)+(f.next_date?' ('+f.next_date+')':'')+'</div>':'')+'<div class="sch-meta">'+new Date(f.created_at).toLocaleString('zh-CN')+'<button class="btn-sm" style="font-size:10px;padding:1px 6px;color:var(--danger);margin-left:8px" onclick="deleteEngagement(''+f.id+'')">删除</button></div></div>';
+    h+='<div class="schedule-item" style="border-left-color:#8B5CF6"><div class="sch-title"><span style="background:#EDE9FE;color:#7C3AED;padding:1px 6px;border-radius:4px;font-size:11px">'+h(f.type||'其他')+'</span> '+(cl2?h(cl2.name):'未知客户')+'</div><div style="font-size:13px;margin:4px 0">'+h(f.content||'')+'</div>'+(f.outcome?'<div style="font-size:12px;color:#10B981">'+h(f.outcome)+'</div>':'')+(f.next_step?'<div class="sch-meta">下一步: '+h(f.next_step)+(f.next_date?' ('+f.next_date+')':'')+'</div>':'')+'<div class="sch-meta">'+new Date(f.created_at).toLocaleString('zh-CN')+'<button class="btn-sm" style="font-size:10px;padding:1px 6px;color:var(--danger);margin-left:8px" onclick="deleteEngagement(\''+f.id+'\')\">删除</button></div></div>';
   }
   list.innerHTML=h;
 }
@@ -9357,7 +9030,7 @@ function openFollowupForm(){
   h+='<div class="form-group"><label>跟进内容 *</label><textarea id="fu-content" rows="3" placeholder="请输入跟进内容..."></textarea></div>';
   h+='<div class="form-group"><label>结果</label><input id="fu-outcome" placeholder="跟进结果（可选）"></div>';
   h+='<div class="form-row"><div class="form-group"><label>下一步计划</label><input id="fu-next-step" placeholder="下一步"></div><div class="form-group"><label>下次跟进日期</label><input type="date" id="fu-next-date"></div></div>';
-  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">取消</button><button class="btn-save" onclick="saveFollowup()">保存</button></div></div></div>';
+  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest(".modal-overlay").remove()">取消</button><button class="btn-save" onclick="saveFollowup()">保存</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend',h);
 }
 
@@ -9405,7 +9078,7 @@ function openMsgForm(){
   for(var i=0;i<allDepartments.length;i++)h+='<option value="'+allDepartments[i].id+'">'+h(allDepartments[i].name)+'</option>';
   h+='</select></div>';
   h+='<div class="form-group"><label>消息内容 *</label><textarea id="msg-content" rows="3" placeholder="输入消息..."></textarea></div>';
-  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">取消</button><button class="btn-save" onclick="sendMsg()">发送</button></div></div></div>';
+  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest(".modal-overlay").remove()">取消</button><button class="btn-save" onclick="sendMsg()">发送</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend',h);
 }
 
@@ -9457,7 +9130,7 @@ async function loadSchedules(){
   for(var i=0;i<data.length;i++){
     var s=data[i];
     var time=s.all_day?'全天':new Date(s.start_time).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
-    h+='<div class="schedule-item" style="border-left-color:'+(s.color||'#4F6EF7')+'"><div class="sch-title">'+h(s.title)+' <span style="font-size:11px;color:var(--text3)">'+time+'</span></div>'+(s.description?'<div style="font-size:13px;color:var(--text2)">'+h(s.description)+'</div>':'')+(s.location?'<div class="sch-meta">📍 '+h(s.location)+'</div>':'')+'<div style="margin-top:6px;display:flex;gap:6px"><button class="btn-sm" style="font-size:11px;padding:2px 8px" onclick="editSchedule(''+s.id+'')">编辑</button><button class="btn-sm" style="font-size:11px;padding:2px 8px;color:var(--danger)" onclick="deleteSchedule(''+s.id+'')">删除</button></div></div>';
+    h+='<div class="schedule-item" style="border-left-color:'+(s.color||'#4F6EF7')+'"><div class="sch-title">'+h(s.title)+' <span style="font-size:11px;color:var(--text3)">'+time+'</span></div>'+(s.description?'<div style="font-size:13px;color:var(--text2)">'+h(s.description)+'</div>':'')+(s.location?'<div class="sch-meta">📍 '+h(s.location)+'</div>':'')+'<div style="margin-top:6px;display:flex;gap:6px"><button class="btn-sm" style="font-size:11px;padding:2px 8px" onclick="editSchedule(\''+s.id+'\')\">编辑</button><button class="btn-sm" style="font-size:11px;padding:2px 8px;color:var(--danger)" onclick="deleteSchedule(\''+s.id+'\')\">删除</button></div></div>';
   }
   list.innerHTML=h;
 }
@@ -9470,7 +9143,7 @@ function openScheduleForm(id){
   h+='<div class="form-row"><div class="form-group"><label><input type="checkbox" id="sch-allday" '+(s&&s.all_day?'checked':'')+'> 全天</label></div><div class="form-group"><label>颜色</label><input type="color" id="sch-color" value="'+(s?s.color||'#4F6EF7':'#4F6EF7')+'"></div></div>';
   h+='<div class="form-group"><label>地点</label><input id="sch-location" value="'+(s?escAttr(s.location||''):'')+'"></div>';
   h+='<div class="form-group"><label>描述</label><textarea id="sch-desc" rows="2">'+(s?escHtml(s.description||''):'')+'</textarea></div>';
-  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">取消</button><button class="btn-save" onclick="saveSchedule(\''+(s?s.id:'')+'\')">保存</button></div></div></div>';
+  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest(".modal-overlay").remove()">取消</button><button class="btn-save" onclick="saveSchedule(\''+(s?s.id:'')+'\')">保存</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend',h);
 }
 
@@ -9512,7 +9185,7 @@ async function loadTasks(){
     var t=data[i];
     var prio=t.priority||'normal';
     var statusLabel={todo:'待办',in_progress:'进行中',done:'已完成',cancelled:'已取消'}[t.status]||t.status;
-    h+='<div class="task-item task-priority-'+prio+'"><div class="task-title">'+h(t.title)+' <span class="status-badge status-'+(t.status==='in_progress'?'progress':t.status)+'">'+statusLabel+'</span></div>'+(t.description?'<div style="font-size:13px;color:var(--text2)">'+h(t.description)+'</div>':'')+(t.due_date?'<div class="task-meta">📅 截止: '+t.due_date+'</div>':'')+'<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap"><button class="btn-sm" style="font-size:11px;padding:2px 8px" onclick="editTask(''+t.id+'')">编辑</button><button class="btn-sm" style="font-size:11px;padding:2px 8px;color:var(--danger)" onclick="deleteTask(''+t.id+'')">删除</button></div></div>';
+    h+='<div class="task-item task-priority-'+prio+'"><div class="task-title">'+h(t.title)+' <span class="status-badge status-'+(t.status==='in_progress'?'progress':t.status)+'">'+statusLabel+'</span></div>'+(t.description?'<div style="font-size:13px;color:var(--text2)">'+h(t.description)+'</div>':'')+(t.due_date?'<div class="task-meta">📅 截止: '+t.due_date+'</div>':'')+'<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap"><button class="btn-sm" style="font-size:11px;padding:2px 8px" onclick="editTask(\''+t.id+'\')\">编辑</button><button class="btn-sm" style="font-size:11px;padding:2px 8px;color:var(--danger)" onclick="deleteTask(\''+t.id+'\')\">删除</button></div></div>';
   }
   list.innerHTML=h;
 }
@@ -9524,7 +9197,7 @@ function openTaskForm(id){
   h+='<div class="form-group"><label>描述</label><textarea id="ta-desc" rows="2">'+(t?escHtml(t.description||''):'')+'</textarea></div>';
   h+='<div class="form-row"><div class="form-group"><label>优先级</label><select id="ta-priority"><option value="urgent"'+(t&&t.priority==='urgent'?' selected':'')+'>紧急</option><option value="high"'+(t&&t.priority==='high'?' selected':'')+'>高</option><option value="normal"'+(t&&t.priority==='normal'?' selected':'')+'>普通</option><option value="low"'+(t&&t.priority==='low'?' selected':'')+'>低</option></select></div><div class="form-group"><label>截止日期</label><input type="date" id="ta-due" value="'+(t&&t.due_date?t.due_date:'')+'"></div></div>';
   h+='<div class="form-row"><div class="form-group"><label>状态</label><select id="ta-status"><option value="todo"'+(t&&t.status==='todo'?' selected':'')+'>待办</option><option value="in_progress"'+(t&&t.status==='in_progress'?' selected':'')+'>进行中</option><option value="done"'+(t&&t.status==='done'?' selected':'')+'>已完成</option></select></div><div class="form-group"><label>分配给</label><select id="ta-assigned">'+(function(){var o='<option value="">自己</option>';for(var k=0;k<allUsers.length;k++){var u=allUsers[k];o+='<option value="'+u.user_id+'"'+(t&&t.assigned_to===u.user_id?' selected':'')+'>'+(u.display_name||u.email||u.user_id)+'</option>'}return o})()+'</select></div></div>';
-  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">取消</button><button class="btn-save" onclick="saveTask(\''+(t?t.id:'')+'\')">保存</button></div></div></div>';
+  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest(".modal-overlay").remove()">取消</button><button class="btn-save" onclick="saveTask(\''+(t?t.id:'')+'\')">保存</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend',h);
 }
 
@@ -9566,7 +9239,7 @@ async function loadApprovals(){
   var h='',statusMap={pending:'待审批',approved:'已通过',rejected:'已驳回',cancelled:'已取消'};
   for(var i=0;i<data.length;i++){
     var a=data[i];
-    h+='<div class="approval-item approval-'+(a.status==='pending'?'pending':a.status==='approved'?'approved':a.status==='rejected'?'rejected':'')+'"><div class="appr-title">'+h(a.title)+' <span class="status-badge status-'+(a.status==='pending'?'progress':a.status==='approved'?'done':a.status==='rejected'?'cancelled':'cancelled')+'">'+statusMap[a.status]+'</span></div><div class="appr-meta">'+h(a.type)+' · 步骤 '+a.current_step+'/'+a.total_steps+' · '+new Date(a.created_at).toLocaleDateString('zh-CN')+'</div>'+(a.status==='pending'?'<div style="margin-top:6px"><button class="btn-sm" style="font-size:11px;padding:2px 8px;background:#10B981;color:#fff;border:none;border-radius:4px;margin-right:4px" onclick="approveAction(''+a.id+'','approve')">通过</button><button class="btn-sm" style="font-size:11px;padding:2px 8px;background:#EF4444;color:#fff;border:none;border-radius:4px" onclick="approveAction(''+a.id+'','reject')">驳回</button></div>':'')+'</div>';
+    h+='<div class="approval-item approval-'+(a.status==='pending'?'pending':a.status==='approved'?'approved':a.status==='rejected'?'rejected':'')+'"><div class="appr-title">'+h(a.title)+' <span class="status-badge status-'+(a.status==='pending'?'progress':a.status==='approved'?'done':a.status==='rejected'?'cancelled':'cancelled')+'">'+statusMap[a.status]+'</span></div><div class="appr-meta">'+h(a.type)+' · 步骤 '+a.current_step+'/'+a.total_steps+' · '+new Date(a.created_at).toLocaleDateString('zh-CN')+'</div>'+(a.status==='pending'?'<div style="margin-top:6px"><button class="btn-sm" style="font-size:11px;padding:2px 8px;background:#10B981;color:#fff;border:none;border-radius:4px;margin-right:4px" onclick="approveAction('+a.id+',\'approve\')">通过</button><button class="btn-sm" style="font-size:11px;padding:2px 8px;background:#EF4444;color:#fff;border:none;border-radius:4px" onclick="approveAction('+a.id+',\'reject\')">驳回</button></div>':'')+'</div>';
   }
   list.innerHTML=h;
 }
@@ -9579,7 +9252,7 @@ function openApprovalForm(){
   h+='</select></div>';
   h+='<div class="form-group"><label>标题 *</label><input id="ap-title" placeholder="审批标题"></div>';
   h+='<div class="form-group"><label>内容说明</label><textarea id="ap-content" rows="3" placeholder="请输入审批内容和理由..."></textarea></div>';
-  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">取消</button><button class="btn-save" onclick="submitApproval()">提交</button></div></div></div>';
+  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest(".modal-overlay").remove()">取消</button><button class="btn-save" onclick="submitApproval()">提交</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend',h);
 }
 
@@ -9623,7 +9296,7 @@ async function loadComments(){
   for(var i=0;i<data.length;i++){
     var cm=data[i];
     var cl=allClients.find(function(x){return x.id===cm.client_id});
-    h+='<div class="comment-item"><div class="cmt-title">'+h(cm.content)+'</div><div class="cmt-meta">客户: '+(cl?h(cl.name):'未知')+' · '+new Date(cm.created_at).toLocaleString('zh-CN')+'<button class="btn-sm" style="font-size:10px;padding:1px 6px;color:var(--danger);margin-left:8px" onclick="deleteComment(''+cm.id+'')">删除</button></div></div>';
+    h+='<div class="comment-item"><div class="cmt-title">'+h(cm.content)+'</div><div class="cmt-meta">客户: '+(cl?h(cl.name):'未知')+' · '+new Date(cm.created_at).toLocaleString('zh-CN')+'<button class="btn-sm" style="font-size:10px;padding:1px 6px;color:var(--danger);margin-left:8px" onclick="deleteComment(\''+cm.id+'\')\">删除</button></div></div>';
   }
   list.innerHTML=h;
 }
@@ -9634,7 +9307,7 @@ function openCommentForm(){
   for(var i=0;i<allClients.length;i++)h+='<option value="'+allClients[i].id+'">'+h(allClients[i].name)+'</option>';
   h+='</select></div>';
   h+='<div class="form-group"><label>评论内容 *</label><textarea id="cm-content" rows="3" placeholder="输入评论..."></textarea></div>';
-  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">取消</button><button class="btn-save" onclick="saveComment()">保存</button></div></div></div>';
+  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest(".modal-overlay").remove()">取消</button><button class="btn-save" onclick="saveComment()">保存</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend',h);
 }
 
@@ -10138,6 +9811,334 @@ function extendPermissionMatrix(){
 }
 
 </script>
+
+
+<!-- Transfer Form Modal -->
+<div class="modal-overlay hidden" id="transfer-modal">
+ <div class="modal-sheet">
+  <h3 id="transfer-form-title">新增调拨</h3>
+  <div class="form-row">
+   <div class="form-group"><label>调出仓库 *</label><select id="tfm-from"></select></div>
+   <div class="form-group"><label>调入仓库 *</label><select id="tfm-to"></select></div>
+  </div>
+  <div class="form-group"><label>调拨日期</label><input id="tfm-date" type="date"></div>
+  <div class="form-group"><label>备注</label><textarea id="tfm-notes" rows="2" placeholder="备注..."></textarea></div>
+  <div class="section-title">📦 调拨明细 <button class="add-btn" onclick="addTransferItem()">＋ 添加</button></div>
+  <div id="tfm-items"></div>
+  <div class="modal-actions">
+   <button class="btn-cancel" onclick="closeTransferForm()">取消</button>
+   <button class="btn-delete hidden" id="transfer-btn-delete" onclick="deleteTransfer()">删除</button>
+   <button class="btn-save" onclick="saveTransfer()">保存</button>
+   <button class="btn-convert" id="transfer-btn-confirm" style="background:var(--success);color:#fff" onclick="confirmTransfer()">确认调拨</button>
+  </div>
+ </div>
+</div>
+
+<!-- Purchase Order Form Modal -->
+<div class="modal-overlay hidden" id="po-modal">
+ <div class="modal-sheet" style="max-width:720px">
+  <h3 id="po-form-title">新建采购单</h3>
+  <div class="form-row">
+   <div class="form-group"><label>供应商 *</label><select id="pof-supplier"><option value="">选择供应商</option></select></div>
+   <div class="form-group"><label>采购单号 *</label><input id="pof-number" placeholder="自动生成或手动输入"></div>
+  </div>
+  <div class="form-row">
+   <div class="form-group"><label>下单日期</label><input id="pof-order-date" type="date"></div>
+   <div class="form-group"><label>预计到货</label><input id="pof-expected-date" type="date"></div>
+  </div>
+  <div class="form-row">
+   <div class="form-group"><label>状态</label><select id="pof-status"><option value="draft">草稿</option><option value="ordered">已下单</option><option value="partial">部分入库</option><option value="received">已入库</option><option value="cancelled">已取消</option></select></div>
+   <div class="form-group"><label>入库仓库</label><select id="pof-warehouse"><option value="">选择仓库</option></select></div>
+  </div>
+  <div class="section-title">📋 采购明细 <button class="add-btn" onclick="addPOItem()">＋ 添加行</button></div>
+  <div id="pof-items" class="quote-items"></div>
+  <div style="text-align:right;font-size:14px;font-weight:600;color:var(--primary);margin:8px 0">合计：<span id="pof-total">¥0.00</span></div>
+  <div class="form-group"><label>备注</label><textarea id="pof-notes" rows="2" placeholder="备注..."></textarea></div>
+  <div class="modal-actions">
+   <button class="btn-cancel" onclick="closePOForm()">取消</button>
+   <button class="btn-delete hidden" id="po-btn-delete" onclick="deletePurchaseOrder()">删除</button>
+   <button class="btn-convert" id="po-btn-receive" style="background:var(--success);color:#fff" onclick="receivePO()">确认入库</button>
+   <button class="btn-save" onclick="savePurchaseOrder()">保存</button>
+  </div>
+ </div>
+</div>
+
+<!-- Supplier Settlement Modal -->
+<div class="modal-overlay hidden" id="settlement-modal">
+ <div class="modal-sheet">
+  <h3 id="settlement-form-title">供应商结算</h3>
+  <div class="form-row">
+   <div class="form-group"><label>供应商 *</label><select id="sf-supplier"><option value="">选择供应商</option></select></div>
+   <div class="form-group"><label>关联采购单</label><select id="sf-po"><option value="">选择采购单</option></select></div>
+  </div>
+  <div class="form-row">
+   <div class="form-group"><label>结算金额 *</label><input id="sf-amount" type="number" step="0.01" placeholder="0.00"></div>
+   <div class="form-group"><label>结算日期</label><input id="sf-date" type="date"></div>
+  </div>
+  <div class="form-row">
+   <div class="form-group"><label>结算方式</label><select id="sf-method"><option value="bank">银行转账</option><option value="cash">现金</option><option value="wechat">微信</option><option value="alipay">支付宝</option><option value="check">支票</option></select></div>
+   <div class="form-group"><label>状态</label><select id="sf-status"><option value="pending">待结算</option><option value="paid">已结算</option><option value="cancelled">已取消</option></select></div>
+  </div>
+  <div class="form-group"><label>备注</label><textarea id="sf-notes" rows="2" placeholder="备注..."></textarea></div>
+  <div class="modal-actions">
+   <button class="btn-cancel" onclick="closeSettlementForm()">取消</button>
+   <button class="btn-delete hidden" id="settlement-btn-delete" onclick="deleteSettlement()">删除</button>
+   <button class="btn-save" onclick="saveSettlement()">保存</button>
+  </div>
+ </div>
+</div>
+
+<!-- Quotation Modal -->
+<div class="modal-overlay hidden" id="quote-modal">
+ <div class="modal-sheet">
+  <h3 id="quote-form-title">创建报价</h3>
+  <div class="form-group"><label>报价标题 *</label><input id="qf-title" placeholder="如：XXXX项目报价单"></div>
+  <div class="form-group"><label>关联客户 *</label><select id="qf-client"><option value="">选择客户...</option></select></div>
+  <div class="form-group"><label>报价模板</label><select id="qf-template" onchange="applyQfTemplate()"><option value="">不使用模板</option></select></div>
+  <div class="section-title">📋 明细项目 <button class="add-btn" onclick="addQuoteItem()">＋ 添加行</button></div>
+  <div class="quote-items" id="qf-items"></div>
+  <div class="form-row" style="background:var(--surface);padding:10px;border-radius:8px;margin-bottom:8px">
+   <div class="form-group" style="flex:1"><label>折扣率(%)</label><input id="qf-discount-rate" type="number" min="0" max="100" placeholder="0" oninput="updateQfTotals()" style="width:80px"></div>
+   <div class="form-group" style="flex:1"><label>税率(%)</label><input id="qf-tax-rate" type="number" min="0" max="100" placeholder="0" oninput="updateQfTotals()" style="width:80px"></div>
+  </div>
+  <div style="text-align:right;font-size:13px;color:var(--text2);margin-bottom:8px">
+   小计：<span id="qf-total">¥0.00</span> &nbsp;
+   折扣：<span id="qf-discount-amount" style="color:#EF4444">-¥0.00</span> &nbsp;
+   税额：<span id="qf-tax-amount">¥0.00</span>
+  </div>
+  <div class="quote-total">合计：<span id="qf-grand-total">¥0.00</span></div>
+  <div class="form-row">
+   <div class="form-group"><label>有效截止</label><input id="qf-valid-until" type="date"></div>
+   <div class="form-group"><label>状态</label><select id="qf-status"><option value="draft">草稿</option><option value="sent">已发送</option><option value="approved">已批准</option><option value="rejected">已拒绝</option><option value="expired">已过期</option></select></div>
+  </div>
+  <div class="form-group"><label>备注</label><textarea id="qf-notes" rows="2" placeholder="备注..."></textarea></div>
+  <div class="modal-actions">
+   <button class="btn-sm btn-sm-muted" onclick="saveContractTemplate()" style="margin-right:auto">💾 保存为模板</button>
+   <button class="btn-cancel" onclick="closeQuoteForm()">取消</button>
+   <button class="btn-delete hidden" id="quote-btn-delete" onclick="confirmDeleteQuote()">删除</button>
+   <button class="btn-convert hidden" id="quote-btn-convert" onclick="convertQuoteToOrder()" style="background:#10B981;color:#fff">转为订单</button>
+   <button class="btn-save" onclick="saveQuote()">保存</button>
+  </div>
+ </div>
+</div>
+
+<!-- Contract Modal -->
+<div class="modal-overlay hidden" id="contract-modal">
+ <div class="modal-sheet">
+  <h3 id="contract-form-title">创建合同</h3>
+  <div class="form-row">
+   <div class="form-group"><label>合同编号</label><input id="cf-contract-no" placeholder="自动生成"></div>
+   <div class="form-group"><label>合同标题 *</label><input id="cf-title" placeholder="合同标题"></div>
+  </div>
+  <div class="form-row">
+   <div class="form-group"><label>关联客户 *</label><select id="cf-client"><option value="">选择客户...</option></select></div>
+   <div class="form-group"><label>合同金额(元)</label><input id="cf-amount" type="number" step="0.01" placeholder="0"></div>
+  </div>
+  <div class="form-row">
+   <div class="form-group"><label>我方主体</label><input id="cf-our-party" placeholder="我方公司名"></div>
+   <div class="form-group"><label>对方主体</label><input id="cf-their-party" placeholder="对方公司名"></div>
+  </div>
+  <div class="form-row">
+   <div class="form-group"><label>签署日期</label><input id="cf-sign-date" type="date"></div>
+   <div class="form-group"><label>开始日期</label><input id="cf-start-date" type="date"></div>
+  </div>
+  <div class="form-row">
+   <div class="form-group"><label>结束日期</label><input id="cf-end-date" type="date"></div>
+   <div class="form-group"><label>状态</label><select id="cf-status"><option value="draft">草稿</option><option value="signed">已签署</option><option value="executing">执行中</option><option value="completed">已完成</option><option value="terminated">已终止</option></select></div>
+   </div>
+   <input id="cf-archive-status" type="hidden" value="active"><input id="cf-discount" type="hidden" value="0"><input id="cf-tax" type="hidden" value="0">
+  </div>
+  <div class="form-group"><label>备注</label><textarea id="cf-notes" rows="2" placeholder="备注..."></textarea></div>
+  <div class="form-group"><label>合同电子版</label><div id="cf-file-area"><input type="file" id="cf-file" accept=".pdf,.doc,.docx,.jpg,.png,.zip" style="width:100%"><div id="cf-file-info" class="hidden" style="margin-top:4px;font-size:12px;color:var(--primary)">已上传: <a id="cf-file-link" href="#" target="_blank" style="color:var(--primary);text-decoration:underline"><span id="cf-file-name"></span></a> <a href="#" onclick="removeContractFile();return false" style="color:var(--danger)">移除</a></div></div></div>
+  <div class="modal-actions">
+   <button class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
+   <button class="btn-cancel" onclick="closeContractForm()">取消</button>
+   <button class="btn-delete hidden" id="contract-btn-delete" onclick="confirmDeleteContract()">删除</button>
+   <button class="btn-save" onclick="saveContract()">保存</button>
+  </div>
+ </div>
+</div>
+
+<!-- Payment Modal -->
+<div class="modal-overlay hidden" id="payment-modal">
+ <div class="modal-sheet">
+  <h3 id="payment-form-title">添加回款</h3>
+  <div class="form-row">
+   <div class="form-group"><label>关联客户 *</label><select id="pf-client"><option value="">选择客户...</option></select></div>
+   <div class="form-group"><label>关联合同</label><select id="pf-contract"><option value="">选择合同...</option></select></div>
+  </div>
+  <div class="form-row">
+   <div class="form-group"><label>金额(元) *</label><input id="pf-amount" type="number" step="0.01" placeholder="0"></div>
+   <div class="form-group"><label>收款日期</label><input id="pf-date" type="date"></div>
+  </div>
+  <div class="form-row">
+   <div class="form-group"><label>收款方式</label><select id="pf-method"><option value="bank">银行转账</option><option value="cash">现金</option><option value="wechat">微信</option><option value="alipay">支付宝</option><option value="check">支票</option><option value="other">其他</option></select></div>
+   <div class="form-group"><label>状态</label><select id="pf-status"><option value="received">已收款</option><option value="planned">计划中</option><option value="overdue">逾期</option></select></div>
+  </div>
+  <div class="form-row">
+   <div class="form-group"><label>发票号</label><input id="pf-invoice" placeholder="发票号码"></div>
+  </div>
+  <div class="form-group"><label>备注</label><textarea id="pf-notes" rows="2" placeholder="备注..."></textarea></div>
+  <div class="modal-actions">
+   <button class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
+   <button class="btn-cancel" onclick="closePaymentForm()">取消</button>
+   <button class="btn-delete hidden" id="payment-btn-delete" onclick="confirmDeletePayment()">删除</button>
+   <button class="btn-save" onclick="savePayment()">保存</button>
+  </div>
+ </div>
+</div>
+
+<!-- Follow-up Modal (inline in lead view) - simplified: add directly in lead form -->
+
+<!-- Product Modal -->
+<div class="modal-overlay hidden" id="product-modal">
+ <div class="modal-sheet">
+  <h3 id="product-form-title">添加产品</h3>
+  <div class="form-row">
+   <div class="form-group"><label>产品名称 *</label><input id="pfm-name" placeholder="产品名称"></div>
+   <div class="form-group"><label>产品编码</label><input id="pfm-code" placeholder="SKU"></div>
+  </div>
+  <div class="form-row">
+   <div class="form-group"><label>分类</label><select id="pfm-category"><option value="">选择分类</option></select></div>
+   <div class="form-group"><label>单位</label><input id="pfm-unit" placeholder="个/箱/吨" value="个"></div>
+  </div>
+  <div class="form-row">
+   <div class="form-group"><label>成本价(元)</label><input id="pfm-cost" type="number" step="0.01" placeholder="0"></div>
+   <div class="form-group"><label>销售价(元)</label><input id="pfm-price" type="number" step="0.01" placeholder="0"></div>
+  </div>
+  <div class="form-group"><label>规格参数</label>
+   <div id="pfm-specs"></div>
+   <button class="add-btn" onclick="addSpecRow()">＋ 添加参数</button>
+  </div>
+  <div class="form-group"><label>产品图片</label>
+   <input id="pfm-image-url" placeholder="粘贴图片URL" onkeydown="if(event.key==='Enter'){addProductImage();event.preventDefault()}">
+   <button class="add-btn" onclick="addProductImage()" style="margin-top:4px">＋ 添加图片</button>
+   <div class="image-preview" id="pfm-images"></div>
+  </div>
+  <div class="form-group"><label>描述</label><textarea id="pfm-desc" rows="2" placeholder="产品描述..."></textarea></div>
+  <div class="modal-actions">
+   <button class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
+   <button class="btn-cancel" onclick="closeProductForm()">取消</button>
+   <button class="btn-delete hidden" id="product-btn-delete" onclick="deleteProduct()">删除</button>
+   <button class="btn-save" onclick="saveProduct()">保存</button>
+  </div>
+ </div>
+</div>
+
+<!-- Category Modal -->
+<div class="modal-overlay hidden" id="category-modal">
+ <div class="modal-sheet">
+  <h3 id="category-form-title">添加分类</h3>
+  <div class="form-group"><label>分类名称 *</label><input id="cat-name" placeholder="如：原材料、成品、半成品"></div>
+  <div class="form-group"><label>描述</label><input id="cat-desc" placeholder="分类描述"></div>
+  <div id="cat-list" style="margin-top:12px"></div>
+  <div class="modal-actions">
+   <button class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
+   <button class="btn-cancel" onclick="closeCategoryForm()">取消</button>
+   <button class="btn-save" onclick="saveCategory()">保存</button>
+  </div>
+ </div>
+</div>
+
+<!-- Warehouse Modal -->
+<div class="modal-overlay hidden" id="warehouse-modal">
+ <div class="modal-sheet">
+  <h3 id="warehouse-form-title">添加仓库</h3>
+  <div class="form-group"><label>仓库名称 *</label><input id="wh-name" placeholder="如：主仓库、原材料仓"></div>
+  <div class="form-group"><label>地址</label><input id="wh-addr" placeholder="仓库地址"></div>
+  <div class="form-group"><label>描述</label><textarea id="wh-desc" rows="2" placeholder="备注..."></textarea></div>
+  <div class="modal-actions">
+   <button class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
+   <button class="btn-cancel" onclick="closeWarehouseForm()">取消</button>
+   <button class="btn-delete hidden" id="warehouse-btn-delete" onclick="deleteWarehouse()">删除</button>
+   <button class="btn-save" onclick="saveWarehouse()">保存</button>
+  </div>
+ </div>
+</div>
+
+<!-- Stock Record Modal -->
+<div class="modal-overlay hidden" id="stock-record-modal">
+ <div class="modal-sheet">
+  <h3 id="stock-record-title">出入库</h3>
+  <div class="form-row">
+   <div class="form-group"><label>类型 *</label><select id="srm-type"><option value="in">入库</option><option value="out">出库</option></select></div>
+   <div class="form-group"><label>仓库 *</label><select id="srm-warehouse"><option value="">选择仓库</option></select></div>
+  </div>
+  <div class="form-group"><label>产品 *</label><select id="srm-product"><option value="">选择产品</option></select></div>
+  <div class="form-row">
+   <div class="form-group"><label>数量 *</label><input id="srm-qty" type="number" step="0.01" placeholder="0"></div>
+   <div class="form-group"><label>单价(元)</label><input id="srm-price" type="number" step="0.01" placeholder="0"></div>
+  </div>
+  <div class="form-row">
+   <div class="form-group"><label>批次号</label><input id="srm-batch" placeholder="批次号"></div>
+  </div>
+  <div class="form-group"><label>备注</label><textarea id="srm-remark" rows="2" placeholder="备注..."></textarea></div>
+  <div class="modal-actions">
+   <button class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
+   <button class="btn-cancel" onclick="closeStockRecordForm()">取消</button>
+   <button class="btn-save" onclick="saveStockRecord()">保存</button>
+  </div>
+ </div>
+</div>
+
+<!-- Alert Modal -->
+<div class="modal-overlay hidden" id="alert-modal">
+ <div class="modal-sheet">
+  <h3 id="alert-form-title">库存预警设置</h3>
+  <div class="form-row">
+   <div class="form-group"><label>产品 *</label><select id="alm-product"><option value="">选择产品</option></select></div>
+   <div class="form-group"><label>仓库</label><select id="alm-warehouse"><option value="">全部仓库</option></select></div>
+  </div>
+  <div class="form-row">
+   <div class="form-group"><label>最低库存</label><input id="alm-min" type="number" step="0.01" placeholder="低于此值预警"></div>
+   <div class="form-group"><label>最高库存</label><input id="alm-max" type="number" step="0.01" placeholder="超过此值预警"></div>
+  </div>
+  <div class="form-group"><label><input type="checkbox" id="alm-enabled" checked> 启用预警</label></div>
+  <div class="modal-actions">
+   <button class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
+   <button class="btn-cancel" onclick="closeAlertForm()">取消</button>
+   <button class="btn-delete hidden" id="alert-btn-delete" onclick="deleteAlert()">删除</button>
+   <button class="btn-save" onclick="saveAlert()">保存</button>
+  </div>
+ </div>
+</div>
+
+<!-- Check Modal -->
+<div class="modal-overlay hidden" id="check-modal">
+ <div class="modal-sheet">
+  <h3 id="check-form-title">新增盘点</h3>
+  <div class="form-row">
+   <div class="form-group"><label>仓库 *</label><select id="chm-warehouse"><option value="">选择仓库</option></select></div>
+   <div class="form-group"><label>盘点日期</label><input id="chm-date" type="date"></div>
+  </div>
+  <div class="form-group"><label>备注</label><textarea id="chm-remark" rows="2" placeholder="备注..."></textarea></div>
+  <div id="chm-items-title" style="display:none;margin-top:12px;font-weight:600;font-size:14px">盘点明细</div>
+  <div id="chm-items"></div>
+  <div style="margin-top:8px" id="chm-add-btn"></div>
+  <div class="check-summary" id="chm-summary" style="display:none">
+   <div class="check-sum-card"><div class="cs-val" id="chm-total-items">0</div><div class="cs-label">品项数</div></div>
+   <div class="check-sum-card"><div class="cs-val" style="color:var(--success)" id="chm-match">0</div><div class="cs-label">相符</div></div>
+   <div class="check-sum-card"><div class="cs-val" style="color:var(--danger)" id="chm-diff">0</div><div class="cs-label">差异</div></div>
+  </div>
+  <div class="modal-actions">
+   <button class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>
+   <button class="btn-cancel" onclick="closeCheckForm()">取消</button>
+   <button class="btn-delete hidden" id="check-btn-delete" onclick="deleteCheck()">删除</button>
+   <button class="btn-save" onclick="saveCheck()">保存</button>
+  </div>
+ </div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
 <div id="toast-container"></div>
 </body>
 </html>
