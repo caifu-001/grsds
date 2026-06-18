@@ -5815,8 +5815,11 @@ function openQuoteForm(id){
   var qm=document.getElementById('quote-modal');
   console.log('[DEBUG] quote-modal el:',qm,'className before:',qm?qm.className:'null');
   qm.classList.remove('hidden');
-  qm.style.display='flex';
-  console.log('[DEBUG] after remove, className:',qm.className,'computed display:',getComputedStyle(qm).display,'offsetParent:',!!qm.offsetParent);
+  qm.style.display='flex';qm.style.zIndex='9999';qm.style.opacity='1';qm.style.visibility='visible';
+  var cs=getComputedStyle(qm);
+  console.log('[DEBUG] after show: display=',cs.display,'zIndex=',cs.zIndex,'opacity=',cs.opacity,'visibility=',cs.visibility,'width=',cs.width,'height=',cs.height,'position=',cs.position,'pointerEvents=',cs.pointerEvents,'inset=',cs.inset,'offsetParent:',!!qm.offsetParent);
+  var rect=qm.getBoundingClientRect();
+  console.log('[DEBUG] bounding rect:',rect.x,rect.y,rect.width,rect.height,'top:',rect.top,'left:',rect.left);
   }catch(e){console.error('[DEBUG] openQuoteForm error:',e.message,e.stack);showToast('报价表单加载失败: '+e.message)}
 }
 function updateQfTotals(){
@@ -6015,7 +6018,14 @@ function openContractForm(id){
     document.getElementById('cf-notes').value=(ct.notes||'').replace(/^\u5f3f\u0046\u0049\u004c\u0045__:.*?\n*/,'');if(ct.file_url){document.getElementById('cf-file-info').classList.remove('hidden');document.getElementById('cf-file-name').textContent=ct.file_name||'已上传';document.getElementById('cf-file-link').href=ct.file_url};
     csel.value=ct.client_id||'';
   }}
-  var cm=document.getElementById('contract-modal');cm.classList.remove('hidden');cm.style.display='flex';
+  var cm=document.getElementById('contract-modal');
+  console.log('[DEBUG] openContractForm about to show, el:',!!cm,'className before:',cm?cm.className:'null');
+  cm.classList.remove('hidden');
+  cm.style.display='flex';cm.style.zIndex='9999';cm.style.opacity='1';cm.style.visibility='visible';
+  var cs=getComputedStyle(cm);
+  console.log('[DEBUG] contract after show: display=',cs.display,'zIndex=',cs.zIndex,'opacity=',cs.opacity,'visibility=',cs.visibility,'width=',cs.width,'height=',cs.height,'position=',cs.position,'inset=',cs.inset);
+  var rect=cm.getBoundingClientRect();
+  console.log('[DEBUG] contract rect:',rect.x,rect.y,rect.width,rect.height);
   }catch(e){console.error('[DEBUG] openContractForm error:',e.message,e.stack);showToast('合同表单加载失败: '+e.message)}
 }
 function closeContractForm(){document.getElementById('contract-modal').classList.add('hidden');ceditId=null}
@@ -6120,7 +6130,12 @@ function openPaymentForm(id){
     document.getElementById('pf-notes').value=p.notes||'';
     cs.value=p.client_id||'';cs.onchange();setTimeout(function(){document.getElementById('pf-contract').value=p.contract_id||''},200);
   }}
-  var pm=document.getElementById('payment-modal');pm.classList.remove('hidden');pm.style.display='flex';
+  var pm=document.getElementById('payment-modal');
+  console.log('[DEBUG] openPaymentForm about to show, el:',!!pm,'className before:',pm?pm.className:'null');
+  pm.classList.remove('hidden');
+  pm.style.display='flex';pm.style.zIndex='9999';pm.style.opacity='1';pm.style.visibility='visible';
+  var cs=getComputedStyle(pm);
+  console.log('[DEBUG] payment after show: display=',cs.display,'zIndex=',cs.zIndex,'opacity=',cs.opacity,'visibility=',cs.visibility,'width=',cs.width,'height=',cs.height);
   }catch(e){console.error('[DEBUG] openPaymentForm error:',e.message,e.stack);showToast('回款表单加载失败: '+e.message)}
 }
 function closePaymentForm(){document.getElementById('payment-modal').classList.add('hidden');peditId=null}
