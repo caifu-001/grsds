@@ -5760,6 +5760,7 @@ function renderQuotations(){
 }
 
 function openQuoteForm(id){
+  try{
   qeditId=id||null;qfItems=[];
   document.getElementById('quote-form-title').textContent=id?'编辑报价':'创建报价';
   document.getElementById('quote-btn-delete').classList.toggle('hidden',!id);
@@ -5776,10 +5777,10 @@ function openQuoteForm(id){
   document.getElementById('qf-grand-total').textContent='¥0.00';
   var csel=document.getElementById('qf-client');
   csel.innerHTML='<option value="">选择客户...</option>';
-  for(var i=0;i<allClients.length;i++)csel.innerHTML+='<option value="'+allClients[i].id+'">'+escHtml(allClients[i].name)+'</option>';
+  for(var i=0;i<(allClients||[]).length;i++)csel.innerHTML+='<option value="'+allClients[i].id+'">'+escHtml(allClients[i].name)+'</option>';
   var tsel=document.getElementById('qf-template');
   tsel.innerHTML='<option value="">不使用模板</option>';
-  for(var i=0;i<allQfTemplates.length;i++)tsel.innerHTML+='<option value="'+allQfTemplates[i].id+'">'+escHtml(allQfTemplates[i].name)+'</option>';
+  for(var i=0;i<(allQfTemplates||[]).length;i++)tsel.innerHTML+='<option value="'+allQfTemplates[i].id+'">'+escHtml(allQfTemplates[i].name)+'</option>';
   if(id){var qt=allQuotations.find(function(x){return x.id===id});if(qt){
     document.getElementById('qf-title').value=qt.title||'';
     document.getElementById('qf-valid-until').value=qt.valid_until||'';
@@ -5793,6 +5794,7 @@ function openQuoteForm(id){
   renderQfItems();
   updateQfTotals();
   document.getElementById('quote-modal').classList.remove('hidden');
+  }catch(e){console.error('[DEBUG] openQuoteForm error:',e.message,e.stack);showToast('报价表单加载失败: '+e.message)}
 }
 function updateQfTotals(){
   var subtotal=0;for(var i=0;i<qfItems.length;i++)subtotal+=(qfItems[i].qty||0)*(qfItems[i].price||0);
@@ -5955,6 +5957,7 @@ function toggleContractArchive(id,archive){
 }
 
 function openContractForm(id){
+  try{
   ceditId=id||null;
   document.getElementById('contract-form-title').textContent=id?'编辑合同':'创建合同';
   document.getElementById('contract-btn-delete').classList.toggle('hidden',!id);
@@ -5971,8 +5974,8 @@ function openContractForm(id){
   document.getElementById('cf-notes').value='';document.getElementById('cf-file').value='';document.getElementById('cf-file-info').classList.add('hidden');
   var csel=document.getElementById('cf-client');
   csel.innerHTML='<option value="">选择客户...</option>';
-  for(var i=0;i<allClients.length;i++)csel.innerHTML+='<option value="'+allClients[i].id+'">'+escHtml(allClients[i].name)+'</option>';
-  if(id){var ct=allContracts.find(function(x){return x.id===id});if(ct){
+  for(var i=0;i<(allClients||[]).length;i++)csel.innerHTML+='<option value="'+allClients[i].id+'">'+escHtml(allClients[i].name)+'</option>';
+  if(id){var ct=(allContracts||[]).find(function(x){return x.id===id});if(ct){
     document.getElementById('cf-contract-no').value=ct.contract_no||'';
     document.getElementById('cf-title').value=ct.title||'';
     document.getElementById('cf-amount').value=ct.total_amount||ct.amount||'';
@@ -5987,6 +5990,7 @@ function openContractForm(id){
     csel.value=ct.client_id||'';
   }}
   document.getElementById('contract-modal').classList.remove('hidden');
+  }catch(e){console.error('[DEBUG] openContractForm error:',e.message,e.stack);showToast('合同表单加载失败: '+e.message)}
 }
 function closeContractForm(){document.getElementById('contract-modal').classList.add('hidden');ceditId=null}
 
@@ -6065,6 +6069,7 @@ function renderPayments(){
 }
 
 function openPaymentForm(id){
+  try{
   peditId=id||null;
   document.getElementById('payment-form-title').textContent=id?'编辑回款':'添加回款';
   document.getElementById('payment-btn-delete').classList.toggle('hidden',!id);
@@ -6078,9 +6083,9 @@ function openPaymentForm(id){
   var cs=document.getElementById('pf-client'),ct=document.getElementById('pf-contract');
   cs.innerHTML='<option value="">选择客户...</option>';
   ct.innerHTML='<option value="">选择合同...</option>';
-  for(var i=0;i<allClients.length;i++)cs.innerHTML+='<option value="'+allClients[i].id+'">'+escHtml(allClients[i].name)+'</option>';
-  cs.onchange=function(){var cid=this.value;ct.innerHTML='<option value="">选择合同...</option>';if(cid){for(var j=0;j<allContracts.length;j++){if(allContracts[j].client_id===cid)ct.innerHTML+='<option value="'+allContracts[j].id+'">'+escHtml(allContracts[j].title||allContracts[j].contract_no||'合同')+'</option>'}}};
-  if(id){var p=allPayments.find(function(x){return x.id===id});if(p){
+  for(var i=0;i<(allClients||[]).length;i++)cs.innerHTML+='<option value="'+allClients[i].id+'">'+escHtml(allClients[i].name)+'</option>';
+  cs.onchange=function(){var cid=this.value;ct.innerHTML='<option value="">选择合同...</option>';if(cid){for(var j=0;j<(allContracts||[]).length;j++){if(allContracts[j].client_id===cid)ct.innerHTML+='<option value="'+allContracts[j].id+'">'+escHtml(allContracts[j].title||allContracts[j].contract_no||'合同')+'</option>'}}};
+  if(id){var p=(allPayments||[]).find(function(x){return x.id===id});if(p){
     document.getElementById('pf-amount').value=p.amount||'';
     document.getElementById('pf-date').value=p.payment_date||'';
     document.getElementById('pf-method').value=p.method||'bank';
@@ -6090,6 +6095,7 @@ function openPaymentForm(id){
     cs.value=p.client_id||'';cs.onchange();setTimeout(function(){document.getElementById('pf-contract').value=p.contract_id||''},200);
   }}
   document.getElementById('payment-modal').classList.remove('hidden');
+  }catch(e){console.error('[DEBUG] openPaymentForm error:',e.message,e.stack);showToast('回款表单加载失败: '+e.message)}
 }
 function closePaymentForm(){document.getElementById('payment-modal').classList.add('hidden');peditId=null}
 
