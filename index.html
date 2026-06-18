@@ -1895,7 +1895,9 @@ input,select,textarea,button{font-family:inherit}
    <button class="collab-subtab active" data-ctab="schedule" onclick="switchCollabTab('schedule')">日程</button>
    <button class="collab-subtab" data-ctab="task" onclick="switchCollabTab('task')">任务</button>
    <button class="collab-subtab" data-ctab="approval" onclick="switchCollabTab('approval')">审批</button>
+   <button class="collab-subtab" data-ctab="followup" onclick="switchCollabTab('followup')">跟进</button>
    <button class="collab-subtab" data-ctab="comment" onclick="switchCollabTab('comment')">协作</button>
+   <button class="collab-subtab" data-ctab="msg" onclick="switchCollabTab('msg')">消息</button>
   </div>
   <div id="collab-schedule-panel" class="collab-panel">
    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -1924,7 +1926,22 @@ input,select,textarea,button{font-family:inherit}
    </div>
    <div id="approval-list">加载中...</div>
   </div>
-  <div id="collab-comment-panel" class="collab-panel hidden">
+  
+  <div id="collab-followup-panel" class="collab-panel hidden">
+   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+    <h3 style="font-size:16px;font-weight:700;margin:0">跟进记录</h3>
+    <select id="fu-client-filter" onchange="loadFollowups()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px">
+     <option value="">全部客户</option>
+    </select>
+    <select id="fu-type-filter" onchange="loadFollowups()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px">
+     <option value="">全部类型</option>
+     <option value="电话">电话</option><option value="拜访">拜访</option><option value="微信">微信</option><option value="邮件">邮件</option><option value="会议">会议</option><option value="其他">其他</option>
+    </select>
+    <button class="btn-sm btn-sm-primary" onclick="openFollowupForm()">+ 新增跟进</button>
+   </div>
+   <div id="followup-list">加载中...</div>
+  </div>
+<div id="collab-comment-panel" class="collab-panel hidden">
    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
     <h3 style="font-size:16px;font-weight:700;margin:0">客户协作</h3>
     <select id="comment-client-filter" onchange="loadComments()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px">
