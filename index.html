@@ -2166,21 +2166,6 @@ input,select,textarea,button{font-family:inherit}
    </div>
   </div>
  </div>
-<div id="leads-view" class="hidden">
- <div class="stats-bar" id="leads-stats-bar"></div>
- <div class="toolbar" style="position:static">
-  <select id="lead-pool-filter" onchange="renderLeads()"><option value="all">全部状态</option><option value="new">新线索</option><option value="assigned">已分配</option><option value="contacted">已联系</option><option value="converted">已转化</option><option value="recycled">已回收</option><option value="junk">无效</option></select>
-  <div class="search-wrap"><input id="lead-pool-search" placeholder="搜索线索..." oninput="renderLeads()"></div>
- </div>
- <div style="display:flex;gap:6px;padding:6px 16px 10px">
-  <button class="btn-sm btn-sm-primary" onclick="openLeadForm()">＋ 新线索</button>
-  <button class="btn-sm" style="background:#fff;color:var(--text);border:1px solid var(--border)" onclick="openLeadImport()">📥 批量导入</button>
-  <button class="btn-sm" style="background:#fff;color:var(--danger);border:1px solid var(--danger)" onclick="recycleStale()">♻ 回收超时</button>
- </div>
- <div class="client-grid" id="lead-grid"></div>
- <div class="empty hidden" id="lead-empty"><div class="empty-icon">🎯</div>暂无线索<br><span style="font-size:12px;color:var(--text3)">点击「+ 新线索」开始添加</span></div>
-</div>
-
 <script>
 // Supabase
 const SUPABASE_URL='https://jyefbatmmbelrhhzsgva.supabase.co';
@@ -9822,6 +9807,22 @@ function editForm(id){showToast('表单编辑功能暂未开放')}
 
 </div>
 <!-- ===== END service-view ===== -->
+
+<div id="leads-view" class="hidden">
+ <div class="stats-bar" id="leads-stats-bar"></div>
+ <div class="toolbar" style="position:static">
+  <select id="lead-pool-filter" onchange="renderLeads()"><option value="all">全部状态</option><option value="new">新线索</option><option value="assigned">已分配</option><option value="contacted">已联系</option><option value="converted">已转化</option><option value="recycled">已回收</option><option value="junk">无效</option></select>
+  <div class="search-wrap"><input id="lead-pool-search" placeholder="搜索线索..." oninput="renderLeads()"></div>
+ </div>
+ <div style="display:flex;gap:6px;padding:6px 16px 10px">
+  <button class="btn-sm btn-sm-primary" onclick="openLeadForm()">＋ 新线索</button>
+  <button class="btn-sm" style="background:#fff;color:var(--text);border:1px solid var(--border)" onclick="openLeadImport()">📥 批量导入</button>
+  <button class="btn-sm" style="background:#fff;color:var(--danger);border:1px solid var(--danger)" onclick="recycleStale()">♻ 回收超时</button>
+ </div>
+ <div class="client-grid" id="lead-grid"></div>
+ <div class="empty hidden" id="lead-empty"><div class="empty-icon">🎯</div>暂无线索<br><span style="font-size:12px;color:var(--text3)">点击「+ 新线索」开始添加</span></div>
+</div>
+
 
 <!-- Transfer Form Modal -->
 <div class="modal-overlay hidden" id="transfer-modal">
