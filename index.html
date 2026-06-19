@@ -2660,7 +2660,7 @@ async function showLeads(){
   if(lv)lv.classList.remove('hidden');
   document.getElementById('topbar-title').textContent='线索公海';
   document.getElementById('main-fab').classList.add('hidden');
-  await loadLeads();
+  await loadPoolLeads();
 }
 function closeDir(){
   document.getElementById('dir-screen').classList.add('hidden');
@@ -8685,30 +8685,36 @@ async function autoCheckLifecycle(clientId){
 // ============ NEW: Lead Pool Functions ============
 async function loadLeads(){
   try{
-  var {data,error}=await sb.from('lead_pool').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
-  if(error){console.error('loadLeads:',error);showToast('加载线索失败: '+error.message)}
+  // Sales pipeline: only leads assigned to current user
+  var {data,error}=await sb.from('lead_pool').select('*').eq('company_id',currentCompanyId).eq('assigned_to',currentUser.id).in('status',['assigned','contacted']).order('updated_at',{ascending:false});
+  if(error){console.error('loadLeads:',error);}
   allLeads=data||[];
   }catch(e){console.error('loadLeads exception:',e);allLeads=[]}
   renderLeads();
 }
 
+var poolLeads=[];
+async function loadPoolLeads(){
+  try{
+  // Lead pool: unassigned leads only
+  var {data,error}=await sb.from('lead_pool').select('*').eq('company_id',currentCompanyId).is('assigned_to',null).order('updated_at',{ascending:false});
+  if(error){console.error('loadPoolLeads:',error);}
+  poolLeads=data||[];
+  }catch(e){console.error('loadPoolLeads exception:',e);poolLeads=[]}
+  renderPoolLeads();
+}
+
 function renderLeads(){
+  // Sales pipeline leads (assigned to current user)
   var list=allLeads||[];
-  var q=(document.getElementById('lead-pool-search')||{}).value||'';
+  var q=(document.getElementById('lead-search')||{}).value||'';
   q=q.trim().toLowerCase();
-  var filter=(document.getElementById('lead-pool-filter')||{}).value||'all';
+  var stage=(document.getElementById('lead-stage-filter')||{}).value||'all';
   if(q)list=list.filter(function(l){return(l.name||'').toLowerCase().indexOf(q)>=0||(l.contact_name||'').toLowerCase().indexOf(q)>=0||(l.contact_phone||'').indexOf(q)>=0});
-  if(filter!=='all')list=list.filter(function(l){return l.status===filter});
-  // Stats
-  var total=allLeads.length,assigned=0,converted=0;
-  for(var i=0;i<allLeads.length;i++){if(allLeads[i].status==='assigned'||allLeads[i].status==='contacted')assigned++;if(allLeads[i].status==='converted')converted++}
-  var statsBar=document.getElementById('lead-stats')||document.getElementById('leads-stats-bar');
-  var convRate=total>0?Math.round(converted/total*100):0;
-  if(statsBar)statsBar.innerHTML='<div class="stat-card"><div class="stat-num">'+list.length+'</div><div class="stat-label">'+(filter!=='all'||q?'筛选结果':'全部线索')+'</div></div><div class="stat-card"><div class="stat-num">'+assigned+'</div><div class="stat-label">已分配</div></div><div class="stat-card"><div class="stat-num">'+convRate+'%</div><div class="stat-label">转化率</div></div>';
-  var lv=document.getElementById('leads-view'),inLeadsPool=lv&&!lv.classList.contains('hidden');
-  var grid=inLeadsPool?document.getElementById('lead-grid'):document.getElementById('sales-lead-grid'),empty=inLeadsPool?document.getElementById('lead-empty'):document.getElementById('sales-lead-empty');
-  if(!list.length){grid.innerHTML='';empty.classList.remove('hidden');return}
-  empty.classList.add('hidden');
+  if(stage!=='all')list=list.filter(function(l){return l.stage===stage||l.status===stage});
+  var grid=document.getElementById('sales-lead-grid'),empty=document.getElementById('sales-lead-empty');
+  if(!list.length){grid.innerHTML='';if(empty)empty.classList.remove('hidden');return}
+  if(empty)empty.classList.add('hidden');
   var statusMap={new:'新线索',assigned:'已分配',contacted:'已联系',converted:'已转化',recycled:'已回收',junk:'无效'};
   var html='';
   for(var i=0;i<list.length;i++){
@@ -8723,15 +8729,55 @@ function renderLeads(){
     if(l.contact_email)html+='<span>📧 '+h(l.contact_email)+'</span>';
     html+='</div>';
     html+='<div class="lead-meta">';
-    html+='<span class="lead-status-badge '+h(l.status)+'">'+(statusMap[l.status]||l.status)+'</span>';
+    html+='<span class="lead-status-badge '+h(l.stage||l.status)+'">'+(l.stage||statusMap[l.status]||l.status)+'</span>';
     if(l.source)html+='<span>来源: '+h(l.source)+'</span>';
     if(assignee)html+='<span>分配: '+h(assignee)+'</span>';
     if(l.last_follow_up)html+='<span>跟进: '+l.last_follow_up+'</span>';
     html+='</div>';
     html+='<div class="lead-actions">';
-    if(l.status!=='converted')html+='<button class="btn-lead-primary" onclick="event.stopPropagation();openLeadForm(\''+l.id+'\')">编辑</button>';
-    if(l.status==='new')html+='<button onclick="event.stopPropagation();assignLead(\''+l.id+'\')">分配</button>';
-    if(l.status==='assigned'||l.status==='contacted')html+='<button class="btn-lead-primary" onclick="event.stopPropagation();convertLeadToClient(\''+l.id+'\')">转客户</button>';
+    html+='<button class="btn-lead-primary" onclick="event.stopPropagation();openLeadForm(\''+l.id+'\')">编辑</button>';
+    html+='<button class="btn-lead-primary" onclick="event.stopPropagation();convertLeadToClient(\''+l.id+'\')">转客户</button>';
+    html+='<button class="btn-lead-danger" onclick="event.stopPropagation();deleteLead(\''+l.id+'\')">删除</button>';
+    html+='</div></div>';
+  }
+  grid.innerHTML=html;
+}
+
+function renderPoolLeads(){
+  // Lead pool (unassigned leads)
+  var list=poolLeads||[];
+  var q=(document.getElementById('lead-pool-search')||{}).value||'';
+  q=q.trim().toLowerCase();
+  var filter=(document.getElementById('lead-pool-filter')||{}).value||'all';
+  if(q)list=list.filter(function(l){return(l.name||'').toLowerCase().indexOf(q)>=0||(l.contact_name||'').toLowerCase().indexOf(q)>=0||(l.contact_phone||'').indexOf(q)>=0});
+  if(filter!=='all')list=list.filter(function(l){return l.status===filter});
+  // Stats
+  var total=poolLeads.length,converted=0;
+  for(var i=0;i<poolLeads.length;i++){if(poolLeads[i].status==='converted')converted++}
+  var statsBar=document.getElementById('leads-stats-bar');
+  if(statsBar)statsBar.innerHTML='<div class="stat-card"><div class="stat-num">'+total+'</div><div class="stat-label">公海线索</div></div><div class="stat-card"><div class="stat-num">'+list.length+'</div><div class="stat-label">'+(filter!=='all'||q?'筛选结果':'当前显示')+'</div></div>';
+  var grid=document.getElementById('lead-grid'),empty=document.getElementById('lead-empty');
+  if(!list.length){grid.innerHTML='';if(empty)empty.classList.remove('hidden');return}
+  if(empty)empty.classList.add('hidden');
+  var statusMap={new:'新线索',assigned:'已分配',contacted:'已联系',converted:'已转化',recycled:'已回收',junk:'无效'};
+  var html='';
+  for(var i=0;i<list.length;i++){
+    var l=list[i];
+    html+='<div class="lead-card">';
+    html+='<div class="lead-name">'+h(l.name)+'</div>';
+    html+='<div class="lead-contact">';
+    if(l.contact_name)html+='<span>👤 '+h(l.contact_name)+'</span>';
+    if(l.contact_phone)html+='<span>📞 '+h(l.contact_phone)+'</span>';
+    if(l.contact_email)html+='<span>📧 '+h(l.contact_email)+'</span>';
+    html+='</div>';
+    html+='<div class="lead-meta">';
+    html+='<span class="lead-status-badge '+h(l.status)+'">'+(statusMap[l.status]||l.status)+'</span>';
+    if(l.source)html+='<span>来源: '+h(l.source)+'</span>';
+    if(l.industry)html+='<span>行业: '+h(l.industry)+'</span>';
+    html+='</div>';
+    html+='<div class="lead-actions">';
+    html+='<button class="btn-lead-primary" onclick="event.stopPropagation();openLeadForm(\''+l.id+'\')">编辑</button>';
+    html+='<button class="btn-lead-primary" onclick="event.stopPropagation();assignLead(\''+l.id+'\')">分配</button>';
     html+='<button class="btn-lead-danger" onclick="event.stopPropagation();deleteLead(\''+l.id+'\')">删除</button>';
     html+='</div></div>';
   }
@@ -8895,7 +8941,8 @@ async function saveLead(){
     if(error){showToast('更新失败: '+error.message);return}
   }
   closeLeadForm();
-  loadLeads();
+  await loadPoolLeads();
+  if(currentUser&&currentUser.id)await loadLeads();
   showToast(leadEditId?'已更新':'已创建');
 }
 
@@ -8903,7 +8950,8 @@ async function deleteLead(id){
   if(!id)return;
   if(leadEditId===id)closeLeadForm();
   await sb.from('lead_pool').delete().eq('id',id);
-  loadLeads();
+  await loadPoolLeads();
+  if(currentUser&&currentUser.id)await loadLeads();
   showToast('已删除');
 }
 
@@ -8921,7 +8969,7 @@ async function doAssignLead(){
   var {error}=await sb.from('lead_pool').update({assigned_to:userId,assigned_at:new Date().toISOString(),status:'assigned',updated_at:new Date().toISOString()}).eq('id',leadAssignId);
   document.getElementById('lead-assign-modal').classList.add('hidden');
   if(error){showToast('分配失败: '+error.message);return}
-  loadLeads();showToast('已分配');
+  await loadPoolLeads();await loadLeads();showToast('已分配');
 }
 
 async function convertLeadToClient(id){
@@ -8937,7 +8985,7 @@ async function convertLeadToClient(id){
   }
   // Update lead
   await sb.from('lead_pool').update({status:'converted',converted_client_id:clientId,converted_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',id);
-  loadClients();loadLeads();
+  loadClients();await loadLeads();
   showToast('已转化为客户');
 }
 
@@ -8962,16 +9010,16 @@ async function importLeads(){
     if(!error)imported++;
   }
   document.getElementById('lead-import-modal').classList.add('hidden');
-  if(imported>0){loadLeads();showToast('已导入 '+imported+' 条线索')}
+  if(imported>0){await loadPoolLeads();showToast('已导入 '+imported+' 条线索')}
   else showToast('导入失败');
 }
 
 async function recycleStale(){
   var now=new Date();
+  var {data:assignedLeads}=await sb.from('lead_pool').select('*').eq('company_id',currentCompanyId).in('status',['assigned','contacted']);
   var recycled=0;
-  for(var i=0;i<allLeads.length;i++){
-    var l=allLeads[i];
-    if(l.status!=='assigned'&&l.status!=='contacted')continue;
+  for(var i=0;i<(assignedLeads||[]).length;i++){
+    var l=assignedLeads[i];
     var days=l.recycle_days||30;
     var assignedDate=l.assigned_at?new Date(l.assigned_at):null;
     if(!assignedDate)continue;
@@ -8987,7 +9035,7 @@ async function recycleStale(){
       recycled++;
     }
   }
-  if(recycled>0){loadLeads();showToast('已回收 '+recycled+' 条线索')}
+  if(recycled>0){await loadPoolLeads();await loadLeads();showToast('已回收 '+recycled+' 条线索')}
   else showToast('没有需要回收的线索');
 }
 
@@ -9814,8 +9862,8 @@ function editForm(id){showToast('表单编辑功能暂未开放')}
 <div id="leads-view" class="hidden">
  <div class="stats-bar" id="leads-stats-bar"></div>
  <div class="toolbar" style="position:static">
-  <select id="lead-pool-filter" onchange="renderLeads()"><option value="all">全部状态</option><option value="new">新线索</option><option value="assigned">已分配</option><option value="contacted">已联系</option><option value="converted">已转化</option><option value="recycled">已回收</option><option value="junk">无效</option></select>
-  <div class="search-wrap"><input id="lead-pool-search" placeholder="搜索线索..." oninput="renderLeads()"></div>
+  <select id="lead-pool-filter" onchange="renderPoolLeads()"><option value="all">全部状态</option><option value="new">新线索</option><option value="assigned">已分配</option><option value="contacted">已联系</option><option value="converted">已转化</option><option value="recycled">已回收</option><option value="junk">无效</option></select>
+  <div class="search-wrap"><input id="lead-pool-search" placeholder="搜索线索..." oninput="renderPoolLeads()"></div>
  </div>
  <div style="display:flex;gap:6px;padding:6px 16px 10px">
   <button class="btn-sm btn-sm-primary" onclick="openLeadForm()">＋ 新线索</button>
