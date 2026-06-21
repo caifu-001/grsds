@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-  <script>(function(){var w=window.innerWidth,d=document.documentElement;d.setAttribute("data-device",w<768?"mobile":w<1024?"tablet":"desktop");window.addEventListener("resize",function(){var w2=window.innerWidth;d.setAttribute("data-device",w2<768?"mobile":w2<1024?"tablet":"desktop")})})();</script>
+
   <script>(function(){var w=window.innerWidth,d=document.documentElement;d.setAttribute("data-device",w<768?"mobile":w<1024?"tablet":"desktop");window.addEventListener("resize",function(){var w2=window.innerWidth;d.setAttribute("data-device",w2<768?"mobile":w2<1024?"tablet":"desktop")})})();</script>
 <title>客户管理系统</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👔</text></svg>">
@@ -559,7 +559,8 @@ input,select,textarea,button{font-family:inherit}
   .sup-stat .ss-label{font-size:10px;color:var(--text-secondary);margin-top:2px}
   .sup-cat-stat{cursor:pointer;transition:border-color .15s,box-shadow .15s}
   .sup-cat-stat:hover{border-color:var(--primary);box-shadow:0 0 0 2px var(--primary-light)}
-  .sup-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin:0 16px 10px;transition:all .2s}
+  #suppliers-view{padding-bottom:80px}
+.sup-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin:0 16px 10px;transition:all .2s}
   .sup-card:hover{border-color:var(--primary);box-shadow:0 2px 12px rgba(79,110,247,.08)}
   .sup-card .sc-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
   .sup-card .sc-name{font-size:16px;font-weight:700;color:var(--text)}
@@ -5138,7 +5139,8 @@ async function loadAdminData(){
       try{var ur=await fetch(SUPABASE_URL+'/rest/v1/profiles?select=*',{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}});if(ur.ok){adminUserList=await ur.json();allUsers=adminUserList;populatePerfSelects();}}catch(e){}
     }else{
       var {data:pr}=await sb.from('profiles').select('*').eq('company_id',currentCompanyId);
-      adminUserList=pr||[];allUsers=pr||[];populatePerfSelects();
+      adminUserList=(pr||[]).filter(function(u){return u.company_id===currentCompanyId;});
+      allUsers=adminUserList.slice();populatePerfSelects();
     }
   }
 }
@@ -5348,11 +5350,13 @@ function switchResTab(sub){
   var ipanels=iv.querySelectorAll('.inv-panel');for(var j=0;j<ipanels.length;j++)ipanels[j].classList.remove('active');
   if(sub==='inventory'){
     tabs[0].classList.add('active');
+    var fab3=document.getElementById('main-fab');if(fab3)fab3.classList.remove('hidden');
     if(itabs)itabs.style.display='';
     if(!allProducts.length){loadCategories().then(function(){loadWarehouses().then(function(){switchInventoryTab('products')})})}else{switchInventoryTab('products')}
   }else if(sub==='suppliers'){
     tabs[1].classList.add('active');
     spv.classList.remove('hidden');
+    var fab2=document.getElementById('main-fab');if(fab2)fab2.classList.add('hidden');
     loadSuppliers();
   }else if(sub==='purchase'){
     tabs[2].classList.add('active');
@@ -5413,7 +5417,10 @@ var allRoles=[];
 
 function renderAdminUsers(){
   var q=(document.getElementById('admin-user-search').value||'').trim().toLowerCase();
-  var list=adminUserList.filter(function(u){return !q||(u.email||'').toLowerCase().indexOf(q)>=0||(u.display_name||'').toLowerCase().indexOf(q)>=0||(u.position||'').toLowerCase().indexOf(q)>=0;});
+  var list=adminUserList.filter(function(u){
+    if(!isSuperAdmin&&currentCompanyId!==null&&u.company_id!==currentCompanyId)return false;
+    return !q||(u.email||'').toLowerCase().indexOf(q)>=0||(u.display_name||'').toLowerCase().indexOf(q)>=0||(u.position||'').toLowerCase().indexOf(q)>=0;
+  });
   var el=document.getElementById('admin-user-list');
   if(list.length===0){el.innerHTML='<div class="empty-state">暂无员工</div>';return}
   var h='<table class="user-table"><thead><tr><th>姓名</th><th>邮箱</th><th>公司</th><th>部门</th><th>岗位</th><th>状态</th><th>手机</th><th>角色</th><th>操作</th></tr></thead><tbody>';
@@ -5494,6 +5501,10 @@ async function saveUserEdit(userId){
     company_id:companyId
   };
   var error=null;
+  var targetUser=adminUserList.find(function(u){return u.user_id===userId;});
+  if(!isSuperAdmin&&currentUserRole==='admin'&&targetUser&&targetUser.company_id!==currentCompanyId){
+    showToast('权限不足: 不能修改其他公司的成员');return;
+  }
   if(isSuperAdmin||currentUserRole==='admin'){
     var ur=await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(userId),{
       method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},
@@ -5619,7 +5630,7 @@ function renderDeptTree(nodes,level){
 function escHtml(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function closeUserDeptModal(){var m=document.getElementById('user-dept-modal');if(m)m.remove();}
 function commitUserDept(){var m=document.getElementById('user-dept-modal');var uid=m?m._userId:null;var deptId=parseInt(document.getElementById('user-dept-select').value)||null;if(uid)doSetUserDeptCommit(uid,deptId);}
-async function doSetUserDeptCommit(userId,deptId){var{error}=await sb.from('profiles').upsert({user_id:userId,department_id:deptId},{onConflict:'user_id'});if(error){alert('操作失败: '+error.message);return}for(var i=0;i<adminUserList.length;i++){if(adminUserList[i].user_id===userId){adminUserList[i].department_id=deptId;break;}}var m=document.getElementById('user-dept-modal');if(m)m.remove();renderAdminUsers();}
+async function doSetUserDeptCommit(userId,deptId){var tu=adminUserList.find(function(u){return u.user_id===userId;});if(!isSuperAdmin&&currentUserRole==='admin'&&tu&&tu.company_id!==currentCompanyId){showToast('权限不足');return;}var{error}=await sb.from('profiles').upsert({user_id:userId,department_id:deptId},{onConflict:'user_id'});if(error){alert('操作失败: '+error.message);return}for(var i=0;i<adminUserList.length;i++){if(adminUserList[i].user_id===userId){adminUserList[i].department_id=deptId;break;}}var m=document.getElementById('user-dept-modal');if(m)m.remove();renderAdminUsers();}
 function closeDeptFormModal(){var m=document.getElementById('dept-form-modal');if(m)m.remove();}
 function delDeptById(id){var dept=null;for(var i=0;i<allDepartments.length;i++){if(allDepartments[i].id===id){dept=allDepartments[i];break;}}if(dept)deleteDept(id,dept.name);}
 
@@ -9409,7 +9420,10 @@ async function renderAdminEmployees(){
   ds.innerHTML='<option value="">全部部门</option>';
   if(allDepartments)for(var i=0;i<allDepartments.length;i++){var d=allDepartments[i];ds.innerHTML+='<option value="'+escHtml(d.id)+'">'+escHtml(d.name)+'</option>';}
   ds.value=df;
-  var list=allUsers||[];
+  var list=(allUsers||[]).filter(function(u){
+    if(!isSuperAdmin&&currentCompanyId!==null&&u.company_id!==currentCompanyId)return false;
+    return true;
+  });
   if(df)list=list.filter(function(u){return u.dept_id==df;});
   if(sf)list=list.filter(function(u){return u.status===sf;});
   if(q)list=list.filter(function(u){return (u.display_name||'').toLowerCase().indexOf(q)>=0||(u.email||'').toLowerCase().indexOf(q)>=0;});
