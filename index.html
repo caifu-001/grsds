@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <script>(function(){var w=window.innerWidth,d=document.documentElement;d.setAttribute("data-device",w<768?"mobile":w<1024?"tablet":"desktop");window.addEventListener("resize",function(){var w2=window.innerWidth;d.setAttribute("data-device",w2<768?"mobile":w2<1024?"tablet":"desktop")})})();</script>
+  <script>(function(){var w=window.innerWidth,d=document.documentElement;d.setAttribute("data-device",w<768?"mobile":w<1024?"tablet":"desktop");window.addEventListener("resize",function(){var w2=window.innerWidth;d.setAttribute("data-device",w2<768?"mobile":w2<1024?"tablet":"desktop")})})();</script>
 <title>客户管理系统</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👔</text></svg>">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -2288,6 +2290,7 @@ async function onLoginSuccess(user){
   if(isSuperAdmin||currentUserRole==='admin')document.getElementById('tab-admin').classList.remove('hidden');
   if(isSuperAdmin){document.getElementById('admin-tab-companies-manage').classList.remove('hidden');document.getElementById('admin-tab-companies').classList.remove('hidden');}
   pollNotifications();
+  writeOpLog('login','auth',currentUser.id,currentUser.email,'用户登录');
   switchTab('home');
 }
 async function doLogout(){await sb.auth.signOut();currentUser=null;allClients=[];allContacts=[];customTypes=[];document.getElementById('main-screen').classList.add('hidden');document.getElementById('login-screen').classList.remove('hidden')}
@@ -5062,6 +5065,7 @@ async function submitCompanyReg(){
 
 async function logout(){
   if(window._pendPoll)clearInterval(window._pendPoll);
+  if(currentUser)try{await writeOpLog('logout','auth',currentUser.id,currentUser.email,'用户登出')}catch(e){}
   await sb.auth.signOut();
   currentCompanyId=null;isSuperAdmin=false;
   document.getElementById('main-screen').classList.add('hidden');

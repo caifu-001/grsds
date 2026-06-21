@@ -1,14 +1,14 @@
--- operation_logs 操作日志表 + 触发器
--- 创建后去 Supabase SQL Editor 全选执行
+-- operation_logs 操作日志表 + RPC
+-- ⚠️ 请复制到 Supabase SQL Editor 全选执行
 
 -- 1. 建表
 CREATE TABLE IF NOT EXISTS operation_logs (
   id BIGSERIAL PRIMARY KEY,
-  company_id INTEGER REFERENCES companies(id) ON DELETE CASCADE,
-  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  company_id BIGINT,
+  user_id UUID,
   user_name TEXT,
-  action TEXT NOT NULL,        -- create/update/delete/export/login
-  entity_type TEXT NOT NULL,   -- client/contact/order
+  action TEXT NOT NULL,
+  entity_type TEXT NOT NULL,
   entity_id TEXT,
   entity_name TEXT,
   detail JSONB,
@@ -17,28 +17,28 @@ CREATE TABLE IF NOT EXISTS operation_logs (
 CREATE INDEX IF NOT EXISTS idx_oplog_company ON operation_logs(company_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_oplog_entity ON operation_logs(entity_type, entity_id);
 
--- 2. RPC: 供前端主动记录（如 export/login）
-CREATE OR REPLACE FUNCTION log_operation(
+-- 2. RPC: 供前端 writeOpLog() 调用（使用 service_key，参数全由前端传入）
+CREATE OR REPLACE FUNCTION write_op_log(
+  p_company_id BIGINT,
+  p_user_id UUID,
+  p_user_name TEXT,
   p_action TEXT,
   p_entity_type TEXT,
-  p_entity_id TEXT DEFAULT NULL,
-  p_entity_name TEXT DEFAULT NULL,
+  p_entity_id TEXT DEFAULT '',
+  p_entity_name TEXT DEFAULT '',
   p_detail JSONB DEFAULT NULL
 ) RETURNS void AS $$
-DECLARE
-  v_profile RECORD;
 BEGIN
-  SELECT display_name, company_id INTO v_profile FROM profiles WHERE user_id = auth.uid();
   INSERT INTO operation_logs(company_id, user_id, user_name, action, entity_type, entity_id, entity_name, detail)
-  VALUES (v_profile.company_id, auth.uid(), v_profile.display_name, p_action, p_entity_type, p_entity_id, p_entity_name, p_detail);
+  VALUES (p_company_id, p_user_id, p_user_name, p_action, p_entity_type, p_entity_id, p_entity_name, p_detail);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 3. 通用触发器函数
+-- 3. 数据库触发器（自动记录 INSERT/UPDATE/DELETE，仅对有 name 列的表生效）
 CREATE OR REPLACE FUNCTION trg_audit_operation()
 RETURNS TRIGGER AS $$
 DECLARE
-  v_company_id INTEGER;
+  v_company_id BIGINT;
   v_entity_name TEXT;
 BEGIN
   IF TG_OP = 'INSERT' THEN
@@ -70,7 +70,31 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 4. 挂触发器到核心表
+-- 4. RPC: 列出所有用户（供超级管理员页使用）
+CREATE OR REPLACE FUNCTION list_all_users()
+RETURNS TABLE(
+  user_id UUID,
+  display_name TEXT,
+  email TEXT,
+  role TEXT,
+  dept_id BIGINT,
+  data_scope TEXT,
+  status TEXT,
+  phone TEXT,
+  position TEXT,
+  company_id BIGINT
+) AS $$
+BEGIN
+  RETURN QUERY SELECT
+    p.user_id, p.display_name, p.email, p.role,
+    p.dept_id, p.data_scope,
+    COALESCE(p.status, 'active') AS status,
+    p.phone, p.position, p.company_id
+  FROM profiles p;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 5. 挂触发器
 DROP TRIGGER IF EXISTS trg_audit_clients ON clients;
 CREATE TRIGGER trg_audit_clients
   AFTER INSERT OR UPDATE OR DELETE ON clients
