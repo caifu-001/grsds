@@ -71,6 +71,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 4. RPC: 列出所有用户（供超级管理员页使用）
+DROP FUNCTION IF EXISTS list_all_users();
 CREATE OR REPLACE FUNCTION list_all_users()
 RETURNS TABLE(
   user_id UUID,
