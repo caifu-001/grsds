@@ -541,7 +541,7 @@ input,select,textarea,button{font-family:inherit}
   .rule-card .rc-rate{font-size:18px;font-weight:700;color:var(--primary)}
   .rule-card .rc-action{display:flex;gap:6px}
   @media(max-width:640px){
-   .kpi-cards{grid-template-columns:repeat(2,1fr)}
+   .kpi-cards{grid-template-columns:1fr}
    .perf-toolbar{flex-direction:column;align-items:stretch}
   }
 
@@ -976,7 +976,7 @@ input,select,textarea,button{font-family:inherit}
    <div class="dash-actions">
     <button class="dash-action-btn" onclick="switchTab('clients');setTimeout(function(){openForm()},300)">➕ 新增客户</button>
     <button class="dash-action-btn" onclick="switchTab('orders');setTimeout(function(){openOrderForm()},300)">📦 创建订单</button>
-    <button class="dash-action-btn" onclick="switchTab('sales');setTimeout(function(){openLeadForm()},300)">🎯 新建线索</button>
+    <button class="dash-action-btn" onclick="leadFormSource='sales';switchTab('sales');setTimeout(function(){openLeadForm()},300)">🎯 新建线索</button>
     <button class="dash-action-btn" onclick="switchTab('inventory')">📋 库存管理</button>
    </div>
   </div>
@@ -2185,7 +2185,7 @@ let loginMode='login',currentUser=null,allClients=[],allContacts=[],allCompanies
 let allUsers=[];
 let editId=null,deleteId=null,formContacts=[],pendingImport=null;
 let moveContactIdx=-1,moveContactObj=null;
-let clientTags=[],clientAttachments=[],leadEditId=null,leadAssignId=null,allLeads=[];
+let clientTags=[],clientAttachments=[],leadEditId=null,leadAssignId=null,allLeads=[],leadFormSource='pool';
 let c360ClientId=null,c360ActiveTab='overview',c360Orders=[];
 
 function h(s){return s?s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'):''}
@@ -6156,7 +6156,7 @@ function confirmDeletePayment(){if(peditId)confirmDialog('确定删除该回款�
 // ── Common: openSalesForm (FAB) ──
 function openSalesForm(){
   console.log('[DEBUG] openSalesForm called, currentSalesTab=',currentSalesTab,'typeof openLeadForm=',typeof openLeadForm);
-  if(currentSalesTab==='leads')openLeadForm();
+  if(currentSalesTab==='leads'){leadFormSource='sales';openLeadForm();}
   else if(currentSalesTab==='quotations')openQuoteForm();
   else if(currentSalesTab==='contracts')openContractForm();
   else if(currentSalesTab==='payments')openPaymentForm();
@@ -8933,6 +8933,7 @@ async function saveLead(){
   if(!leadEditId){
     lead.company_id=currentCompanyId;
     lead.created_by=currentUser.id;
+    if(leadFormSource==='sales'){lead.assigned_to=currentUser.id;lead.status='assigned';lead.assigned_at=new Date().toISOString();}
     console.log('[DEBUG saveLead] payload:',JSON.stringify(lead));
     console.log('[DEBUG saveLead] currentCompanyId type:',typeof currentCompanyId,'value:',currentCompanyId);
     var {error}=await sb.from('lead_pool').insert(lead);
@@ -9867,7 +9868,7 @@ function editForm(id){showToast('表单编辑功能暂未开放')}
   <div class="search-wrap"><input id="lead-pool-search" placeholder="搜索线索..." oninput="renderPoolLeads()"></div>
  </div>
  <div style="display:flex;gap:6px;padding:6px 16px 10px">
-  <button class="btn-sm btn-sm-primary" onclick="openLeadForm()">＋ 新线索</button>
+  <button class="btn-sm btn-sm-primary" onclick="leadFormSource='pool';openLeadForm()">＋ 新线索</button>
   <button class="btn-sm" style="background:#fff;color:var(--text);border:1px solid var(--border)" onclick="openLeadImport()">📥 批量导入</button>
   <button class="btn-sm" style="background:#fff;color:var(--danger);border:1px solid var(--danger)" onclick="recycleStale()">♻ 回收超时</button>
  </div>
