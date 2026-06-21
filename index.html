@@ -6233,7 +6233,7 @@ function openTicketForm(id){
 function closeTicketForm(){document.getElementById('ticket-modal').classList.add('hidden');svEditId=null}
 async function saveTicket(){
   var title=document.getElementById('tf-title').value.trim();if(!title){showToast('请输入标题');return}
-  var data={company_id:currentCompanyId,user_id:currentUser.id,title:title,
+  var data={company_id:currentCompanyId,created_by:currentUser.id,title:title,
     type:document.getElementById('tf-type').value,priority:document.getElementById('tf-priority').value,
     client_id:document.getElementById('tf-client').value||null,
     engineer_name:document.getElementById('tf-engineer').value.trim(),
@@ -6302,7 +6302,7 @@ function openVisitForm(id){
 function closeVisitForm(){document.getElementById('visit-modal').classList.add('hidden');svEditId=null}
 async function saveVisit(){
   var title=document.getElementById('vf-title').value.trim();if(!title){showToast('请输入标题');return}
-  var data={company_id:currentCompanyId,user_id:currentUser.id,title:title,
+  var data={company_id:currentCompanyId,created_by:currentUser.id,title:title,
     visit_type:document.getElementById('vf-type').value,visit_method:document.getElementById('vf-method').value,
     client_id:document.getElementById('vf-client').value||null,
     planned_date:document.getElementById('vf-planned-date').value||null,
@@ -6327,7 +6327,7 @@ async function loadVisitTasks(){
 }
 function openVisitTaskForm(){var n=document.getElementById('vf-title').value||'';var c=prompt('回访任务标题:',n);if(!c)return;
   var date=prompt('计划日期 (YYYY-MM-DD):',new Date().toISOString().split('T')[0]);if(!date)return;
-  sb.from('visit_tasks').insert([{company_id:currentCompanyId,user_id:currentUser.id,title:c,task_type:'care',scheduled_date:date,status:'pending',created_at:new Date().toISOString()}]).then(function(r){
+  sb.from('visit_tasks').insert([{company_id:currentCompanyId,title:c,task_type:'care',scheduled_date:date,status:'pending',created_at:new Date().toISOString()}]).then(function(r){
     if(r.error)showToast('创建失败: '+r.error.message);else{loadVisitTasks();showToast('回访任务已创建')}
   });
 }
@@ -6385,7 +6385,7 @@ function openWarrantyForm(id){
 function closeWarrantyForm(){document.getElementById('warranty-modal').classList.add('hidden');svEditId=null}
 async function saveWarranty(){
   var pn=document.getElementById('wf-product').value.trim();if(!pn){showToast('请输入产品名称');return}
-  var data={company_id:currentCompanyId,user_id:currentUser.id,product_name:pn,
+  var data={company_id:currentCompanyId,product_name:pn,
     serial_no:document.getElementById('wf-serial').value.trim(),
     client_id:document.getElementById('wf-client').value||null,
     warranty_start:document.getElementById('wf-start').value||null,
@@ -6441,7 +6441,7 @@ function openMaintenanceForm(id){
 function closeMaintenanceForm(){document.getElementById('maintenance-modal').classList.add('hidden');svEditId=null}
 async function saveMaintenance(){
   var pn=document.getElementById('mf-product').value.trim();if(!pn){showToast('请输入产品名称');return}
-  var data={company_id:currentCompanyId,user_id:currentUser.id,product_name:pn,
+  var data={company_id:currentCompanyId,product_name:pn,
     client_id:document.getElementById('mf-client').value||null,
     plan_type:document.getElementById('mf-type').value,schedule_interval:document.getElementById('mf-interval').value,
     next_maintenance:document.getElementById('mf-next').value||null,
@@ -6503,7 +6503,7 @@ function closeKBForm(){document.getElementById('kb-modal').classList.add('hidden
 async function saveKB(){
   var title=document.getElementById('kbf-title').value.trim();if(!title){showToast('请输入标题');return}
   var tags=(document.getElementById('kbf-tags').value||'').split(',').map(function(t){return t.trim()}).filter(Boolean);
-  var data={company_id:currentCompanyId,user_id:currentUser.id,title:title,
+  var data={company_id:currentCompanyId,created_by:currentUser.id,title:title,
     category:document.getElementById('kbf-category').value,
     content:document.getElementById('kbf-content').value.trim(),
         tags:JSON.stringify(tags),
