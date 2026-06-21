@@ -81,7 +81,7 @@ RETURNS TABLE(
   data_scope TEXT,
   status TEXT,
   phone TEXT,
-  position TEXT,
+  "position" TEXT,
   company_id BIGINT
 ) AS $$
 BEGIN
