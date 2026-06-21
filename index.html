@@ -36,6 +36,7 @@ input,select,textarea,button{font-family:inherit}
 .pw-strength{display:flex;gap:4px;width:100%;margin-top:-8px;margin-bottom:10px}
 .pw-strength .bar{flex:1;height:3px;border-radius:2px;background:var(--border);transition:background .3s}
 .pw-strength .bar.l1{background:#EF4444}.pw-strength .bar.l2{background:#F59E0B}.pw-strength .bar.l3{background:#10B981}
+.captcha-row{display:flex;gap:8px;align-items:center}.captcha-row canvas{border:1px solid var(--border);border-radius:8px}.captcha-row input{flex:1;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:15px;outline:none;text-transform:uppercase;letter-spacing:2px}.captcha-row input:focus{border-color:var(--primary)}.captcha-row .captcha-refresh{background:transparent;border:1px solid var(--border);border-radius:8px;padding:8px 12px;cursor:pointer;font-size:16px;color:var(--text2);transition:all .2s}.captcha-row .captcha-refresh:active{background:var(--primary-light);color:var(--primary)}
 
 .topbar{position:sticky;top:0;z-index:100;background:linear-gradient(135deg,#4F6EF7,#6366F1);color:#fff;padding:13px 16px;display:flex;align-items:center;justify-content:space-between;font-size:17px;font-weight:600;box-shadow:0 2px 12px rgba(79,110,247,.2)}
 .topbar-btns{display:flex;gap:4px;align-items:center}
@@ -865,6 +866,7 @@ input,select,textarea,button{font-family:inherit}
  <p class="sub">安全登录，数据云端同步</p>
  <div class="field"><input type="text" id="login-user" placeholder="邮箱" autocomplete="username"></div>
  <div class="field"><input type="password" id="login-pass" placeholder="密码" autocomplete="current-password"></div>
+  <div class="field captcha-row"><canvas id="captcha-canvas" width="130" height="46" onclick="refreshCaptcha()" title="点击刷新验证码"></canvas><input type="text" id="login-captcha" placeholder="验证码" maxlength="6" autocomplete="off"><button type="button" class="captcha-refresh" onclick="refreshCaptcha()" title="换一个">🔄</button></div>
  <div class="pw-strength hidden" id="pw-strength-bars"><div class="bar" id="pw-b1"></div><div class="bar" id="pw-b2"></div><div class="bar" id="pw-b3"></div></div>
  <div class="hint hidden" id="pw-hint"></div>
  <p class="err" id="login-err"></p>
@@ -2231,9 +2233,25 @@ function trErr(msg){
   if(msg.indexOf('already registered')>=0)return'该邮箱已注册';
   return msg;
 }
+var captchaCode='';
+function refreshCaptcha(){
+  var canvas=document.getElementById('captcha-canvas');
+  if(!canvas)return;
+  var ctx=canvas.getContext('2d');
+  var chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  captchaCode='';
+  for(var i=0;i<4;i++)captchaCode+=chars[Math.floor(Math.random()*chars.length)];
+  ctx.fillStyle='#f0f4ff';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  for(var i=0;i<40;i++){ctx.fillStyle='rgba('+Math.floor(Math.random()*180)+','+Math.floor(Math.random()*180)+','+Math.floor(Math.random()*220)+',0.25)';ctx.fillRect(Math.random()*canvas.width,Math.random()*canvas.height,3,3)}
+  for(var i=0;i<4;i++){ctx.strokeStyle='rgba(100,120,200,0.25)';ctx.beginPath();ctx.moveTo(Math.random()*canvas.width,Math.random()*canvas.height);ctx.lineTo(Math.random()*canvas.width,Math.random()*canvas.height);ctx.stroke()}
+  for(var i=0;i<captchaCode.length;i++){ctx.font='bold '+(22+Math.random()*8)+'px "Segoe UI","Microsoft YaHei",Arial';ctx.fillStyle='rgb('+Math.floor(Math.random()*140)+','+Math.floor(Math.random()*90)+','+Math.floor(Math.random()*200)+')';var x=8+i*30+Math.random()*8;var y=30+Math.random()*8;ctx.save();ctx.translate(x,y);ctx.rotate((Math.random()-0.5)*0.45);ctx.fillText(captchaCode[i],0,0);ctx.restore()}
+}
 async function handleLogin(){
-  var un=document.getElementById('login-user').value.trim(),pw=document.getElementById('login-pass').value.trim();
+  var captchaInput=document.getElementById('login-captcha').value.trim().toUpperCase();
   var er=document.getElementById('login-err'),btn=document.getElementById('login-btn');er.textContent='';
+  if(captchaInput!==captchaCode){er.textContent='验证码错误，请重新输入';refreshCaptcha();document.getElementById('login-captcha').value='';document.getElementById('login-captcha').focus();return}
+  var un=document.getElementById('login-user').value.trim(),pw=document.getElementById('login-pass').value.trim();
   if(!un||!pw){er.textContent='请输入邮箱和密码';return}
   btn.disabled=true;btn.textContent='请稍候...';
   try{
@@ -9615,6 +9633,7 @@ function openFieldForm(){
 }
 function closeFieldForm(){document.getElementById('field-form-modal').style.display='none';}
 document.addEventListener('DOMContentLoaded',function(){
+  refreshCaptcha();
   var ft=document.getElementById('fif-type');if(ft)ft.onchange=function(){document.getElementById('fif-options-row').style.display=this.value==='select'?'block':'none';};
 });
 async function editField(id){
