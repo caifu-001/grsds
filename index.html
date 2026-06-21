@@ -674,9 +674,9 @@ input,select,textarea,button{font-family:inherit}
 @media(max-width:640px){.chart-bars{gap:2px}.chart-bar-col{min-width:36px}.chart-bar{width:80%}}
 
 /* Reports BI - 新增样式 */
-.report-chart-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.report-chart-row{display:grid;grid-template-columns:1fr;gap:12px}
 .report-metric{font-size:36px;font-weight:700;text-align:center;padding:8px 0}
-@media(max-width:480px){.report-chart-row{grid-template-columns:1fr}}
+@media(min-width:768px){.report-chart-row{grid-template-columns:1fr 1fr}#rp-dashboard-grid{grid-template-columns:1fr 1fr}}
 
 
 /* Notifications */
@@ -1709,11 +1709,11 @@ input,select,textarea,button{font-family:inherit}
     <select id="rp-sales-quarter" onchange="renderReportSales()"><option value="0">全年</option><option value="1">Q1</option><option value="2">Q2</option><option value="3">Q3</option><option value="4">Q4</option></select>
     <button class="btn-sm" onclick="exportReportCSV('sales')">📥 导出CSV</button>
    </div>
-   <div class="report-chart-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+   <div class="report-chart-row">
     <div class="report-chart"><div style="font-weight:600;font-size:13px;margin-bottom:8px">📊 销售漏斗</div><canvas id="rp-sales-salesFunnel" style="max-height:280px"></canvas></div>
     <div class="report-chart"><div style="font-weight:600;font-size:13px;margin-bottom:8px">🎯 赢单率趋势</div><canvas id="rp-sales-winRate" style="max-height:280px"></canvas></div>
    </div>
-   <div class="report-chart-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+   <div class="report-chart-row" style="margin-top:12px">
     <div class="report-chart"><div style="font-weight:600;font-size:13px;margin-bottom:8px">⏱ 成单周期（天）</div><canvas id="rp-sales-dealCycle" style="max-height:280px"></canvas></div>
     <div class="report-chart"><div style="font-weight:600;font-size:13px;margin-bottom:8px">💰 成交均价趋势</div><canvas id="rp-sales-avgDealPrice" style="max-height:280px"></canvas></div>
    </div>
@@ -1727,11 +1727,11 @@ input,select,textarea,button{font-family:inherit}
     <select id="rp-clients-quarter" onchange="renderReportClients()"><option value="0">全年</option><option value="1">Q1</option><option value="2">Q2</option><option value="3">Q3</option><option value="4">Q4</option></select>
     <button class="btn-sm" onclick="exportReportCSV('clients')">📥 导出CSV</button>
    </div>
-   <div class="report-chart-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+   <div class="report-chart-row">
     <div class="report-chart"><div style="font-weight:600;font-size:13px;margin-bottom:8px">📈 新增客户趋势</div><canvas id="rp-clients-newClientsTrend" style="max-height:280px"></canvas></div>
     <div class="report-chart"><div style="font-weight:600;font-size:13px;margin-bottom:8px">📉 客户流失分析</div><canvas id="rp-clients-churnAnalysis" style="max-height:280px"></canvas></div>
    </div>
-   <div class="report-chart-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+   <div class="report-chart-row" style="margin-top:12px">
     <div class="report-chart">
      <div style="font-weight:600;font-size:13px;margin-bottom:8px">🔄 复购率</div>
      <div class="report-metric" style="font-size:36px;font-weight:700;color:var(--primary);text-align:center;padding:8px 0" id="rp-clients-repurchaseMetric">-</div>
@@ -1752,11 +1752,11 @@ input,select,textarea,button{font-family:inherit}
     <select id="rp-collections-quarter" onchange="renderReportCollections()"><option value="0">全年</option><option value="1">Q1</option><option value="2">Q2</option><option value="3">Q3</option><option value="4">Q4</option></select>
     <button class="btn-sm" onclick="exportReportCSV('collections')">📥 导出CSV</button>
    </div>
-   <div class="report-chart-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+   <div class="report-chart-row">
     <div class="report-chart"><div style="font-weight:600;font-size:13px;margin-bottom:8px">📋 应收账龄分析</div><canvas id="rp-collections-ARAging" style="max-height:280px"></canvas></div>
     <div class="report-chart"><div style="font-weight:600;font-size:13px;margin-bottom:8px">📈 月度回款趋势</div><canvas id="rp-collections-paymentTrend" style="max-height:280px"></canvas></div>
    </div>
-   <div class="report-chart-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+   <div class="report-chart-row" style="margin-top:12px">
     <div class="report-chart"><div style="font-weight:600;font-size:13px;margin-bottom:8px">📑 合同金额统计</div><canvas id="rp-collections-contractStats" style="max-height:280px"></canvas></div>
     <div class="report-chart">
      <div style="font-weight:600;font-size:13px;margin-bottom:8px">⚠️ 超期未回款合同</div>
@@ -1772,7 +1772,7 @@ input,select,textarea,button{font-family:inherit}
     <select id="rp-orders-quarter" onchange="renderReportOrders()"><option value="0">全年</option><option value="1">Q1</option><option value="2">Q2</option><option value="3">Q3</option><option value="4">Q4</option></select>
     <button class="btn-sm" onclick="exportReportCSV('orders')">📥 导出CSV</button>
    </div>
-   <div class="report-chart-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+   <div class="report-chart-row">
     <div class="report-chart"><div style="font-weight:600;font-size:13px;margin-bottom:8px">📦 月度订单量</div><canvas id="rp-orders-monthlyOrders" style="max-height:280px"></canvas></div>
     <div class="report-chart"><div style="font-weight:600;font-size:13px;margin-bottom:8px">✅ 订单完成率</div><canvas id="rp-orders-completeRate" style="max-height:280px"></canvas></div>
    </div>
@@ -1793,7 +1793,7 @@ input,select,textarea,button{font-family:inherit}
     <button class="btn-sm" onclick="addDashboardCard()" style="background:var(--primary);color:#fff">➕ 添加卡片</button>
     <button class="btn-sm" onclick="saveDashboardLayout()">💾 保存布局</button>
    </div>
-   <div id="rp-dashboard-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;min-height:200px">
+   <div id="rp-dashboard-grid" style="display:grid;grid-template-columns:1fr;gap:12px;min-height:200px">
     <div style="text-align:center;color:var(--text3);padding:60px 0;grid-column:1/-1">点击「添加卡片」开始构建你的仪表盘</div>
    </div>
   </div>
