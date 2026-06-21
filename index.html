@@ -2255,7 +2255,7 @@ async function onLoginSuccess(user){
   currentUser=user;
   // Upsert profile and load role/company
   var profile=null;
-  try{var r2=await sb.from('profiles').upsert({user_id:user.id,email:user.email},{onConflict:'user_id'}).select('role,company_id,display_name,phone,position').single();profile=r2.data}catch(e){console.error('profile upsert failed:',e);throw new Error('无法加载用户档案: '+(e.message||JSON.stringify(e)))}
+  try{var r2=await sb.from('profiles').upsert({user_id:user.id,email:user.email,last_login_at:new Date().toISOString()},{onConflict:'user_id'}).select('role,company_id,display_name,phone,position,last_login_at').single();profile=r2.data}catch(e){console.error('profile upsert failed:',e);throw new Error('无法加载用户档案: '+(e.message||JSON.stringify(e)))}
   if(profile){currentUserRole=profile.role||'user';isSuperAdmin=profile.role==='super_admin';currentCompanyId=profile.company_id;}
 
   document.getElementById('login-user').value='';
@@ -5423,7 +5423,7 @@ function renderAdminUsers(){
   });
   var el=document.getElementById('admin-user-list');
   if(list.length===0){el.innerHTML='<div class="empty-state">暂无员工</div>';return}
-  var h='<table class="user-table"><thead><tr><th>姓名</th><th>邮箱</th><th>公司</th><th>部门</th><th>岗位</th><th>状态</th><th>手机</th><th>角色</th><th>操作</th></tr></thead><tbody>';
+  var h='<table class="user-table"><thead><tr><th>姓名</th><th>邮箱</th><th>公司</th><th>部门</th><th>岗位</th><th>状态</th><th>手机</th><th>角色</th><th>最后登录</th><th>操作</th></tr></thead><tbody>';
   for(var i=0;i<list.length;i++){
     var u=list[i];
     var deptName='-';
@@ -5441,6 +5441,9 @@ function renderAdminUsers(){
     h+='<td><span class="badge-status '+status+'">'+statusLabel+'</span></td>';
     h+='<td>'+escHtml(u.phone||'-')+'</td>';
     h+='<td>'+escHtml(roleName)+'</td>';
+    var ll=u.last_login_at;
+    var llText=ll?formatDateTime(ll):'从未登录';
+    h+='<td style="font-size:12px;color:var(--text3)">'+escHtml(llText)+'</td>';
     h+='<td><button class="btn-sm btn-sm-primary" onclick="openUserEditForm(\''+u.user_id+'\')" style="font-size:11px;padding:3px 10px">编辑</button>'+(isSuperAdmin?' <button class="btn-sm btn-sm-danger" onclick="openResetPwdForm(\''+u.user_id+'\',\''+escHtml(u.email||u.display_name||'-')+'\')" style="font-size:11px;padding:3px 8px">重置密码</button>':'')+'</td></tr>';
   }
   el.innerHTML=h+'</tbody></table>';
@@ -5627,6 +5630,7 @@ function renderDeptTree(nodes,level){
   return h;
 }
 
+function formatDateTime(iso){if(!iso)return'';try{var d=new Date(iso);var y=d.getFullYear();var m=String(d.getMonth()+1).padStart(2,'0');var day=String(d.getDate()).padStart(2,'0');var h=String(d.getHours()).padStart(2,'0');var min=String(d.getMinutes()).padStart(2,'0');return y+'-'+m+'-'+day+' '+h+':'+min;}catch(e){return iso;}}
 function escHtml(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function closeUserDeptModal(){var m=document.getElementById('user-dept-modal');if(m)m.remove();}
 function commitUserDept(){var m=document.getElementById('user-dept-modal');var uid=m?m._userId:null;var deptId=parseInt(document.getElementById('user-dept-select').value)||null;if(uid)doSetUserDeptCommit(uid,deptId);}
@@ -9427,13 +9431,13 @@ async function renderAdminEmployees(){
   if(df)list=list.filter(function(u){return u.dept_id==df;});
   if(sf)list=list.filter(function(u){return u.status===sf;});
   if(q)list=list.filter(function(u){return (u.display_name||'').toLowerCase().indexOf(q)>=0||(u.email||'').toLowerCase().indexOf(q)>=0;});
-  var h='<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="border-bottom:2px solid var(--border)"><th style="padding:10px 8px;text-align:left">姓名</th><th style="padding:10px 8px;text-align:left">邮箱</th><th style="padding:10px 8px;text-align:left">角色</th><th style="padding:10px 8px;text-align:left">部门</th><th style="padding:10px 8px;text-align:left">数据范围</th><th style="padding:10px 8px;text-align:left">状态</th><th style="padding:10px 8px;text-align:center">操作</th></tr></thead><tbody>';
+  var h='<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="border-bottom:2px solid var(--border)"><th style="padding:10px 8px;text-align:left">姓名</th><th style="padding:10px 8px;text-align:left">邮箱</th><th style="padding:10px 8px;text-align:left">角色</th><th style="padding:10px 8px;text-align:left">部门</th><th style="padding:10px 8px;text-align:left">数据范围</th><th style="padding:10px 8px;text-align:left">状态</th><th style="padding:10px 8px;text-align:left">最后登录</th><th style="padding:10px 8px;text-align:center">操作</th></tr></thead><tbody>';
   for(var j=0;j<list.length;j++){
     var u=list[j];var dn=u.display_name||'';var em=u.email||'';var rn=u.role||'';var did=u.dept_id||'';
     var deptName='';for(var k=0;k<(allDepartments||[]).length;k++){if(allDepartments[k].id==did){deptName=allDepartments[k].name;break;}}
     var scopes={own:'仅自己',dept:'本部门',all:'全部'};var dsLabel=scopes[u.data_scope]||'全部';
     var statusLabel=u.status==='inactive'?'<span style="color:#ef4444">离职</span>':'<span style="color:#10b981">在职</span>';
-    h+='<tr style="border-bottom:1px solid var(--border)"><td style="padding:8px">'+escHtml(dn)+'</td><td style="padding:8px">'+escHtml(em)+'</td><td style="padding:8px">'+escHtml(rn)+'</td><td style="padding:8px">'+escHtml(deptName)+'</td><td style="padding:8px;font-size:12px;color:var(--text3)">'+dsLabel+'</td><td style="padding:8px">'+statusLabel+' <a href="javascript:void(0)" style="font-size:11px;margin-left:6px" onclick="toggleEmpStatus(\''+u.user_id+'\',\''+(u.status==='active'?'inactive':'active')+'\')">'+(u.status==='active'?'设为离职':'设为在职')+'</a></td><td style="padding:8px;text-align:center"><a href="javascript:void(0)" onclick="editEmployee(\''+u.user_id+'\')" style="color:var(--primary);font-size:13px">编辑</a></td></tr>';
+    h+='<tr style="border-bottom:1px solid var(--border)"><td style="padding:8px">'+escHtml(dn)+'</td><td style="padding:8px">'+escHtml(em)+'</td><td style="padding:8px">'+escHtml(rn)+'</td><td style="padding:8px">'+escHtml(deptName)+'</td><td style="padding:8px;font-size:12px;color:var(--text3)">'+dsLabel+'</td><td style="padding:8px">'+statusLabel+'</td><td style="padding:8px;font-size:12px;color:var(--text3)">'+escHtml(u.last_login_at?formatDateTime(u.last_login_at):'从未登录')+'</td><td style="padding:8px;text-align:center"> <a href="javascript:void(0)" style="font-size:11px;margin-left:6px" onclick="toggleEmpStatus(\''+u.user_id+'\',\''+(u.status==='active'?'inactive':'active')+'\')">'+(u.status==='active'?'设为离职':'设为在职')+'</a></td><td style="padding:8px;text-align:center"><a href="javascript:void(0)" onclick="editEmployee(\''+u.user_id+'\')" style="color:var(--primary);font-size:13px">编辑</a></td></tr>';
   }
   h+='</tbody></table>';
   if(list.length===0)h='<div style="text-align:center;padding:40px;color:var(--text3)">暂无匹配员工</div>';
