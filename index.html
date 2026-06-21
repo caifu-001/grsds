@@ -6506,7 +6506,7 @@ async function saveKB(){
   var data={company_id:currentCompanyId,created_by:currentUser.id,title:title,
     category:document.getElementById('kbf-category').value,
     content:document.getElementById('kbf-content').value.trim(),
-        tags:JSON.stringify(tags),
+        tags:tags,
     related_products:document.getElementById('kbf-products').value.trim(),
     updated_at:new Date().toISOString()};
   var error;
