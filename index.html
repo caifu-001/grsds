@@ -3504,17 +3504,17 @@ function loadHomeDashboard(){
     document.getElementById('dash-revenue').textContent='¥'+total.toLocaleString('zh-CN',{minimumFractionDigits:0,maximumFractionDigits:0});
   }).catch(function(){ovEl.innerHTML='<div class="empty-state">加载失败</div>';});
   var remEl=document.getElementById('dash-reminders');
-  sb.from('contracts').select('id,title,next_reminder_date,unpaid_amount,customer_name').eq('company_id',currentCompanyId).not('archive_status','eq','archived').order('next_reminder_date',{ascending:true}).limit(5).then(function(r){
+  sb.from('contracts').select('id,title,total_amount,end_date').eq('company_id',currentCompanyId).not('archive_status','eq','archived').order('end_date',{ascending:true}).limit(5).then(function(r){
     var today=now.toISOString().slice(0,10);
     if(!r.data||!r.data.length){remEl.innerHTML='<div class="empty-state">🎉 暂无待处理提醒</div>';return}
     var hasReminder=false;
     var h='<div class="reminder-list">';
     for(var i=0;i<r.data.length;i++){
       var c=r.data[i];
-      if(!c.next_reminder_date)continue;
+      if(!c.end_date)continue;
       hasReminder=true;
-      var d=new Date(c.next_reminder_date);var isOver=c.next_reminder_date<today;
-      h+='<div class="reminder-item'+(isOver?' reminder-overdue':'')+'"><span class="reminder-icon">'+(isOver?'🔴':'🟡')+'</span><div class="reminder-info"><span class="reminder-title">'+escHtml(c.title||'合同#'+c.id)+'</span><span class="reminder-detail">'+escHtml(c.customer_name||'')+(c.unpaid_amount?' · ¥'+c.unpaid_amount.toLocaleString('zh-CN'):'')+'</span></div><span class="reminder-date">'+d.toLocaleDateString('zh-CN')+'</span></div>';
+      var d=new Date(c.end_date);var isOver=c.end_date<today;
+      h+='<div class="reminder-item'+(isOver?' reminder-overdue':'')+'"><span class="reminder-icon">'+(isOver?'🔴':'🟡')+'</span><div class="reminder-info"><span class="reminder-title">'+escHtml(c.title||'合同#'+c.id)+'</span><span class="reminder-detail">'+(c.total_amount?' · ¥'+Number(c.total_amount).toLocaleString('zh-CN'):'')+'</span></div><span class="reminder-date">'+d.toLocaleDateString('zh-CN')+'</span></div>';
     }
     h+='</div>';
     if(!hasReminder)h='<div class="empty-state">🎉 暂无待处理提醒</div>';
@@ -3692,9 +3692,9 @@ function loadReportSummary(){
   sb.from('clients').select('id',{count:'exact',head:true}).eq('company_id',currentCompanyId).gte('created_at',mStart).then(function(r){
     document.getElementById('rp-monthly-clients').textContent=r.count||0;
   }).catch(function(){});
-  sb.from('contracts').select('total_amount,paid_amount').eq('company_id',currentCompanyId).not('archive_status','eq','archived').then(function(r){
+  sb.from('contracts').select('total_amount').eq('company_id',currentCompanyId).not('archive_status','eq','archived').then(function(r){
     var total=0,paid=0;
-    if(r.data)for(var i=0;i<r.data.length;i++){total+=parseFloat(r.data[i].total_amount)||0;paid+=parseFloat(r.data[i].paid_amount)||0}
+    if(r.data)for(var i=0;i<r.data.length;i++){total+=parseFloat(r.data[i].total_amount)||0;}
     var rate=total>0?Math.round(paid/total*100):0;
     document.getElementById('rp-collect-rate').textContent=rate+'%';
   }).catch(function(){});
@@ -4041,12 +4041,12 @@ async function renderARAging(year){
     var yStart=new Date(year,0,1).toISOString();
     var yEnd=new Date(year,11,31,23,59,59).toISOString();
     var now=new Date();
-    var r=await _reportQuery('contracts').select('total_amount,paid_amount,due_date').not('archive_status','eq','archived').gte('created_at',yStart).lte('created_at',yEnd);
+    var r=await _reportQuery('contracts').select('total_amount,end_date').not('archive_status','eq','archived').gte('created_at',yStart).lte('created_at',yEnd);
     // 按账龄分组：未到期、1-30天、31-60天、61-90天、90天+
     var aging={unexpired:0,days30:0,days60:0,days90:0,over90:0};
     if(r.data)for(var i=0;i<r.data.length;i++){
-      var unpaid=parseFloat(r.data[i].total_amount)-(parseFloat(r.data[i].paid_amount)||0);if(unpaid<=0)continue;
-      var due=r.data[i].due_date?new Date(r.data[i].due_date):now;
+      var unpaid=parseFloat(r.data[i].total_amount)||0;
+      var due=r.data[i].end_date?new Date(r.data[i].end_date):now;
       var overdue=(now-due)/(1000*60*60*24);
       if(overdue<=0)aging.unexpired+=unpaid;
       else if(overdue<=30)aging.days30+=unpaid;
@@ -4099,9 +4099,9 @@ async function renderContractStats(sel){
     var labels=[],totals=[],paids=[];
     for(var mi=0;mi<sel.months.length;mi++){
       var mo=sel.months[mi];
-      var r=await _reportQuery('contracts').select('total_amount,paid_amount').gte('created_at',mo.start).lte('created_at',mo.end);
+      var r=await _reportQuery('contracts').select('total_amount').gte('created_at',mo.start).lte('created_at',mo.end);
       var total=0,paid=0;
-      if(r.data)for(var i=0;i<r.data.length;i++){total+=parseFloat(r.data[i].total_amount)||0;paid+=parseFloat(r.data[i].paid_amount)||0;}
+      if(r.data)for(var i=0;i<r.data.length;i++){total+=parseFloat(r.data[i].total_amount)||0;}
       labels.push(mo.shortLabel);
       totals.push(total);paids.push(paid);
     }
@@ -4123,19 +4123,18 @@ async function renderContractStats(sel){
 async function renderBadDebt(){
   try{
     var now=new Date();
-    var r=await _reportQuery('contracts').select('id,total_amount,paid_amount,due_date').not('archive_status','eq','archived').neq('status','已完成');
+    var r=await _reportQuery('contracts').select('id,total_amount,end_date').not('archive_status','eq','archived').not('status','eq','completed');
     if(!r.data||!r.data.length){document.getElementById('rp-collections-badDebtTable').querySelector('tbody').innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text3)">暂无超期合同</td></tr>';return;}
-    // 筛选超期且未完全回款
+    // 筛选超期且未完成
     var badList=[];
     for(var i=0;i<r.data.length;i++){
       var c=r.data[i];
-      var unpaid=(parseFloat(c.total_amount)||0)-(parseFloat(c.paid_amount)||0);
-      if(unpaid<=0)continue;
-      var due=c.due_date?new Date(c.due_date):null;
+      var unpaid=parseFloat(c.total_amount)||0;
+      var due=c.end_date?new Date(c.end_date):null;
       if(!due)continue;
       var overdue=Math.round((now-due)/(1000*60*60*24));
       if(overdue<=0)continue;
-      badList.push({id:c.id,total:parseFloat(c.total_amount)||0,paid:parseFloat(c.paid_amount)||0,unpaid:unpaid,dueDate:due.toLocaleDateString('zh-CN'),overdueDays:overdue});
+      badList.push({id:c.id,total:parseFloat(c.total_amount)||0,paid:0,unpaid:unpaid,dueDate:due.toLocaleDateString('zh-CN'),overdueDays:overdue});
     }
     badList.sort(function(a,b){return b.overdueDays-a.overdueDays;});
     var tbody=document.getElementById('rp-collections-badDebtTable').querySelector('tbody');
@@ -4386,8 +4385,8 @@ async function renderDashboardCard(card,canvas,idx){
       var clabels=[],ctotals=[],cpaids=[];
       for(var cm=1;cm<=12;cm++){
         var cms=new Date(year,cm-1,1).toISOString(),cme=new Date(year,cm,0,23,59,59).toISOString();
-        var crr=await _reportQuery('contracts').select('total_amount,paid_amount').gte('created_at',cms).lte('created_at',cme);
-        var ctotal=0,cpaid=0;if(crr.data)for(var cj=0;cj<crr.data.length;cj++){ctotal+=parseFloat(crr.data[cj].total_amount)||0;cpaid+=parseFloat(crr.data[cj].paid_amount)||0;}
+        var crr=await _reportQuery('contracts').select('total_amount').gte('created_at',cms).lte('created_at',cme);
+        var ctotal=0,cpaid=0;if(crr.data)for(var cj=0;cj<crr.data.length;cj++){ctotal+=parseFloat(crr.data[cj].total_amount)||0;}
         clabels.push(cm+'月');ctotals.push(ctotal);cpaids.push(cpaid);
       }
       _reportCharts[chartKey]=new Chart(ctx,{type:'bar',data:{labels:clabels,datasets:[{label:'总额',data:ctotals,backgroundColor:'#4F6EF7',borderRadius:4},{label:'已回',data:cpaids,backgroundColor:'#10B981',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:function(v){return v>=10000?'¥'+(v/10000).toFixed(1)+'万':'¥'+v;}}}}}});
@@ -5943,7 +5942,7 @@ function renderContracts(){
   for(var i=0;i<list.length;i++){
     var ct=list[i],sc={'draft':'sb-draft','signed':'sb-signed','executing':'sb-executing','completed':'sb-completed','terminated':'sb-terminated'}[ct.status]||'sb-draft';
     var cn='';var cl=allClients.find(function(x){return x.id===ct.client_id});if(cl)cn=cl.name;
-    var paid=ct.paid_amount||0,total=ct.total_amount||ct.amount||1;
+    var paid=0,total=ct.total_amount||1;
     var pct=Math.round(paid/total*100);
     var expiryHtml='';
     if(ct.end_date){
