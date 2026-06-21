@@ -7,7 +7,7 @@
 CREATE TABLE IF NOT EXISTS service_tickets (
   id BIGSERIAL PRIMARY KEY,
   company_id BIGINT NOT NULL,
-  client_id BIGINT,
+  client_id UUID,
   ticket_no TEXT,
   type TEXT DEFAULT 'service' CHECK (type IN ('complaint','repair','service','other')),
   title TEXT NOT NULL,
@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS ticket_actions (
 CREATE TABLE IF NOT EXISTS client_visits (
   id BIGSERIAL PRIMARY KEY,
   company_id BIGINT NOT NULL,
-  client_id BIGINT,
+  client_id UUID,
   visit_type TEXT DEFAULT 'care' CHECK (visit_type IN ('post_sale','care','churn','other')),
   visit_method TEXT DEFAULT 'phone' CHECK (visit_method IN ('phone','email','visit','wechat','other')),
   title TEXT,
@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS client_visits (
 CREATE TABLE IF NOT EXISTS visit_tasks (
   id BIGSERIAL PRIMARY KEY,
   company_id BIGINT NOT NULL,
-  client_id BIGINT,
+  client_id UUID,
   visit_id BIGINT REFERENCES client_visits(id) ON DELETE SET NULL,
   title TEXT NOT NULL,
   task_type TEXT DEFAULT 'care' CHECK (task_type IN ('post_sale','care','churn','custom')),
@@ -82,7 +82,7 @@ CREATE TABLE IF NOT EXISTS visit_tasks (
 CREATE TABLE IF NOT EXISTS warranties (
   id BIGSERIAL PRIMARY KEY,
   company_id BIGINT NOT NULL,
-  client_id BIGINT,
+  client_id UUID,
   product_id BIGINT,
   product_name TEXT NOT NULL,
   serial_no TEXT,
@@ -99,7 +99,7 @@ CREATE TABLE IF NOT EXISTS warranties (
 CREATE TABLE IF NOT EXISTS maintenance_plans (
   id BIGSERIAL PRIMARY KEY,
   company_id BIGINT NOT NULL,
-  client_id BIGINT,
+  client_id UUID,
   warranty_id BIGINT REFERENCES warranties(id) ON DELETE SET NULL,
   product_name TEXT,
   plan_type TEXT DEFAULT 'preventive' CHECK (plan_type IN ('preventive','corrective','inspection','upgrade')),
