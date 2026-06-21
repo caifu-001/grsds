@@ -3848,9 +3848,9 @@ async function renderRegionalPerf(year){
   try{
     var yStart=new Date(year,0,1).toISOString();
     var yEnd=new Date(year,11,31,23,59,59).toISOString();
-    var r=await _reportQuery('clients').select('province').gte('created_at',yStart).lte('created_at',yEnd);
+    var r=await _reportQuery('clients').select('industry').gte('created_at',yStart).lte('created_at',yEnd);
     var regionMap={};
-    if(r.data)for(var i=0;i<r.data.length;i++){var p=r.data[i].province||'未知';regionMap[p]=(regionMap[p]||0)+1;}
+    if(r.data)for(var i=0;i<r.data.length;i++){var p=r.data[i].industry||'未知';regionMap[p]=(regionMap[p]||0)+1;}
     var labels=Object.keys(regionMap).sort(function(a,b){return regionMap[b]-regionMap[a];});
     var values=labels.map(function(k){return regionMap[k];});
     var regionColors=['#4F6EF7','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899','#06B6D4','#F97316','#84CC16','#6366F1','#A855F7','#14B8A6'];
@@ -4376,8 +4376,8 @@ async function renderDashboardCard(card,canvas,idx){
       var scolors=['#4F6EF7','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899','#06B6D4','#F97316'];
       _reportCharts[chartKey]=new Chart(ctx,{type:'doughnut',data:{labels:slabels,datasets:[{data:svalues,backgroundColor:scolors.slice(0,slabels.length)}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:9}}}}}});
     }else if(card.type==='regionalDist'){
-      var rr=await _reportQuery('clients').select('province');
-      var rmap={};if(rr.data)for(var rk=0;rk<rr.data.length;rk++){var pp=rr.data[rk].province||'未知';rmap[pp]=(rmap[pp]||0)+1;}
+      var rr=await _reportQuery('clients').select('industry');
+      var rmap={};if(rr.data)for(var rk=0;rk<rr.data.length;rk++){var pp=rr.data[rk].industry||'未知';rmap[pp]=(rmap[pp]||0)+1;}
       var rlabels=Object.keys(rmap).sort(function(a,b){return rmap[b]-rmap[a];}).slice(0,12);
       var rvalues=rlabels.map(function(k){return rmap[k];});
       var rcolors=['#4F6EF7','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899','#06B6D4','#F97316','#84CC16','#6366F1','#A855F7','#14B8A6'];
