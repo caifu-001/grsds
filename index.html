@@ -4894,12 +4894,15 @@ buildFilterSelect();
 sb.auth.getSession().then(async function(res){
   if(res.data&&res.data.session){
     currentUser=res.data.session.user;
+    // Fire-and-forget: update last_login_at on session restore
+    sb.from('users').update({last_login_at:new Date().toISOString()}).eq('id',currentUser.id).then();
     // Load profile for company/role
     var {data:profile}=await sb.from('profiles').select('role,company_id').eq('user_id',currentUser.id).single();
     if(profile){currentUserRole=profile.role||'user';isSuperAdmin=profile.role==='super_admin';currentCompanyId=profile.company_id;}
     if(!currentCompanyId){document.getElementById('login-screen').classList.remove('hidden');return}
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('main-screen').classList.remove('hidden');
+    switchTab('home');
     if(isSuperAdmin||currentUserRole==='admin')document.getElementById('tab-admin').classList.remove('hidden');
   if(isSuperAdmin){document.getElementById('admin-tab-companies-manage').classList.remove('hidden');document.getElementById('admin-tab-companies').classList.remove('hidden');}
     await loadCustomTypes();
@@ -8004,6 +8007,8 @@ async function loadSuppliers(){
   for(var j=0;j<allSuppliers.length;j++)allSuppliers[j].linked_client_name=clientMap[allSuppliers[j].linked_client_id]||'';
   buildSupCategories();
   renderSuppliers();
+  // Defense-in-depth: ensure FAB hidden on supplier view
+  var supFab=document.getElementById('main-fab');if(supFab)supFab.classList.add('hidden');
 }
 
 function buildSupCategories(){
