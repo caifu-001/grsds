@@ -2255,7 +2255,8 @@ async function onLoginSuccess(user){
   currentUser=user;
   // Upsert profile and load role/company
   var profile=null;
-  try{var r2=await sb.from('profiles').upsert({user_id:user.id,email:user.email,last_login_at:new Date().toISOString()},{onConflict:'user_id'}).select('role,company_id,display_name,phone,position,last_login_at').single();profile=r2.data}catch(e){console.error('profile upsert failed:',e);throw new Error('无法加载用户档案: '+(e.message||JSON.stringify(e)))}
+  try{var r2=await sb.from('profiles').upsert({user_id:user.id,email:user.email},{onConflict:'user_id'}).select('role,company_id,display_name,phone,position').single();profile=r2.data}catch(e){console.error('profile upsert failed:',e);throw new Error('无法加载用户档案: '+(e.message||JSON.stringify(e)))}
+  try{sb.from('profiles').update({last_login_at:new Date().toISOString()}).eq('user_id',user.id).then(function(){}).catch(function(){})}catch(e){}
   if(profile){currentUserRole=profile.role||'user';isSuperAdmin=profile.role==='super_admin';currentCompanyId=profile.company_id;}
 
   document.getElementById('login-user').value='';
