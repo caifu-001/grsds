@@ -2255,9 +2255,9 @@ async function onLoginSuccess(user){
   currentUser=user;
   // Upsert profile and load role/company
   var profile=null;
-  try{var r2=await sb.from('profiles').upsert({user_id:user.id,email:user.email},{onConflict:'user_id'}).select('role,company_id,display_name,phone,position').single();profile=r2.data}catch(e){console.error('profile upsert failed:',e);throw new Error('无法加载用户档案: '+(e.message||JSON.stringify(e)))}
+  try{var r2=await sb.from('profiles').upsert({user_id:user.id,email:user.email},{onConflict:'user_id'}).select('role,company_id,department_id,display_name,phone,position').single();profile=r2.data}catch(e){console.error('profile upsert failed:',e);throw new Error('无法加载用户档案: '+(e.message||JSON.stringify(e)))}
   try{sb.from('profiles').update({last_login_at:new Date().toISOString()}).eq('user_id',user.id).then(function(){}).catch(function(){})}catch(e){}
-  if(profile){currentUserRole=profile.role||'user';isSuperAdmin=profile.role==='super_admin';currentCompanyId=profile.company_id;}
+  if(profile){currentUserRole=profile.role||'user';isSuperAdmin=profile.role==='super_admin';currentCompanyId=profile.company_id;}if(!currentCompanyId&&profile&&profile.department_id){try{var deptRes=await sb.from('departments').select('company_id').eq('id',profile.department_id).single();if(deptRes.data&&deptRes.data.company_id){currentCompanyId=deptRes.data.company_id;profile.company_id=currentCompanyId;await sb.from('profiles').update({company_id:currentCompanyId}).eq('user_id',user.id);if(!currentUserRole||currentUserRole==='user'){currentUserRole='admin';await sb.from('profiles').update({role:'admin'}).eq('user_id',user.id)}}}catch(fb){console.error('resolve company via dept failed:',fb)}}
 
   document.getElementById('login-user').value='';
   document.getElementById('login-pass').value='';
