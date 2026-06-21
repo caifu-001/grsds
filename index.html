@@ -5759,7 +5759,7 @@ async function doResetPassword(){
   var sk=SUPABASE_SERVICE_KEY;
   if(!sk){showToast('请先配置 SUPABASE_SERVICE_KEY（Supabase Dashboard > Settings > API）');return}
   try{
-    var res=await fetch(SUPABASE_URL+'/auth/v1/admin/users/'+_resetPwdUserId,{method:'PUT',headers:{'Authorization':'Bearer '+sk,'Content-Type':'application/json'},body:JSON.stringify({password:pwd})});
+    var res=await fetch(SUPABASE_URL+'/auth/v1/admin/users/'+_resetPwdUserId,{method:'PUT',headers:{'Authorization':'Bearer '+sk,'apikey':sk,'Content-Type':'application/json'},body:JSON.stringify({password:pwd})});
     if(!res.ok){var txt=await res.text();showToast('重置失败 HTTP '+res.status+': '+txt);return}
     closeResetPwdForm();
     showToast('密码已重置');
