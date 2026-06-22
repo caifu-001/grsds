@@ -891,16 +891,30 @@ document.addEventListener('DOMContentLoaded',function(){
   btn.style.cssText='position:fixed;top:10px;right:10px;z-index:99999;background:red;color:white;padding:12px 18px;font-size:18px;font-weight:bold;border-radius:8px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.3)';
   btn.textContent='🔴 TEST: Show Projects';
   btn.onclick=function(){
-    // DIAGNOSTIC: check which functions exist
-    var msg='=== JS Function Diagnostics ===\n\n';
-    msg+='showProjectsDirect: '+(typeof showProjectsDirect==='function'?'✅ DEFINED':'❌ UNDEFINED')+'\n';
-    msg+='switchTab: '+(typeof switchTab==='function'?'✅ DEFINED':'❌ UNDEFINED')+'\n';
-    msg+='switchProjectTab: '+(typeof switchProjectTab==='function'?'✅ DEFINED':'❌ UNDEFINED')+'\n';
-    msg+='loadProjects: '+(typeof loadProjects==='function'?'✅ DEFINED':'❌ UNDEFINED')+'\n';
-    msg+='openClientForm: '+(typeof openClientForm==='function'?'✅ DEFINED':'❌ UNDEFINED')+'\n';
-    msg+='switchMode: '+(typeof switchMode==='function'?'✅ DEFINED':'❌ UNDEFINED')+'\n';
-    msg+='handleLogin: '+(typeof handleLogin==='function'?'✅ DEFINED':'❌ UNDEFINED')+'\n';
-    msg+='\nMain script status: '+(typeof showProjectsDirect==='function'?'FUNCTIONS LOADED':'SCRIPT BROKEN');
+    // NUCLEAR DIAG: call switchProjectTab directly and catch errors
+    var msg='=== Direct Execution Test ===\n\n';
+    msg+='switchTab: '+(typeof switchTab==='function'?'✅':'❌')+'\n';
+    msg+='switchProjectTab: '+(typeof switchProjectTab==='function'?'✅':'❌')+'\n';
+    msg+='loadProjects: '+(typeof loadProjects==='function'?'✅':'❌')+'\n';
+    msg+='currentCompanyId: '+(typeof currentCompanyId!=='undefined'?currentCompanyId:'UNDEFINED')+'\n';
+    msg+='sb (supabase): '+(typeof sb!=='undefined'?'✅ available':'❌ UNDEFINED')+'\n';
+    var pv=document.getElementById('projects-view');
+    msg+='projects-view exists: '+(pv?'✅':'❌')+'\n';
+    var pl=document.getElementById('pm-project-list');
+    msg+='pm-project-list exists: '+(pl?'✅':'❌')+'\n';
+    if(pl)msg+='pm-project-list innerHTML length: '+pl.innerHTML.length+'\n';
+    // Now try calling switchProjectTab
+    if(typeof switchProjectTab==='function'){
+      try{
+        // Show projects-view first
+        if(pv){pv.classList.remove('hidden');pv.style.display='block';pv.style.visibility='visible'}
+        msg+='\nCalling switchProjectTab("list")...\n';
+        switchProjectTab('list');
+        msg+='switchProjectTab returned OK';
+      }catch(e){
+        msg+='switchProjectTab THREW: '+e.message+'\n'+e.stack;
+      }
+    }
     alert(msg);
   };
   document.body.appendChild(btn);
