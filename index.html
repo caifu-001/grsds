@@ -2309,7 +2309,7 @@ input,select,textarea,button{font-family:inherit}
    <h3 style="font-size:16px;font-weight:700;margin:0">项目管理</h3>
    <button class="btn-sm btn-sm-primary" onclick="openProjectForm()">+ 新建项目</button>
   </div>
-  <div id="project-list" style="display:flex;flex-direction:column;gap:8px"></div>
+  <div id="pm-project-list" style="display:flex;flex-direction:column;gap:8px"></div>
  </div>
  <div id="project-stages-panel" class="project-panel hidden">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -3194,7 +3194,7 @@ async function openForm(id){
   document.getElementById('btn-delete').classList.toggle('hidden',!id);
   document.getElementById('type-err').textContent='';
   document.getElementById('f-name').value='';
-  document.getElementById('f-address').value='';formProjects=[];document.getElementById('project-list').innerHTML='';
+  document.getElementById('f-address').value='';formProjects=[];document.getElementById('pm-project-list').innerHTML='';
   document.getElementById('f-notes').value='';
   formContacts=[];
 
@@ -3317,7 +3317,7 @@ async function updateContactCount(clientId){
 var formProjects=[];
 function addProjectEntry(prefill){
   prefill=prefill||{};
-  var list=document.getElementById('project-list');
+  var list=document.getElementById('pm-project-list');
   var idx=list.children.length+1;
   var div=document.createElement('div');
   div.className='project-entry';
@@ -10453,7 +10453,7 @@ async function loadProjects(){
 }
 
 function renderProjects(){
-  var list=document.getElementById('project-list');
+  var list=document.getElementById('pm-project-list');
   if(!allProjects.length){list.innerHTML='<div style="text-align:center;padding:40px;color:var(--text2)">无项目，可从销售管道线索中立项创建</div>';return}
   var s='';
   var statusMap={planning:'规划中',in_progress:'进行中',completed:'已完成',suspended:'已暂停'};
