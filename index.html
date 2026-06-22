@@ -4860,22 +4860,61 @@ async function pollNotifications(){
   notifUnread=count||0;updateBellBadge();
 }
 function showProjectsDirect(){
-  // DIAG STEP 1: hide other views
-  var allViews=['home-view','client-view','order-view','reports-view','admin-view','sales-view','inventory-view','suppliers-view','performance-view','leads-view','collab-view','service-view','purchase-view'];
-  for(var i=0;i<allViews.length;i++){var v=document.getElementById(allViews[i]);if(v){v.classList.add('hidden')}}
-  // DIAG STEP 2: brute-force show projects-view
   var pv=document.getElementById('projects-view');
-  if(!pv){return}
-  pv.className='';
-  pv.style.cssText='display:block;visibility:visible;opacity:1;background:#fff;min-height:60vh;border:4px solid red';
-  // DIAG: write red text BEFORE calling switchProjectTab
-  pv.innerHTML='<div style="padding:20px;background:#ff0;color:red;font-size:24px;font-weight:bold;text-align:center">🔴 DIAG: showProjectsDirect ran! projects-view is visible. Calling switchProjectTab...</div><div id="project-list-panel" class="project-panel" style="display:block"><div id="pm-project-list" style="display:flex;flex-direction:column;gap:8px"><div style="text-align:center;padding:40px">等待 loadProjects...</div></div></div><div id="project-stages-panel" class="project-panel hidden"></div><div id="project-bidding-panel" class="project-panel hidden"></div><div id="project-contracts-panel" class="project-panel hidden"></div><div id="project-delivery-panel" class="project-panel hidden"></div><div id="project-payment-panel" class="project-panel hidden"></div>';
-  // Deactivate all tabs
-  var tabs=document.querySelectorAll('.topbar-tab');for(var i=0;i<tabs.length;i++)tabs[i].classList.remove('active');
-  var tproj=document.getElementById('tab-projects');if(tproj)tproj.classList.add('active');
-  document.getElementById('topbar-title').textContent='项目管理';
-  // DIAG STEP 3: call switchProjectTab after a short delay so we can see the diag text
-  if(typeof switchProjectTab==='function'){setTimeout(function(){switchProjectTab('list')},100)}
+  if(!pv){alert('projects-view NOT FOUND in DOM');return}
+  
+  // Call switchTab normally first
+  switchTab('projects');
+  
+  // Wait 500ms for render, then do ancestor walk
+  setTimeout(function(){
+    var pv2=document.getElementById('projects-view');
+    if(!pv2){alert('projects-view disappeared!');return}
+    
+    var result=[];
+    result.push('=== projects-view SELF ===');
+    var cs=getComputedStyle(pv2);
+    result.push('display:'+cs.display+' height:'+cs.height+' overflow:'+cs.overflow+' visibility:'+cs.visibility+' position:'+cs.position);
+    result.push('offsetHeight:'+pv2.offsetHeight+' offsetWidth:'+pv2.offsetWidth+' scrollHeight:'+pv2.scrollHeight+' clientHeight:'+pv2.clientHeight);
+    result.push('classList:'+pv2.className+' innerHTML length:'+pv2.innerHTML.length);
+    result.push('boundingRect:'+JSON.stringify(pv2.getBoundingClientRect()));
+    result.push('');
+    result.push('=== ANCESTOR WALK ===');
+    
+    var el=pv2.parentElement;
+    var level=1;
+    while(el && el!==document.body){
+      var tag=el.tagName;
+      var id=el.id||'(no id)';
+      var cls=el.className||'';
+      var st=getComputedStyle(el);
+      var info='L'+level+' <'+tag+' id='+id+'> display:'+st.display+' height:'+st.height+' overflow:'+st.overflow+' visibility:'+st.visibility+' pos:'+st.position+' class:'+cls+' oh:'+el.offsetHeight+' ow:'+el.offsetWidth;
+      result.push(info);
+      if(st.display==='none'){result.push('  ⚠️ THIS ANCESTOR IS display:none!');}
+      if(st.visibility==='hidden'||st.visibility==='collapse'){result.push('  ⚠️ THIS ANCESTOR IS '+st.visibility+'!');}
+      if(parseFloat(st.height)===0&&st.overflow==='hidden'){result.push('  ⚠️ THIS ANCESTOR HAS height:0+overflow:hidden!');}
+      el=el.parentElement;
+      level++;
+    }
+    
+    // Check body
+    var bst=getComputedStyle(document.body);
+    result.push('BODY: display:'+bst.display+' height:'+bst.height);
+    
+    // Check all views for hidden state
+    result.push('');
+    result.push('=== ALL VIEWS STATE ===');
+    var viewIds=['home-view','client-view','order-view','admin-view','sales-view','inventory-view','suppliers-view','performance-view','reports-view','leads-view','collab-view','service-view','purchase-view','projects-view'];
+    for(var i=0;i<viewIds.length;i++){
+      var v=document.getElementById(viewIds[i]);
+      if(v){
+        var vcs=getComputedStyle(v);
+        result.push(viewIds[i]+': hidden='+v.classList.contains('hidden')+' display='+vcs.display+' oh='+v.offsetHeight+' ow='+v.offsetWidth);
+      }
+    }
+    
+    alert(result.join('\n'));
+  },600);
 }
 function switchTab(tab){
   var cv=document.getElementById('client-view');
