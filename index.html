@@ -841,6 +841,42 @@ input,select,textarea,button{font-family:inherit}
 .chart-card canvas{max-height:260px}
 .chart-card-wide{flex:2!important;min-width:450px!important}
 
+/* ====== Project Management ====== */
+.project-panel{padding:12px 16px}
+.project-card{background:var(--card-bg);border:1px solid var(--border);border-radius:10px;padding:14px 16px;cursor:pointer;transition:box-shadow .15s}
+.project-card:hover{box-shadow:0 2px 12px rgba(0,0,0,.08)}
+.project-card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.project-card-name{font-size:15px;font-weight:700;color:var(--text)}
+.project-card-status{font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600;white-space:nowrap}
+.status-planning{background:#e8f0fe;color:#1a73e8}
+.status-in_progress{background:#e6f4ea;color:#137333}
+.status-completed{background:#e8e8e8;color:#555}
+.status-suspended{background:#fce8e6;color:#c5221f}
+.status-preparing{background:#fef7e0;color:#e37400}
+.status-submitted{background:#e8f0fe;color:#1a73e8}
+.status-won{background:#e6f4ea;color:#137333}
+.status-lost{background:#fce8e6;color:#c5221f}
+.status-pending{background:#fef7e0;color:#e37400}
+.status-delivered{background:#e8f0fe;color:#1a73e8}
+.status-accepted{background:#e6f4ea;color:#137333}
+.status-rejected{background:#fce8e6;color:#c5221f}
+.status-received{background:#e6f4ea;color:#137333}
+.status-overdue{background:#fce8e6;color:#c5221f}
+.project-card-meta{font-size:12px;color:var(--text2);display:flex;gap:16px;flex-wrap:wrap}
+.project-card-meta span{display:inline-flex;align-items:center;gap:3px}
+.stage-item{background:var(--card-bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.stage-item-left{flex:1;min-width:200px}
+.stage-item-name{font-weight:600;font-size:14px;color:var(--text)}
+.stage-item-dates{font-size:11px;color:var(--text2);margin-top:2px}
+.stage-item-right{display:flex;align-items:center;gap:8px}
+.bidding-item{background:var(--card-bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px}
+.bidding-item-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.bidding-item-title{font-weight:600;font-size:14px;color:var(--text)}
+.bidding-item-meta{font-size:12px;color:var(--text2);display:flex;gap:12px;flex-wrap:wrap}
+.seal-badge{display:inline-flex;align-items:center;gap:3px;font-size:11px;padding:2px 8px;border-radius:8px;background:#fce8e6;color:#c5221f;font-weight:600}
+.delivery-item,.payment-item{background:var(--card-bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+@media(max-width:900px){.project-card-meta{flex-direction:column;gap:4px}.stage-item,.delivery-item,.payment-item{flex-direction:column;align-items:flex-start}}
+
 </style>
 </head>
 <body>
@@ -886,6 +922,7 @@ input,select,textarea,button{font-family:inherit}
     <button class="topbar-tab" id="tab-reports" onclick="switchTab('reports')">报表</button>
    <button class="topbar-tab" id="tab-inventory" onclick="switchTab('inventory')">库存</button>
 <button class="topbar-tab" id="tab-service" onclick="switchTab('service')">售后</button>
+<button class="topbar-tab" id="tab-projects" onclick="switchTab('projects')">项目</button>
    <button class="notif-bell" id="notif-bell" onclick="toggleNotifPanel()" title="通知">🔔<span id="notif-badge" class="notif-badge hidden">0</span></button>
    <button class="topbar-tab hidden" id="tab-admin" onclick="switchTab('admin')">管理</button>
   </div>
@@ -2252,6 +2289,65 @@ input,select,textarea,button{font-family:inherit}
    </div>
   </div>
  </div>
+
+<!-- ===== Projects View ===== -->
+<div id="projects-view" class="hidden">
+ <div class="sub-tabs" style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;gap:4px;flex-wrap:wrap">
+  <button class="sub-tab active" data-ptab="list" onclick="switchProjectTab('list')">项目列表</button>
+  <button class="sub-tab" data-ptab="stages" onclick="switchProjectTab('stages')">阶段管理</button>
+  <button class="sub-tab" data-ptab="bidding" onclick="switchProjectTab('bidding')">招投标</button>
+  <button class="sub-tab" data-ptab="delivery" onclick="switchProjectTab('delivery')">项目交付</button>
+  <button class="sub-tab" data-ptab="payment" onclick="switchProjectTab('payment')">项目收款</button>
+ </div>
+ <div id="project-list-panel" class="project-panel">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+   <h3 style="font-size:16px;font-weight:700;margin:0">项目管理</h3>
+   <button class="btn-sm btn-sm-primary" onclick="openProjectForm()">+ 新建项目</button>
+  </div>
+  <div id="project-list" style="display:flex;flex-direction:column;gap:8px"></div>
+ </div>
+ <div id="project-stages-panel" class="project-panel hidden">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+   <div style="display:flex;align-items:center;gap:12px">
+    <button class="btn-sm" onclick="switchProjectTab('list')">← 返回</button>
+    <h3 style="font-size:16px;font-weight:700;margin:0" id="stages-project-name">阶段管理</h3>
+   </div>
+   <button class="btn-sm btn-sm-primary" onclick="openStageForm()">+ 添加阶段</button>
+  </div>
+  <div id="stages-list" style="display:flex;flex-direction:column;gap:8px"></div>
+ </div>
+ <div id="project-bidding-panel" class="project-panel hidden">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+   <div style="display:flex;align-items:center;gap:12px">
+    <button class="btn-sm" onclick="switchProjectTab('list')">← 返回</button>
+    <h3 style="font-size:16px;font-weight:700;margin:0" id="bidding-project-name">招投标</h3>
+   </div>
+   <button class="btn-sm btn-sm-primary" onclick="openBiddingForm()">+ 新建投标</button>
+  </div>
+  <div id="bidding-list" style="display:flex;flex-direction:column;gap:8px"></div>
+ </div>
+ <div id="project-delivery-panel" class="project-panel hidden">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+   <div style="display:flex;align-items:center;gap:12px">
+    <button class="btn-sm" onclick="switchProjectTab('list')">← 返回</button>
+    <h3 style="font-size:16px;font-weight:700;margin:0" id="delivery-project-name">项目交付</h3>
+   </div>
+   <button class="btn-sm btn-sm-primary" onclick="openDeliveryForm()">+ 新建交付</button>
+  </div>
+  <div id="delivery-list" style="display:flex;flex-direction:column;gap:8px"></div>
+ </div>
+ <div id="project-payment-panel" class="project-panel hidden">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+   <div style="display:flex;align-items:center;gap:12px">
+    <button class="btn-sm" onclick="switchProjectTab('list')">← 返回</button>
+    <h3 style="font-size:16px;font-weight:700;margin:0" id="payment-project-name">项目收款</h3>
+   </div>
+   <button class="btn-sm btn-sm-primary" onclick="openPaymentForm()">+ 新建收款</button>
+  </div>
+  <div id="payment-list" style="display:flex;flex-direction:column;gap:8px"></div>
+ </div>
+</div>
+
 <script>
 // Supabase
 const SUPABASE_URL='https://jyefbatmmbelrhhzsgva.supabase.co';
@@ -4720,11 +4816,11 @@ function switchTab(tab){
   // Hide all views first
   var hv_d=document.getElementById('home-view');var rv_r=document.getElementById('reports-view');
   var lv=document.getElementById('leads-view');
-  var allViews=[hv_d,cv,ov,rv_r,av,sv,iv];if(spv)allViews.push(spv);if(pv)allViews.push(pv);if(lv)allViews.push(lv);var colv2=document.getElementById('collab-view');if(colv2)allViews.push(colv2);var sv2=document.getElementById('service-view');if(sv2)allViews.push(sv2);if(purchv)allViews.push(purchv);
+  var allViews=[hv_d,cv,ov,rv_r,av,sv,iv];if(spv)allViews.push(spv);if(pv)allViews.push(pv);if(lv)allViews.push(lv);var colv2=document.getElementById('collab-view');if(colv2)allViews.push(colv2);var sv2=document.getElementById('service-view');if(sv2)allViews.push(sv2);if(purchv)allViews.push(purchv);var pjv=document.getElementById('projects-view');if(pjv)allViews.push(pjv);
   for(var i=0;i<allViews.length;i++)if(allViews[i])allViews[i].classList.add('hidden');
   // Deactivate all tabs
   var tr=document.getElementById('tab-reports');var thm=document.getElementById('tab-home');
-  var allTabs=[thm,tc,to,document.getElementById('tab-service'),document.getElementById('tab-collab'),tr,ta,ti];for(var j=0;j<allTabs.length;j++)if(allTabs[j])allTabs[j].classList.remove('active');
+  var allTabs=[thm,tc,to,document.getElementById('tab-service'),document.getElementById('tab-collab'),document.getElementById('tab-projects'),tr,ta,ti];for(var j=0;j<allTabs.length;j++)if(allTabs[j])allTabs[j].classList.remove('active');
   fab.classList.add('hidden');
 
     var hv=document.getElementById('home-view');
@@ -4773,6 +4869,14 @@ function switchTab(tab){
     document.getElementById('topbar-title').textContent='报表中心';
     loadReportSummary();switchReportsTab('sales');
   }else if(tab==='service'){var sv2=document.getElementById('service-view');if(sv2)sv2.classList.remove('hidden');switchServiceTab('tickets');return}
+  if(tab==='projects'){
+    var pjv=document.getElementById('projects-view');pjv.classList.remove('hidden');
+    document.getElementById('tab-projects').classList.add('active');
+    document.getElementById('topbar-title').textContent='项目管理';
+    fab.classList.remove('hidden');fab.textContent='+';fab.onclick=function(){openProjectForm()};
+    switchProjectTab('list');
+    return;
+  }
   if(tab==='admin'){
     av.classList.remove('hidden');ta.classList.add('active');
     document.getElementById('topbar-title').textContent='组织管理';
@@ -9475,7 +9579,7 @@ async function loadApprovals(){
 }
 
 function openApprovalForm(){
-  var types=['报价审批','合同审批','折扣审批','出差申请','报销申请','客户转移','自定义'];
+  var types=['报价审批','合同审批','折扣审批','出差申请','报销申请','客户转移','投标材料审批','公章使用申请','项目立项审批','交付验收审批','自定义'];
   var h='<div class="modal-overlay" id="approval-modal"><div class="modal-sheet"><h3>发起审批</h3>';
   h+='<div class="form-group"><label>审批类型</label><select id="ap-type">';
   for(var i=0;i<types.length;i++)h+='<option value="'+types[i]+'">'+types[i]+'</option>';
@@ -10304,6 +10408,408 @@ function extendPermissionMatrix(){
 // Stub for defunct freeze buttons (always hidden, prevent ReferenceError)
 function toggleLeadFrozen(){showToast('冻结功能暂未开放')}
 function editForm(id){showToast('表单编辑功能暂未开放')}
+
+// ====== Project Management ======
+var allProjects=[],allStages=[],allBiddings=[],allDeliveries=[],allPayments=[],curProjectId=null,curProjectName='';
+var pStageEditId=null,pBiddingEditId=null,pDeliveryEditId=null,pPaymentEditId=null;
+
+function switchProjectTab(tab){
+  ['list','stages','bidding','delivery','payment'].forEach(function(t){
+    var p=document.getElementById('project-'+t+'-panel');if(p)p.classList.toggle('hidden',t!==tab)
+  });
+  var subs=document.querySelectorAll('#projects-view .sub-tab');
+  for(var i=0;i<subs.length;i++)subs[i].classList.toggle('active',subs[i].getAttribute('data-ptab')===tab);
+  document.getElementById('main-fab').classList.toggle('hidden',tab!=='list');
+  if(tab==='list'){document.getElementById('main-fab').textContent='+';document.getElementById('main-fab').onclick=function(){openProjectForm()};loadProjects()}
+  else if(tab==='stages'){if(curProjectId)loadStages()}
+  else if(tab==='bidding'){if(curProjectId)loadBiddings()}
+  else if(tab==='delivery'){if(curProjectId)loadDeliveries()}
+  else if(tab==='payment'){if(curProjectId)loadPayments()}
+}
+
+async function loadProjects(){
+  if(!currentCompanyId)return;
+  var {data,error}=await sb.from('projects').select('*').eq('company_id',currentCompanyId).order('created_at',{ascending:false});
+  if(error){console.error(error);return}
+  allProjects=data||[];
+  renderProjects();
+}
+
+function renderProjects(){
+  var list=document.getElementById('project-list');
+  if(!allProjects.length){list.innerHTML='<div style="text-align:center;padding:40px;color:var(--text2)">暂无项目，点击上方按钮创建</div>';return}
+  var h='';
+  var statusMap={planning:'规划中',in_progress:'进行中',completed:'已完成',suspended:'已暂停'};
+  for(var i=0;i<allProjects.length;i++){
+    var p=allProjects[i];
+    var client=allClients.find(function(c){return c.id===p.client_id});
+    var cn=client?client.name:'未关联';
+    h+='<div class="project-card" onclick="openProjectDetail(\''+p.id+'\',\''+h(p.name)+'\')">';
+    h+='<div class="project-card-header"><span class="project-card-name">'+h(p.name)+'</span><span class="project-card-status status-'+p.status+'">'+(statusMap[p.status]||p.status)+'</span></div>';
+    h+='<div class="project-card-meta"><span>🏢 '+h(cn)+'</span><span>💰 '+(p.budget?formatMoney(p.budget):'-')+'</span>';
+    if(p.start_date)h+='<span>📅 '+p.start_date+'</span>';
+    if(p.end_date)h+='<span>→ '+p.end_date+'</span>';
+    h+='</div></div>';
+  }
+  list.innerHTML=h;
+}
+
+function openProjectDetail(pid,pname){
+  curProjectId=pid;curProjectName=pname;
+  switchProjectTab('stages');
+  document.getElementById('stages-project-name').textContent=pname;
+  document.getElementById('bidding-project-name').textContent=pname;
+  document.getElementById('delivery-project-name').textContent=pname;
+  document.getElementById('payment-project-name').textContent=pname;
+  document.getElementById('main-fab').classList.add('hidden');
+  loadStages();
+}
+
+// ── Project CRUD ──
+async function openProjectForm(id){
+  var p=id?allProjects.find(function(x){return x.id===id}):null;
+  var title=p?'编辑项目':'新建项目';
+  var h='<div class="modal-overlay" id="project-form-modal"><div class="modal-sheet"><h3>'+title+'</h3>';
+  h+='<div class="form-group"><label>项目名称 *</label><input id="pf-name" placeholder="项目名称" value="'+h(p?p.name||'':'')+'"></div>';
+  h+='<div class="form-row"><div class="form-group"><label>关联客户</label><select id="pf-client"><option value="">-- 不关联 --</option>';
+  for(var i=0;i<allClients.length;i++){var cl=allClients[i];h+='<option value="'+cl.id+'"'+(p&&p.client_id===cl.id?' selected':'')+'>'+h(cl.name)+'</option>'}
+  h+='</select></div><div class="form-group"><label>项目预算</label><input id="pf-budget" type="number" step="0.01" placeholder="0.00" value="'+(p?p.budget||'':'')+'"></div></div>';
+  h+='<div class="form-row"><div class="form-group"><label>开始日期</label><input id="pf-start" type="date" value="'+(p?p.start_date||'':'')+'"></div><div class="form-group"><label>预计结束</label><input id="pf-end" type="date" value="'+(p?p.end_date||'':'')+'"></div></div>';
+  var statuses=[{v:'planning',t:'规划中'},{v:'in_progress',t:'进行中'},{v:'completed',t:'已完成'},{v:'suspended',t:'已暂停'}];
+  h+='<div class="form-group"><label>项目状态</label><select id="pf-status">';
+  for(var j=0;j<statuses.length;j++)h+='<option value="'+statuses[j].v+'"'+(p&&p.status===statuses[j].v?' selected':'')+'>'+statuses[j].t+'</option>';
+  h+='</select></div>';
+  h+='<div class="form-group"><label>项目描述</label><textarea id="pf-desc" rows="3" placeholder="项目描述...">'+h(p?p.description||'':'')+'</textarea></div>';
+  if(id)h+='<input type="hidden" id="pf-edit-id" value="'+id+'">';
+  h+='<div class="modal-actions"><button class="btn-cancel" onclick="document.getElementById(\'project-form-modal\').remove()">取消</button><button class="btn-save" onclick="saveProject()">保存</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend',h);
+}
+
+async function saveProject(){
+  var name=document.getElementById('pf-name').value.trim();
+  if(!name){showToast('请输入项目名称');return}
+  var editId=document.getElementById('pf-edit-id');
+  var row={company_id:currentCompanyId,name:name,client_id:document.getElementById('pf-client').value||null,budget:parseFloat(document.getElementById('pf-budget').value)||0,start_date:document.getElementById('pf-start').value||null,end_date:document.getElementById('pf-end').value||null,status:document.getElementById('pf-status').value,description:document.getElementById('pf-desc').value.trim()};
+  document.getElementById('project-form-modal').remove();
+  if(editId){
+    var {error}=await sb.from('projects').update(row).eq('id',editId.value);
+    if(error){showToast('更新失败: '+error.message);return}
+  }else{
+    row.created_by=currentUser.id;
+    var {error}=await sb.from('projects').insert(row);
+    if(error){showToast('创建失败: '+error.message);return}
+  }
+  loadProjects();showToast(editId?'已更新':'已创建');
+}
+
+async function deleteProject(id){
+  if(!confirm('确定删除该项目？将同时删除关联的阶段/投标/交付/收款数据。'))return;
+  var {error}=await sb.from('projects').delete().eq('id',id);
+  if(error){showToast('删除失败: '+error.message);return}
+  loadProjects();showToast('已删除');
+}
+
+// ── Stages ──
+async function loadStages(){
+  if(!curProjectId)return;
+  var {data,error}=await sb.from('project_stages').select('*').eq('project_id',curProjectId).order('sort_order');
+  if(error){console.error(error);return}
+  allStages=data||[];
+  renderStages();
+}
+
+function renderStages(){
+  var list=document.getElementById('stages-list');
+  if(!allStages.length){list.innerHTML='<div style="text-align:center;padding:40px;color:var(--text2)">暂无阶段，点击添加阶段</div>';return}
+  var statusMap={pending:'待开始',in_progress:'进行中',completed:'已完成'};
+  var h='';
+  for(var i=0;i<allStages.length;i++){
+    var s=allStages[i];
+    h+='<div class="stage-item">';
+    h+='<div class="stage-item-left"><div class="stage-item-name">'+h(s.name)+'</div><div class="stage-item-dates">'+h(s.description||'')+' '+(s.start_date||'')+' → '+(s.end_date||'')+'</div></div>';
+    h+='<div class="stage-item-right">';
+    h+='<span class="project-card-status status-'+s.status+'">'+(statusMap[s.status]||s.status)+'</span>';
+    h+='<button class="btn-sm" onclick="openStageForm(\''+s.id+'\')">✏️</button>';
+    h+='<button class="btn-sm btn-sm-danger" onclick="deleteStage(\''+s.id+'\')">🗑</button>';
+    h+='</div></div>';
+  }
+  list.innerHTML=h;
+}
+
+function openStageForm(id){
+  var s=id?allStages.find(function(x){return x.id===id}):null;
+  var h='<div class="modal-overlay" id="stage-form-modal"><div class="modal-sheet"><h3>'+(s?'编辑阶段':'添加阶段')+'</h3>';
+  h+='<div class="form-group"><label>阶段名称 *</label><input id="sf-name" placeholder="如：需求调研、方案设计、开发测试" value="'+h(s?s.name||'':'')+'"></div>';
+  h+='<div class="form-group"><label>描述</label><input id="sf-desc" placeholder="阶段说明" value="'+h(s?s.description||'':'')+'"></div>';
+  h+='<div class="form-row"><div class="form-group"><label>开始日期</label><input id="sf-start" type="date" value="'+(s?s.start_date||'':'')+'"></div><div class="form-group"><label>结束日期</label><input id="sf-end" type="date" value="'+(s?s.end_date||'':'')+'"></div></div>';
+  var statuses=[{v:'pending',t:'待开始'},{v:'in_progress',t:'进行中'},{v:'completed',t:'已完成'}];
+  h+='<div class="form-group"><label>状态</label><select id="sf-status">';
+  for(var i=0;i<statuses.length;i++)h+='<option value="'+statuses[i].v+'"'+(s&&s.status===statuses[i].v?' selected':'')+'>'+statuses[i].t+'</option>';
+  h+='</select></div>';
+  if(s)h+='<input type="hidden" id="sf-edit-id" value="'+s.id+'">';
+  h+='<div class="modal-actions"><button class="btn-cancel" onclick="document.getElementById(\'stage-form-modal\').remove()">取消</button><button class="btn-save" onclick="saveStage()">保存</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend',h);
+}
+
+async function saveStage(){
+  var name=document.getElementById('sf-name').value.trim();
+  if(!name){showToast('请输入阶段名称');return}
+  var editEl=document.getElementById('sf-edit-id');
+  var row={project_id:curProjectId,name:name,description:document.getElementById('sf-desc').value.trim(),start_date:document.getElementById('sf-start').value||null,end_date:document.getElementById('sf-end').value||null,status:document.getElementById('sf-status').value,sort_order:allStages.length};
+  document.getElementById('stage-form-modal').remove();
+  if(editEl){
+    var {error}=await sb.from('project_stages').update(row).eq('id',editEl.value);
+    if(error){showToast('更新失败: '+error.message);return}
+  }else{
+    var {error}=await sb.from('project_stages').insert(row);
+    if(error){showToast('创建失败: '+error.message);return}
+  }
+  loadStages();showToast(editEl?'已更新':'已创建');
+}
+
+async function deleteStage(id){
+  if(!confirm('确定删除该阶段？'))return;
+  var {error}=await sb.from('project_stages').delete().eq('id',id);
+  if(error){showToast('删除失败: '+error.message);return}
+  loadStages();showToast('已删除');
+}
+
+// ── Bidding ──
+async function loadBiddings(){
+  if(!curProjectId)return;
+  var {data,error}=await sb.from('project_biddings').select('*').eq('project_id',curProjectId).order('created_at',{ascending:false});
+  if(error){console.error(error);return}
+  allBiddings=data||[];
+  renderBiddings();
+}
+
+function renderBiddings(){
+  var list=document.getElementById('bidding-list');
+  if(!allBiddings.length){list.innerHTML='<div style="text-align:center;padding:40px;color:var(--text2)">暂无投标记录</div>';return}
+  var statusMap={preparing:'准备中',submitted:'已提交',won:'中标',lost:'未中标'};
+  var h='';
+  for(var i=0;i<allBiddings.length;i++){
+    var b=allBiddings[i];
+    h+='<div class="bidding-item">';
+    h+='<div class="bidding-item-header">';
+    h+='<div class="bidding-item-title">'+h(b.title)+'</div>';
+    h+='<div style="display:flex;gap:6px;align-items:center">';
+    if(b.seal_requested)h+='<span class="seal-badge">🔒 待盖章</span>';
+    h+='<span class="project-card-status status-'+b.status+'">'+(statusMap[b.status]||b.status)+'</span>';
+    h+='<button class="btn-sm" onclick="openBiddingForm(\''+b.id+'\')">✏️</button>';
+    h+='<button class="btn-sm btn-sm-danger" onclick="deleteBidding(\''+b.id+'\')">🗑</button>';
+    h+='</div></div>';
+    h+='<div class="bidding-item-meta"><span>💰 '+(b.bid_amount?formatMoney(b.bid_amount):'-')+'</span><span>📅 截止: '+(b.bid_deadline||'-')+'</span><span>📋 '+h(b.notes||'')+'</span></div>';
+    if(b.materials_needed&&b.materials_needed!=='[]'){
+      h+='<div style="margin-top:4px;font-size:11px;color:var(--text2)">📎 所需材料: '+h(b.materials_needed)+'</div>';
+    }
+    h+='</div>';
+  }
+  list.innerHTML=h;
+}
+
+function openBiddingForm(id){
+  var b=id?allBiddings.find(function(x){return x.id===id}):null;
+  var h='<div class="modal-overlay" id="bidding-form-modal"><div class="modal-sheet"><h3>'+(b?'编辑投标':'新建投标')+'</h3>';
+  h+='<div class="form-group"><label>投标标题 *</label><input id="bf-title" placeholder="投标项目名称" value="'+h(b?b.title||'':'')+'"></div>';
+  h+='<div class="form-row"><div class="form-group"><label>投标金额</label><input id="bf-amount" type="number" step="0.01" placeholder="0.00" value="'+(b?b.bid_amount||'':'')+'"></div><div class="form-group"><label>投标截止</label><input id="bf-deadline" type="date" value="'+(b?b.bid_deadline||'':'')+'"></div></div>';
+  var statuses=[{v:'preparing',t:'准备中'},{v:'submitted',t:'已提交'},{v:'won',t:'中标'},{v:'lost',t:'未中标'}];
+  h+='<div class="form-group"><label>状态</label><select id="bf-status">';
+  for(var i=0;i<statuses.length;i++)h+='<option value="'+statuses[i].v+'"'+(b&&b.status===statuses[i].v?' selected':'')+'>'+statuses[i].t+'</option>';
+  h+='</select></div>';
+  h+='<div class="form-group"><label>所需材料（如标书/资质/公章）</label><input id="bf-materials" placeholder="如：营业执照副本、法人授权书、公章" value="'+h(b?b.materials_needed||'':'')+'"></div>';
+  h+='<div class="form-group"><label><input type="checkbox" id="bf-seal" style="width:auto"'+(b&&b.seal_requested?' checked':'')+'> 需要申请公章</label></div>';
+  h+='<div class="form-group"><label>备注</label><textarea id="bf-notes" rows="2" placeholder="备注...">'+h(b?b.notes||'':'')+'</textarea></div>';
+  if(b)h+='<input type="hidden" id="bf-edit-id" value="'+b.id+'">';
+  h+='<div class="modal-actions"><button class="btn-cancel" onclick="document.getElementById(\'bidding-form-modal\').remove()">取消</button>';
+  h+='<button class="btn-save" onclick="saveBidding()">保存</button>';
+  if(b&&b.seal_requested&&b.status==='preparing')h+='<button class="btn-save" style="background:var(--warning)" onclick="requestSealApproval(\''+b.id+'\')">🔒 申请公章审批</button>';
+  h+='</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend',h);
+}
+
+async function saveBidding(){
+  var title=document.getElementById('bf-title').value.trim();
+  if(!title){showToast('请输入投标标题');return}
+  var editEl=document.getElementById('bf-edit-id');
+  var sealReq=document.getElementById('bf-seal');
+  var row={project_id:curProjectId,title:title,bid_amount:parseFloat(document.getElementById('bf-amount').value)||0,bid_deadline:document.getElementById('bf-deadline').value||null,status:document.getElementById('bf-status').value,materials_needed:document.getElementById('bf-materials').value.trim(),seal_requested:sealReq?sealReq.checked:false,notes:document.getElementById('bf-notes').value.trim()};
+  document.getElementById('bidding-form-modal').remove();
+  if(editEl){
+    var {error}=await sb.from('project_biddings').update(row).eq('id',editEl.value);
+    if(error){showToast('更新失败: '+error.message);return}
+  }else{
+    var {error}=await sb.from('project_biddings').insert(row);
+    if(error){showToast('创建失败: '+error.message);return}
+  }
+  loadBiddings();showToast(editEl?'已更新':'已创建');
+}
+
+async function deleteBidding(id){
+  if(!confirm('确定删除该投标记录？'))return;
+  var {error}=await sb.from('project_biddings').delete().eq('id',id);
+  if(error){showToast('删除失败: '+error.message);return}
+  loadBiddings();showToast('已删除');
+}
+
+async function requestSealApproval(biddingId){
+  var b=allBiddings.find(function(x){return x.id===biddingId});
+  if(!b)return;
+  var {error}=await sb.from('approval_requests').insert({company_id:currentCompanyId,requestor_id:currentUser.id,title:'公章使用申请 - '+b.title,type:'公章使用申请',content:{detail:'项目: '+curProjectName+'\n投标: '+b.title+'\n所需材料: '+(b.materials_needed||'无')},status:'pending',total_steps:1});
+  if(error){showToast('提交审批失败: '+error.message);return}
+  // Mark bidding as seal approval submitted
+  await sb.from('project_biddings').update({seal_requested:true}).eq('id',biddingId);
+  showToast('公章申请已提交审批');
+  loadBiddings();
+}
+
+// ── Delivery ──
+async function loadDeliveries(){
+  if(!curProjectId)return;
+  var {data,error}=await sb.from('project_deliveries').select('*').eq('project_id',curProjectId).order('created_at',{ascending:false});
+  if(error){console.error(error);return}
+  allDeliveries=data||[];
+  renderDeliveries();
+}
+
+function renderDeliveries(){
+  var list=document.getElementById('delivery-list');
+  if(!allDeliveries.length){list.innerHTML='<div style="text-align:center;padding:40px;color:var(--text2)">暂无交付记录</div>';return}
+  var statusMap={pending:'待交付',delivered:'已交付',accepted:'已验收',rejected:'已拒收'};
+  var h='';
+  for(var i=0;i<allDeliveries.length;i++){
+    var d=allDeliveries[i];
+    h+='<div class="delivery-item">';
+    h+='<div style="flex:1;min-width:200px"><div style="font-weight:600;font-size:14px;color:var(--text)">'+h(d.title)+'</div>';
+    h+='<div style="font-size:12px;color:var(--text2)">'+(d.description||'')+' '+(d.delivery_date?'📅 '+d.delivery_date:'')+'</div></div>';
+    h+='<div style="display:flex;align-items:center;gap:8px">';
+    h+='<span class="project-card-status status-'+d.status+'">'+(statusMap[d.status]||d.status)+'</span>';
+    h+='<button class="btn-sm" onclick="openDeliveryForm(\''+d.id+'\')">✏️</button>';
+    h+='<button class="btn-sm btn-sm-danger" onclick="deleteDelivery(\''+d.id+'\')">🗑</button>';
+    h+='</div></div>';
+  }
+  list.innerHTML=h;
+}
+
+function openDeliveryForm(id){
+  var d=id?allDeliveries.find(function(x){return x.id===id}):null;
+  var h='<div class="modal-overlay" id="delivery-form-modal"><div class="modal-sheet"><h3>'+(d?'编辑交付':'新建交付')+'</h3>';
+  h+='<div class="form-group"><label>交付标题 *</label><input id="df-title" placeholder="交付物名称" value="'+h(d?d.title||'':'')+'"></div>';
+  h+='<div class="form-group"><label>描述</label><textarea id="df-desc" rows="2" placeholder="交付内容描述...">'+h(d?d.description||'':'')+'</textarea></div>';
+  h+='<div class="form-group"><label>交付日期</label><input id="df-date" type="date" value="'+(d?d.delivery_date||'':'')+'"></div>';
+  h+='<div class="form-group"><label>验收标准</label><input id="df-criteria" placeholder="验收条件" value="'+h(d?d.acceptance_criteria||'':'')+'"></div>';
+  var statuses=[{v:'pending',t:'待交付'},{v:'delivered',t:'已交付'},{v:'accepted',t:'已验收'},{v:'rejected',t:'已拒收'}];
+  h+='<div class="form-group"><label>状态</label><select id="df-status">';
+  for(var i=0;i<statuses.length;i++)h+='<option value="'+statuses[i].v+'"'+(d&&d.status===statuses[i].v?' selected':'')+'>'+statuses[i].t+'</option>';
+  h+='</select></div>';
+  h+='<div class="form-group"><label>备注</label><textarea id="df-notes" rows="2" placeholder="备注...">'+h(d?d.notes||'':'')+'</textarea></div>';
+  if(d)h+='<input type="hidden" id="df-edit-id" value="'+d.id+'">';
+  h+='<div class="modal-actions"><button class="btn-cancel" onclick="document.getElementById(\'delivery-form-modal\').remove()">取消</button>';
+  h+='<button class="btn-save" onclick="saveDelivery()">保存</button>';
+  if(d)h+='<button class="btn-save" style="background:var(--warning)" onclick="requestAcceptanceApproval(\''+d.id+'\')">📋 申请验收审批</button>';
+  h+='</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend',h);
+}
+
+async function saveDelivery(){
+  var title=document.getElementById('df-title').value.trim();
+  if(!title){showToast('请输入交付标题');return}
+  var editEl=document.getElementById('df-edit-id');
+  var row={project_id:curProjectId,title:title,description:document.getElementById('df-desc').value.trim(),delivery_date:document.getElementById('df-date').value||null,acceptance_criteria:document.getElementById('df-criteria').value.trim(),status:document.getElementById('df-status').value,notes:document.getElementById('df-notes').value.trim()};
+  document.getElementById('delivery-form-modal').remove();
+  if(editEl){
+    var {error}=await sb.from('project_deliveries').update(row).eq('id',editEl.value);
+    if(error){showToast('更新失败: '+error.message);return}
+  }else{
+    var {error}=await sb.from('project_deliveries').insert(row);
+    if(error){showToast('创建失败: '+error.message);return}
+  }
+  loadDeliveries();showToast(editEl?'已更新':'已创建');
+}
+
+async function deleteDelivery(id){
+  if(!confirm('确定删除该交付记录？'))return;
+  var {error}=await sb.from('project_deliveries').delete().eq('id',id);
+  if(error){showToast('删除失败: '+error.message);return}
+  loadDeliveries();showToast('已删除');
+}
+
+async function requestAcceptanceApproval(deliveryId){
+  var d=allDeliveries.find(function(x){return x.id===deliveryId});
+  if(!d)return;
+  var {error}=await sb.from('approval_requests').insert({company_id:currentCompanyId,requestor_id:currentUser.id,title:'交付验收审批 - '+d.title,type:'交付验收审批',content:{detail:'项目: '+curProjectName+'\n交付物: '+d.title+'\n验收标准: '+(d.acceptance_criteria||'无')},status:'pending',total_steps:1});
+  if(error){showToast('提交审批失败: '+error.message);return}
+  showToast('验收审批已提交');
+}
+
+// ── Payments ──
+async function loadPayments(){
+  if(!curProjectId)return;
+  var {data,error}=await sb.from('project_payments').select('*').eq('project_id',curProjectId).order('created_at',{ascending:false});
+  if(error){console.error(error);return}
+  allPayments=data||[];
+  renderPayments();
+}
+
+function renderPayments(){
+  var list=document.getElementById('payment-list');
+  if(!allPayments.length){list.innerHTML='<div style="text-align:center;padding:40px;color:var(--text2)">暂无收款记录</div>';return}
+  var statusMap={pending:'待收款',received:'已收款',overdue:'已逾期'};
+  var h='';var total=0;
+  for(var i=0;i<allPayments.length;i++){
+    var pm=allPayments[i];
+    total+=pm.amount||0;
+    h+='<div class="payment-item">';
+    h+='<div style="flex:1;min-width:200px"><div style="font-weight:600;font-size:14px;color:var(--text)">'+h(pm.title)+'</div>';
+    h+='<div style="font-size:12px;color:var(--text2)">'+(pm.invoice_no?'发票: '+h(pm.invoice_no)+' ':'')+(pm.payment_method?h(pm.payment_method)+' ':'')+(pm.payment_date?'📅 '+pm.payment_date:'')+'</div></div>';
+    h+='<div style="display:flex;align-items:center;gap:8px">';
+    h+='<span style="font-weight:700;color:var(--text);margin-right:8px">'+formatMoney(pm.amount||0)+'</span>';
+    h+='<span class="project-card-status status-'+pm.status+'">'+(statusMap[pm.status]||pm.status)+'</span>';
+    h+='<button class="btn-sm" onclick="openPaymentForm(\''+pm.id+'\')">✏️</button>';
+    h+='<button class="btn-sm btn-sm-danger" onclick="deletePayment(\''+pm.id+'\')">🗑</button>';
+    h+='</div></div>';
+  }
+  h+='<div style="text-align:right;font-weight:700;font-size:14px;margin-top:8px;color:var(--text)">合计: '+formatMoney(total)+'</div>';
+  list.innerHTML=h;
+}
+
+function openPaymentForm(id){
+  var pm=id?allPayments.find(function(x){return x.id===id}):null;
+  var h='<div class="modal-overlay" id="payment-form-modal"><div class="modal-sheet"><h3>'+(pm?'编辑收款':'新建收款')+'</h3>';
+  h+='<div class="form-group"><label>收款标题 *</label><input id="pmf-title" placeholder="如：首付款、尾款" value="'+h(pm?pm.title||'':'')+'"></div>';
+  h+='<div class="form-row"><div class="form-group"><label>金额</label><input id="pmf-amount" type="number" step="0.01" placeholder="0.00" value="'+(pm?pm.amount||'':'')+'"></div><div class="form-group"><label>收款日期</label><input id="pmf-date" type="date" value="'+(pm?pm.payment_date||'':'')+'"></div></div>';
+  var statuses=[{v:'pending',t:'待收款'},{v:'received',t:'已收款'},{v:'overdue',t:'已逾期'}];
+  h+='<div class="form-row"><div class="form-group"><label>状态</label><select id="pmf-status">';
+  for(var i=0;i<statuses.length;i++)h+='<option value="'+statuses[i].v+'"'+(pm&&pm.status===statuses[i].v?' selected':'')+'>'+statuses[i].t+'</option>';
+  h+='</select></div><div class="form-group"><label>付款方式</label><input id="pmf-method" placeholder="银行转账/现金/支票" value="'+h(pm?pm.payment_method||'':'')+'"></div></div>';
+  h+='<div class="form-row"><div class="form-group"><label>发票号</label><input id="pmf-invoice" placeholder="发票号码" value="'+h(pm?pm.invoice_no||'':'')+'"></div><div class="form-group"><label>备注</label><input id="pmf-notes" placeholder="备注" value="'+h(pm?pm.notes||'':'')+'"></div></div>';
+  if(pm)h+='<input type="hidden" id="pmf-edit-id" value="'+pm.id+'">';
+  h+='<div class="modal-actions"><button class="btn-cancel" onclick="document.getElementById(\'payment-form-modal\').remove()">取消</button><button class="btn-save" onclick="savePayment()">保存</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend',h);
+}
+
+async function savePayment(){
+  var title=document.getElementById('pmf-title').value.trim();
+  if(!title){showToast('请输入收款标题');return}
+  var editEl=document.getElementById('pmf-edit-id');
+  var row={project_id:curProjectId,title:title,amount:parseFloat(document.getElementById('pmf-amount').value)||0,payment_date:document.getElementById('pmf-date').value||null,status:document.getElementById('pmf-status').value,payment_method:document.getElementById('pmf-method').value.trim(),invoice_no:document.getElementById('pmf-invoice').value.trim(),notes:document.getElementById('pmf-notes').value.trim()};
+  document.getElementById('payment-form-modal').remove();
+  if(editEl){
+    var {error}=await sb.from('project_payments').update(row).eq('id',editEl.value);
+    if(error){showToast('更新失败: '+error.message);return}
+  }else{
+    var {error}=await sb.from('project_payments').insert(row);
+    if(error){showToast('创建失败: '+error.message);return}
+  }
+  loadPayments();showToast(editEl?'已更新':'已创建');
+}
+
+async function deletePayment(id){
+  if(!confirm('确定删除该收款记录？'))return;
+  var {error}=await sb.from('project_payments').delete().eq('id',id);
+  if(error){showToast('删除失败: '+error.message);return}
+  loadPayments();showToast('已删除');
+}
 
 </script>
 
