@@ -79,6 +79,26 @@ CREATE TABLE IF NOT EXISTS project_payments (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- 6. 项目合同（仅中标后可创建）
+CREATE TABLE IF NOT EXISTS project_contracts (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  company_id BIGINT NOT NULL,
+  project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+  bid_id UUID REFERENCES project_biddings(id) ON DELETE SET NULL,
+  title TEXT NOT NULL,
+  contract_no TEXT DEFAULT '',
+  amount DECIMAL(15,2) DEFAULT 0,
+  our_party TEXT DEFAULT '',
+  their_party TEXT DEFAULT '',
+  sign_date DATE,
+  start_date DATE,
+  end_date DATE,
+  status TEXT DEFAULT 'draft' CHECK (status IN ('draft','signed','executing','completed','terminated')),
+  notes TEXT DEFAULT '',
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
 -- ============================================================
 -- RLS 策略（与现有 company_id 隔离模型一致）
 -- ============================================================
@@ -116,6 +136,11 @@ CREATE POLICY "payments_project_isolation" ON project_payments
     project_id IN (SELECT id FROM projects WHERE company_id = (current_setting('request.jwt.claims', true)::json->>'company_id')::bigint)
   );
 
+-- project_contracts
+ALTER TABLE project_contracts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "pcontracts_company_isolation" ON project_contracts
+  FOR ALL USING (company_id = (current_setting('request.jwt.claims', true)::json->>'company_id')::bigint);
+
 -- ============================================================
 -- 索引
 -- ============================================================
@@ -125,3 +150,6 @@ CREATE INDEX IF NOT EXISTS idx_stages_project ON project_stages(project_id);
 CREATE INDEX IF NOT EXISTS idx_biddings_project ON project_biddings(project_id);
 CREATE INDEX IF NOT EXISTS idx_deliveries_project ON project_deliveries(project_id);
 CREATE INDEX IF NOT EXISTS idx_payments_project ON project_payments(project_id);
+CREATE INDEX IF NOT EXISTS idx_pcontracts_project ON project_contracts(project_id);
+CREATE INDEX IF NOT EXISTS idx_pcontracts_bid ON project_contracts(bid_id);
+CREATE INDEX IF NOT EXISTS idx_pcontracts_company ON project_contracts(company_id);

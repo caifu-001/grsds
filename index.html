@@ -856,6 +856,10 @@ input,select,textarea,button{font-family:inherit}
 .status-submitted{background:#e8f0fe;color:#1a73e8}
 .status-won{background:#e6f4ea;color:#137333}
 .status-lost{background:#fce8e6;color:#c5221f}
+.status-signed{background:#e6f4ea;color:#137333}
+.status-executing{background:#e8f0fe;color:#1a73e8}
+.status-terminated{background:#fce8e6;color:#c5221f}
+.status-draft{background:#f0f0f0;color:#666}
 .status-pending{background:#fef7e0;color:#e37400}
 .status-delivered{background:#e8f0fe;color:#1a73e8}
 .status-accepted{background:#e6f4ea;color:#137333}
@@ -2296,6 +2300,7 @@ input,select,textarea,button{font-family:inherit}
   <button class="sub-tab active" data-ptab="list" onclick="switchProjectTab('list')">项目列表</button>
   <button class="sub-tab" data-ptab="stages" onclick="switchProjectTab('stages')">阶段管理</button>
   <button class="sub-tab" data-ptab="bidding" onclick="switchProjectTab('bidding')">招投标</button>
+  <button class="sub-tab" data-ptab="contract" onclick="switchProjectTab('contract')">合同</button>
   <button class="sub-tab" data-ptab="delivery" onclick="switchProjectTab('delivery')">项目交付</button>
   <button class="sub-tab" data-ptab="payment" onclick="switchProjectTab('payment')">项目收款</button>
  </div>
@@ -2325,6 +2330,16 @@ input,select,textarea,button{font-family:inherit}
    <button class="btn-sm btn-sm-primary" onclick="openBiddingForm()">+ 新建投标</button>
   </div>
   <div id="bidding-list" style="display:flex;flex-direction:column;gap:8px"></div>
+ </div>
+ <div id="project-contract-panel" class="project-panel hidden">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+   <div style="display:flex;align-items:center;gap:12px">
+    <button class="btn-sm" onclick="switchProjectTab('list')">← 返回</button>
+    <h3 style="font-size:16px;font-weight:700;margin:0" id="contract-project-name">合同</h3>
+   </div>
+   <button class="btn-sm btn-sm-primary hidden" id="project-contract-add-btn" onclick="openProjectContractForm()">+ 新建合同</button>
+  </div>
+  <div id="project-contract-list" style="display:flex;flex-direction:column;gap:8px"></div>
  </div>
  <div id="project-delivery-panel" class="project-panel hidden">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -4873,7 +4888,7 @@ function switchTab(tab){
     var pjv=document.getElementById('projects-view');pjv.classList.remove('hidden');
     document.getElementById('tab-projects').classList.add('active');
     document.getElementById('topbar-title').textContent='项目管理';
-    fab.classList.remove('hidden');fab.textContent='+';fab.onclick=function(){openProjectForm()};
+    fab.classList.add('hidden');
     switchProjectTab('list');
     return;
   }
@@ -10409,20 +10424,22 @@ function extendPermissionMatrix(){
 function toggleLeadFrozen(){showToast('冻结功能暂未开放')}
 function editForm(id){showToast('表单编辑功能暂未开放')}
 
+
 // ====== Project Management ======
 var allProjects=[],allStages=[],allBiddings=[],allDeliveries=[],allPayments=[],curProjectId=null,curProjectName='';
 var pStageEditId=null,pBiddingEditId=null,pDeliveryEditId=null,pPaymentEditId=null;
 
 function switchProjectTab(tab){
-  ['list','stages','bidding','delivery','payment'].forEach(function(t){
+  ['list','stages','bidding','contract','delivery','payment'].forEach(function(t){
     var p=document.getElementById('project-'+t+'-panel');if(p)p.classList.toggle('hidden',t!==tab)
   });
   var subs=document.querySelectorAll('#projects-view .sub-tab');
   for(var i=0;i<subs.length;i++)subs[i].classList.toggle('active',subs[i].getAttribute('data-ptab')===tab);
-  document.getElementById('main-fab').classList.toggle('hidden',tab!=='list');
-  if(tab==='list'){document.getElementById('main-fab').textContent='+';document.getElementById('main-fab').onclick=function(){openProjectForm()};loadProjects()}
+  document.getElementById('main-fab').classList.add('hidden');
+  if(tab==='list'){loadProjects()}
   else if(tab==='stages'){if(curProjectId)loadStages()}
   else if(tab==='bidding'){if(curProjectId)loadBiddings()}
+  else if(tab==='contract'){if(curProjectId)loadProjectContracts()}
   else if(tab==='delivery'){if(curProjectId)loadDeliveries()}
   else if(tab==='payment'){if(curProjectId)loadPayments()}
 }
@@ -10437,21 +10454,21 @@ async function loadProjects(){
 
 function renderProjects(){
   var list=document.getElementById('project-list');
-  if(!allProjects.length){list.innerHTML='<div style="text-align:center;padding:40px;color:var(--text2)">暂无项目，点击上方按钮创建</div>';return}
-  var h='';
+  if(!allProjects.length){list.innerHTML='<div style="text-align:center;padding:40px;color:var(--text2)">无项目，可从销售管道线索中立项创建</div>';return}
+  var s='';
   var statusMap={planning:'规划中',in_progress:'进行中',completed:'已完成',suspended:'已暂停'};
   for(var i=0;i<allProjects.length;i++){
     var p=allProjects[i];
     var client=allClients.find(function(c){return c.id===p.client_id});
     var cn=client?client.name:'未关联';
-    h+='<div class="project-card" onclick="openProjectDetail(\''+p.id+'\',\''+escHtml(p.name)+'\')">';
-    h+='<div class="project-card-header"><span class="project-card-name">'+escHtml(p.name)+'</span><span class="project-card-status status-'+p.status+'">'+(statusMap[p.status]||p.status)+'</span></div>';
-    h+='<div class="project-card-meta"><span>🏢 '+escHtml(cn)+'</span><span>💰 '+(p.budget?formatMoney(p.budget):'-')+'</span>';
-    if(p.start_date)h+='<span>📅 '+p.start_date+'</span>';
-    if(p.end_date)h+='<span>→ '+p.end_date+'</span>';
-    h+='</div></div>';
+    s+='<div class="project-card" onclick="openProjectDetail(\''+p.id+'\',\''+h(p.name)+'\')">';
+    s+='<div class="project-card-header"><span class="project-card-name">'+h(p.name)+'</span><span class="project-card-status status-'+p.status+'">'+(statusMap[p.status]||p.status)+'</span></div>';
+    s+='<div class="project-card-meta"><span>\U0001f3e2 '+h(cn)+'</span><span>\U0001f4b0 '+(p.budget?formatMoney(p.budget):'-')+'</span>';
+    if(p.start_date)s+='<span>\U0001f4c5 '+p.start_date+'</span>';
+    if(p.end_date)s+='<span>\u2192 '+p.end_date+'</span>';
+    s+='</div></div>';
   }
-  list.innerHTML=h;
+  list.innerHTML=s;
 }
 
 function openProjectDetail(pid,pname){
@@ -10459,57 +10476,47 @@ function openProjectDetail(pid,pname){
   switchProjectTab('stages');
   document.getElementById('stages-project-name').textContent=pname;
   document.getElementById('bidding-project-name').textContent=pname;
+  document.getElementById('contract-project-name').textContent=pname;
   document.getElementById('delivery-project-name').textContent=pname;
   document.getElementById('payment-project-name').textContent=pname;
   document.getElementById('main-fab').classList.add('hidden');
   loadStages();
 }
 
-// ── Project CRUD ──
-async function openProjectForm(id){
-  var p=id?allProjects.find(function(x){return x.id===id}):null;
-  var title=p?'编辑项目':'新建项目';
-  var h='<div class="modal-overlay" id="project-form-modal"><div class="modal-sheet"><h3>'+title+'</h3>';
-  h+='<div class="form-group"><label>项目名称 *</label><input id="pf-name" placeholder="项目名称" value="'+escHtml(p?p.name||'':'')+'"></div>';
-  h+='<div class="form-row"><div class="form-group"><label>关联客户</label><select id="pf-client"><option value="">-- 不关联 --</option>';
-  for(var i=0;i<allClients.length;i++){var cl=allClients[i];h+='<option value="'+cl.id+'"'+(p&&p.client_id===cl.id?' selected':'')+'>'+escHtml(cl.name)+'</option>'}
-  h+='</select></div><div class="form-group"><label>项目预算</label><input id="pf-budget" type="number" step="0.01" placeholder="0.00" value="'+(p?p.budget||'':'')+'"></div></div>';
-  h+='<div class="form-row"><div class="form-group"><label>开始日期</label><input id="pf-start" type="date" value="'+(p?p.start_date||'':'')+'"></div><div class="form-group"><label>预计结束</label><input id="pf-end" type="date" value="'+(p?p.end_date||'':'')+'"></div></div>';
-  var statuses=[{v:'planning',t:'规划中'},{v:'in_progress',t:'进行中'},{v:'completed',t:'已完成'},{v:'suspended',t:'已暂停'}];
-  h+='<div class="form-group"><label>项目状态</label><select id="pf-status">';
-  for(var j=0;j<statuses.length;j++)h+='<option value="'+statuses[j].v+'"'+(p&&p.status===statuses[j].v?' selected':'')+'>'+statuses[j].t+'</option>';
-  h+='</select></div>';
-  h+='<div class="form-group"><label>项目描述</label><textarea id="pf-desc" rows="3" placeholder="项目描述...">'+escHtml(p?p.description||'':'')+'</textarea></div>';
-  if(id)h+='<input type="hidden" id="pf-edit-id" value="'+id+'">';
-  h+='<div class="modal-actions"><button class="btn-cancel" onclick="document.getElementById(\'project-form-modal\').remove()">取消</button><button class="btn-save" onclick="saveProject()">保存</button></div></div></div>';
-  document.body.insertAdjacentHTML('beforeend',h);
+// === Project CRUD (launched from lead conversion) ===
+function openProjectFormFromLead(leadId,leadName,leadContactName,leadContactPhone,leadCompany){
+  var s='<div class="modal-overlay" id="project-form-modal"><div class="modal-sheet"><h3>\u4ece\u7ebf\u7d22\u8f6c\u7acb\u9879</h3>';
+  s+='<div class="form-group"><label>\u9879\u76ee\u540d\u79f0 *</label><input id="pf-name" placeholder="\u9879\u76ee\u540d\u79f0" value="'+h(leadName||'')+'"></div>';
+  s+='<div class="form-row"><div class="form-group"><label>\u5173\u8054\u5ba2\u6237</label><select id="pf-client"><option value="">-- \u4e0d\u5173\u8054 --</option>';
+  for(var i=0;i<allClients.length;i++){var cl=allClients[i];s+='<option value="'+cl.id+'"'+(leadCompany&&cl.name===leadCompany?' selected':'')+'>'+h(cl.name)+'</option>'}
+  s+='</select></div><div class="form-group"><label>\u9879\u76ee\u9884\u7b97</label><input id="pf-budget" type="number" step="0.01" placeholder="0.00"></div></div>';
+  s+='<div class="form-row"><div class="form-group"><label>\u5f00\u59cb\u65e5\u671f</label><input id="pf-start" type="date"></div><div class="form-group"><label>\u9884\u8ba1\u7ed3\u675f</label><input id="pf-end" type="date"></div></div>';
+  s+='<div class="form-group"><label>\u72b6\u6001</label><select id="pf-status"><option value="planning">\u89c4\u5212\u4e2d</option><option value="in_progress">\u8fdb\u884c\u4e2d</option></select></div>';
+  s+='<div class="form-group"><label>\u9879\u76ee\u63cf\u8ff0</label><textarea id="pf-desc" rows="3" placeholder="\u9879\u76ee\u63cf\u8ff0..."></textarea></div>';
+  s+='<input type="hidden" id="pf-lead-id" value="'+leadId+'">';
+  s+='<div class="modal-actions"><button class="btn-cancel" onclick="document.getElementById(\'project-form-modal\').remove()">\u53d6\u6d88</button><button class="btn-save" onclick="saveProject()">\u4fdd\u5b58\u5e76\u8f6c\u5316\u7ebf\u7d22</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend',s);
 }
 
 async function saveProject(){
   var name=document.getElementById('pf-name').value.trim();
-  if(!name){showToast('请输入项目名称');return}
-  var editId=document.getElementById('pf-edit-id');
-  var row={company_id:currentCompanyId,name:name,client_id:document.getElementById('pf-client').value||null,budget:parseFloat(document.getElementById('pf-budget').value)||0,start_date:document.getElementById('pf-start').value||null,end_date:document.getElementById('pf-end').value||null,status:document.getElementById('pf-status').value,description:document.getElementById('pf-desc').value.trim()};
+  if(!name){showToast('\u8bf7\u8f93\u5165\u9879\u76ee\u540d\u79f0');return}
+  var leadIdEl=document.getElementById('pf-lead-id');
+  var row={company_id:currentCompanyId,name:name,client_id:document.getElementById('pf-client').value||null,budget:parseFloat(document.getElementById('pf-budget').value)||0,start_date:document.getElementById('pf-start').value||null,end_date:document.getElementById('pf-end').value||null,status:document.getElementById('pf-status').value,description:document.getElementById('pf-desc').value.trim(),created_by:currentUser.id};
   document.getElementById('project-form-modal').remove();
-  if(editId){
-    var {error}=await sb.from('projects').update(row).eq('id',editId.value);
-    if(error){showToast('更新失败: '+error.message);return}
-  }else{
-    row.created_by=currentUser.id;
-    var {error}=await sb.from('projects').insert(row);
-    if(error){showToast('创建失败: '+error.message);return}
+  var {data,error}=await sb.from('projects').insert(row).select('id').single();
+  if(error){showToast('\u521b\u5efa\u5931\u8d25: '+error.message);return}
+  var pid=data.id;
+  if(leadIdEl&&leadIdEl.value){
+    await sb.from('leads').update({stage:'converted',project_id:pid,converted_at:new Date().toISOString()}).eq('id',leadIdEl.value);
   }
-  loadProjects();showToast(editId?'已更新':'已创建');
+  if(curProjectId || document.getElementById('projects-view')&&!document.getElementById('projects-view').classList.contains('hidden')){
+    loadProjects();
+  }
+  showToast('\u7ebf\u7d22\u5df2\u8f6c\u5316\u4e3a\u9879\u76ee');
 }
 
-async function deleteProject(id){
-  if(!confirm('确定删除该项目？将同时删除关联的阶段/投标/交付/收款数据。'))return;
-  var {error}=await sb.from('projects').delete().eq('id',id);
-  if(error){showToast('删除失败: '+error.message);return}
-  loadProjects();showToast('已删除');
-}
-
-// ── Stages ──
+// === Stages ===
 async function loadStages(){
   if(!curProjectId)return;
   var {data,error}=await sb.from('project_stages').select('*').eq('project_id',curProjectId).order('sort_order');
@@ -10520,61 +10527,61 @@ async function loadStages(){
 
 function renderStages(){
   var list=document.getElementById('stages-list');
-  if(!allStages.length){list.innerHTML='<div style="text-align:center;padding:40px;color:var(--text2)">暂无阶段，点击添加阶段</div>';return}
-  var statusMap={pending:'待开始',in_progress:'进行中',completed:'已完成'};
-  var h='';
+  if(!allStages.length){list.innerHTML='<div style="text-align:center;padding:40px;color:var(--text2)">\u6682\u65e0\u9636\u6bb5\uff0c\u70b9\u51fb\u6dfb\u52a0\u9636\u6bb5</div>';return}
+  var statusMap={pending:'\u5f85\u5f00\u59cb',in_progress:'\u8fdb\u884c\u4e2d',completed:'\u5df2\u5b8c\u6210'};
+  var s='';
   for(var i=0;i<allStages.length;i++){
-    var s=allStages[i];
-    h+='<div class="stage-item">';
-    h+='<div class="stage-item-left"><div class="stage-item-name">'+escHtml(s.name)+'</div><div class="stage-item-dates">'+escHtml(s.description||'')+' '+(s.start_date||'')+' → '+(s.end_date||'')+'</div></div>';
-    h+='<div class="stage-item-right">';
-    h+='<span class="project-card-status status-'+s.status+'">'+(statusMap[s.status]||s.status)+'</span>';
-    h+='<button class="btn-sm" onclick="openStageForm(\''+s.id+'\')">✏️</button>';
-    h+='<button class="btn-sm btn-sm-danger" onclick="deleteStage(\''+s.id+'\')">🗑</button>';
-    h+='</div></div>';
+    var st=allStages[i];
+    s+='<div class="stage-item">';
+    s+='<div class="stage-item-left"><div class="stage-item-name">'+h(st.name)+'</div><div class="stage-item-dates">'+h(st.description||'')+' '+(st.start_date||'')+' \u2192 '+(st.end_date||'')+'</div></div>';
+    s+='<div class="stage-item-right">';
+    s+='<span class="project-card-status status-'+st.status+'">'+(statusMap[st.status]||st.status)+'</span>';
+    s+='<button class="btn-sm" onclick="openStageForm(\''+st.id+'\')">\u270f\ufe0f</button>';
+    s+='<button class="btn-sm btn-sm-danger" onclick="deleteStage(\''+st.id+'\')">\U0001f5d1</button>';
+    s+='</div></div>';
   }
-  list.innerHTML=h;
+  list.innerHTML=s;
 }
 
 function openStageForm(id){
-  var s=id?allStages.find(function(x){return x.id===id}):null;
-  var h='<div class="modal-overlay" id="stage-form-modal"><div class="modal-sheet"><h3>'+(s?'编辑阶段':'添加阶段')+'</h3>';
-  h+='<div class="form-group"><label>阶段名称 *</label><input id="sf-name" placeholder="如：需求调研、方案设计、开发测试" value="'+escHtml(s?s.name||'':'')+'"></div>';
-  h+='<div class="form-group"><label>描述</label><input id="sf-desc" placeholder="阶段说明" value="'+escHtml(s?s.description||'':'')+'"></div>';
-  h+='<div class="form-row"><div class="form-group"><label>开始日期</label><input id="sf-start" type="date" value="'+(s?s.start_date||'':'')+'"></div><div class="form-group"><label>结束日期</label><input id="sf-end" type="date" value="'+(s?s.end_date||'':'')+'"></div></div>';
-  var statuses=[{v:'pending',t:'待开始'},{v:'in_progress',t:'进行中'},{v:'completed',t:'已完成'}];
-  h+='<div class="form-group"><label>状态</label><select id="sf-status">';
-  for(var i=0;i<statuses.length;i++)h+='<option value="'+statuses[i].v+'"'+(s&&s.status===statuses[i].v?' selected':'')+'>'+statuses[i].t+'</option>';
-  h+='</select></div>';
-  if(s)h+='<input type="hidden" id="sf-edit-id" value="'+s.id+'">';
-  h+='<div class="modal-actions"><button class="btn-cancel" onclick="document.getElementById(\'stage-form-modal\').remove()">取消</button><button class="btn-save" onclick="saveStage()">保存</button></div></div></div>';
-  document.body.insertAdjacentHTML('beforeend',h);
+  var st=id?allStages.find(function(x){return x.id===id}):null;
+  var s='<div class="modal-overlay" id="stage-form-modal"><div class="modal-sheet"><h3>'+(st?'\u7f16\u8f91\u9636\u6bb5':'\u6dfb\u52a0\u9636\u6bb5')+'</h3>';
+  s+='<div class="form-group"><label>\u9636\u6bb5\u540d\u79f0 *</label><input id="sf-name" placeholder="\u5982\uff1a\u9700\u6c42\u8c03\u7814\u3001\u65b9\u6848\u8bbe\u8ba1\u3001\u5f00\u53d1\u6d4b\u8bd5" value="'+h(st?st.name||'':'')+'"></div>';
+  s+='<div class="form-group"><label>\u63cf\u8ff0</label><input id="sf-desc" placeholder="\u9636\u6bb5\u8bf4\u660e" value="'+h(st?st.description||'':'')+'"></div>';
+  s+='<div class="form-row"><div class="form-group"><label>\u5f00\u59cb\u65e5\u671f</label><input id="sf-start" type="date" value="'+(st?st.start_date||'':'')+'"></div><div class="form-group"><label>\u7ed3\u675f\u65e5\u671f</label><input id="sf-end" type="date" value="'+(st?st.end_date||'':'')+'"></div></div>';
+  var statuses=[{v:'pending',t:'\u5f85\u5f00\u59cb'},{v:'in_progress',t:'\u8fdb\u884c\u4e2d'},{v:'completed',t:'\u5df2\u5b8c\u6210'}];
+  s+='<div class="form-group"><label>\u72b6\u6001</label><select id="sf-status">';
+  for(var i=0;i<statuses.length;i++)s+='<option value="'+statuses[i].v+'"'+(st&&st.status===statuses[i].v?' selected':'')+'>'+statuses[i].t+'</option>';
+  s+='</select></div>';
+  if(st)s+='<input type="hidden" id="sf-edit-id" value="'+st.id+'">';
+  s+='<div class="modal-actions"><button class="btn-cancel" onclick="document.getElementById(\'stage-form-modal\').remove()">\u53d6\u6d88</button><button class="btn-save" onclick="saveStage()">\u4fdd\u5b58</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend',s);
 }
 
 async function saveStage(){
   var name=document.getElementById('sf-name').value.trim();
-  if(!name){showToast('请输入阶段名称');return}
+  if(!name){showToast('\u8bf7\u8f93\u5165\u9636\u6bb5\u540d\u79f0');return}
   var editEl=document.getElementById('sf-edit-id');
   var row={project_id:curProjectId,name:name,description:document.getElementById('sf-desc').value.trim(),start_date:document.getElementById('sf-start').value||null,end_date:document.getElementById('sf-end').value||null,status:document.getElementById('sf-status').value,sort_order:allStages.length};
   document.getElementById('stage-form-modal').remove();
   if(editEl){
     var {error}=await sb.from('project_stages').update(row).eq('id',editEl.value);
-    if(error){showToast('更新失败: '+error.message);return}
+    if(error){showToast('\u66f4\u65b0\u5931\u8d25: '+error.message);return}
   }else{
     var {error}=await sb.from('project_stages').insert(row);
-    if(error){showToast('创建失败: '+error.message);return}
+    if(error){showToast('\u521b\u5efa\u5931\u8d25: '+error.message);return}
   }
-  loadStages();showToast(editEl?'已更新':'已创建');
+  loadStages();showToast(editEl?'\u5df2\u66f4\u65b0':'\u5df2\u521b\u5efa');
 }
 
 async function deleteStage(id){
-  if(!confirm('确定删除该阶段？'))return;
+  if(!confirm('\u786e\u5b9a\u5220\u9664\u8be5\u9636\u6bb5\uff1f'))return;
   var {error}=await sb.from('project_stages').delete().eq('id',id);
-  if(error){showToast('删除失败: '+error.message);return}
-  loadStages();showToast('已删除');
+  if(error){showToast('\u5220\u9664\u5931\u8d25: '+error.message);return}
+  loadStages();showToast('\u5df2\u5220\u9664');
 }
 
-// ── Bidding ──
+// === Bidding ===
 async function loadBiddings(){
   if(!curProjectId)return;
   var {data,error}=await sb.from('project_biddings').select('*').eq('project_id',curProjectId).order('created_at',{ascending:false});
@@ -10585,85 +10592,169 @@ async function loadBiddings(){
 
 function renderBiddings(){
   var list=document.getElementById('bidding-list');
-  if(!allBiddings.length){list.innerHTML='<div style="text-align:center;padding:40px;color:var(--text2)">暂无投标记录</div>';return}
-  var statusMap={preparing:'准备中',submitted:'已提交',won:'中标',lost:'未中标'};
-  var h='';
+  if(!allBiddings.length){list.innerHTML='<div style="text-align:center;padding:40px;color:var(--text2)">\u6682\u65e0\u6295\u6807\u8bb0\u5f55</div>';return}
+  var statusMap={preparing:'\u51c6\u5907\u4e2d',submitted:'\u5df2\u63d0\u4ea4',won:'\u4e2d\u6807',lost:'\u672a\u4e2d\u6807'};
+  var s='';
   for(var i=0;i<allBiddings.length;i++){
     var b=allBiddings[i];
-    h+='<div class="bidding-item">';
-    h+='<div class="bidding-item-header">';
-    h+='<div class="bidding-item-title">'+escHtml(b.title)+'</div>';
-    h+='<div style="display:flex;gap:6px;align-items:center">';
-    if(b.seal_requested)h+='<span class="seal-badge">🔒 待盖章</span>';
-    h+='<span class="project-card-status status-'+b.status+'">'+(statusMap[b.status]||b.status)+'</span>';
-    h+='<button class="btn-sm" onclick="openBiddingForm(\''+b.id+'\')">✏️</button>';
-    h+='<button class="btn-sm btn-sm-danger" onclick="deleteBidding(\''+b.id+'\')">🗑</button>';
-    h+='</div></div>';
-    h+='<div class="bidding-item-meta"><span>💰 '+(b.bid_amount?formatMoney(b.bid_amount):'-')+'</span><span>📅 截止: '+(b.bid_deadline||'-')+'</span><span>📋 '+escHtml(b.notes||'')+'</span></div>';
+    s+='<div class="bidding-item">';
+    s+='<div class="bidding-item-header">';
+    s+='<div class="bidding-item-title">'+h(b.title)+'</div>';
+    s+='<div style="display:flex;gap:6px;align-items:center">';
+    if(b.seal_requested)s+='<span class="seal-badge">\U0001f512 \u5f85\u76d6\u7ae0</span>';
+    s+='<span class="project-card-status status-'+b.status+'">'+(statusMap[b.status]||b.status)+'</span>';
+    s+='<button class="btn-sm" onclick="openBiddingForm(\''+b.id+'\')">\u270f\ufe0f</button>';
+    s+='<button class="btn-sm btn-sm-danger" onclick="deleteBidding(\''+b.id+'\')">\U0001f5d1</button>';
+    s+='</div></div>';
+    s+='<div class="bidding-item-meta"><span>\U0001f4b0 '+(b.bid_amount?formatMoney(b.bid_amount):'-')+'</span><span>\U0001f4c5 \u622a\u6b62: '+(b.bid_deadline||'-')+'</span><span>\U0001f4cb '+h(b.notes||'')+'</span></div>';
     if(b.materials_needed&&b.materials_needed!=='[]'){
-      h+='<div style="margin-top:4px;font-size:11px;color:var(--text2)">📎 所需材料: '+escHtml(b.materials_needed)+'</div>';
+      s+='<div style="margin-top:4px;font-size:11px;color:var(--text2)">\U0001f4ce \u6240\u9700\u6750\u6599: '+h(b.materials_needed)+'</div>';
     }
-    h+='</div>';
+    s+='</div>';
   }
-  list.innerHTML=h;
+  list.innerHTML=s;
 }
 
 function openBiddingForm(id){
   var b=id?allBiddings.find(function(x){return x.id===id}):null;
-  var h='<div class="modal-overlay" id="bidding-form-modal"><div class="modal-sheet"><h3>'+(b?'编辑投标':'新建投标')+'</h3>';
-  h+='<div class="form-group"><label>投标标题 *</label><input id="bf-title" placeholder="投标项目名称" value="'+escHtml(b?b.title||'':'')+'"></div>';
-  h+='<div class="form-row"><div class="form-group"><label>投标金额</label><input id="bf-amount" type="number" step="0.01" placeholder="0.00" value="'+(b?b.bid_amount||'':'')+'"></div><div class="form-group"><label>投标截止</label><input id="bf-deadline" type="date" value="'+(b?b.bid_deadline||'':'')+'"></div></div>';
-  var statuses=[{v:'preparing',t:'准备中'},{v:'submitted',t:'已提交'},{v:'won',t:'中标'},{v:'lost',t:'未中标'}];
-  h+='<div class="form-group"><label>状态</label><select id="bf-status">';
-  for(var i=0;i<statuses.length;i++)h+='<option value="'+statuses[i].v+'"'+(b&&b.status===statuses[i].v?' selected':'')+'>'+statuses[i].t+'</option>';
-  h+='</select></div>';
-  h+='<div class="form-group"><label>所需材料（如标书/资质/公章）</label><input id="bf-materials" placeholder="如：营业执照副本、法人授权书、公章" value="'+escHtml(b?b.materials_needed||'':'')+'"></div>';
-  h+='<div class="form-group"><label><input type="checkbox" id="bf-seal" style="width:auto"'+(b&&b.seal_requested?' checked':'')+'> 需要申请公章</label></div>';
-  h+='<div class="form-group"><label>备注</label><textarea id="bf-notes" rows="2" placeholder="备注...">'+escHtml(b?b.notes||'':'')+'</textarea></div>';
-  if(b)h+='<input type="hidden" id="bf-edit-id" value="'+b.id+'">';
-  h+='<div class="modal-actions"><button class="btn-cancel" onclick="document.getElementById(\'bidding-form-modal\').remove()">取消</button>';
-  h+='<button class="btn-save" onclick="saveBidding()">保存</button>';
-  if(b&&b.seal_requested&&b.status==='preparing')h+='<button class="btn-save" style="background:var(--warning)" onclick="requestSealApproval(\''+b.id+'\')">🔒 申请公章审批</button>';
-  h+='</div></div></div>';
-  document.body.insertAdjacentHTML('beforeend',h);
+  var s='<div class="modal-overlay" id="bidding-form-modal"><div class="modal-sheet"><h3>'+(b?'\u7f16\u8f91\u6295\u6807':'\u65b0\u5efa\u6295\u6807')+'</h3>';
+  s+='<div class="form-group"><label>\u6295\u6807\u6807\u9898 *</label><input id="bf-title" placeholder="\u6295\u6807\u9879\u76ee\u540d\u79f0" value="'+h(b?b.title||'':'')+'"></div>';
+  s+='<div class="form-row"><div class="form-group"><label>\u6295\u6807\u91d1\u989d</label><input id="bf-amount" type="number" step="0.01" placeholder="0.00" value="'+(b?b.bid_amount||'':'')+'"></div><div class="form-group"><label>\u6295\u6807\u622a\u6b62</label><input id="bf-deadline" type="date" value="'+(b?b.bid_deadline||'':'')+'"></div></div>';
+  var statuses=[{v:'preparing',t:'\u51c6\u5907\u4e2d'},{v:'submitted',t:'\u5df2\u63d0\u4ea4'},{v:'won',t:'\u4e2d\u6807'},{v:'lost',t:'\u672a\u4e2d\u6807'}];
+  s+='<div class="form-group"><label>\u72b6\u6001</label><select id="bf-status">';
+  for(var i=0;i<statuses.length;i++)s+='<option value="'+statuses[i].v+'"'+(b&&b.status===statuses[i].v?' selected':'')+'>'+statuses[i].t+'</option>';
+  s+='</select></div>';
+  s+='<div class="form-group"><label>\u6240\u9700\u6750\u6599\uff08\u5982\u6807\u4e66/\u8d44\u8d28/\u516c\u7ae0\uff09</label><input id="bf-materials" placeholder="\u5982\uff1a\u8425\u4e1a\u6267\u7167\u526f\u672c\u3001\u6cd5\u4eba\u6388\u6743\u4e66\u3001\u516c\u7ae0" value="'+h(b?b.materials_needed||'':'')+'"></div>';
+  s+='<div class="form-group"><label><input type="checkbox" id="bf-seal" style="width:auto"'+(b&&b.seal_requested?' checked':'')+'> \u9700\u8981\u7533\u8bf7\u516c\u7ae0</label></div>';
+  s+='<div class="form-group"><label>\u5907\u6ce8</label><textarea id="bf-notes" rows="2" placeholder="\u5907\u6ce8...">'+h(b?b.notes||'':'')+'</textarea></div>';
+  if(b)s+='<input type="hidden" id="bf-edit-id" value="'+b.id+'">';
+  s+='<div class="modal-actions"><button class="btn-cancel" onclick="document.getElementById(\'bidding-form-modal\').remove()">\u53d6\u6d88</button>';
+  s+='<button class="btn-save" onclick="saveBidding()">\u4fdd\u5b58</button>';
+  if(b&&b.seal_requested&&b.status==='preparing')s+='<button class="btn-save" style="background:var(--warning)" onclick="requestSealApproval(\''+b.id+'\')">\U0001f512 \u7533\u8bf7\u516c\u7ae0\u5ba1\u6279</button>';
+  s+='</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend',s);
 }
 
 async function saveBidding(){
   var title=document.getElementById('bf-title').value.trim();
-  if(!title){showToast('请输入投标标题');return}
+  if(!title){showToast('\u8bf7\u8f93\u5165\u6295\u6807\u6807\u9898');return}
   var editEl=document.getElementById('bf-edit-id');
-  var sealReq=document.getElementById('bf-seal');
-  var row={project_id:curProjectId,title:title,bid_amount:parseFloat(document.getElementById('bf-amount').value)||0,bid_deadline:document.getElementById('bf-deadline').value||null,status:document.getElementById('bf-status').value,materials_needed:document.getElementById('bf-materials').value.trim(),seal_requested:sealReq?sealReq.checked:false,notes:document.getElementById('bf-notes').value.trim()};
+  var sealEl=document.getElementById('bf-seal');
+  var row={project_id:curProjectId,title:title,bid_amount:parseFloat(document.getElementById('bf-amount').value)||0,bid_deadline:document.getElementById('bf-deadline').value||null,status:document.getElementById('bf-status').value,materials_needed:document.getElementById('bf-materials').value.trim(),seal_requested:sealEl?sealEl.checked:false,notes:document.getElementById('bf-notes').value.trim()};
   document.getElementById('bidding-form-modal').remove();
   if(editEl){
     var {error}=await sb.from('project_biddings').update(row).eq('id',editEl.value);
-    if(error){showToast('更新失败: '+error.message);return}
+    if(error){showToast('\u66f4\u65b0\u5931\u8d25: '+error.message);return}
   }else{
     var {error}=await sb.from('project_biddings').insert(row);
-    if(error){showToast('创建失败: '+error.message);return}
+    if(error){showToast('\u521b\u5efa\u5931\u8d25: '+error.message);return}
   }
-  loadBiddings();showToast(editEl?'已更新':'已创建');
+  loadBiddings();showToast(editEl?'\u5df2\u66f4\u65b0':'\u5df2\u521b\u5efa');
 }
 
 async function deleteBidding(id){
-  if(!confirm('确定删除该投标记录？'))return;
+  if(!confirm('\u786e\u5b9a\u5220\u9664\u8be5\u6295\u6807\u8bb0\u5f55\uff1f'))return;
   var {error}=await sb.from('project_biddings').delete().eq('id',id);
-  if(error){showToast('删除失败: '+error.message);return}
-  loadBiddings();showToast('已删除');
+  if(error){showToast('\u5220\u9664\u5931\u8d25: '+error.message);return}
+  loadBiddings();showToast('\u5df2\u5220\u9664');
 }
 
 async function requestSealApproval(biddingId){
   var b=allBiddings.find(function(x){return x.id===biddingId});
   if(!b)return;
-  var {error}=await sb.from('approval_requests').insert({company_id:currentCompanyId,requestor_id:currentUser.id,title:'公章使用申请 - '+b.title,type:'公章使用申请',content:{detail:'项目: '+curProjectName+'\n投标: '+b.title+'\n所需材料: '+(b.materials_needed||'无')},status:'pending',total_steps:1});
-  if(error){showToast('提交审批失败: '+error.message);return}
-  // Mark bidding as seal approval submitted
+  var {error}=await sb.from('approval_requests').insert({company_id:currentCompanyId,requestor_id:currentUser.id,title:'\u516c\u7ae0\u4f7f\u7528\u7533\u8bf7 - '+b.title,type:'\u516c\u7ae0\u4f7f\u7528\u7533\u8bf7',content:{detail:'\u9879\u76ee: '+curProjectName+'\n\u6295\u6807: '+b.title+'\n\u6240\u9700\u6750\u6599: '+(b.materials_needed||'\u65e0')},status:'pending',total_steps:1});
+  if(error){showToast('\u63d0\u4ea4\u5ba1\u6279\u5931\u8d25: '+error.message);return}
   await sb.from('project_biddings').update({seal_requested:true}).eq('id',biddingId);
-  showToast('公章申请已提交审批');
+  showToast('\u516c\u7ae0\u7533\u8bf7\u5df2\u63d0\u4ea4\u5ba1\u6279');
   loadBiddings();
 }
 
-// ── Delivery ──
+// === Project Contracts ===
+var allProjectContracts=[],pContractEditId=null;
+
+async function loadProjectContracts(){
+  if(!curProjectId)return;
+  var {data,error}=await sb.from('project_contracts').select('*').eq('project_id',curProjectId).order('created_at',{ascending:false});
+  if(error){console.error(error);return}
+  allProjectContracts=data||[];
+  renderProjectContracts();
+}
+
+function renderProjectContracts(){
+  var list=document.getElementById('project-contract-list');
+  var addBtn=document.getElementById('project-contract-add-btn');
+  var hasWonBid=allBiddings.filter(function(b){return b.status==='won'}).length>0;
+  if(addBtn)addBtn.classList.toggle('hidden',!hasWonBid);
+  if(!allProjectContracts.length){list.innerHTML='<div style="text-align:center;padding:40px;color:var(--text2)">'+(hasWonBid?'暂无合同，点击上方按钮创建':'暂无中标记录，合同签订前请先在招投标子Tab中将投标状态改为已中标')+'</div>';return}
+  var statusMap={draft:'草稿',signed:'已签署',executing:'执行中',completed:'已完成',terminated:'已终止'};
+  var s='';
+  for(var i=0;i<allProjectContracts.length;i++){
+    var ct=allProjectContracts[i];
+    s+='<div class="contract-item" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px">';
+    s+='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">';
+    s+='<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:14px;color:var(--text);margin-bottom:4px">'+h(ct.title)+'</div>';
+    if(ct.contract_no)s+='<div style="font-size:12px;color:var(--text2);margin-bottom:4px">编号: '+h(ct.contract_no)+'</div>';
+    s+='<div style="font-size:12px;color:var(--text2);display:flex;gap:12px;flex-wrap:wrap">';
+    s+='<span>💰 '+formatMoney(ct.amount||0)+'</span>';
+    if(ct.sign_date)s+='<span>✍ '+ct.sign_date+'</span>';
+    if(ct.start_date&&ct.end_date)s+='<span>📅 '+ct.start_date+' → '+ct.end_date+'</span>';
+    s+='</div></div>';
+    s+='<div style="display:flex;align-items:center;gap:6px;flex-shrink:0">';
+    s+='<span class="project-card-status status-'+ct.status+'">'+(statusMap[ct.status]||ct.status)+'</span>';
+    s+='<button class="btn-sm" onclick="openProjectContractForm(\''+ct.id+'\')">✏️</button>';
+    s+='<button class="btn-sm btn-sm-danger" onclick="deleteProjectContract(\''+ct.id+'\')">🗑</button>';
+    s+='</div></div></div>';
+  }
+  list.innerHTML=s;
+}
+
+function openProjectContractForm(id){
+  var ct=id?allProjectContracts.find(function(x){return x.id===id}):null;
+  var wonBids=allBiddings.filter(function(b){return b.status==='won'});
+  var s='<div class="modal-overlay" id="pcontract-form-modal"><div class="modal-sheet"><h3>'+(ct?'编辑合同':'签订合同')+'</h3>';
+  s+='<div class="form-group"><label>关联中标</label><select id="pcf-bid">';
+  for(var i=0;i<wonBids.length;i++)s+='<option value="'+wonBids[i].id+'"'+(ct&&ct.bid_id===wonBids[i].id?' selected':'')+'>'+h(wonBids[i].title)+' ('+formatMoney(wonBids[i].bid_amount||0)+')</option>';
+  s+='</select></div>';
+  s+='<div class="form-group"><label>合同标题 *</label><input id="pcf-title" placeholder="合同标题" value="'+h(ct?ct.title||'':'')+'"></div>';
+  s+='<div class="form-group"><label>合同编号</label><input id="pcf-no" placeholder="如: HT-2026-001" value="'+h(ct?ct.contract_no||'':'')+'"></div>';
+  s+='<div class="form-row"><div class="form-group"><label>合同金额</label><input id="pcf-amount" type="number" step="0.01" placeholder="0.00" value="'+(ct?ct.amount||'':'')+'"></div><div class="form-group"><label>签字日期</label><input id="pcf-sign" type="date" value="'+(ct?ct.sign_date||'':'')+'"></div></div>';
+  s+='<div class="form-row"><div class="form-group"><label>开始日期</label><input id="pcf-start" type="date" value="'+(ct?ct.start_date||'':'')+'"></div><div class="form-group"><label>结束日期</label><input id="pcf-end" type="date" value="'+(ct?ct.end_date||'':'')+'"></div></div>';
+  s+='<div class="form-row"><div class="form-group"><label>我方</label><input id="pcf-our" placeholder="我方公司" value="'+h(ct?ct.our_party||'':'')+'"></div><div class="form-group"><label>对方</label><input id="pcf-their" placeholder="对方公司" value="'+h(ct?ct.their_party||'':'')+'"></div></div>';
+  var statuses=[{v:'draft',t:'草稿'},{v:'signed',t:'已签署'},{v:'executing',t:'执行中'},{v:'completed',t:'已完成'},{v:'terminated',t:'已终止'}];
+  s+='<div class="form-group"><label>状态</label><select id="pcf-status">';
+  for(var i=0;i<statuses.length;i++)s+='<option value="'+statuses[i].v+'"'+(ct&&ct.status===statuses[i].v?' selected':'')+'>'+statuses[i].t+'</option>';
+  s+='</select></div>';
+  s+='<div class="form-group"><label>备注</label><textarea id="pcf-notes" rows="2" placeholder="备注...">'+h(ct?ct.notes||'':'')+'</textarea></div>';
+  if(ct)s+='<input type="hidden" id="pcf-edit-id" value="'+ct.id+'">';
+  s+='<div class="modal-actions"><button class="btn-cancel" onclick="document.getElementById(\'pcontract-form-modal\').remove()">取消</button><button class="btn-save" onclick="saveProjectContract()">保存</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend',s);
+}
+
+async function saveProjectContract(){
+  var title=document.getElementById('pcf-title').value.trim();
+  if(!title){showToast('请输入合同标题');return}
+  var editEl=document.getElementById('pcf-edit-id');
+  var row={project_id:curProjectId,bid_id:document.getElementById('pcf-bid').value,title:title,contract_no:document.getElementById('pcf-no').value.trim(),amount:parseFloat(document.getElementById('pcf-amount').value)||0,sign_date:document.getElementById('pcf-sign').value||null,start_date:document.getElementById('pcf-start').value||null,end_date:document.getElementById('pcf-end').value||null,our_party:document.getElementById('pcf-our').value.trim(),their_party:document.getElementById('pcf-their').value.trim(),status:document.getElementById('pcf-status').value,notes:document.getElementById('pcf-notes').value.trim()};
+  document.getElementById('pcontract-form-modal').remove();
+  if(editEl){
+    var {error}=await sb.from('project_contracts').update(row).eq('id',editEl.value);
+    if(error){showToast('更新失败: '+error.message);return}
+  }else{
+    row.company_id=currentCompanyId;
+    var {error}=await sb.from('project_contracts').insert(row);
+    if(error){showToast('创建失败: '+error.message);return}
+  }
+  loadProjectContracts();showToast(editEl?'已更新':'已创建');
+}
+
+async function deleteProjectContract(id){
+  if(!confirm('确定删除该合同？'))return;
+  var {error}=await sb.from('project_contracts').delete().eq('id',id);
+  if(error){showToast('删除失败: '+error.message);return}
+  loadProjectContracts();showToast('已删除');
+}
+
+// === Delivery ===
 async function loadDeliveries(){
   if(!curProjectId)return;
   var {data,error}=await sb.from('project_deliveries').select('*').eq('project_id',curProjectId).order('created_at',{ascending:false});
@@ -10674,75 +10765,75 @@ async function loadDeliveries(){
 
 function renderDeliveries(){
   var list=document.getElementById('delivery-list');
-  if(!allDeliveries.length){list.innerHTML='<div style="text-align:center;padding:40px;color:var(--text2)">暂无交付记录</div>';return}
-  var statusMap={pending:'待交付',delivered:'已交付',accepted:'已验收',rejected:'已拒收'};
-  var h='';
+  if(!allDeliveries.length){list.innerHTML='<div style="text-align:center;padding:40px;color:var(--text2)">\u6682\u65e0\u4ea4\u4ed8\u8bb0\u5f55</div>';return}
+  var statusMap={pending:'\u5f85\u4ea4\u4ed8',delivered:'\u5df2\u4ea4\u4ed8',accepted:'\u5df2\u9a8c\u6536',rejected:'\u5df2\u62d2\u6536'};
+  var s='';
   for(var i=0;i<allDeliveries.length;i++){
     var d=allDeliveries[i];
-    h+='<div class="delivery-item">';
-    h+='<div style="flex:1;min-width:200px"><div style="font-weight:600;font-size:14px;color:var(--text)">'+escHtml(d.title)+'</div>';
-    h+='<div style="font-size:12px;color:var(--text2)">'+(d.description||'')+' '+(d.delivery_date?'📅 '+d.delivery_date:'')+'</div></div>';
-    h+='<div style="display:flex;align-items:center;gap:8px">';
-    h+='<span class="project-card-status status-'+d.status+'">'+(statusMap[d.status]||d.status)+'</span>';
-    h+='<button class="btn-sm" onclick="openDeliveryForm(\''+d.id+'\')">✏️</button>';
-    h+='<button class="btn-sm btn-sm-danger" onclick="deleteDelivery(\''+d.id+'\')">🗑</button>';
-    h+='</div></div>';
+    s+='<div class="delivery-item">';
+    s+='<div style="flex:1;min-width:200px"><div style="font-weight:600;font-size:14px;color:var(--text)">'+h(d.title)+'</div>';
+    s+='<div style="font-size:12px;color:var(--text2)">'+h(d.description||'')+' '+(d.delivery_date?'\U0001f4c5 '+d.delivery_date:'')+'</div></div>';
+    s+='<div style="display:flex;align-items:center;gap:8px">';
+    s+='<span class="project-card-status status-'+d.status+'">'+(statusMap[d.status]||d.status)+'</span>';
+    s+='<button class="btn-sm" onclick="openDeliveryForm(\''+d.id+'\')">\u270f\ufe0f</button>';
+    s+='<button class="btn-sm btn-sm-danger" onclick="deleteDelivery(\''+d.id+'\')">\U0001f5d1</button>';
+    s+='</div></div>';
   }
-  list.innerHTML=h;
+  list.innerHTML=s;
 }
 
 function openDeliveryForm(id){
   var d=id?allDeliveries.find(function(x){return x.id===id}):null;
-  var h='<div class="modal-overlay" id="delivery-form-modal"><div class="modal-sheet"><h3>'+(d?'编辑交付':'新建交付')+'</h3>';
-  h+='<div class="form-group"><label>交付标题 *</label><input id="df-title" placeholder="交付物名称" value="'+escHtml(d?d.title||'':'')+'"></div>';
-  h+='<div class="form-group"><label>描述</label><textarea id="df-desc" rows="2" placeholder="交付内容描述...">'+escHtml(d?d.description||'':'')+'</textarea></div>';
-  h+='<div class="form-group"><label>交付日期</label><input id="df-date" type="date" value="'+(d?d.delivery_date||'':'')+'"></div>';
-  h+='<div class="form-group"><label>验收标准</label><input id="df-criteria" placeholder="验收条件" value="'+escHtml(d?d.acceptance_criteria||'':'')+'"></div>';
-  var statuses=[{v:'pending',t:'待交付'},{v:'delivered',t:'已交付'},{v:'accepted',t:'已验收'},{v:'rejected',t:'已拒收'}];
-  h+='<div class="form-group"><label>状态</label><select id="df-status">';
-  for(var i=0;i<statuses.length;i++)h+='<option value="'+statuses[i].v+'"'+(d&&d.status===statuses[i].v?' selected':'')+'>'+statuses[i].t+'</option>';
-  h+='</select></div>';
-  h+='<div class="form-group"><label>备注</label><textarea id="df-notes" rows="2" placeholder="备注...">'+escHtml(d?d.notes||'':'')+'</textarea></div>';
-  if(d)h+='<input type="hidden" id="df-edit-id" value="'+d.id+'">';
-  h+='<div class="modal-actions"><button class="btn-cancel" onclick="document.getElementById(\'delivery-form-modal\').remove()">取消</button>';
-  h+='<button class="btn-save" onclick="saveDelivery()">保存</button>';
-  if(d)h+='<button class="btn-save" style="background:var(--warning)" onclick="requestAcceptanceApproval(\''+d.id+'\')">📋 申请验收审批</button>';
-  h+='</div></div></div>';
-  document.body.insertAdjacentHTML('beforeend',h);
+  var s='<div class="modal-overlay" id="delivery-form-modal"><div class="modal-sheet"><h3>'+(d?'\u7f16\u8f91\u4ea4\u4ed8':'\u65b0\u5efa\u4ea4\u4ed8')+'</h3>';
+  s+='<div class="form-group"><label>\u4ea4\u4ed8\u6807\u9898 *</label><input id="df-title" placeholder="\u4ea4\u4ed8\u7269\u540d\u79f0" value="'+h(d?d.title||'':'')+'"></div>';
+  s+='<div class="form-group"><label>\u63cf\u8ff0</label><textarea id="df-desc" rows="2" placeholder="\u4ea4\u4ed8\u5185\u5bb9\u63cf\u8ff0...">'+h(d?d.description||'':'')+'</textarea></div>';
+  s+='<div class="form-group"><label>\u4ea4\u4ed8\u65e5\u671f</label><input id="df-date" type="date" value="'+(d?d.delivery_date||'':'')+'"></div>';
+  s+='<div class="form-group"><label>\u9a8c\u6536\u6807\u51c6</label><input id="df-criteria" placeholder="\u9a8c\u6536\u6761\u4ef6" value="'+h(d?d.acceptance_criteria||'':'')+'"></div>';
+  var statuses=[{v:'pending',t:'\u5f85\u4ea4\u4ed8'},{v:'delivered',t:'\u5df2\u4ea4\u4ed8'},{v:'accepted',t:'\u5df2\u9a8c\u6536'},{v:'rejected',t:'\u5df2\u62d2\u6536'}];
+  s+='<div class="form-group"><label>\u72b6\u6001</label><select id="df-status">';
+  for(var i=0;i<statuses.length;i++)s+='<option value="'+statuses[i].v+'"'+(d&&d.status===statuses[i].v?' selected':'')+'>'+statuses[i].t+'</option>';
+  s+='</select></div>';
+  s+='<div class="form-group"><label>\u5907\u6ce8</label><textarea id="df-notes" rows="2" placeholder="\u5907\u6ce8...">'+h(d?d.notes||'':'')+'</textarea></div>';
+  if(d)s+='<input type="hidden" id="df-edit-id" value="'+d.id+'">';
+  s+='<div class="modal-actions"><button class="btn-cancel" onclick="document.getElementById(\'delivery-form-modal\').remove()">\u53d6\u6d88</button>';
+  s+='<button class="btn-save" onclick="saveDelivery()">\u4fdd\u5b58</button>';
+  if(d)s+='<button class="btn-save" style="background:var(--warning)" onclick="requestAcceptanceApproval(\''+d.id+'\')">\U0001f4cb \u7533\u8bf7\u9a8c\u6536\u5ba1\u6279</button>';
+  s+='</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend',s);
 }
 
 async function saveDelivery(){
   var title=document.getElementById('df-title').value.trim();
-  if(!title){showToast('请输入交付标题');return}
+  if(!title){showToast('\u8bf7\u8f93\u5165\u4ea4\u4ed8\u6807\u9898');return}
   var editEl=document.getElementById('df-edit-id');
   var row={project_id:curProjectId,title:title,description:document.getElementById('df-desc').value.trim(),delivery_date:document.getElementById('df-date').value||null,acceptance_criteria:document.getElementById('df-criteria').value.trim(),status:document.getElementById('df-status').value,notes:document.getElementById('df-notes').value.trim()};
   document.getElementById('delivery-form-modal').remove();
   if(editEl){
     var {error}=await sb.from('project_deliveries').update(row).eq('id',editEl.value);
-    if(error){showToast('更新失败: '+error.message);return}
+    if(error){showToast('\u66f4\u65b0\u5931\u8d25: '+error.message);return}
   }else{
     var {error}=await sb.from('project_deliveries').insert(row);
-    if(error){showToast('创建失败: '+error.message);return}
+    if(error){showToast('\u521b\u5efa\u5931\u8d25: '+error.message);return}
   }
-  loadDeliveries();showToast(editEl?'已更新':'已创建');
+  loadDeliveries();showToast(editEl?'\u5df2\u66f4\u65b0':'\u5df2\u521b\u5efa');
 }
 
 async function deleteDelivery(id){
-  if(!confirm('确定删除该交付记录？'))return;
+  if(!confirm('\u786e\u5b9a\u5220\u9664\u8be5\u4ea4\u4ed8\u8bb0\u5f55\uff1f'))return;
   var {error}=await sb.from('project_deliveries').delete().eq('id',id);
-  if(error){showToast('删除失败: '+error.message);return}
-  loadDeliveries();showToast('已删除');
+  if(error){showToast('\u5220\u9664\u5931\u8d25: '+error.message);return}
+  loadDeliveries();showToast('\u5df2\u5220\u9664');
 }
 
 async function requestAcceptanceApproval(deliveryId){
   var d=allDeliveries.find(function(x){return x.id===deliveryId});
   if(!d)return;
-  var {error}=await sb.from('approval_requests').insert({company_id:currentCompanyId,requestor_id:currentUser.id,title:'交付验收审批 - '+d.title,type:'交付验收审批',content:{detail:'项目: '+curProjectName+'\n交付物: '+d.title+'\n验收标准: '+(d.acceptance_criteria||'无')},status:'pending',total_steps:1});
-  if(error){showToast('提交审批失败: '+error.message);return}
-  showToast('验收审批已提交');
+  var {error}=await sb.from('approval_requests').insert({company_id:currentCompanyId,requestor_id:currentUser.id,title:'\u4ea4\u4ed8\u9a8c\u6536\u5ba1\u6279 - '+d.title,type:'\u4ea4\u4ed8\u9a8c\u6536\u5ba1\u6279',content:{detail:'\u9879\u76ee: '+curProjectName+'\n\u4ea4\u4ed8\u7269: '+d.title+'\n\u9a8c\u6536\u6807\u51c6: '+(d.acceptance_criteria||'\u65e0')},status:'pending',total_steps:1});
+  if(error){showToast('\u63d0\u4ea4\u5ba1\u6279\u5931\u8d25: '+error.message);return}
+  showToast('\u9a8c\u6536\u5ba1\u6279\u5df2\u63d0\u4ea4');
 }
 
-// ── Payments ──
+// === Payments ===
 async function loadPayments(){
   if(!curProjectId)return;
   var {data,error}=await sb.from('project_payments').select('*').eq('project_id',curProjectId).order('created_at',{ascending:false});
@@ -10753,64 +10844,63 @@ async function loadPayments(){
 
 function renderPayments(){
   var list=document.getElementById('payment-list');
-  if(!allPayments.length){list.innerHTML='<div style="text-align:center;padding:40px;color:var(--text2)">暂无收款记录</div>';return}
-  var statusMap={pending:'待收款',received:'已收款',overdue:'已逾期'};
-  var h='';var total=0;
+  if(!allPayments.length){list.innerHTML='<div style="text-align:center;padding:40px;color:var(--text2)">\u6682\u65e0\u6536\u6b3e\u8bb0\u5f55</div>';return}
+  var statusMap={pending:'\u5f85\u6536\u6b3e',received:'\u5df2\u6536\u6b3e',overdue:'\u5df2\u903e\u671f'};
+  var s='';var total=0;
   for(var i=0;i<allPayments.length;i++){
     var pm=allPayments[i];
     total+=pm.amount||0;
-    h+='<div class="payment-item">';
-    h+='<div style="flex:1;min-width:200px"><div style="font-weight:600;font-size:14px;color:var(--text)">'+escHtml(pm.title)+'</div>';
-    h+='<div style="font-size:12px;color:var(--text2)">'+(pm.invoice_no?'发票: '+escHtml(pm.invoice_no)+' ':'')+(pm.payment_method?escHtml(pm.payment_method)+' ':'')+(pm.payment_date?'📅 '+pm.payment_date:'')+'</div></div>';
-    h+='<div style="display:flex;align-items:center;gap:8px">';
-    h+='<span style="font-weight:700;color:var(--text);margin-right:8px">'+formatMoney(pm.amount||0)+'</span>';
-    h+='<span class="project-card-status status-'+pm.status+'">'+(statusMap[pm.status]||pm.status)+'</span>';
-    h+='<button class="btn-sm" onclick="openPaymentForm(\''+pm.id+'\')">✏️</button>';
-    h+='<button class="btn-sm btn-sm-danger" onclick="deletePayment(\''+pm.id+'\')">🗑</button>';
-    h+='</div></div>';
+    s+='<div class="payment-item">';
+    s+='<div style="flex:1;min-width:200px"><div style="font-weight:600;font-size:14px;color:var(--text)">'+h(pm.title)+'</div>';
+    s+='<div style="font-size:12px;color:var(--text2)">'+(pm.invoice_no?'\u53d1\u7968: '+h(pm.invoice_no)+' ':'')+(pm.payment_method?h(pm.payment_method)+' ':'')+(pm.payment_date?'\U0001f4c5 '+pm.payment_date:'')+'</div></div>';
+    s+='<div style="display:flex;align-items:center;gap:8px">';
+    s+='<span style="font-weight:700;color:var(--text);margin-right:8px">'+formatMoney(pm.amount||0)+'</span>';
+    s+='<span class="project-card-status status-'+pm.status+'">'+(statusMap[pm.status]||pm.status)+'</span>';
+    s+='<button class="btn-sm" onclick="openPaymentForm(\''+pm.id+'\')">\u270f\ufe0f</button>';
+    s+='<button class="btn-sm btn-sm-danger" onclick="deletePayment(\''+pm.id+'\')">\U0001f5d1</button>';
+    s+='</div></div>';
   }
-  h+='<div style="text-align:right;font-weight:700;font-size:14px;margin-top:8px;color:var(--text)">合计: '+formatMoney(total)+'</div>';
-  list.innerHTML=h;
+  s+='<div style="text-align:right;font-weight:700;font-size:14px;margin-top:8px;color:var(--text)">\u5408\u8ba1: '+formatMoney(total)+'</div>';
+  list.innerHTML=s;
 }
 
 function openPaymentForm(id){
   var pm=id?allPayments.find(function(x){return x.id===id}):null;
-  var h='<div class="modal-overlay" id="payment-form-modal"><div class="modal-sheet"><h3>'+(pm?'编辑收款':'新建收款')+'</h3>';
-  h+='<div class="form-group"><label>收款标题 *</label><input id="pmf-title" placeholder="如：首付款、尾款" value="'+escHtml(pm?pm.title||'':'')+'"></div>';
-  h+='<div class="form-row"><div class="form-group"><label>金额</label><input id="pmf-amount" type="number" step="0.01" placeholder="0.00" value="'+(pm?pm.amount||'':'')+'"></div><div class="form-group"><label>收款日期</label><input id="pmf-date" type="date" value="'+(pm?pm.payment_date||'':'')+'"></div></div>';
-  var statuses=[{v:'pending',t:'待收款'},{v:'received',t:'已收款'},{v:'overdue',t:'已逾期'}];
-  h+='<div class="form-row"><div class="form-group"><label>状态</label><select id="pmf-status">';
-  for(var i=0;i<statuses.length;i++)h+='<option value="'+statuses[i].v+'"'+(pm&&pm.status===statuses[i].v?' selected':'')+'>'+statuses[i].t+'</option>';
-  h+='</select></div><div class="form-group"><label>付款方式</label><input id="pmf-method" placeholder="银行转账/现金/支票" value="'+escHtml(pm?pm.payment_method||'':'')+'"></div></div>';
-  h+='<div class="form-row"><div class="form-group"><label>发票号</label><input id="pmf-invoice" placeholder="发票号码" value="'+escHtml(pm?pm.invoice_no||'':'')+'"></div><div class="form-group"><label>备注</label><input id="pmf-notes" placeholder="备注" value="'+escHtml(pm?pm.notes||'':'')+'"></div></div>';
-  if(pm)h+='<input type="hidden" id="pmf-edit-id" value="'+pm.id+'">';
-  h+='<div class="modal-actions"><button class="btn-cancel" onclick="document.getElementById(\'payment-form-modal\').remove()">取消</button><button class="btn-save" onclick="savePayment()">保存</button></div></div></div>';
-  document.body.insertAdjacentHTML('beforeend',h);
+  var s='<div class="modal-overlay" id="payment-form-modal"><div class="modal-sheet"><h3>'+(pm?'\u7f16\u8f91\u6536\u6b3e':'\u65b0\u5efa\u6536\u6b3e')+'</h3>';
+  s+='<div class="form-group"><label>\u6536\u6b3e\u6807\u9898 *</label><input id="pmf-title" placeholder="\u5982\uff1a\u9996\u4ed8\u6b3e\u3001\u5c3e\u6b3e" value="'+h(pm?pm.title||'':'')+'"></div>';
+  s+='<div class="form-row"><div class="form-group"><label>\u91d1\u989d</label><input id="pmf-amount" type="number" step="0.01" placeholder="0.00" value="'+(pm?pm.amount||'':'')+'"></div><div class="form-group"><label>\u6536\u6b3e\u65e5\u671f</label><input id="pmf-date" type="date" value="'+(pm?pm.payment_date||'':'')+'"></div></div>';
+  var statuses=[{v:'pending',t:'\u5f85\u6536\u6b3e'},{v:'received',t:'\u5df2\u6536\u6b3e'},{v:'overdue',t:'\u5df2\u903e\u671f'}];
+  s+='<div class="form-row"><div class="form-group"><label>\u72b6\u6001</label><select id="pmf-status">';
+  for(var i=0;i<statuses.length;i++)s+='<option value="'+statuses[i].v+'"'+(pm&&pm.status===statuses[i].v?' selected':'')+'>'+statuses[i].t+'</option>';
+  s+='</select></div><div class="form-group"><label>\u4ed8\u6b3e\u65b9\u5f0f</label><input id="pmf-method" placeholder="\u94f6\u884c\u8f6c\u8d26/\u73b0\u91d1/\u652f\u7968" value="'+h(pm?pm.payment_method||'':'')+'"></div></div>';
+  s+='<div class="form-row"><div class="form-group"><label>\u53d1\u7968\u53f7</label><input id="pmf-invoice" placeholder="\u53d1\u7968\u53f7\u7801" value="'+h(pm?pm.invoice_no||'':'')+'"></div><div class="form-group"><label>\u5907\u6ce8</label><input id="pmf-notes" placeholder="\u5907\u6ce8" value="'+h(pm?pm.notes||'':'')+'"></div></div>';
+  if(pm)s+='<input type="hidden" id="pmf-edit-id" value="'+pm.id+'">';
+  s+='<div class="modal-actions"><button class="btn-cancel" onclick="document.getElementById(\'payment-form-modal\').remove()">\u53d6\u6d88</button><button class="btn-save" onclick="savePayment()">\u4fdd\u5b58</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend',s);
 }
 
 async function savePayment(){
   var title=document.getElementById('pmf-title').value.trim();
-  if(!title){showToast('请输入收款标题');return}
+  if(!title){showToast('\u8bf7\u8f93\u5165\u6536\u6b3e\u6807\u9898');return}
   var editEl=document.getElementById('pmf-edit-id');
   var row={project_id:curProjectId,title:title,amount:parseFloat(document.getElementById('pmf-amount').value)||0,payment_date:document.getElementById('pmf-date').value||null,status:document.getElementById('pmf-status').value,payment_method:document.getElementById('pmf-method').value.trim(),invoice_no:document.getElementById('pmf-invoice').value.trim(),notes:document.getElementById('pmf-notes').value.trim()};
   document.getElementById('payment-form-modal').remove();
   if(editEl){
     var {error}=await sb.from('project_payments').update(row).eq('id',editEl.value);
-    if(error){showToast('更新失败: '+error.message);return}
+    if(error){showToast('\u66f4\u65b0\u5931\u8d25: '+error.message);return}
   }else{
     var {error}=await sb.from('project_payments').insert(row);
-    if(error){showToast('创建失败: '+error.message);return}
+    if(error){showToast('\u521b\u5efa\u5931\u8d25: '+error.message);return}
   }
-  loadPayments();showToast(editEl?'已更新':'已创建');
+  loadPayments();showToast(editEl?'\u5df2\u66f4\u65b0':'\u5df2\u521b\u5efa');
 }
 
 async function deletePayment(id){
-  if(!confirm('确定删除该收款记录？'))return;
+  if(!confirm('\u786e\u5b9a\u5220\u9664\u8be5\u6536\u6b3e\u8bb0\u5f55\uff1f'))return;
   var {error}=await sb.from('project_payments').delete().eq('id',id);
-  if(error){showToast('删除失败: '+error.message);return}
-  loadPayments();showToast('已删除');
+  if(error){showToast('\u5220\u9664\u5931\u8d25: '+error.message);return}
+  loadPayments();showToast('\u5df2\u5220\u9664');
 }
-
 </script>
 
 </div>
