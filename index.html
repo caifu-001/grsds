@@ -2307,6 +2307,7 @@ function trErr(msg){
   if(msg.indexOf('Invalid login')>=0)return'邮箱或密码错误';
   if(msg.indexOf('not found')>=0)return'账号不存在，请先注册';
   if(msg.indexOf('already registered')>=0)return'该邮箱已注册';
+  if(msg.indexOf('locked')>=0||msg.indexOf('security')>=0||msg.indexOf('rate')>=0||msg.indexOf('many requests')>=0||msg.indexOf('too many')>=0)return'密码错误次数过多，账号已临时锁定。请联系超级管理员或公司管理员重置密码';
   return msg;
 }
 var captchaCode='';
@@ -5574,7 +5575,7 @@ function renderAdminUsers(){
     var ll=u.last_login_at;
     var llText=ll?formatDateTime(ll):'从未登录';
     h+='<td style="font-size:12px;color:var(--text3)">'+escHtml(llText)+'</td>';
-    h+='<td><button class="btn-sm btn-sm-primary" onclick="openUserEditForm(\''+u.user_id+'\')" style="font-size:11px;padding:3px 10px">编辑</button>'+(isSuperAdmin?' <button class="btn-sm btn-sm-danger" onclick="openResetPwdForm(\''+u.user_id+'\',\''+escHtml(u.email||u.display_name||'-')+'\')" style="font-size:11px;padding:3px 8px">重置密码</button> <button class="btn-sm btn-sm-danger" onclick="deleteUser(\''+u.user_id+'\')" style="font-size:11px;padding:3px 8px;background:#e74c3c">删除</button>':'')+'</td></tr>';
+    h+='<td><button class="btn-sm btn-sm-primary" onclick="openUserEditForm(\''+u.user_id+'\')" style="font-size:11px;padding:3px 10px">编辑</button>'+((isSuperAdmin||currentUserRole==='admin')?' <button class="btn-sm btn-sm-danger" onclick="openResetPwdForm(\''+u.user_id+'\',\''+escHtml(u.email||u.display_name||'-')+'\')" style="font-size:11px;padding:3px 8px">重置密码</button>':'')+(isSuperAdmin?' <button class="btn-sm btn-sm-danger" onclick="deleteUser(\''+u.user_id+'\')" style="font-size:11px;padding:3px 8px;background:#e74c3c">删除</button>':'')+'</td></tr>';
   }
   el.innerHTML=h+'</tbody></table>';
 }
