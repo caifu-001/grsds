@@ -5526,7 +5526,7 @@ function openUserEditForm(userId){
     '<label style="font-size:13px;display:block;margin-bottom:4px">公司</label><input id="uedit-company" list="uedit-company-list" placeholder="输入或选择公司" autocomplete="off" value="'+escHtml(function(){var cab=typeof allAdminCompanies!=='undefined'?allAdminCompanies:allCompanies||[];for(var i=0;i<cab.length;i++){if(cab[i].id===u.company_id)return cab[i].name}return ''}())+'" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:10px"'+(isSuperAdmin?'':' readonly')+'>'+(isSuperAdmin?'<datalist id="uedit-company-list">'+(typeof allAdminCompanies!=='undefined'?allAdminCompanies:allCompanies||[]).map(function(c){return '<option value="'+escHtml(c.name)+'">';}).join('')+'</datalist>':'')+
     '<label style="font-size:13px;display:block;margin-bottom:4px">部门</label><select id="uedit-dept" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:10px">'+deptOpts+'</select>'+
     '<label style="font-size:13px;display:block;margin-bottom:4px">角色</label><select id="uedit-role" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:10px">'+roleOpts+'</select>'+
-    '<label style="font-size:13px;display:block;margin-bottom:4px">状态</label><select id="uedit-status" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:10px"><option value="active"'+(u.status==='active'||!u.status?' selected':'')+'>在职</option><option value="inactive"'+(u.status==='inactive'?' selected':'')+'>停用</option><option value="leave"'+(u.status==='leave'?' selected':'')+'>离职</option></select>'+
+    (isSuperAdmin?'<label style="font-size:13px;display:block;margin-bottom:4px">状态</label><select id="uedit-status" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:10px"><option value="active"'+(u.status==='active'||!u.status?' selected':'')+'>在职</option><option value="inactive"'+(u.status==='inactive'?' selected':'')+'>停用</option><option value="leave"'+(u.status==='leave'?' selected':'')+'>离职</option></select>':'')+
     '<div class="btns"><button class="btn-cancel" onclick="closeUserEditForm()">取消</button><button class="btn-confirm" onclick="saveUserEdit(\''+userId+'\')">保存</button></div></div>';
   document.body.appendChild(div);
 }
@@ -5544,7 +5544,7 @@ async function saveUserEdit(userId){
     phone:document.getElementById('uedit-phone').value.trim(),
     department_id:parseInt(document.getElementById('uedit-dept').value)||null,
     role:role,role_id:roleId,
-    status:document.getElementById('uedit-status').value,
+    status:isSuperAdmin?document.getElementById('uedit-status').value:undefined,
     company_id:companyId
   };
   var error=null;
@@ -9545,6 +9545,7 @@ async function saveEmployee(){
   }else{showToast('新建员工请使用"添加用户"功能')}
 }
 async function toggleEmpStatus(uid,newStatus){
+  if(!isSuperAdmin&&currentUserRole!=='admin'){showToast('权限不足');return;}
   if(!confirm('确认将员工设为'+(newStatus==='inactive'?'离职':'在职')+'？'))return;
   if(newStatus==='inactive'){
     var reassign=prompt('输入交接员工ID（留空回收公共池）:','');
