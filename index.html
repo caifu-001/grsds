@@ -4816,19 +4816,22 @@ async function pollNotifications(){
   notifUnread=count||0;updateBellBadge();
 }
 function showProjectsDirect(){
-  // Hide all top-level views
+  // DIAG STEP 1: hide other views
   var allViews=['home-view','client-view','order-view','reports-view','admin-view','sales-view','inventory-view','suppliers-view','performance-view','leads-view','collab-view','service-view','purchase-view'];
   for(var i=0;i<allViews.length;i++){var v=document.getElementById(allViews[i]);if(v){v.classList.add('hidden');v.style.display='none'}}
-  // Show projects-view
+  // DIAG STEP 2: brute-force show projects-view
   var pv=document.getElementById('projects-view');
-  if(!pv){console.error('showProjectsDirect: projects-view not found');return}
+  if(!pv){return}
   pv.className='';
-  pv.style.cssText='display:block;visibility:visible;opacity:1';
+  pv.style.cssText='display:block;visibility:visible;opacity:1;background:#fff;min-height:60vh;border:4px solid red';
+  // DIAG: write red text BEFORE calling switchProjectTab
+  pv.innerHTML='<div style="padding:20px;background:#ff0;color:red;font-size:24px;font-weight:bold;text-align:center">🔴 DIAG: showProjectsDirect ran! projects-view is visible. Calling switchProjectTab...</div><div id="project-list-panel" class="project-panel" style="display:block"><div id="pm-project-list" style="display:flex;flex-direction:column;gap:8px"><div style="text-align:center;padding:40px">等待 loadProjects...</div></div></div><div id="project-stages-panel" class="project-panel hidden"></div><div id="project-bidding-panel" class="project-panel hidden"></div><div id="project-contracts-panel" class="project-panel hidden"></div><div id="project-delivery-panel" class="project-panel hidden"></div><div id="project-payment-panel" class="project-panel hidden"></div>';
   // Deactivate all tabs
   var tabs=document.querySelectorAll('.topbar-tab');for(var i=0;i<tabs.length;i++)tabs[i].classList.remove('active');
-  document.getElementById('tab-projects').classList.add('active');
+  var tproj=document.getElementById('tab-projects');if(tproj)tproj.classList.add('active');
   document.getElementById('topbar-title').textContent='项目管理';
-  if(typeof switchProjectTab==='function'){switchProjectTab('list')}
+  // DIAG STEP 3: call switchProjectTab after a short delay so we can see the diag text
+  if(typeof switchProjectTab==='function'){setTimeout(function(){switchProjectTab('list')},100)}
 }
 function switchTab(tab){
   var cv=document.getElementById('client-view');
