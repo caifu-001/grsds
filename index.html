@@ -2309,7 +2309,7 @@ input,select,textarea,button{font-family:inherit}
    <h3 style="font-size:16px;font-weight:700;margin:0">项目管理</h3>
    <button class="btn-sm btn-sm-primary" onclick="openProjectForm()">+ 新建项目</button>
   </div>
-  <div id="pm-project-list" style="display:flex;flex-direction:column;gap:8px"></div>
+  <div id="pm-project-list" style="display:flex;flex-direction:column;gap:8px"><div style="text-align:center;padding:40px;color:var(--text2)">加载中...</div></div>
  </div>
  <div id="project-stages-panel" class="project-panel hidden">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -10446,11 +10446,17 @@ function switchProjectTab(tab){
 
 async function loadProjects(){
   var list=document.getElementById('pm-project-list');
+  if(!list){console.error('pm-project-list not found');return}
   if(!currentCompanyId){list.innerHTML='<div style="text-align:center;padding:40px;color:var(--text2)">未登录公司，请确认已完成公司注册</div>';return}
-  var {data,error}=await sb.from('projects').select('*').eq('company_id',currentCompanyId).order('created_at',{ascending:false});
-  if(error){list.innerHTML='<div style="text-align:center;padding:40px;color:#e74c3c">加载失败: '+error.message+'。请确认 projects 表是否已在 Supabase 中创建（执行 project_management.sql）</div>';return}
-  allProjects=data||[];
-  renderProjects();
+  try {
+    var {data,error}=await sb.from('projects').select('*').eq('company_id',currentCompanyId).order('created_at',{ascending:false});
+    if(error){list.innerHTML='<div style="text-align:center;padding:40px;color:#e74c3c">加载失败: '+error.message+'。请确认 projects 表是否已在 Supabase 中创建（执行 project_management.sql）</div>';return}
+    allProjects=data||[];
+    renderProjects();
+  } catch(e) {
+    list.innerHTML='<div style="text-align:center;padding:40px;color:#e74c3c">加载异常: '+e.message+'</div>';
+    console.error(e);
+  }
 }
 
 function renderProjects(){
