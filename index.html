@@ -2297,7 +2297,7 @@ input,select,textarea,button{font-family:inherit}
  </div>
 
 <!-- ===== Projects View ===== -->
-<div id="projects-view" style="display:none">
+<div id="projects-view" class="hidden">
  <div class="sub-tabs" style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;gap:4px;flex-wrap:wrap">
   <button class="sub-tab active" data-ptab="list" onclick="switchProjectTab('list')">项目列表</button>
   <button class="sub-tab" data-ptab="stages" onclick="switchProjectTab('stages')">阶段管理</button>
@@ -4889,7 +4889,7 @@ function switchTab(tab){
     loadReportSummary();switchReportsTab('sales');
   }else if(tab==='service'){var sv2=document.getElementById('service-view');if(sv2)sv2.classList.remove('hidden');switchServiceTab('tickets');return}
   if(tab==='projects'){
-    var pjv=document.getElementById('projects-view');pjv.classList.remove('hidden');pjv.style.display='';
+    var pjv=document.getElementById('projects-view');pjv.classList.remove('hidden');
     document.getElementById('tab-projects').classList.add('active');
     document.getElementById('topbar-title').textContent='项目管理';
     fab.classList.add('hidden');
