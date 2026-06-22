@@ -10445,9 +10445,10 @@ function switchProjectTab(tab){
 }
 
 async function loadProjects(){
-  if(!currentCompanyId)return;
+  var list=document.getElementById('pm-project-list');
+  if(!currentCompanyId){list.innerHTML='<div style="text-align:center;padding:40px;color:var(--text2)">未登录公司，请确认已完成公司注册</div>';return}
   var {data,error}=await sb.from('projects').select('*').eq('company_id',currentCompanyId).order('created_at',{ascending:false});
-  if(error){console.error(error);return}
+  if(error){list.innerHTML='<div style="text-align:center;padding:40px;color:#e74c3c">加载失败: '+error.message+'。请确认 projects 表是否已在 Supabase 中创建（执行 project_management.sql）</div>';return}
   allProjects=data||[];
   renderProjects();
 }
