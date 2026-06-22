@@ -8681,7 +8681,24 @@ function renderClient360Overview(c,orders){
     if(data&&data.length)lastEng=new Date(data[0].created_at).toLocaleDateString('zh-CN');
     document.getElementById('c360-last-engage').textContent=lastEng;
   })();
-  var html='<div class="c360-card"><div class="c360-card-title">📋 基本信息</div>';
+  var html='<div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button class="btn-sm btn-sm-primary" onclick="closeClient360();openForm(\''+c.id+'\')">✏️ 编辑客户</button></div>';
+  // ── 项目信息
+  var projs=[];
+  try{projs=JSON.parse(c.projects||'[]');if(!Array.isArray(projs))projs=[]}catch(e){projs=[]}
+  if(projs.length>0){
+    html+='<div class="c360-card"><div class="c360-card-title">📦 项目信息</div>';
+    for(var pj=0;pj<projs.length;pj++){
+      var pr=projs[pj];
+      html+='<div style="margin-bottom:10px;padding:10px;background:var(--primary-light);border-radius:8px">';
+      html+='<div style="font-weight:600;font-size:14px;margin-bottom:6px">'+h(pr.project_name||'项目#'+(pj+1))+'</div>';
+      var pfields=[['招标日期',pr.bidding_date||'-'],['中标人',pr.bidder_name||'-'],['中标人电话',pr.bidder_phone||'-'],['中标公司',pr.bidder_company||'-'],['中标金额',pr.bid_amount?formatMoney(pr.bid_amount):'-']];
+      for(var pf=0;pf<pfields.length;pf++)html+='<div class="c360-info-row" style="font-size:12px"><span class="c360-info-label">'+pfields[pf][0]+'</span><span class="c360-info-value">'+h(pfields[pf][1])+'</span></div>';
+      html+='</div>';
+    }
+    html+='</div>';
+  }
+  // ── 基本信息
+  html+='<div class="c360-card"><div class="c360-card-title">📋 基本信息</div>';
   var rows=[
     ['行业',c.industry||'-'],['规模',c.scale||'-'],['来源',c.source||'-'],
     ['信用等级',c.credit_rating||'-'],['客户等级',c.grade?c.grade+'级':'-'],
