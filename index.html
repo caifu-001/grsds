@@ -928,7 +928,7 @@ input,select,textarea,button{font-family:inherit}
     <button class="topbar-tab" id="tab-reports" onclick="switchTab('reports')">报表</button>
    <button class="topbar-tab" id="tab-inventory" onclick="switchTab('inventory')">库存</button>
 <button class="topbar-tab" id="tab-service" onclick="switchTab('service')">售后</button>
-<button class="topbar-tab" id="tab-projects" onclick="switchTab('projects')">项目</button>
+<button class="topbar-tab" id="tab-projects" onclick="switchTab('projects')" data-direct="1">项目</button>
    <button class="notif-bell" id="notif-bell" onclick="toggleNotifPanel()" title="通知">🔔<span id="notif-badge" class="notif-badge hidden">0</span></button>
    <button class="topbar-tab hidden" id="tab-admin" onclick="switchTab('admin')">管理</button>
   </div>
@@ -4890,11 +4890,11 @@ function switchTab(tab){
     loadReportSummary();switchReportsTab('sales');
   }else if(tab==='service'){var sv2=document.getElementById('service-view');if(sv2)sv2.classList.remove('hidden');switchServiceTab('tickets');return}
   if(tab==='projects'){
-    var pjv=document.getElementById('projects-view');pjv.classList.remove('hidden');
+    var pjv=document.getElementById('projects-view');pjv.classList.remove('hidden');pjv.style.display='';pjv.style.visibility='visible';
     document.getElementById('tab-projects').classList.add('active');
     document.getElementById('topbar-title').textContent='项目管理';
     fab.classList.add('hidden');
-    switchProjectTab('list');
+    if(typeof switchProjectTab==='function'){switchProjectTab('list')}else{console.error('switchProjectTab not defined')};
     return;
   }
   if(tab==='admin'){
