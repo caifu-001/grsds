@@ -10444,9 +10444,9 @@ function renderProjects(){
     var p=allProjects[i];
     var client=allClients.find(function(c){return c.id===p.client_id});
     var cn=client?client.name:'未关联';
-    h+='<div class="project-card" onclick="openProjectDetail(\''+p.id+'\',\''+h(p.name)+'\')">';
-    h+='<div class="project-card-header"><span class="project-card-name">'+h(p.name)+'</span><span class="project-card-status status-'+p.status+'">'+(statusMap[p.status]||p.status)+'</span></div>';
-    h+='<div class="project-card-meta"><span>🏢 '+h(cn)+'</span><span>💰 '+(p.budget?formatMoney(p.budget):'-')+'</span>';
+    h+='<div class="project-card" onclick="openProjectDetail(\''+p.id+'\',\''+escHtml(p.name)+'\')">';
+    h+='<div class="project-card-header"><span class="project-card-name">'+escHtml(p.name)+'</span><span class="project-card-status status-'+p.status+'">'+(statusMap[p.status]||p.status)+'</span></div>';
+    h+='<div class="project-card-meta"><span>🏢 '+escHtml(cn)+'</span><span>💰 '+(p.budget?formatMoney(p.budget):'-')+'</span>';
     if(p.start_date)h+='<span>📅 '+p.start_date+'</span>';
     if(p.end_date)h+='<span>→ '+p.end_date+'</span>';
     h+='</div></div>';
@@ -10470,16 +10470,16 @@ async function openProjectForm(id){
   var p=id?allProjects.find(function(x){return x.id===id}):null;
   var title=p?'编辑项目':'新建项目';
   var h='<div class="modal-overlay" id="project-form-modal"><div class="modal-sheet"><h3>'+title+'</h3>';
-  h+='<div class="form-group"><label>项目名称 *</label><input id="pf-name" placeholder="项目名称" value="'+h(p?p.name||'':'')+'"></div>';
+  h+='<div class="form-group"><label>项目名称 *</label><input id="pf-name" placeholder="项目名称" value="'+escHtml(p?p.name||'':'')+'"></div>';
   h+='<div class="form-row"><div class="form-group"><label>关联客户</label><select id="pf-client"><option value="">-- 不关联 --</option>';
-  for(var i=0;i<allClients.length;i++){var cl=allClients[i];h+='<option value="'+cl.id+'"'+(p&&p.client_id===cl.id?' selected':'')+'>'+h(cl.name)+'</option>'}
+  for(var i=0;i<allClients.length;i++){var cl=allClients[i];h+='<option value="'+cl.id+'"'+(p&&p.client_id===cl.id?' selected':'')+'>'+escHtml(cl.name)+'</option>'}
   h+='</select></div><div class="form-group"><label>项目预算</label><input id="pf-budget" type="number" step="0.01" placeholder="0.00" value="'+(p?p.budget||'':'')+'"></div></div>';
   h+='<div class="form-row"><div class="form-group"><label>开始日期</label><input id="pf-start" type="date" value="'+(p?p.start_date||'':'')+'"></div><div class="form-group"><label>预计结束</label><input id="pf-end" type="date" value="'+(p?p.end_date||'':'')+'"></div></div>';
   var statuses=[{v:'planning',t:'规划中'},{v:'in_progress',t:'进行中'},{v:'completed',t:'已完成'},{v:'suspended',t:'已暂停'}];
   h+='<div class="form-group"><label>项目状态</label><select id="pf-status">';
   for(var j=0;j<statuses.length;j++)h+='<option value="'+statuses[j].v+'"'+(p&&p.status===statuses[j].v?' selected':'')+'>'+statuses[j].t+'</option>';
   h+='</select></div>';
-  h+='<div class="form-group"><label>项目描述</label><textarea id="pf-desc" rows="3" placeholder="项目描述...">'+h(p?p.description||'':'')+'</textarea></div>';
+  h+='<div class="form-group"><label>项目描述</label><textarea id="pf-desc" rows="3" placeholder="项目描述...">'+escHtml(p?p.description||'':'')+'</textarea></div>';
   if(id)h+='<input type="hidden" id="pf-edit-id" value="'+id+'">';
   h+='<div class="modal-actions"><button class="btn-cancel" onclick="document.getElementById(\'project-form-modal\').remove()">取消</button><button class="btn-save" onclick="saveProject()">保存</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend',h);
@@ -10526,7 +10526,7 @@ function renderStages(){
   for(var i=0;i<allStages.length;i++){
     var s=allStages[i];
     h+='<div class="stage-item">';
-    h+='<div class="stage-item-left"><div class="stage-item-name">'+h(s.name)+'</div><div class="stage-item-dates">'+h(s.description||'')+' '+(s.start_date||'')+' → '+(s.end_date||'')+'</div></div>';
+    h+='<div class="stage-item-left"><div class="stage-item-name">'+escHtml(s.name)+'</div><div class="stage-item-dates">'+escHtml(s.description||'')+' '+(s.start_date||'')+' → '+(s.end_date||'')+'</div></div>';
     h+='<div class="stage-item-right">';
     h+='<span class="project-card-status status-'+s.status+'">'+(statusMap[s.status]||s.status)+'</span>';
     h+='<button class="btn-sm" onclick="openStageForm(\''+s.id+'\')">✏️</button>';
@@ -10539,8 +10539,8 @@ function renderStages(){
 function openStageForm(id){
   var s=id?allStages.find(function(x){return x.id===id}):null;
   var h='<div class="modal-overlay" id="stage-form-modal"><div class="modal-sheet"><h3>'+(s?'编辑阶段':'添加阶段')+'</h3>';
-  h+='<div class="form-group"><label>阶段名称 *</label><input id="sf-name" placeholder="如：需求调研、方案设计、开发测试" value="'+h(s?s.name||'':'')+'"></div>';
-  h+='<div class="form-group"><label>描述</label><input id="sf-desc" placeholder="阶段说明" value="'+h(s?s.description||'':'')+'"></div>';
+  h+='<div class="form-group"><label>阶段名称 *</label><input id="sf-name" placeholder="如：需求调研、方案设计、开发测试" value="'+escHtml(s?s.name||'':'')+'"></div>';
+  h+='<div class="form-group"><label>描述</label><input id="sf-desc" placeholder="阶段说明" value="'+escHtml(s?s.description||'':'')+'"></div>';
   h+='<div class="form-row"><div class="form-group"><label>开始日期</label><input id="sf-start" type="date" value="'+(s?s.start_date||'':'')+'"></div><div class="form-group"><label>结束日期</label><input id="sf-end" type="date" value="'+(s?s.end_date||'':'')+'"></div></div>';
   var statuses=[{v:'pending',t:'待开始'},{v:'in_progress',t:'进行中'},{v:'completed',t:'已完成'}];
   h+='<div class="form-group"><label>状态</label><select id="sf-status">';
@@ -10592,16 +10592,16 @@ function renderBiddings(){
     var b=allBiddings[i];
     h+='<div class="bidding-item">';
     h+='<div class="bidding-item-header">';
-    h+='<div class="bidding-item-title">'+h(b.title)+'</div>';
+    h+='<div class="bidding-item-title">'+escHtml(b.title)+'</div>';
     h+='<div style="display:flex;gap:6px;align-items:center">';
     if(b.seal_requested)h+='<span class="seal-badge">🔒 待盖章</span>';
     h+='<span class="project-card-status status-'+b.status+'">'+(statusMap[b.status]||b.status)+'</span>';
     h+='<button class="btn-sm" onclick="openBiddingForm(\''+b.id+'\')">✏️</button>';
     h+='<button class="btn-sm btn-sm-danger" onclick="deleteBidding(\''+b.id+'\')">🗑</button>';
     h+='</div></div>';
-    h+='<div class="bidding-item-meta"><span>💰 '+(b.bid_amount?formatMoney(b.bid_amount):'-')+'</span><span>📅 截止: '+(b.bid_deadline||'-')+'</span><span>📋 '+h(b.notes||'')+'</span></div>';
+    h+='<div class="bidding-item-meta"><span>💰 '+(b.bid_amount?formatMoney(b.bid_amount):'-')+'</span><span>📅 截止: '+(b.bid_deadline||'-')+'</span><span>📋 '+escHtml(b.notes||'')+'</span></div>';
     if(b.materials_needed&&b.materials_needed!=='[]'){
-      h+='<div style="margin-top:4px;font-size:11px;color:var(--text2)">📎 所需材料: '+h(b.materials_needed)+'</div>';
+      h+='<div style="margin-top:4px;font-size:11px;color:var(--text2)">📎 所需材料: '+escHtml(b.materials_needed)+'</div>';
     }
     h+='</div>';
   }
@@ -10611,15 +10611,15 @@ function renderBiddings(){
 function openBiddingForm(id){
   var b=id?allBiddings.find(function(x){return x.id===id}):null;
   var h='<div class="modal-overlay" id="bidding-form-modal"><div class="modal-sheet"><h3>'+(b?'编辑投标':'新建投标')+'</h3>';
-  h+='<div class="form-group"><label>投标标题 *</label><input id="bf-title" placeholder="投标项目名称" value="'+h(b?b.title||'':'')+'"></div>';
+  h+='<div class="form-group"><label>投标标题 *</label><input id="bf-title" placeholder="投标项目名称" value="'+escHtml(b?b.title||'':'')+'"></div>';
   h+='<div class="form-row"><div class="form-group"><label>投标金额</label><input id="bf-amount" type="number" step="0.01" placeholder="0.00" value="'+(b?b.bid_amount||'':'')+'"></div><div class="form-group"><label>投标截止</label><input id="bf-deadline" type="date" value="'+(b?b.bid_deadline||'':'')+'"></div></div>';
   var statuses=[{v:'preparing',t:'准备中'},{v:'submitted',t:'已提交'},{v:'won',t:'中标'},{v:'lost',t:'未中标'}];
   h+='<div class="form-group"><label>状态</label><select id="bf-status">';
   for(var i=0;i<statuses.length;i++)h+='<option value="'+statuses[i].v+'"'+(b&&b.status===statuses[i].v?' selected':'')+'>'+statuses[i].t+'</option>';
   h+='</select></div>';
-  h+='<div class="form-group"><label>所需材料（如标书/资质/公章）</label><input id="bf-materials" placeholder="如：营业执照副本、法人授权书、公章" value="'+h(b?b.materials_needed||'':'')+'"></div>';
+  h+='<div class="form-group"><label>所需材料（如标书/资质/公章）</label><input id="bf-materials" placeholder="如：营业执照副本、法人授权书、公章" value="'+escHtml(b?b.materials_needed||'':'')+'"></div>';
   h+='<div class="form-group"><label><input type="checkbox" id="bf-seal" style="width:auto"'+(b&&b.seal_requested?' checked':'')+'> 需要申请公章</label></div>';
-  h+='<div class="form-group"><label>备注</label><textarea id="bf-notes" rows="2" placeholder="备注...">'+h(b?b.notes||'':'')+'</textarea></div>';
+  h+='<div class="form-group"><label>备注</label><textarea id="bf-notes" rows="2" placeholder="备注...">'+escHtml(b?b.notes||'':'')+'</textarea></div>';
   if(b)h+='<input type="hidden" id="bf-edit-id" value="'+b.id+'">';
   h+='<div class="modal-actions"><button class="btn-cancel" onclick="document.getElementById(\'bidding-form-modal\').remove()">取消</button>';
   h+='<button class="btn-save" onclick="saveBidding()">保存</button>';
@@ -10680,7 +10680,7 @@ function renderDeliveries(){
   for(var i=0;i<allDeliveries.length;i++){
     var d=allDeliveries[i];
     h+='<div class="delivery-item">';
-    h+='<div style="flex:1;min-width:200px"><div style="font-weight:600;font-size:14px;color:var(--text)">'+h(d.title)+'</div>';
+    h+='<div style="flex:1;min-width:200px"><div style="font-weight:600;font-size:14px;color:var(--text)">'+escHtml(d.title)+'</div>';
     h+='<div style="font-size:12px;color:var(--text2)">'+(d.description||'')+' '+(d.delivery_date?'📅 '+d.delivery_date:'')+'</div></div>';
     h+='<div style="display:flex;align-items:center;gap:8px">';
     h+='<span class="project-card-status status-'+d.status+'">'+(statusMap[d.status]||d.status)+'</span>';
@@ -10694,15 +10694,15 @@ function renderDeliveries(){
 function openDeliveryForm(id){
   var d=id?allDeliveries.find(function(x){return x.id===id}):null;
   var h='<div class="modal-overlay" id="delivery-form-modal"><div class="modal-sheet"><h3>'+(d?'编辑交付':'新建交付')+'</h3>';
-  h+='<div class="form-group"><label>交付标题 *</label><input id="df-title" placeholder="交付物名称" value="'+h(d?d.title||'':'')+'"></div>';
-  h+='<div class="form-group"><label>描述</label><textarea id="df-desc" rows="2" placeholder="交付内容描述...">'+h(d?d.description||'':'')+'</textarea></div>';
+  h+='<div class="form-group"><label>交付标题 *</label><input id="df-title" placeholder="交付物名称" value="'+escHtml(d?d.title||'':'')+'"></div>';
+  h+='<div class="form-group"><label>描述</label><textarea id="df-desc" rows="2" placeholder="交付内容描述...">'+escHtml(d?d.description||'':'')+'</textarea></div>';
   h+='<div class="form-group"><label>交付日期</label><input id="df-date" type="date" value="'+(d?d.delivery_date||'':'')+'"></div>';
-  h+='<div class="form-group"><label>验收标准</label><input id="df-criteria" placeholder="验收条件" value="'+h(d?d.acceptance_criteria||'':'')+'"></div>';
+  h+='<div class="form-group"><label>验收标准</label><input id="df-criteria" placeholder="验收条件" value="'+escHtml(d?d.acceptance_criteria||'':'')+'"></div>';
   var statuses=[{v:'pending',t:'待交付'},{v:'delivered',t:'已交付'},{v:'accepted',t:'已验收'},{v:'rejected',t:'已拒收'}];
   h+='<div class="form-group"><label>状态</label><select id="df-status">';
   for(var i=0;i<statuses.length;i++)h+='<option value="'+statuses[i].v+'"'+(d&&d.status===statuses[i].v?' selected':'')+'>'+statuses[i].t+'</option>';
   h+='</select></div>';
-  h+='<div class="form-group"><label>备注</label><textarea id="df-notes" rows="2" placeholder="备注...">'+h(d?d.notes||'':'')+'</textarea></div>';
+  h+='<div class="form-group"><label>备注</label><textarea id="df-notes" rows="2" placeholder="备注...">'+escHtml(d?d.notes||'':'')+'</textarea></div>';
   if(d)h+='<input type="hidden" id="df-edit-id" value="'+d.id+'">';
   h+='<div class="modal-actions"><button class="btn-cancel" onclick="document.getElementById(\'delivery-form-modal\').remove()">取消</button>';
   h+='<button class="btn-save" onclick="saveDelivery()">保存</button>';
@@ -10760,8 +10760,8 @@ function renderPayments(){
     var pm=allPayments[i];
     total+=pm.amount||0;
     h+='<div class="payment-item">';
-    h+='<div style="flex:1;min-width:200px"><div style="font-weight:600;font-size:14px;color:var(--text)">'+h(pm.title)+'</div>';
-    h+='<div style="font-size:12px;color:var(--text2)">'+(pm.invoice_no?'发票: '+h(pm.invoice_no)+' ':'')+(pm.payment_method?h(pm.payment_method)+' ':'')+(pm.payment_date?'📅 '+pm.payment_date:'')+'</div></div>';
+    h+='<div style="flex:1;min-width:200px"><div style="font-weight:600;font-size:14px;color:var(--text)">'+escHtml(pm.title)+'</div>';
+    h+='<div style="font-size:12px;color:var(--text2)">'+(pm.invoice_no?'发票: '+escHtml(pm.invoice_no)+' ':'')+(pm.payment_method?escHtml(pm.payment_method)+' ':'')+(pm.payment_date?'📅 '+pm.payment_date:'')+'</div></div>';
     h+='<div style="display:flex;align-items:center;gap:8px">';
     h+='<span style="font-weight:700;color:var(--text);margin-right:8px">'+formatMoney(pm.amount||0)+'</span>';
     h+='<span class="project-card-status status-'+pm.status+'">'+(statusMap[pm.status]||pm.status)+'</span>';
@@ -10776,13 +10776,13 @@ function renderPayments(){
 function openPaymentForm(id){
   var pm=id?allPayments.find(function(x){return x.id===id}):null;
   var h='<div class="modal-overlay" id="payment-form-modal"><div class="modal-sheet"><h3>'+(pm?'编辑收款':'新建收款')+'</h3>';
-  h+='<div class="form-group"><label>收款标题 *</label><input id="pmf-title" placeholder="如：首付款、尾款" value="'+h(pm?pm.title||'':'')+'"></div>';
+  h+='<div class="form-group"><label>收款标题 *</label><input id="pmf-title" placeholder="如：首付款、尾款" value="'+escHtml(pm?pm.title||'':'')+'"></div>';
   h+='<div class="form-row"><div class="form-group"><label>金额</label><input id="pmf-amount" type="number" step="0.01" placeholder="0.00" value="'+(pm?pm.amount||'':'')+'"></div><div class="form-group"><label>收款日期</label><input id="pmf-date" type="date" value="'+(pm?pm.payment_date||'':'')+'"></div></div>';
   var statuses=[{v:'pending',t:'待收款'},{v:'received',t:'已收款'},{v:'overdue',t:'已逾期'}];
   h+='<div class="form-row"><div class="form-group"><label>状态</label><select id="pmf-status">';
   for(var i=0;i<statuses.length;i++)h+='<option value="'+statuses[i].v+'"'+(pm&&pm.status===statuses[i].v?' selected':'')+'>'+statuses[i].t+'</option>';
-  h+='</select></div><div class="form-group"><label>付款方式</label><input id="pmf-method" placeholder="银行转账/现金/支票" value="'+h(pm?pm.payment_method||'':'')+'"></div></div>';
-  h+='<div class="form-row"><div class="form-group"><label>发票号</label><input id="pmf-invoice" placeholder="发票号码" value="'+h(pm?pm.invoice_no||'':'')+'"></div><div class="form-group"><label>备注</label><input id="pmf-notes" placeholder="备注" value="'+h(pm?pm.notes||'':'')+'"></div></div>';
+  h+='</select></div><div class="form-group"><label>付款方式</label><input id="pmf-method" placeholder="银行转账/现金/支票" value="'+escHtml(pm?pm.payment_method||'':'')+'"></div></div>';
+  h+='<div class="form-row"><div class="form-group"><label>发票号</label><input id="pmf-invoice" placeholder="发票号码" value="'+escHtml(pm?pm.invoice_no||'':'')+'"></div><div class="form-group"><label>备注</label><input id="pmf-notes" placeholder="备注" value="'+escHtml(pm?pm.notes||'':'')+'"></div></div>';
   if(pm)h+='<input type="hidden" id="pmf-edit-id" value="'+pm.id+'">';
   h+='<div class="modal-actions"><button class="btn-cancel" onclick="document.getElementById(\'payment-form-modal\').remove()">取消</button><button class="btn-save" onclick="savePayment()">保存</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend',h);
