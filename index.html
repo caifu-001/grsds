@@ -928,7 +928,7 @@ input,select,textarea,button{font-family:inherit}
     <button class="topbar-tab" id="tab-reports" onclick="switchTab('reports')">报表</button>
    <button class="topbar-tab" id="tab-inventory" onclick="switchTab('inventory')">库存</button>
 <button class="topbar-tab" id="tab-service" onclick="switchTab('service')">售后</button>
-<button class="topbar-tab" id="tab-projects" onclick="switchTab('projects')" data-direct="1">项目</button>
+<button class="topbar-tab" id="tab-projects" onclick="showProjectsDirect()">项目</button>
    <button class="notif-bell" id="notif-bell" onclick="toggleNotifPanel()" title="通知">🔔<span id="notif-badge" class="notif-badge hidden">0</span></button>
    <button class="topbar-tab hidden" id="tab-admin" onclick="switchTab('admin')">管理</button>
   </div>
@@ -4814,6 +4814,21 @@ async function pollNotifications(){
   if(!currentUser||!currentCompanyId)return;
   var {count}=await sb.from('notifications').select('id',{count:'exact',head:true}).eq('company_id',currentCompanyId).eq('is_read',false);
   notifUnread=count||0;updateBellBadge();
+}
+function showProjectsDirect(){
+  // Hide all top-level views
+  var allViews=['home-view','client-view','order-view','reports-view','admin-view','sales-view','inventory-view','suppliers-view','performance-view','leads-view','collab-view','service-view','purchase-view'];
+  for(var i=0;i<allViews.length;i++){var v=document.getElementById(allViews[i]);if(v){v.classList.add('hidden');v.style.display='none'}}
+  // Show projects-view
+  var pv=document.getElementById('projects-view');
+  if(!pv){console.error('showProjectsDirect: projects-view not found');return}
+  pv.className='';
+  pv.style.cssText='display:block;visibility:visible;opacity:1';
+  // Deactivate all tabs
+  var tabs=document.querySelectorAll('.topbar-tab');for(var i=0;i<tabs.length;i++)tabs[i].classList.remove('active');
+  document.getElementById('tab-projects').classList.add('active');
+  document.getElementById('topbar-title').textContent='项目管理';
+  if(typeof switchProjectTab==='function'){switchProjectTab('list')}
 }
 function switchTab(tab){
   var cv=document.getElementById('client-view');
