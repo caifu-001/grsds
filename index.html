@@ -2305,6 +2305,7 @@ input,select,textarea,button{font-family:inherit}
   <button class="sub-tab" data-ptab="payment" onclick="switchProjectTab('payment')">项目收款</button>
  </div>
  <div id="project-list-panel" class="project-panel">
+  <div style="background:#ffeb3b;padding:8px 12px;margin-bottom:8px;border-radius:4px;font-size:13px;font-weight:700">🔧 DIAG: panel is visible - JS will replace this</div>
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
    <h3 style="font-size:16px;font-weight:700;margin:0">项目管理</h3>
    <button class="btn-sm btn-sm-primary" onclick="openProjectForm()">+ 新建项目</button>
@@ -10445,10 +10446,13 @@ function switchProjectTab(tab){
 }
 
 async function loadProjects(){
+  var diagBanner=document.querySelector('#project-list-panel > div[style]');
+  if(diagBanner&&diagBanner.textContent.indexOf('DIAG')>=0)diagBanner.remove();
   var list=document.getElementById('pm-project-list');
   if(!list){console.error('pm-project-list not found');return}
   if(!currentCompanyId){list.innerHTML='<div style="text-align:center;padding:40px;color:var(--text2)">未登录公司，请确认已完成公司注册</div>';return}
   try {
+    list.innerHTML='<div style="text-align:center;padding:40px;color:var(--text2)">查询中...</div>';
     var {data,error}=await sb.from('projects').select('*').eq('company_id',currentCompanyId).order('created_at',{ascending:false});
     if(error){list.innerHTML='<div style="text-align:center;padding:40px;color:#e74c3c">加载失败: '+error.message+'。请确认 projects 表是否已在 Supabase 中创建（执行 project_management.sql）</div>';return}
     allProjects=data||[];
