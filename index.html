@@ -891,30 +891,37 @@ document.addEventListener('DOMContentLoaded',function(){
   btn.style.cssText='position:fixed;top:10px;right:10px;z-index:99999;background:red;color:white;padding:12px 18px;font-size:18px;font-weight:bold;border-radius:8px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.3)';
   btn.textContent='🔴 TEST: Show Projects';
   btn.onclick=function(){
-    // NUCLEAR DIAG: call switchProjectTab directly and catch errors
-    var msg='=== Direct Execution Test ===\n\n';
-    msg+='switchTab: '+(typeof switchTab==='function'?'✅':'❌')+'\n';
-    msg+='switchProjectTab: '+(typeof switchProjectTab==='function'?'✅':'❌')+'\n';
+    var msg='=== NUCLEAR DIAG ===\n\n';
+    msg+='switchTab: '+(typeof switchTab==='function'?'✅':'❌')+'  ';
+    msg+='switchProjectTab: '+(typeof switchProjectTab==='function'?'✅':'❌')+'  ';
     msg+='loadProjects: '+(typeof loadProjects==='function'?'✅':'❌')+'\n';
     msg+='currentCompanyId: '+(typeof currentCompanyId!=='undefined'?currentCompanyId:'UNDEFINED')+'\n';
-    msg+='sb (supabase): '+(typeof sb!=='undefined'?'✅ available':'❌ UNDEFINED')+'\n';
+    msg+='sb: '+(typeof sb!=='undefined'?'✅':'❌')+'\n\n';
     var pv=document.getElementById('projects-view');
     msg+='projects-view exists: '+(pv?'✅':'❌')+'\n';
     var pl=document.getElementById('pm-project-list');
     msg+='pm-project-list exists: '+(pl?'✅':'❌')+'\n';
-    if(pl)msg+='pm-project-list innerHTML length: '+pl.innerHTML.length+'\n';
-    // Now try calling switchProjectTab
-    if(typeof switchProjectTab==='function'){
-      try{
-        // Show projects-view first
-        if(pv){pv.classList.remove('hidden');pv.style.display='block';pv.style.visibility='visible'}
-        msg+='\nCalling switchProjectTab("list")...\n';
-        switchProjectTab('list');
-        msg+='switchProjectTab returned OK';
-      }catch(e){
-        msg+='switchProjectTab THREW: '+e.message+'\n'+e.stack;
+    if(pl)msg+='pm-project-list innerHTML ['+pl.innerHTML.length+']: '+pl.innerHTML.substring(0,80)+'\n\n';
+    // Call switchTab
+    msg+='Calling switchTab("projects")...\n';
+    try{switchTab('projects')}catch(e){msg+='switchTab THREW: '+e.message+'\n'+e.stack}
+    // Check after 500ms
+    setTimeout(function(){
+      var msg2='=== AFTER switchTab("projects") ===\n\n';
+      var pv2=document.getElementById('projects-view');
+      if(pv2){
+        msg2+='projects-view.classList.contains("hidden"): '+pv2.classList.contains('hidden')+'\n';
+        msg2+='projects-view.style.display: "'+pv2.style.display+'"\n';
+        msg2+='projects-view.style.visibility: "'+pv2.style.visibility+'"\n';
+        msg2+='projects-view offsetHeight: '+pv2.offsetHeight+'px\n';
       }
-    }
+      var pl2=document.getElementById('pm-project-list');
+      if(pl2){
+        msg2+='pm-project-list innerHTML ['+pl2.innerHTML.length+']: '+pl2.innerHTML.substring(0,100)+'\n';
+      }
+      msg2+='tab-projects.classList.contains("active"): '+document.getElementById('tab-projects').classList.contains('active')+'\n';
+      alert(msg2);
+    },600);
     alert(msg);
   };
   document.body.appendChild(btn);
