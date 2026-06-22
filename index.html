@@ -5552,6 +5552,10 @@ async function saveUserEdit(userId){
   if(!isSuperAdmin&&currentUserRole==='admin'&&targetUser&&targetUser.company_id!==currentCompanyId){
     showToast('权限不足: 不能修改其他公司的成员');return;
   }
+  var newStatus=data.status;
+  if(!isSuperAdmin&&userId===currentUser.user.id&&newStatus==='leave'){
+    showToast('不能将自己设为离职，请联系其他管理员操作');return;
+  }
   if(isSuperAdmin||currentUserRole==='admin'){
     var ur=await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(userId),{
       method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},
@@ -9546,6 +9550,7 @@ async function saveEmployee(){
 }
 async function toggleEmpStatus(uid,newStatus){
   if(!isSuperAdmin&&currentUserRole!=='admin'){showToast('权限不足');return;}
+  if(!isSuperAdmin&&uid===currentUser.user.id&&newStatus==='inactive'){showToast('不能将自己设为离职，请联系其他管理员操作');return;}
   if(!confirm('确认将员工设为'+(newStatus==='inactive'?'离职':'在职')+'？'))return;
   if(newStatus==='inactive'){
     var reassign=prompt('输入交接员工ID（留空回收公共池）:','');
