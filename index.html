@@ -884,7 +884,8 @@ input,select,textarea,button{font-family:inherit}
 </style>
 </head>
 <body>
-<div id="global-error-banner" style="display:none;background:#e74c3c;color:#fff;padding:10px 16px;font-size:13px;position:fixed;top:0;left:0;right:0;z-index:99999;text-align:center"></div>
+<div id="global-error-banner" style="display:none;background:#e74c3c;color:#fff;padding:10px 16px;font-size:13px;position:fixed;top:0;left:0;right:0;z-index:99999;text-align:center;white-space:pre-wrap;line-height:1.4"></div>
+<script>(function(){var el=document.getElementById('global-error-banner');window.onerror=function(m,u,l,c,e){el.style.display='block';el.innerHTML='🔴 JS ERROR: '+m+'<br><small>line '+l+':'+c+' | '+u.substr(u.lastIndexOf('/')+1)+'</small>';if(e&&e.stack)el.innerHTML+='<br><small>'+e.stack.split('\n').slice(0,3).join('<br>')+'</small>'};window.addEventListener('unhandledrejection',function(ev){el.style.display='block';el.innerHTML='🔴 PROMISE REJECTION: '+ev.reason});console.error=function(){el.style.display='block';el.innerHTML='🔴 console.error: '+Array.from(arguments).join(' ')}})();</script>
 
 <!-- Login -->
 <!-- 更多下拉菜单 -->
