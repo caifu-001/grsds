@@ -2372,6 +2372,7 @@ const SUPABASE_URL='https://jyefbatmmbelrhhzsgva.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp5ZWZiYXRtbWJlbHJoaHpzZ3ZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5NDIyMDUsImV4cCI6MjA5NTUxODIwNX0.m8pVc7yA9AycSTkexoH76SNo_P40KVRA4pmKECJQea4';
 SUPABASE_SERVICE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp5ZWZiYXRtbWJlbHJoaHpzZ3ZhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTk0MjIwNSwiZXhwIjoyMDk1NTE4MjA1fQ.0bF9vVcZWfBNt3t89VGEvAnu5mDGeqZm8UViY-cKuaU'; // 从 Supabase Dashboard > Settings > API 获取 service_role key（超管重置密码用）
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+document.getElementById('script-loaded-check').style.display='none';
 
 const BUILTIN_TYPES=['甲方','集成商','设计院','运营商','国央企','党政','厂家','制造业','军队','司法','教育','医疗','供应商'];
 const BUILTIN_COLORS=['#3B82F6','#10B981','#8B5CF6','#F59E0B','#EF4444','#DC2626','#06B6D4','#EC4899','#84CC16','#6366F1','#F97316','#14B8A6','#A855F7'];
@@ -11319,5 +11320,6 @@ async function deletePayment(id){
  </div>
 </div>
 
+<div id="script-loaded-check" style="padding:10px 16px;background:#2ecc71;color:#fff;font-size:13px;position:fixed;bottom:0;left:0;right:0;z-index:99998;text-align:center">✅ 主脚本未加载或已崩溃 — 此横幅应该被 JS 移除</div>
 </body>
 </html>
