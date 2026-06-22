@@ -1180,6 +1180,7 @@ input,select,textarea,button{font-family:inherit}
   <datalist id="admin-company-list"></datalist>公司审核</button>
    <button class="admin-subtab" id="admin-tab-employees" onclick="switchAdminTab('employees')">员工管理</button>
    <button class="admin-subtab" id="admin-tab-freeagents" onclick="switchAdminTab('freeagents')">自由员工池</button>
+   <button class="admin-subtab" id="admin-tab-resignations" onclick="switchAdminTab('resignations')">离职审批</button>
    <button class="admin-subtab" id="admin-tab-logs" onclick="switchAdminTab('logs')">操作日志</button>
    <button class="admin-subtab" id="admin-tab-config" onclick="switchAdminTab('config')">系统配置</button>
    <button class="admin-subtab" id="admin-tab-security" onclick="switchAdminTab('security')">数据安全</button>
@@ -1264,6 +1265,14 @@ input,select,textarea,button{font-family:inherit}
     <span style="font-size:12px;color:var(--muted);line-height:32px">离职未归属的员工，可邀请入职本公司</span>
    </div>
    <div id="admin-fa-list"></div>
+  </div>
+
+  <!-- Resignation Approvals -->
+  <div id="admin-resignations" class="admin-panel hidden">
+   <div class="toolbar" style="margin-bottom:10px;flex-wrap:wrap;gap:8px">
+    <select id="resign-filter" onchange="renderResignations()" style="padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:13px;background:var(--card);color:var(--text)"><option value="pending">待审批</option><option value="all">全部</option><option value="approved">已通过</option><option value="rejected">已拒绝</option></select>
+   </div>
+   <div id="admin-resign-list"></div>
   </div>
 
   <!-- Operation Logs -->
@@ -1470,12 +1479,41 @@ input,select,textarea,button{font-family:inherit}
    <div class="my-row"><span class="my-lbl">部门</span><span id="my-dept" class="my-val">-</span></div>
    <div class="my-row"><span class="my-lbl">岗位</span><span id="my-position" class="my-val">-</span></div>
    <div class="my-row"><span class="my-lbl">账号状态</span><span id="my-status" class="my-val">-</span></div>
+   <div class="my-row" id="my-resign-row" style="display:none"><span class="my-lbl">离职状态</span><span id="my-resign-status" class="my-val">-</span></div>
    <div class="my-row"><span class="my-lbl">注册时间</span><span id="my-created" class="my-val">-</span></div>
+  </div>
+  <!-- 离职审批通过提示 -->
+  <div id="my-resign-warn" style="display:none;margin-top:16px;padding:12px;background:#fef3c7;border:1px solid #f59e0b;border-radius:12px;font-size:13px;color:#92400e">
+   <div style="font-weight:600;margin-bottom:4px">离职审批已通过</div>
+   <div id="my-resign-warn-date"></div>
+   <div style="font-size:12px;margin-top:4px;color:#b45309">到期后将自动解除公司关联，请提前做好交接</div>
   </div>
   <!-- 快捷操作 -->
   <div style="margin-top:20px">
    <button onclick="closeMy();openChangePwdForm();document.getElementById('settings-screen').style.display='flex'" style="width:100%;padding:12px;background:var(--primary);color:#fff;border:none;border-radius:12px;font-size:14px;cursor:pointer;margin-bottom:8px">🔒 修改密码</button>
+   <button id="my-resign-btn" onclick="openResignForm()" style="width:100%;padding:12px;background:#f59e0b;color:#fff;border:none;border-radius:12px;font-size:14px;cursor:pointer;margin-bottom:8px">📝 申请离职</button>
    <button onclick="doLogout()" style="width:100%;padding:12px;background:var(--border);color:var(--text);border:none;border-radius:12px;font-size:14px;cursor:pointer">退出登录</button>
+  </div>
+ </div>
+</div>
+
+<!-- Resignation Form Modal -->
+<div id="resign-form-modal" class="modal-overlay" style="display:none">
+ <div class="modal" style="max-width:460px">
+  <h3 style="margin-top:0">📝 申请离职</h3>
+  <p style="font-size:13px;color:var(--muted);margin-bottom:16px">离职将逐步回收权限，到期后解除公司关联</p>
+  <div style="margin-bottom:12px">
+   <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">离职原因</label>
+   <textarea id="resign-reason" rows="3" placeholder="请填写离职原因（选填）" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);resize:vertical;font-size:13px"></textarea>
+  </div>
+  <div style="margin-bottom:16px">
+   <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">预期离职日期</label>
+   <input id="resign-date" type="date" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);font-size:13px">
+  </div>
+  <div id="resign-form-err" class="err-msg" style="display:none;margin-bottom:12px"></div>
+  <div style="display:flex;gap:8px">
+   <button class="btn-cancel" onclick="closeResignForm()" style="flex:1">取消</button>
+   <button class="btn-save" onclick="submitResignation()" style="flex:1">提交申请</button>
   </div>
  </div>
 </div>
@@ -2297,7 +2335,20 @@ async function onLoginSuccess(user){
   var profile=null;
   try{var r2=await sb.from('profiles').upsert({user_id:user.id,email:user.email},{onConflict:'user_id'}).select('role,company_id,department_id,display_name,phone,position,invited_company_id,invited_at').single();profile=r2.data}catch(e){console.error('profile upsert failed:',e);throw new Error('无法加载用户档案: '+(e.message||JSON.stringify(e)))}
   try{sb.from('profiles').update({last_login_at:new Date().toISOString()}).eq('user_id',user.id).then(function(){}).catch(function(){})}catch(e){}
-  if(profile){currentUserRole=profile.role||'user';isSuperAdmin=profile.role==='super_admin';currentCompanyId=profile.company_id;}if(!currentCompanyId&&profile&&profile.department_id){try{var deptFetch=await fetch(SUPABASE_URL+'/rest/v1/departments?id=eq.'+profile.department_id+'&select=company_id',{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_ANON_KEY}});if(deptFetch.ok){var deptData=await deptFetch.json();if(deptData&&deptData.length>0&&deptData[0].company_id){currentCompanyId=deptData[0].company_id;profile.company_id=currentCompanyId;await sb.from('profiles').update({company_id:currentCompanyId}).eq('user_id',user.id);if(!currentUserRole||currentUserRole==='user'){currentUserRole='admin';await sb.from('profiles').update({role:'admin'}).eq('user_id',user.id)}}}}catch(fb){console.error('resolve company via dept failed:',fb)}}
+  if(profile){currentUserRole=profile.role||'user';isSuperAdmin=profile.role==='super_admin';currentCompanyId=profile.company_id;
+    // Process due resignation
+    if(currentCompanyId&&profile.resignation_status==='approved'&&profile.resignation_date){
+      var resignDate=new Date(profile.resignation_date);var today=new Date();today.setHours(0,0,0,0);
+      if(resignDate<=today){
+        await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(currentUser.id),{method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json'},body:JSON.stringify({company_id:null,department_id:null,status:'leave',resignation_status:'approved'})});
+        currentCompanyId=null;currentUserRole='user';isSuperAdmin=false;
+        document.getElementById('login-user').value='';document.getElementById('login-pass').value='';
+        document.getElementById('login-screen').classList.add('hidden');
+        showToast('离职已生效，已解除与原公司的关联');
+        showCompanyRegScreen();return;
+      }
+    }
+  }if(!currentCompanyId&&profile&&profile.department_id){try{var deptFetch=await fetch(SUPABASE_URL+'/rest/v1/departments?id=eq.'+profile.department_id+'&select=company_id',{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_ANON_KEY}});if(deptFetch.ok){var deptData=await deptFetch.json();if(deptData&&deptData.length>0&&deptData[0].company_id){currentCompanyId=deptData[0].company_id;profile.company_id=currentCompanyId;await sb.from('profiles').update({company_id:currentCompanyId}).eq('user_id',user.id);if(!currentUserRole||currentUserRole==='user'){currentUserRole='admin';await sb.from('profiles').update({role:'admin'}).eq('user_id',user.id)}}}}catch(fb){console.error('resolve company via dept failed:',fb)}}
 
   document.getElementById('login-user').value='';
   document.getElementById('login-pass').value='';
@@ -2482,6 +2533,13 @@ async function openMy(){
   // Created
   var created=currentUser.created_at||profile.created_at;
   document.getElementById('my-created').textContent=created?new Date(created).toLocaleDateString('zh-CN'):'-';
+  // Resignation
+  var rs=profile.resignation_status;
+  var btn=document.getElementById('my-resign-btn');
+  var row=document.getElementById('my-resign-row');
+  var warn=document.getElementById('my-resign-warn');
+  if(rs){row.style.display='flex';document.getElementById('my-resign-status').textContent={'pending':'待审批','approved':'已通过','rejected':'已拒绝'}[rs]||rs;if(rs==='pending'||rs==='approved')btn.style.display='none';else if(currentCompanyId)btn.style.display='block'}else{if(currentCompanyId)btn.style.display='block';else btn.style.display='none';row.style.display='none'}
+  if(rs==='approved'&&profile.resignation_date){warn.style.display='block';document.getElementById('my-resign-warn-date').textContent='离职日期: '+profile.resignation_date}else{warn.style.display='none'}
   enableMyEditing();
 }
 
@@ -5446,6 +5504,7 @@ async function switchAdminTab(tab){
   ut.classList.add('hidden');dt.classList.add('hidden');rt.classList.add('hidden');if(pt)pt.classList.add('hidden');ct.classList.add('hidden');if(cm)cm.classList.add('hidden');
   var ep=document.getElementById('admin-employees');if(ep)ep.classList.add('hidden');
   var fa=document.getElementById('admin-freeagents');if(fa)fa.classList.add('hidden');
+  var ra=document.getElementById('admin-resignations');if(ra)ra.classList.add('hidden');
   var lp=document.getElementById('admin-logs');if(lp)lp.classList.add('hidden');
   var cp=document.getElementById('admin-config');if(cp)cp.classList.add('hidden');
   var sp=document.getElementById('admin-security');if(sp)sp.classList.add('hidden');
@@ -5458,9 +5517,10 @@ async function switchAdminTab(tab){
   else if(tab==='companies'){ct.classList.remove('hidden');subs[5].classList.add('active');loadPendingCompanies();}
   else if(tab==='employees'){var ep=document.getElementById('admin-employees');ep.classList.remove('hidden');subs[6].classList.add('active');await loadAdminData();renderAdminEmployees();}
   else if(tab==='freeagents'){var fa=document.getElementById('admin-freeagents');fa.classList.remove('hidden');subs[7].classList.add('active');await loadFreeAgents();renderFreeAgents();}
-  else if(tab==='logs'){var lp=document.getElementById('admin-logs');lp.classList.remove('hidden');subs[8].classList.add('active');await loadOperationLogs();renderOperationLogs();}
-  else if(tab==='config'){var cp=document.getElementById('admin-config');cp.classList.remove('hidden');subs[9].classList.add('active');switchConfigTab('fields');}
-  else if(tab==='security'){var sp=document.getElementById('admin-security');sp.classList.remove('hidden');subs[10].classList.add('active');renderSecurityPanel();}
+  else if(tab==='resignations'){var ra=document.getElementById('admin-resignations');ra.classList.remove('hidden');subs[8].classList.add('active');await loadResignations();renderResignations();}
+  else if(tab==='logs'){var lp=document.getElementById('admin-logs');lp.classList.remove('hidden');subs[9].classList.add('active');await loadOperationLogs();renderOperationLogs();}
+  else if(tab==='config'){var cp=document.getElementById('admin-config');cp.classList.remove('hidden');subs[10].classList.add('active');switchConfigTab('fields');}
+  else if(tab==='security'){var sp=document.getElementById('admin-security');sp.classList.remove('hidden');subs[11].classList.add('active');renderSecurityPanel();}
 }
 
 /* ── Users ── */
@@ -9608,6 +9668,79 @@ async function rejectInvitation(){
   document.getElementById('invitation-screen').classList.add('hidden');
   showCompanyRegScreen();
 }
+
+// === Resignation ===
+function openResignForm(){
+  var today=new Date();today.setDate(today.getDate()+30);
+  document.getElementById('resign-date').value=today.toISOString().split('T')[0];
+  document.getElementById('resign-reason').value='';
+  document.getElementById('resign-form-err').style.display='none';
+  document.getElementById('resign-form-modal').style.display='flex';
+}
+function closeResignForm(){
+  document.getElementById('resign-form-modal').style.display='none';
+}
+async function submitResignation(){
+  var dateVal=document.getElementById('resign-date').value;
+  var reason=document.getElementById('resign-reason').value.trim();
+  if(!dateVal){document.getElementById('resign-form-err').textContent='请选择预期离职日期';document.getElementById('resign-form-err').style.display='block';return}
+  var d=new Date(dateVal);var today=new Date();today.setHours(0,0,0,0);
+  if(d<today){document.getElementById('resign-form-err').textContent='离职日期不能是过去';document.getElementById('resign-form-err').style.display='block';return}
+  try{
+    var r=await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(currentUser.id),{method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({resignation_status:'pending',resignation_date:dateVal,resignation_reason:reason||null,resignation_requested_at:new Date().toISOString()})});
+    if(!r.ok){var j=await r.json().catch(function(){});document.getElementById('resign-form-err').textContent='提交失败: '+(j&&j.message||r.statusText);document.getElementById('resign-form-err').style.display='block';return}
+    closeResignForm();showToast('离职申请已提交，等待管理员审批');
+    document.getElementById('my-resign-btn').style.display='none';
+  }catch(e){document.getElementById('resign-form-err').textContent='提交失败: '+e.message;document.getElementById('resign-form-err').style.display='block'}
+}
+var allResignations=[];
+async function loadResignations(){
+  try{
+    var r=await fetch(SUPABASE_URL+'/rest/v1/profiles?select=user_id,email,display_name,phone,position,department_id,resignation_status,resignation_date,resignation_reason,resignation_requested_at&company_id=eq.'+currentCompanyId+'&resignation_status=not.is.null&order=resignation_requested_at.desc',{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}});
+    if(r.ok)allResignations=await r.json();
+    else allResignations=[];
+  }catch(e){allResignations=[];console.error('loadResignations',e)}
+}
+function renderResignations(){
+  var el=document.getElementById('admin-resign-list');
+  var filter=document.getElementById('resign-filter').value;
+  var list=allResignations;
+  if(filter!=='all')list=list.filter(function(r){return r.resignation_status===filter});
+  if(list.length===0){el.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted)">暂无离职申请</div>';return}
+  var h='<table class="data-table"><thead><tr><th>姓名</th><th>邮箱</th><th>岗位</th><th>离职日期</th><th>原因</th><th>状态</th><th>操作</th></tr></thead><tbody>';
+  for(var i=0;i<list.length;i++){
+    var r=list[i];
+    var statusText={'pending':'待审批','approved':'已通过','rejected':'已拒绝'}[r.resignation_status]||r.resignation_status;
+    var statusCls={'pending':'badge-warn','approved':'badge-success','rejected':'badge-danger'}[r.resignation_status]||'';
+    h+='<tr><td>'+escHtml(r.display_name||'-')+'</td><td>'+escHtml(r.email||'-')+'</td><td>'+escHtml(r.position||'-')+'</td><td>'+escHtml(r.resignation_date||'-')+'</td><td>'+escHtml((r.resignation_reason||'').substring(0,30))+'</td><td><span class="badge '+statusCls+'">'+statusText+'</span></td><td>';
+    if(r.resignation_status==='pending'){
+      h+='<button class="btn-save" style="padding:4px 12px;font-size:12px;margin-right:4px" onclick="approveResignation(\''+r.user_id+'\')">通过</button>';
+      h+='<button class="btn-cancel" style="padding:4px 12px;font-size:12px" onclick="rejectResignation(\''+r.user_id+'\')">拒绝</button>';
+    }
+    h+='</td></tr>';
+  }
+  h+='</tbody></table>';
+  el.innerHTML=h;
+}
+async function approveResignation(uid){
+  if(!confirm('确认通过该离职申请？'))return;
+  try{
+    var r=await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(uid),{method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json'},body:JSON.stringify({resignation_status:'approved'})});
+    if(!r.ok){var j=await r.json().catch(function(){});showToast('操作失败: '+(j&&j.message||r.statusText));return}
+    showToast('已通过离职申请，到期后将自动解除');
+    await loadResignations();renderResignations();
+  }catch(e){showToast('操作失败: '+e.message)}
+}
+async function rejectResignation(uid){
+  if(!confirm('确认拒绝该离职申请？'))return;
+  try{
+    var r=await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(uid),{method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json'},body:JSON.stringify({resignation_status:'rejected'})});
+    if(!r.ok){var j=await r.json().catch(function(){});showToast('操作失败: '+(j&&j.message||r.statusText));return}
+    showToast('已拒绝离职申请');
+    await loadResignations();renderResignations();
+  }catch(e){showToast('操作失败: '+e.message)}
+}
+
 function openEmployeeForm(){
   empEditId=null;document.getElementById('emp-form-title').textContent='添加员工';
   document.getElementById('ef-name').value='';document.getElementById('ef-email').value='';
