@@ -1,4 +1,3 @@
-
 // Supabase
 const SUPABASE_URL='https://jyefbatmmbelrhhzsgva.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp5ZWZiYXRtbWJlbHJoaHpzZ3ZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5NDIyMDUsImV4cCI6MjA5NTUxODIwNX0.m8pVc7yA9AycSTkexoH76SNo_P40KVRA4pmKECJQea4';
@@ -13,7 +12,7 @@ let loginMode='login',currentUser=null,allClients=[],allContacts=[],allCompanies
 let allUsers=[];
 let editId=null,deleteId=null,formContacts=[],pendingImport=null;
 let moveContactIdx=-1,moveContactObj=null;
-let clientTags=[],clientAttachments=[],leadEditId=null,leadAssignId=null,allLeads=[];
+let clientTags=[],clientAttachments=[],leadEditId=null,leadAssignId=null,allLeads=[],leadFormSource='pool';
 let c360ClientId=null,c360ActiveTab='overview',c360Orders=[];
 
 function h(s){return s?s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'):''}
@@ -53,11 +52,28 @@ function trErr(msg){
   if(msg.indexOf('Invalid login')>=0)return'邮箱或密码错误';
   if(msg.indexOf('not found')>=0)return'账号不存在，请先注册';
   if(msg.indexOf('already registered')>=0)return'该邮箱已注册';
+  if(msg.indexOf('locked')>=0||msg.indexOf('security')>=0||msg.indexOf('rate')>=0||msg.indexOf('many requests')>=0||msg.indexOf('too many')>=0)return'密码错误次数过多，账号已临时锁定。请联系超级管理员或公司管理员重置密码';
   return msg;
 }
+var captchaCode='';
+function refreshCaptcha(){
+  var canvas=document.getElementById('captcha-canvas');
+  if(!canvas)return;
+  var ctx=canvas.getContext('2d');
+  var chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  captchaCode='';
+  for(var i=0;i<4;i++)captchaCode+=chars[Math.floor(Math.random()*chars.length)];
+  ctx.fillStyle='#f0f4ff';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  for(var i=0;i<40;i++){ctx.fillStyle='rgba('+Math.floor(Math.random()*180)+','+Math.floor(Math.random()*180)+','+Math.floor(Math.random()*220)+',0.25)';ctx.fillRect(Math.random()*canvas.width,Math.random()*canvas.height,3,3)}
+  for(var i=0;i<4;i++){ctx.strokeStyle='rgba(100,120,200,0.25)';ctx.beginPath();ctx.moveTo(Math.random()*canvas.width,Math.random()*canvas.height);ctx.lineTo(Math.random()*canvas.width,Math.random()*canvas.height);ctx.stroke()}
+  for(var i=0;i<captchaCode.length;i++){ctx.font='bold '+(22+Math.random()*8)+'px "Segoe UI","Microsoft YaHei",Arial';ctx.fillStyle='rgb('+Math.floor(Math.random()*140)+','+Math.floor(Math.random()*90)+','+Math.floor(Math.random()*200)+')';var x=8+i*30+Math.random()*8;var y=30+Math.random()*8;ctx.save();ctx.translate(x,y);ctx.rotate((Math.random()-0.5)*0.45);ctx.fillText(captchaCode[i],0,0);ctx.restore()}
+}
 async function handleLogin(){
-  var un=document.getElementById('login-user').value.trim(),pw=document.getElementById('login-pass').value.trim();
+  var captchaInput=document.getElementById('login-captcha').value.trim().toUpperCase();
   var er=document.getElementById('login-err'),btn=document.getElementById('login-btn');er.textContent='';
+  if(captchaInput!==captchaCode){er.textContent='验证码错误，请重新输入';refreshCaptcha();document.getElementById('login-captcha').value='';document.getElementById('login-captcha').focus();return}
+  var un=document.getElementById('login-user').value.trim(),pw=document.getElementById('login-pass').value.trim();
   if(!un||!pw){er.textContent='请输入邮箱和密码';return}
   btn.disabled=true;btn.textContent='请稍候...';
   try{
@@ -79,14 +95,33 @@ async function onLoginSuccess(user){
   currentUser=user;
   // Upsert profile and load role/company
   var profile=null;
-  try{var r2=await sb.from('profiles').upsert({user_id:user.id,email:user.email},{onConflict:'user_id'}).select('role,company_id,display_name,phone,position').single();profile=r2.data}catch(e){console.error('profile upsert failed:',e);throw new Error('无法加载用户档案: '+(e.message||JSON.stringify(e)))}
-  if(profile){currentUserRole=profile.role||'user';isSuperAdmin=profile.role==='super_admin';currentCompanyId=profile.company_id;}
+  try{var r2=await sb.from('profiles').upsert({user_id:user.id,email:user.email},{onConflict:'user_id'}).select('role,company_id,department_id,display_name,phone,position,invited_company_id,invited_at').single();profile=r2.data}catch(e){console.error('profile upsert failed:',e);throw new Error('无法加载用户档案: '+(e.message||JSON.stringify(e)))}
+  try{sb.from('profiles').update({last_login_at:new Date().toISOString()}).eq('user_id',user.id).then(function(){}).catch(function(){})}catch(e){}
+  if(profile){currentUserRole=profile.role||'user';isSuperAdmin=profile.role==='super_admin';currentCompanyId=profile.company_id;
+    // Process due resignation
+    if(currentCompanyId&&profile.resignation_status==='approved'&&profile.resignation_date){
+      var resignDate=new Date(profile.resignation_date);var today=new Date();today.setHours(0,0,0,0);
+      if(resignDate<=today){
+        await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(currentUser.id),{method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json'},body:JSON.stringify({company_id:null,department_id:null,status:'leave',resignation_status:'approved'})});
+        currentCompanyId=null;currentUserRole='user';isSuperAdmin=false;
+        document.getElementById('login-user').value='';document.getElementById('login-pass').value='';
+        document.getElementById('login-screen').classList.add('hidden');
+        showToast('离职已生效，已解除与原公司的关联');
+        showCompanyRegScreen();return;
+      }
+    }
+  }if(!currentCompanyId&&profile&&profile.department_id){try{var deptFetch=await fetch(SUPABASE_URL+'/rest/v1/departments?id=eq.'+profile.department_id+'&select=company_id',{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_ANON_KEY}});if(deptFetch.ok){var deptData=await deptFetch.json();if(deptData&&deptData.length>0&&deptData[0].company_id){currentCompanyId=deptData[0].company_id;profile.company_id=currentCompanyId;await sb.from('profiles').update({company_id:currentCompanyId}).eq('user_id',user.id);if(!currentUserRole||currentUserRole==='user'){currentUserRole='admin';await sb.from('profiles').update({role:'admin'}).eq('user_id',user.id)}}}}catch(fb){console.error('resolve company via dept failed:',fb)}}
 
   document.getElementById('login-user').value='';
   document.getElementById('login-pass').value='';
   document.getElementById('login-screen').classList.add('hidden');
 
   if(!currentCompanyId){
+    // Check for pending invitation first
+    if(profile&&profile.invited_company_id){
+      showInvitationDialog(profile.invited_company_id);
+      return;
+    }
     // Check for pending registration
     var {data:pend}=await sb.from('companies').select('id,name,status').eq('created_by',user.id).order('created_at',{ascending:false}).limit(1);
     if(pend && pend.length>0){
@@ -116,6 +151,7 @@ async function onLoginSuccess(user){
   if(isSuperAdmin||currentUserRole==='admin')document.getElementById('tab-admin').classList.remove('hidden');
   if(isSuperAdmin){document.getElementById('admin-tab-companies-manage').classList.remove('hidden');document.getElementById('admin-tab-companies').classList.remove('hidden');}
   pollNotifications();
+  writeOpLog('login','auth',currentUser.id,currentUser.email,'用户登录');
   switchTab('home');
 }
 async function doLogout(){await sb.auth.signOut();currentUser=null;allClients=[];allContacts=[];customTypes=[];document.getElementById('main-screen').classList.add('hidden');document.getElementById('login-screen').classList.remove('hidden')}
@@ -259,6 +295,16 @@ async function openMy(){
   // Created
   var created=currentUser.created_at||profile.created_at;
   document.getElementById('my-created').textContent=created?new Date(created).toLocaleDateString('zh-CN'):'-';
+  // Resignation
+  var rs=profile.resignation_status;
+  var btn=document.getElementById('my-resign-btn');
+  var row=document.getElementById('my-resign-row');
+  var warn=document.getElementById('my-resign-warn');
+  if(rs){row.style.display='flex';document.getElementById('my-resign-status').textContent={'pending':'待审批','approved':'已通过','rejected':'已拒绝'}[rs]||rs;if(rs==='pending'||rs==='approved')btn.style.display='none';else if(currentCompanyId)btn.style.display='block'}else{if(currentCompanyId)btn.style.display='block';else btn.style.display='none';row.style.display='none'}
+  if(rs==='approved'&&profile.resignation_date){warn.style.display='block';document.getElementById('my-resign-warn-date').textContent='离职日期: '+profile.resignation_date}else{warn.style.display='none'}
+  // Load invitations
+  var invSection=document.getElementById('my-invitation-section');
+  if(!currentCompanyId){await loadMyInvitations();if(myInvitations.length>0){invSection.style.display='block';renderMyInvitations()}else{invSection.style.display='none'}}else{invSection.style.display='none'}
   enableMyEditing();
 }
 
@@ -489,7 +535,7 @@ async function showLeads(){
   if(lv)lv.classList.remove('hidden');
   document.getElementById('topbar-title').textContent='线索公海';
   document.getElementById('main-fab').classList.add('hidden');
-  await loadLeads();
+  await loadPoolLeads();
 }
 function closeDir(){
   document.getElementById('dir-screen').classList.add('hidden');
@@ -712,6 +758,70 @@ var addEm=function(i){if(!formContacts[i].emails)formContacts[i].emails=[];formC
 var rmEm=function(i,e){formContacts[i].emails.splice(e,1);if(!formContacts[i].emails.length)formContacts[i].emails=[''];refCt()};
 var upCtEm=function(i,e,v){if(formContacts[i]&&formContacts[i].emails)formContacts[i].emails[e]=(v||'').trim()};
 
+
+function selectGrade(grade){
+  var hf=document.getElementById('f-grade');if(hf)hf.value=grade;
+  updateGradeSelect(grade);
+}
+function updateGradeSelect(grade){
+  var opts=document.querySelectorAll('#grade-select .grade-option');
+  for(var i=0;i<opts.length;i++)opts[i].classList.toggle('selected',opts[i].textContent.trim()===grade);
+}
+
+function renderClientTags(){
+  var el=document.getElementById('tag-chips');
+  if(!el)return;
+  var html='';
+  for(var i=0;i<clientTags.length;i++)html+='<span class="tag-chip">'+h(clientTags[i])+'<span class="tag-remove" onclick="removeTag('+i+')">×</span></span>';
+  el.innerHTML=html;
+}
+
+function addTag(tag){
+  if(!tag)return;
+  if(clientTags.indexOf(tag)>=0){showToast('标签已存在');return}
+  clientTags.push(tag);
+  renderClientTags();
+}
+
+function removeTag(idx){clientTags.splice(idx,1);renderClientTags()}
+
+function renderClientAttachments(){
+  var el=document.getElementById('attach-list');
+  if(!el)return;
+  var html='';
+  for(var i=0;i<clientAttachments.length;i++){
+    var a=clientAttachments[i];
+    html+='<div class="attach-item"><span class="attach-name">'+h(a.name||a.file_name||'文件'+(i+1))+'</span><button class="attach-remove" onclick="removeAttachment('+i+')">×</button></div>';
+  }
+  if(!html)html='<span style="font-size:11px;color:var(--text3)">暂无附件</span>';
+  el.innerHTML=html;
+}
+
+async function handleAttachFile(input){
+  var files=input.files;
+  if(!files||!files.length)return;
+  var bucket='client-attachments';
+  for(var i=0;i<files.length;i++){
+    var f=files[i];
+    var safeName=f.name.replace(/[^a-zA-Z0-9._\u4e00-\u9fff-]/g,'_');
+    var filePath=currentCompanyId+'/'+Date.now()+'_'+safeName;
+    try{
+      var {data,error}=await sb.storage.from(bucket).upload(filePath,f,{cacheControl:'3600',upsert:false});
+      if(error){showToast('\u4e0a\u4f20\u5931\u8d25: '+error.message);continue}
+      var {data:urlData}=sb.storage.from(bucket).getPublicUrl(filePath);
+      clientAttachments.push({name:f.name,size:f.size,type:f.type,url:urlData.publicUrl,path:filePath});
+    }catch(e){showToast('\u4e0a\u4f20\u5f02\u5e38: '+e.message)}
+  }
+  renderClientAttachments();
+  input.value='';
+}
+
+async function removeAttachment(idx){
+  var a=clientAttachments[idx];
+  if(a&&a.path){try{await sb.storage.from('client-attachments').remove([a.path])}catch(e){}}
+  clientAttachments.splice(idx,1);renderClientAttachments();
+}
+
 async function openForm(id){
   editId=id||null;
   document.getElementById('form-title').textContent=id?'编辑客户':'添加客户';
@@ -799,7 +909,8 @@ function openMoveModal(idx){
 function closeMoveModal(){document.getElementById('move-modal').classList.add('hidden');moveContactIdx=-1;moveContactObj=null}
 function searchMoveTarget(){
   var q=(document.getElementById('move-search').value||'').trim().toLowerCase();
-  var list=editId?allClients.filter(function(c){return c.id!==editId}):allClients;
+  var excludeId=editId||c360ClientId;
+  var list=excludeId?allClients.filter(function(c){return c.id!==excludeId}):allClients;
   if(q) list=list.filter(function(c){return(c.name||'').toLowerCase().indexOf(q)>=0});
   var container=document.getElementById('move-list'),html='';
   if(list.length===0)html='<div class="empty">无匹配客户</div>';
@@ -811,22 +922,25 @@ function searchMoveTarget(){
   container.innerHTML=html;
 }
 async function doMove(targetId,targetName){
-  if(moveContactIdx<0)return;
   var co=moveContactObj;
+  if(!co)return;
   if(!co._new&&co.id){
     var {error}=await sb.from('contacts').update({client_id:targetId}).eq('id',co.id);
     if(error){showToast('转移失败');return}
   }
-  // Remove from current form
-  formContacts.splice(moveContactIdx,1);
-  refCt();
+  // Remove from current form if editing
+  if(moveContactIdx>=0){formContacts.splice(moveContactIdx,1);refCt()}
   // Update contact counts
   await updateContactCount(targetId);
   if(editId) await updateContactCount(editId);
   showToast('已转移到「'+targetName+'」');
   closeMoveModal();
   loadClients();
+  // Refresh 360 view if open
+  if(c360ClientId&&moveContactIdx<0){setTimeout(function(){if(c360ClientId)openClient360(c360ClientId)},500)}
 }
+function openMoveFrom360(contactObj){moveContactIdx=-1;moveContactObj=contactObj;document.getElementById('move-modal').classList.remove('hidden');searchMoveTarget()}
+function transferFrom360(id){var co=allContacts.find(function(x){return x.id===id});if(co)openMoveFrom360(co);else showToast('联系人未找到')}
 async function updateContactCount(clientId){
   var {count,error}=await sb.from('contacts').select('*',{count:'exact',head:true}).eq('client_id',clientId);
   if(!error) await sb.from('clients').update({contact_count:count||0}).eq('id',clientId);
@@ -859,7 +973,7 @@ function addProjectEntry(prefill){
   renumberProjects();
 }
 function removeProjectEntry(btn){
-  var entry=btn.closest('.project-entry');
+  var entry=btn.closest(".project-entry");
   if(entry)entry.remove();
   renumberProjects();
 }
@@ -1264,17 +1378,17 @@ function loadHomeDashboard(){
     document.getElementById('dash-revenue').textContent='¥'+total.toLocaleString('zh-CN',{minimumFractionDigits:0,maximumFractionDigits:0});
   }).catch(function(){ovEl.innerHTML='<div class="empty-state">加载失败</div>';});
   var remEl=document.getElementById('dash-reminders');
-  sb.from('contracts').select('id,title,next_reminder_date,unpaid_amount,customer_name').eq('company_id',currentCompanyId).not('archive_status','eq','archived').order('next_reminder_date',{ascending:true}).limit(5).then(function(r){
+  sb.from('contracts').select('id,title,total_amount,end_date').eq('company_id',currentCompanyId).not('archive_status','eq','archived').order('end_date',{ascending:true}).limit(5).then(function(r){
     var today=now.toISOString().slice(0,10);
     if(!r.data||!r.data.length){remEl.innerHTML='<div class="empty-state">🎉 暂无待处理提醒</div>';return}
     var hasReminder=false;
     var h='<div class="reminder-list">';
     for(var i=0;i<r.data.length;i++){
       var c=r.data[i];
-      if(!c.next_reminder_date)continue;
+      if(!c.end_date)continue;
       hasReminder=true;
-      var d=new Date(c.next_reminder_date);var isOver=c.next_reminder_date<today;
-      h+='<div class="reminder-item'+(isOver?' reminder-overdue':'')+'"><span class="reminder-icon">'+(isOver?'🔴':'🟡')+'</span><div class="reminder-info"><span class="reminder-title">'+escHtml(c.title||'合同#'+c.id)+'</span><span class="reminder-detail">'+escHtml(c.customer_name||'')+(c.unpaid_amount?' · ¥'+c.unpaid_amount.toLocaleString('zh-CN'):'')+'</span></div><span class="reminder-date">'+d.toLocaleDateString('zh-CN')+'</span></div>';
+      var d=new Date(c.end_date);var isOver=c.end_date<today;
+      h+='<div class="reminder-item'+(isOver?' reminder-overdue':'')+'"><span class="reminder-icon">'+(isOver?'🔴':'🟡')+'</span><div class="reminder-info"><span class="reminder-title">'+escHtml(c.title||'合同#'+c.id)+'</span><span class="reminder-detail">'+(c.total_amount?' · ¥'+Number(c.total_amount).toLocaleString('zh-CN'):'')+'</span></div><span class="reminder-date">'+d.toLocaleDateString('zh-CN')+'</span></div>';
     }
     h+='</div>';
     if(!hasReminder)h='<div class="empty-state">🎉 暂无待处理提醒</div>';
@@ -1412,21 +1526,35 @@ async function renderDashboardCharts(){
     }
   }catch(e){console.warn('Dashboard charts render failed:',e);}
 }
+// ============================================================
+// 报表与BI分析模块 — Chart.js 升级版
+// 替换原有报表 JS 函数
+// ============================================================
 
+// 报表图表实例管理
+var _reportCharts={};
+function _destroyReportChart(key){ if(_reportCharts[key]){_reportCharts[key].destroy();_reportCharts[key]=null;} }
+function _destroyAllReportCharts(){ for(var k in _reportCharts)_destroyReportChart(k); }
+
+// ===== Tab 切换 =====
 function switchReportsTab(sub){
-  var panels={'sales':'rp-sales-panel','clients':'rp-clients-panel','collections':'rp-collections-panel','orders':'rp-orders-panel'};
+  // 销毁当前活跃tab的所有图表实例
+  _destroyAllReportCharts();
+  var panels={'sales':'rp-sales-panel','clients':'rp-clients-panel','collections':'rp-collections-panel','orders':'rp-orders-panel','dashboard':'rp-dashboard-panel'};
   var tabs=document.querySelectorAll('#reports-tabs-bar .biz-subtab');
   for(var i=0;i<tabs.length;i++)tabs[i].classList.remove('active');
-  for(var k in panels){var p=document.getElementById(panels[k]);if(p)p.classList.add('hidden')}
+  for(var k in panels){var p=document.getElementById(panels[k]);if(p)p.classList.add('hidden');}
   var active=document.getElementById(panels[sub]);if(active)active.classList.remove('hidden');
-  var idx={'sales':0,'clients':1,'collections':2,'orders':3};
+  var idx={'sales':0,'clients':1,'collections':2,'orders':3,'dashboard':4};
   if(tabs[idx[sub]])tabs[idx[sub]].classList.add('active');
   if(sub==='sales')renderReportSales();
   else if(sub==='clients')renderReportClients();
   else if(sub==='collections')renderReportCollections();
   else if(sub==='orders')renderReportOrders();
+  else if(sub==='dashboard'){renderCustomDashboard();}
 }
 
+// ===== 汇总卡片数据加载 =====
 function loadReportSummary(){
   var now=new Date();var mStart=new Date(now.getFullYear(),now.getMonth(),1).toISOString();
   sb.from('orders').select('amount,stage').eq('company_id',currentCompanyId).gte('created_at',mStart).then(function(r){
@@ -1438,149 +1566,752 @@ function loadReportSummary(){
   sb.from('clients').select('id',{count:'exact',head:true}).eq('company_id',currentCompanyId).gte('created_at',mStart).then(function(r){
     document.getElementById('rp-monthly-clients').textContent=r.count||0;
   }).catch(function(){});
-  // Collection rate: paid vs total from contracts
-  sb.from('contracts').select('total_amount,paid_amount').eq('company_id',currentCompanyId).not('archive_status','eq','archived').then(function(r){
+  sb.from('contracts').select('total_amount').eq('company_id',currentCompanyId).not('archive_status','eq','archived').then(function(r){
     var total=0,paid=0;
-    if(r.data)for(var i=0;i<r.data.length;i++){total+=parseFloat(r.data[i].total_amount)||0;paid+=parseFloat(r.data[i].paid_amount)||0}
+    if(r.data)for(var i=0;i<r.data.length;i++){total+=parseFloat(r.data[i].total_amount)||0;}
     var rate=total>0?Math.round(paid/total*100):0;
     document.getElementById('rp-collect-rate').textContent=rate+'%';
   }).catch(function(){});
 }
 
-function renderReportSales(){
-  var el=document.getElementById('rp-sales-chart');
-  var year=document.getElementById('rp-sales-year').value||new Date().getFullYear();
-  el.innerHTML='<div class="chart-loading">加载中...</div>';
+// 获取year/quarter筛选范围（返回月份数组）
+function _getReportMonths(yearElId,quarterElId){
+  var year=parseInt(document.getElementById(yearElId).value)||new Date().getFullYear();
+  var quarter=parseInt(document.getElementById(quarterElId||'').value)||0;
   var months=[];
-  for(var m=1;m<=12;m++){months.push({start:new Date(year,m-1,1).toISOString(),end:new Date(year,m,0,23,59,59).toISOString(),label:year+'年'+m+'月'})}
-  var promises=months.map(function(mo,i){
-    return sb.from('orders').select('amount,stage').eq('company_id',currentCompanyId).gte('created_at',mo.start).lte('created_at',mo.end).then(function(r){
-      var sum=0,count=0;if(r.data)for(var j=0;j<r.data.length;j++){sum+=parseFloat(r.data[j].amount)||0;count++}
-      return {label:mo.label.slice(5),sum:sum,count:count};
-    }).catch(function(){return {label:mo.label.slice(5),sum:0,count:0}});
-  });
-  Promise.all(promises).then(function(rows){
-    var maxSum=0;for(var i=0;i<rows.length;i++){if(rows[i].sum>maxSum)maxSum=rows[i].sum}
-    var h='<div class="chart-bars">';
-    for(var i=0;i<rows.length;i++){
-      var r=rows[i];var pct=maxSum>0?Math.round(r.sum/maxSum*100):0;var barH=Math.max(4,pct*2);
-      h+='<div class="chart-bar-col"><div class="chart-bar-val">¥'+r.sum.toLocaleString('zh-CN',{minimumFractionDigits:0,maximumFractionDigits:0})+'</div><div class="chart-bar" style="height:'+barH+'px;background:linear-gradient(180deg,#4F6EF7,#7B93FF)" title="'+r.label+': '+r.count+'单"></div><div class="chart-bar-label">'+r.label+'</div></div>';
-    }
-    h+='</div>';
-    el.innerHTML=h;
-    // Populate year selector
-    var sy=document.getElementById('rp-sales-year');
-    if(!sy.options.length){var cy=new Date().getFullYear();for(var y=cy-3;y<=cy;y++){var o=document.createElement('option');o.value=y;o.textContent=y+'年';if(y===parseInt(year))o.selected=true;sy.appendChild(o)}}
-  });
-}
-
-function renderReportClients(){
-  var el=document.getElementById('rp-clients-chart');
-  var year=document.getElementById('rp-clients-year').value||new Date().getFullYear();
-  el.innerHTML='<div class="chart-loading">加载中...</div>';
-  var months=[];
-  for(var m=1;m<=12;m++){months.push({start:new Date(year,m-1,1).toISOString(),end:new Date(year,m,0,23,59,59).toISOString(),label:year+'年'+m+'月'})}
-  // Get client count + type distribution
-  Promise.all([
-    Promise.all(months.map(function(mo){return sb.from('clients').select('id,count',{count:'exact',head:true}).eq('company_id',currentCompanyId).gte('created_at',mo.start).lte('created_at',mo.end).then(function(r){return {label:mo.label.slice(5),count:r.count||0}}).catch(function(){return {label:mo.label.slice(5),count:0}})})),
-    sb.from('clients').select('type').eq('company_id',currentCompanyId).then(function(r){if(!r.data)return[];var types={};for(var i=0;i<r.data.length;i++){var t=r.data[i].type||'未分类';types[t]=(types[t]||0)+1}return types})
-  ]).then(function(results){
-    var monthly=results[0],types=results[1];
-    var maxCount=0;for(var i=0;i<monthly.length;i++){if(monthly[i].count>maxCount)maxCount=monthly[i].count}
-    var h='<div style="font-weight:600;font-size:13px;margin-bottom:8px">月度新增趋势</div><div class="chart-bars">';
-    for(var i=0;i<monthly.length;i++){
-      var mc=monthly[i];var pct=maxCount>0?Math.round(mc.count/maxCount*100):0;var barH=Math.max(4,pct*2);
-      h+='<div class="chart-bar-col"><div class="chart-bar-val">'+mc.count+'</div><div class="chart-bar" style="height:'+barH+'px;background:linear-gradient(180deg,#10B981,#34D399)" title="'+mc.label+'"></div><div class="chart-bar-label">'+mc.label+'</div></div>';
-    }
-    h+='</div><div style="font-weight:600;font-size:13px;margin:16px 0 8px">类型分布</div><div class="type-dist">';
-    var colors=['#4F6EF7','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899','#06B6D4','#84CC16'];
-    var total=0;for(var k in types)total+=types[k];
-    var ci=0;for(var k in types){
-      var pct2=total>0?Math.round(types[k]/total*100):0;
-      h+='<div class="type-dist-item"><span class="td-dot" style="background:'+(colors[ci%colors.length])+'"></span><span class="td-name">'+escHtml(k)+'</span><span class="td-bar-wrap"><span class="td-bar" style="width:'+pct2+'%;background:'+(colors[ci%colors.length])+'"></span></span><span class="td-val">'+types[k]+' ('+pct2+'%)</span></div>';
-      ci++;
-    }
-    h+='</div>';
-    el.innerHTML=h;
-    var sy=document.getElementById('rp-clients-year');
-    if(!sy.options.length){var cy=new Date().getFullYear();for(var y=cy-3;y<=cy;y++){var o=document.createElement('option');o.value=y;o.textContent=y+'年';if(y===parseInt(year))o.selected=true;sy.appendChild(o)}}
-  });
-}
-
-function renderReportCollections(){
-  var el=document.getElementById('rp-collections-chart');
-  var year=document.getElementById('rp-collections-year').value||new Date().getFullYear();
-  el.innerHTML='<div class="chart-loading">加载中...</div>';
-  var months=[];
-  for(var m=1;m<=12;m++){months.push({start:new Date(year,m-1,1).toISOString(),end:new Date(year,m,0,23,59,59).toISOString(),label:year+'年'+m+'月'})}
-  // Get payments by month
-  Promise.all(months.map(function(mo){
-    return sb.from('payments').select('amount').eq('company_id',currentCompanyId).gte('payment_date',mo.start).lte('payment_date',mo.end).then(function(r){
-      var sum=0;if(r.data)for(var i=0;i<r.data.length;i++)sum+=parseFloat(r.data[i].amount)||0;
-      return {label:mo.label.slice(5),paid:sum};
-    }).catch(function(){return {label:mo.label.slice(5),paid:0}});
-  })).then(function(rows){
-    var maxPaid=0;for(var i=0;i<rows.length;i++){if(rows[i].paid>maxPaid)maxPaid=rows[i].paid}
-    var h='<div class="chart-bars">';
-    for(var i=0;i<rows.length;i++){
-      var r=rows[i];var pct=maxPaid>0?Math.round(r.paid/maxPaid*100):0;var barH=Math.max(4,pct*2);
-      h+='<div class="chart-bar-col"><div class="chart-bar-val">¥'+r.paid.toLocaleString('zh-CN',{minimumFractionDigits:0,maximumFractionDigits:0})+'</div><div class="chart-bar" style="height:'+barH+'px;background:linear-gradient(180deg,#F59E0B,#FBBF24)" title="'+r.label+'"></div><div class="chart-bar-label">'+r.label+'</div></div>';
-    }
-    h+='</div>';
-    el.innerHTML=h;
-    var sy=document.getElementById('rp-collections-year');
-    if(!sy.options.length){var cy=new Date().getFullYear();for(var y=cy-3;y<=cy;y++){var o=document.createElement('option');o.value=y;o.textContent=y+'年';if(y===parseInt(year))o.selected=true;sy.appendChild(o)}}
-  });
-}
-
-function renderReportOrders(){
-  var el=document.getElementById('rp-orders-chart');
-  var year=document.getElementById('rp-orders-year').value||new Date().getFullYear();
-  el.innerHTML='<div class="chart-loading">加载中...</div>';
-  var months=[];
-  for(var m=1;m<=12;m++){months.push({start:new Date(year,m-1,1).toISOString(),end:new Date(year,m,0,23,59,59).toISOString(),label:year+'年'+m+'月'})}
-  Promise.all(months.map(function(mo){
-    return sb.from('orders').select('stage,amount').eq('company_id',currentCompanyId).gte('created_at',mo.start).lte('created_at',mo.end).then(function(r){
-      var total=0,completed=0,cancelled=0;
-      if(r.data)for(var i=0;i<r.data.length;i++){total++;var a=parseFloat(r.data[i].amount)||0;if(r.data[i].stage==='已完成')completed++;if(r.data[i].stage==='已取消')cancelled++}
-      return {label:mo.label.slice(5),total:total,completed:completed,cancelled:cancelled,sum:0};
-    }).catch(function(){return {label:mo.label.slice(5),total:0,completed:0,cancelled:0}});
-  })).then(function(rows){
-    var h='<table class="report-table"><thead><tr><th>月份</th><th>订单数</th><th>已完成</th><th>已取消</th><th>完成率</th></tr></thead><tbody>';
-    for(var i=0;i<rows.length;i++){
-      var r=rows[i];var rate=r.total>0?Math.round(r.completed/r.total*100):0;
-      h+='<tr><td>'+r.label+'</td><td>'+r.total+'</td><td style="color:#10B981">'+r.completed+'</td><td style="color:#EF4444">'+r.cancelled+'</td><td>'+rate+'%</td></tr>';
-    }
-    h+='</tbody></table>';
-    el.innerHTML=h;
-    var sy=document.getElementById('rp-orders-year');
-    if(!sy.options.length){var cy=new Date().getFullYear();for(var y=cy-3;y<=cy;y++){var o=document.createElement('option');o.value=y;o.textContent=y+'年';if(y===parseInt(year))o.selected=true;sy.appendChild(o)}}
-  });
-}
-
-function exportReportCSV(type){
-  var el;
-  if(type==='sales'){el=document.getElementById('rp-sales-chart')}
-  else if(type==='clients'){el=document.getElementById('rp-clients-chart')}
-  else if(type==='collections'){el=document.getElementById('rp-collections-chart')}
-  else if(type==='orders'){el=document.getElementById('rp-orders-chart')}
-  if(!el)return;
-  var headers={'sales':['月份','销售额'],'clients':['月份','新增客户'],'collections':['月份','回款金额'],'orders':['月份','订单数','已完成','已取消','完成率']};
-  var csv=headers[type].join(',')+'\n';
-  if(type!=='orders'){
-    var labels=el.querySelectorAll('.chart-bar-label');
-    var vals=el.querySelectorAll('.chart-bar-val');
-    for(var i=0;i<labels.length;i++){
-      var v=vals[i]?vals[i].textContent.replace('¥','').replace(/,/g,''):'0';
-      csv+=labels[i].textContent+','+v+'\n';
-    }
-  }else{
-    var rows=el.querySelectorAll('tbody tr');
-    for(var i=0;i<rows.length;i++){var cells=rows[i].querySelectorAll('td');csv+=cells[0].textContent+','+cells[1].textContent+','+cells[2].textContent+','+cells[3].textContent+','+cells[4].textContent+'\n'}
+  var startM=1,endM=12;
+  if(quarter>0){startM=(quarter-1)*3+1;endM=Math.min(startM+2,12);}
+  for(var m=startM;m<=endM;m++){
+    months.push({month:m,label:year+'年'+m+'月',shortLabel:m+'月',start:new Date(year,m-1,1).toISOString(),end:new Date(year,m,0,23,59,59).toISOString()});
   }
+  return {year:year,months:months};
+}
+
+// 初始化year选择器
+function _initYearSelector(elId,year){
+  var sy=document.getElementById(elId);
+  if(!sy.options.length){
+    var cy=new Date().getFullYear();
+    for(var y=cy-3;y<=cy;y++){var o=document.createElement('option');o.value=y;o.textContent=y+'年';if(y===year)o.selected=true;sy.appendChild(o);}
+  }
+}
+
+// 构建Supabase查询（超管绕过company_id过滤）
+function _reportQuery(table){
+  var q=sb.from(table).select('*');
+  if(!isSuperAdmin)q=q.eq('company_id',currentCompanyId);
+  return q;
+}
+
+// ============================================================
+// 📈 销售报表
+// ============================================================
+async function renderReportSales(){
+  _destroyAllReportCharts();
+  var sel=_getReportMonths('rp-sales-year','rp-sales-quarter');
+  _initYearSelector('rp-sales-year',sel.year);
+  await Promise.all([
+    renderSalesFunnel(sel.year),
+    renderWinRate(sel),
+    renderDealCycle(sel),
+    renderAvgDealPrice(sel),
+    renderRegionalPerf(sel.year)
+  ]);
+}
+
+async function renderSalesFunnel(year){
+  try{
+    var yStart=new Date(year,0,1).toISOString();
+    var yEnd=new Date(year,11,31,23,59,59).toISOString();
+    var stages=['new','assigned','contacted','qualified','negotiation','won','lost'];
+    var stageLabels=['新线索','已分配','已联系','已确认','谈判中','赢单','输单'];
+    var stageColors=['#1565C0','#1E88E5','#E65100','#2E7D32','#6B21A8','#166534','#991B1B'];
+    var counts=[];
+    for(var si=0;si<stages.length;si++){
+      var r=await _reportQuery('lead_pool').eq('status',stages[si]).gte('created_at',yStart).lte('created_at',yEnd);
+      counts.push((r.data||[]).length);
+    }
+    _destroyReportChart('salesFunnel');
+    var ctx=document.getElementById('rp-sales-salesFunnel');
+    if(ctx){
+      _reportCharts.salesFunnel=new Chart(ctx,{type:'bar',
+        data:{labels:stageLabels,datasets:[{label:'线索数',data:counts,backgroundColor:stageColors,borderRadius:4}]},
+        options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{display:false}},
+          scales:{x:{ticks:{stepSize:Math.max(1,Math.ceil(Math.max.apply(null,counts)/6))}}}}});
+    }
+  }catch(e){console.warn('renderSalesFunnel failed:',e);}
+}
+
+async function renderWinRate(sel){
+  try{
+    var labels=[],rates=[];
+    for(var mi=0;mi<sel.months.length;mi++){
+      var mo=sel.months[mi];
+      var won=await _reportQuery('lead_pool').eq('status','won').gte('created_at',mo.start).lte('created_at',mo.end);
+      var lost=await _reportQuery('lead_pool').eq('status','lost').gte('created_at',mo.start).lte('created_at',mo.end);
+      var w=(won.data||[]).length,l=(lost.data||[]).length;
+      var total=w+l;
+      labels.push(mo.shortLabel);
+      rates.push(total>0?Math.round(w/total*100):0);
+    }
+    _destroyReportChart('winRate');
+    var ctx=document.getElementById('rp-sales-winRate');
+    if(ctx){
+      _reportCharts.winRate=new Chart(ctx,{type:'line',
+        data:{labels:labels,datasets:[{label:'赢单率(%)',data:rates,borderColor:'#10B981',backgroundColor:'rgba(16,185,129,0.1)',fill:true,tension:0.35,pointRadius:3,pointBackgroundColor:'#10B981'}]},
+        options:{responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{display:false}},
+          scales:{y:{min:0,max:100,ticks:{callback:function(v){return v+'%'}}}}}});
+    }
+  }catch(e){console.warn('renderWinRate failed:',e);}
+}
+
+async function renderDealCycle(sel){
+  try{
+    var labels=[],cycles=[];
+    for(var mi=0;mi<sel.months.length;mi++){
+      var mo=sel.months[mi];
+      var r=await _reportQuery('orders').select('created_at,updated_at').eq('stage','已完成').gte('created_at',mo.start).lte('created_at',mo.end);
+      var totalDays=0,count=0;
+      if(r.data)for(var i=0;i<r.data.length;i++){
+        var c=new Date(r.data[i].created_at);
+        var u=r.data[i].updated_at?new Date(r.data[i].updated_at):new Date();
+        var days=Math.round((u-c)/(1000*60*60*24));
+        if(days>=0){totalDays+=days;count++;}
+      }
+      labels.push(mo.shortLabel);
+      cycles.push(count>0?Math.round(totalDays/count):0);
+    }
+    _destroyReportChart('dealCycle');
+    var ctx=document.getElementById('rp-sales-dealCycle');
+    if(ctx){
+      _reportCharts.dealCycle=new Chart(ctx,{type:'bar',
+        data:{labels:labels,datasets:[{label:'平均成单天数',data:cycles,backgroundColor:'#8B5CF6',borderRadius:4}]},
+        options:{responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{display:false}},
+          scales:{y:{ticks:{callback:function(v){return v+'天'}}}}}});
+    }
+  }catch(e){console.warn('renderDealCycle failed:',e);}
+}
+
+async function renderAvgDealPrice(sel){
+  try{
+    var labels=[],prices=[];
+    for(var mi=0;mi<sel.months.length;mi++){
+      var mo=sel.months[mi];
+      var r=await _reportQuery('orders').select('amount').not('stage','eq','已取消').gte('created_at',mo.start).lte('created_at',mo.end);
+      var total=0,count=0;
+      if(r.data)for(var i=0;i<r.data.length;i++){total+=parseFloat(r.data[i].amount)||0;count++;}
+      labels.push(mo.shortLabel);
+      prices.push(count>0?Math.round(total/count):0);
+    }
+    _destroyReportChart('avgDealPrice');
+    var ctx=document.getElementById('rp-sales-avgDealPrice');
+    if(ctx){
+      _reportCharts.avgDealPrice=new Chart(ctx,{type:'line',
+        data:{labels:labels,datasets:[{label:'成交均价',data:prices,borderColor:'#F59E0B',backgroundColor:'rgba(245,158,11,0.1)',fill:true,tension:0.35,pointRadius:3,pointBackgroundColor:'#F59E0B'}]},
+        options:{responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{display:false}},
+          scales:{y:{ticks:{callback:function(v){return v>=10000?'¥'+(v/10000).toFixed(1)+'万':'¥'+v;}}}}}});
+    }
+  }catch(e){console.warn('renderAvgDealPrice failed:',e);}
+}
+
+async function renderRegionalPerf(year){
+  try{
+    var yStart=new Date(year,0,1).toISOString();
+    var yEnd=new Date(year,11,31,23,59,59).toISOString();
+    var r=await _reportQuery('clients').select('industry').gte('created_at',yStart).lte('created_at',yEnd);
+    var regionMap={};
+    if(r.data)for(var i=0;i<r.data.length;i++){var p=r.data[i].industry||'未知';regionMap[p]=(regionMap[p]||0)+1;}
+    var labels=Object.keys(regionMap).sort(function(a,b){return regionMap[b]-regionMap[a];});
+    var values=labels.map(function(k){return regionMap[k];});
+    var regionColors=['#4F6EF7','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899','#06B6D4','#F97316','#84CC16','#6366F1','#A855F7','#14B8A6'];
+    _destroyReportChart('regionalPerf');
+    var ctx=document.getElementById('rp-sales-regionalPerf');
+    if(ctx){
+      _reportCharts.regionalPerf=new Chart(ctx,{type:'doughnut',
+        data:{labels:labels.slice(0,12),datasets:[{data:values.slice(0,12),backgroundColor:regionColors.slice(0,Math.min(labels.length,12))}]},
+        options:{responsive:true,maintainAspectRatio:false,cutout:'60%',
+          plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:10},padding:8}}}}});
+    }
+  }catch(e){console.warn('renderRegionalPerf failed:',e);}
+}
+
+// ============================================================
+// 👥 客户分析
+// ============================================================
+async function renderReportClients(){
+  _destroyAllReportCharts();
+  var sel=_getReportMonths('rp-clients-year','rp-clients-quarter');
+  _initYearSelector('rp-clients-year',sel.year);
+  await Promise.all([
+    renderNewClientsTrend(sel),
+    renderChurnAnalysis(sel),
+    renderRepurchaseRate(sel),
+    renderRFMAnalysis(),
+    renderChannelAnalysis(sel)
+  ]);
+}
+
+async function renderNewClientsTrend(sel){
+  try{
+    var labels=[],counts=[];
+    for(var mi=0;mi<sel.months.length;mi++){
+      var mo=sel.months[mi];
+      var r=await _reportQuery('clients').select('id',{count:'exact',head:true}).gte('created_at',mo.start).lte('created_at',mo.end);
+      labels.push(mo.shortLabel);
+      counts.push(r.count||0);
+    }
+    _destroyReportChart('newClientsTrend');
+    var ctx=document.getElementById('rp-clients-newClientsTrend');
+    if(ctx){
+      _reportCharts.newClientsTrend=new Chart(ctx,{type:'line',
+        data:{labels:labels,datasets:[{label:'新增客户',data:counts,borderColor:'#10B981',backgroundColor:'rgba(16,185,129,0.1)',fill:true,tension:0.35,pointRadius:3,pointBackgroundColor:'#10B981'}]},
+        options:{responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{display:false}},
+          scales:{y:{ticks:{stepSize:Math.max(1,Math.ceil(Math.max.apply(null,counts.concat([1]))/6))}}}}});
+    }
+  }catch(e){console.warn('renderNewClientsTrend failed:',e);}
+}
+
+async function renderChurnAnalysis(sel){
+  try{
+    // 流失定义：该月之前3个月有订单但该月及之后无新订单的客户数
+    var labels=[],churnCounts=[];
+    for(var mi=0;mi<sel.months.length;mi++){
+      var mo=sel.months[mi];
+      // 本月有订单的客户
+      var activeR=await _reportQuery('orders').select('client_id').gte('created_at',mo.start).lte('created_at',mo.end);
+      var activeSet={};if(activeR.data)for(var ai=0;ai<activeR.data.length;ai++)activeSet[activeR.data[ai].client_id]=true;
+      // 过去3个月有订单的客户
+      var threeMonthsAgo=new Date(sel.year,mo.month-4,1).toISOString();
+      var prevR=await _reportQuery('orders').select('client_id').gte('created_at',threeMonthsAgo).lte('created_at',mo.end);
+      var prevSet={};if(prevR.data)for(var pi=0;pi<prevR.data.length;pi++)prevSet[prevR.data[pi].client_id]=true;
+      // 流失 = 过去3个月有但本月无
+      var churn=0;
+      for(var cid in prevSet){if(!activeSet[cid])churn++;}
+      labels.push(mo.shortLabel);
+      churnCounts.push(churn);
+    }
+    _destroyReportChart('churnAnalysis');
+    var ctx=document.getElementById('rp-clients-churnAnalysis');
+    if(ctx){
+      _reportCharts.churnAnalysis=new Chart(ctx,{type:'bar',
+        data:{labels:labels,datasets:[{label:'流失客户数',data:churnCounts,backgroundColor:'#EF4444',borderRadius:4}]},
+        options:{responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{display:false}},
+          scales:{y:{ticks:{stepSize:Math.max(1,Math.ceil(Math.max.apply(null,churnCounts.concat([1]))/6))}}}}});
+    }
+  }catch(e){console.warn('renderChurnAnalysis failed:',e);}
+}
+
+async function renderRepurchaseRate(sel){
+  try{
+    var labels=[],rates=[];
+    for(var mi=0;mi<sel.months.length;mi++){
+      var mo=sel.months[mi];
+      var r=await _reportQuery('orders').select('client_id').gte('created_at',mo.start).lte('created_at',mo.end);
+      var clientOrders={};var repurchase=0,totalClients=0;
+      if(r.data){
+        for(var i=0;i<r.data.length;i++){var cid=r.data[i].client_id;clientOrders[cid]=(clientOrders[cid]||0)+1;}
+        totalClients=Object.keys(clientOrders).length;
+        for(var k in clientOrders){if(clientOrders[k]>=2)repurchase++;}
+      }
+      labels.push(mo.shortLabel);
+      rates.push(totalClients>0?Math.round(repurchase/totalClients*100):0);
+    }
+    // 更新指标卡
+    var lastRate=rates.length>0?rates[rates.length-1]:0;
+    var metricEl=document.getElementById('rp-clients-repurchaseMetric');
+    if(metricEl)metricEl.textContent=lastRate+'%';
+    _destroyReportChart('repurchaseRate');
+    var ctx=document.getElementById('rp-clients-repurchaseRate');
+    if(ctx){
+      _reportCharts.repurchaseRate=new Chart(ctx,{type:'line',
+        data:{labels:labels,datasets:[{label:'复购率(%)',data:rates,borderColor:'#8B5CF6',backgroundColor:'rgba(139,92,246,0.1)',fill:true,tension:0.35,pointRadius:3,pointBackgroundColor:'#8B5CF6'}]},
+        options:{responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{display:false}},
+          scales:{y:{min:0,max:100,ticks:{callback:function(v){return v+'%'}}}}}});
+    }
+  }catch(e){console.warn('renderRepurchaseRate failed:',e);}
+}
+
+async function renderRFMAnalysis(){
+  try{
+    var now=new Date();
+    // 获取所有订单（不限时间）
+    var r=await _reportQuery('orders').select('client_id,amount,created_at');
+    if(!r.data||!r.data.length){document.getElementById('rp-clients-rfmTable').querySelector('tbody').innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text3)">暂无数据</td></tr>';return;}
+    // 获取客户名称映射
+    var cr=await _reportQuery('clients').select('id,name');
+    var clientNames={};if(cr.data)for(var ci=0;ci<cr.data.length;ci++)clientNames[cr.data[ci].id]=cr.data[ci].name||'未知';
+    // 按客户聚合
+    var rfm={};
+    for(var i=0;i<r.data.length;i++){
+      var o=r.data[i];var cid=o.client_id;if(!cid)continue;
+      if(!rfm[cid])rfm[cid]={clientId:cid,recency:99999,frequency:0,monetary:0};
+      var days=(now-new Date(o.created_at))/(1000*60*60*24);
+      if(days<rfm[cid].recency)rfm[cid].recency=Math.round(days);
+      rfm[cid].frequency++;
+      rfm[cid].monetary+=parseFloat(o.amount)||0;
+    }
+    // 计算RFM评分（1-5分）
+    var arr=Object.values(rfm);
+    arr.sort(function(a,b){return a.recency-b.recency;});for(var ri=0;ri<arr.length;ri++)arr[ri].r=Math.ceil((ri+1)/arr.length*5);
+    arr.sort(function(a,b){return a.frequency-b.frequency;});for(var fi=0;fi<arr.length;fi++)arr[fi].f=Math.ceil((fi+1)/arr.length*5);
+    arr.sort(function(a,b){return a.monetary-b.monetary;});for(var mi=0;mi<arr.length;mi++)arr[mi].m=Math.ceil((mi+1)/arr.length*5);
+    // 按R+F+M总分排序,取Top20
+    arr.sort(function(a,b){return (b.r+b.f+b.m)-(a.r+a.f+a.m);});
+    var top=arr.slice(0,20);
+    var tbody=document.getElementById('rp-clients-rfmTable').querySelector('tbody');
+    var html='';
+    for(var ti=0;ti<top.length;ti++){
+      var tr=top[ti];
+      html+='<tr><td>'+escHtml(clientNames[tr.clientId]||'客户#'+tr.clientId)+'</td><td>'+tr.recency+'</td><td>'+tr.frequency+'</td><td>¥'+tr.monetary.toLocaleString('zh-CN',{minimumFractionDigits:0,maximumFractionDigits:0})+'</td><td style="font-weight:700;color:'+(tr.r+tr.f+tr.m>=12?'#10B981':tr.r+tr.f+tr.m>=8?'#F59E0B':'#EF4444')+'">'+(tr.r+tr.f+tr.m)+'分</td></tr>';
+    }
+    tbody.innerHTML=html;
+  }catch(e){console.warn('renderRFMAnalysis failed:',e);}
+}
+
+async function renderChannelAnalysis(sel){
+  try{
+    var start=sel.months[0].start,end=sel.months[sel.months.length-1].end;
+    var r=await _reportQuery('lead_pool').select('source').gte('created_at',start).lte('created_at',end);
+    var sourceMap={};
+    if(r.data)for(var i=0;i<r.data.length;i++){var s=r.data[i].source||'未知';sourceMap[s]=(sourceMap[s]||0)+1;}
+    var labels=Object.keys(sourceMap);
+    var values=labels.map(function(k){return sourceMap[k];});
+    var colors=['#4F6EF7','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899','#06B6D4','#F97316'];
+    _destroyReportChart('channelAnalysis');
+    var ctx=document.getElementById('rp-clients-channelAnalysis');
+    if(ctx){
+      _reportCharts.channelAnalysis=new Chart(ctx,{type:'doughnut',
+        data:{labels:labels,datasets:[{data:values,backgroundColor:colors.slice(0,labels.length)}]},
+        options:{responsive:true,maintainAspectRatio:false,cutout:'60%',
+          plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:10},padding:8}}}}});
+    }
+  }catch(e){console.warn('renderChannelAnalysis failed:',e);}
+}
+
+// ============================================================
+// 💳 回款分析
+// ============================================================
+async function renderReportCollections(){
+  _destroyAllReportCharts();
+  var sel=_getReportMonths('rp-collections-year','rp-collections-quarter');
+  _initYearSelector('rp-collections-year',sel.year);
+  await Promise.all([
+    renderARAging(sel.year),
+    renderPaymentTrend(sel),
+    renderContractStats(sel),
+    renderBadDebt()
+  ]);
+}
+
+async function renderARAging(year){
+  try{
+    var yStart=new Date(year,0,1).toISOString();
+    var yEnd=new Date(year,11,31,23,59,59).toISOString();
+    var now=new Date();
+    var r=await _reportQuery('contracts').select('total_amount,end_date').not('archive_status','eq','archived').gte('created_at',yStart).lte('created_at',yEnd);
+    // 按账龄分组：未到期、1-30天、31-60天、61-90天、90天+
+    var aging={unexpired:0,days30:0,days60:0,days90:0,over90:0};
+    if(r.data)for(var i=0;i<r.data.length;i++){
+      var unpaid=parseFloat(r.data[i].total_amount)||0;
+      var due=r.data[i].end_date?new Date(r.data[i].end_date):now;
+      var overdue=(now-due)/(1000*60*60*24);
+      if(overdue<=0)aging.unexpired+=unpaid;
+      else if(overdue<=30)aging.days30+=unpaid;
+      else if(overdue<=60)aging.days60+=unpaid;
+      else if(overdue<=90)aging.days90+=unpaid;
+      else aging.over90+=unpaid;
+    }
+    _destroyReportChart('ARAging');
+    var ctx=document.getElementById('rp-collections-ARAging');
+    if(ctx){
+      _reportCharts.ARAging=new Chart(ctx,{type:'bar',
+        data:{labels:['未到期','1-30天','31-60天','61-90天','90天以上'],datasets:[
+          {label:'未到期',data:[aging.unexpired,0,0,0,0],backgroundColor:'#10B981',borderRadius:4},
+          {label:'1-30天',data:[0,aging.days30,0,0,0],backgroundColor:'#F59E0B',borderRadius:4},
+          {label:'31-60天',data:[0,0,aging.days60,0,0],backgroundColor:'#F97316',borderRadius:4},
+          {label:'61-90天',data:[0,0,0,aging.days90,0],backgroundColor:'#EF4444',borderRadius:4},
+          {label:'90天以上',data:[0,0,0,0,aging.over90],backgroundColor:'#991B1B',borderRadius:4}
+        ]},
+        options:{responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:9},padding:6}}},
+          scales:{x:{stacked:true},y:{stacked:true,ticks:{callback:function(v){return v>=10000?'¥'+(v/10000).toFixed(1)+'万':'¥'+v;}}}}}});
+    }
+  }catch(e){console.warn('renderARAging failed:',e);}
+}
+
+async function renderPaymentTrend(sel){
+  try{
+    var labels=[],amounts=[];
+    for(var mi=0;mi<sel.months.length;mi++){
+      var mo=sel.months[mi];
+      var r=await _reportQuery('payments').select('amount').gte('payment_date',mo.start).lte('payment_date',mo.end);
+      var sum=0;if(r.data)for(var i=0;i<r.data.length;i++)sum+=parseFloat(r.data[i].amount)||0;
+      labels.push(mo.shortLabel);
+      amounts.push(sum);
+    }
+    _destroyReportChart('paymentTrend');
+    var ctx=document.getElementById('rp-collections-paymentTrend');
+    if(ctx){
+      _reportCharts.paymentTrend=new Chart(ctx,{type:'line',
+        data:{labels:labels,datasets:[{label:'回款金额',data:amounts,borderColor:'#10B981',backgroundColor:'rgba(16,185,129,0.1)',fill:true,tension:0.35,pointRadius:3,pointBackgroundColor:'#10B981'}]},
+        options:{responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{display:false}},
+          scales:{y:{ticks:{callback:function(v){return v>=10000?'¥'+(v/10000).toFixed(1)+'万':'¥'+v;}}}}}});
+    }
+  }catch(e){console.warn('renderPaymentTrend failed:',e);}
+}
+
+async function renderContractStats(sel){
+  try{
+    var labels=[],totals=[],paids=[];
+    for(var mi=0;mi<sel.months.length;mi++){
+      var mo=sel.months[mi];
+      var r=await _reportQuery('contracts').select('total_amount').gte('created_at',mo.start).lte('created_at',mo.end);
+      var total=0,paid=0;
+      if(r.data)for(var i=0;i<r.data.length;i++){total+=parseFloat(r.data[i].total_amount)||0;}
+      labels.push(mo.shortLabel);
+      totals.push(total);paids.push(paid);
+    }
+    _destroyReportChart('contractStats');
+    var ctx=document.getElementById('rp-collections-contractStats');
+    if(ctx){
+      _reportCharts.contractStats=new Chart(ctx,{type:'bar',
+        data:{labels:labels,datasets:[
+          {label:'合同总金额',data:totals,backgroundColor:'#4F6EF7',borderRadius:4},
+          {label:'已回款金额',data:paids,backgroundColor:'#10B981',borderRadius:4}
+        ]},
+        options:{responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:9},padding:6}}},
+          scales:{y:{ticks:{callback:function(v){return v>=10000?'¥'+(v/10000).toFixed(1)+'万':'¥'+v;}}}}}});
+    }
+  }catch(e){console.warn('renderContractStats failed:',e);}
+}
+
+async function renderBadDebt(){
+  try{
+    var now=new Date();
+    var r=await _reportQuery('contracts').select('id,total_amount,end_date').not('archive_status','eq','archived').not('status','eq','completed');
+    if(!r.data||!r.data.length){document.getElementById('rp-collections-badDebtTable').querySelector('tbody').innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text3)">暂无超期合同</td></tr>';return;}
+    // 筛选超期且未完成
+    var badList=[];
+    for(var i=0;i<r.data.length;i++){
+      var c=r.data[i];
+      var unpaid=parseFloat(c.total_amount)||0;
+      var due=c.end_date?new Date(c.end_date):null;
+      if(!due)continue;
+      var overdue=Math.round((now-due)/(1000*60*60*24));
+      if(overdue<=0)continue;
+      badList.push({id:c.id,total:parseFloat(c.total_amount)||0,paid:0,unpaid:unpaid,dueDate:due.toLocaleDateString('zh-CN'),overdueDays:overdue});
+    }
+    badList.sort(function(a,b){return b.overdueDays-a.overdueDays;});
+    var tbody=document.getElementById('rp-collections-badDebtTable').querySelector('tbody');
+    if(!badList.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text3)">暂无超期合同</td></tr>';return;}
+    var html='';
+    for(var bi=0;bi<badList.length;bi++){
+      var b=badList[bi];
+      html+='<tr><td>合同#'+b.id+'</td><td>'+b.dueDate+'</td><td>¥'+b.total.toLocaleString('zh-CN',{minimumFractionDigits:0,maximumFractionDigits:0})+'</td><td style="color:#10B981">¥'+b.paid.toLocaleString('zh-CN',{minimumFractionDigits:0,maximumFractionDigits:0})+'</td><td style="color:#EF4444">¥'+b.unpaid.toLocaleString('zh-CN',{minimumFractionDigits:0,maximumFractionDigits:0})+'</td><td style="color:#EF4444;font-weight:700">'+b.overdueDays+'天</td></tr>';
+    }
+    tbody.innerHTML=html;
+  }catch(e){console.warn('renderBadDebt failed:',e);}
+}
+
+// ============================================================
+// 📦 订单统计（Chart.js升级版）
+// ============================================================
+async function renderReportOrders(){
+  _destroyAllReportCharts();
+  var sel=_getReportMonths('rp-orders-year','rp-orders-quarter');
+  _initYearSelector('rp-orders-year',sel.year);
+  var labels=[],totals=[],completed=[],cancelled=[],rates=[];
+  for(var mi=0;mi<sel.months.length;mi++){
+    var mo=sel.months[mi];
+    var r=await _reportQuery('orders').select('stage').gte('created_at',mo.start).lte('created_at',mo.end);
+    var total=0,cmp=0,can=0;
+    if(r.data)for(var i=0;i<r.data.length;i++){total++;if(r.data[i].stage==='已完成')cmp++;if(r.data[i].stage==='已取消')can++;}
+    labels.push(mo.shortLabel);
+    totals.push(total);completed.push(cmp);cancelled.push(can);
+    rates.push(total>0?Math.round(cmp/total*100):0);
+  }
+  // 柱状图：月度订单量
+  _destroyReportChart('monthlyOrders');
+  var ctx1=document.getElementById('rp-orders-monthlyOrders');
+  if(ctx1){
+    _reportCharts.monthlyOrders=new Chart(ctx1,{type:'bar',
+      data:{labels:labels,datasets:[
+        {label:'订单总数',data:totals,backgroundColor:'#4F6EF7',borderRadius:4},
+        {label:'已完成',data:completed,backgroundColor:'#10B981',borderRadius:4},
+        {label:'已取消',data:cancelled,backgroundColor:'#EF4444',borderRadius:4}
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:9},padding:6}}},
+        scales:{y:{ticks:{stepSize:Math.max(1,Math.ceil(Math.max.apply(null,totals.concat([1]))/6))}}}}});
+  }
+  // 折线图：完成率
+  _destroyReportChart('completeRate');
+  var ctx2=document.getElementById('rp-orders-completeRate');
+  if(ctx2){
+    _reportCharts.completeRate=new Chart(ctx2,{type:'line',
+      data:{labels:labels,datasets:[{label:'完成率(%)',data:rates,borderColor:'#10B981',backgroundColor:'rgba(16,185,129,0.1)',fill:true,tension:0.35,pointRadius:3,pointBackgroundColor:'#10B981'}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false}},
+        scales:{y:{min:0,max:100,ticks:{callback:function(v){return v+'%'}}}}}});
+  }
+  // 明细表
+  var tbody=document.getElementById('rp-orders-detailTable').querySelector('tbody');
+  var thtml='';
+  for(var ti=0;ti<labels.length;ti++){
+    thtml+='<tr><td>'+labels[ti]+'</td><td>'+totals[ti]+'</td><td style="color:#10B981">'+completed[ti]+'</td><td style="color:#EF4444">'+cancelled[ti]+'</td><td>'+rates[ti]+'%</td></tr>';
+  }
+  tbody.innerHTML=thtml;
+}
+
+// ============================================================
+// ⚙️ 自定义仪表盘
+// ============================================================
+var _currentDashboardId=null;
+var _currentDashboardCards=[];
+
+async function renderCustomDashboard(){
+  _destroyAllReportCharts();
+  await loadDashboardList();
+  var sel=document.getElementById('rp-dashboard-selector');
+  var dashId=sel.value;
+  _currentDashboardId=dashId||null;
+  _currentDashboardCards=[];
+  if(!dashId){
+    document.getElementById('rp-dashboard-title').value='我的仪表盘';
+    document.getElementById('rp-dashboard-scope').value='personal';
+    document.getElementById('rp-dashboard-grid').innerHTML='<div style="text-align:center;color:var(--text3);padding:60px 0;grid-column:1/-1">点击「添加卡片」开始构建你的仪表盘</div>';
+    return;
+  }
+  try{
+    var r=await sb.from('custom_dashboards').select('*').eq('id',parseInt(dashId)).single();
+    if(!r.data)return;
+    document.getElementById('rp-dashboard-title').value=r.data.title||'我的仪表盘';
+    document.getElementById('rp-dashboard-scope').value=r.data.scope||'personal';
+    var layout=r.data.layout||[];
+    if(typeof layout==='string')layout=JSON.parse(layout);
+    _currentDashboardCards=layout;
+    var grid=document.getElementById('rp-dashboard-grid');
+    if(!layout.length){grid.innerHTML='<div style="text-align:center;color:var(--text3);padding:60px 0;grid-column:1/-1">仪表盘为空，点击「添加卡片」添加图表</div>';return;}
+    grid.innerHTML='';
+    for(var ci=0;ci<layout.length;ci++){
+      var card=layout[ci];
+      var cardEl=document.createElement('div');
+      cardEl.className='report-chart';
+      cardEl.id='rp-dash-card-'+ci;
+      cardEl.style.position='relative';
+      cardEl.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-weight:600;font-size:12px">'+escHtml(card.title||'图表')+'</span><button style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:14px;padding:0 4px" onclick="removeDashboardCard('+ci+')" title="删除">✕</button></div><canvas id="rp-dash-canvas-'+ci+'" style="max-height:260px"></canvas>';
+      grid.appendChild(cardEl);
+      renderDashboardCard(card,document.getElementById('rp-dash-canvas-'+ci),ci);
+    }
+  }catch(e){console.warn('renderCustomDashboard failed:',e);}
+}
+
+async function loadDashboardList(){
+  try{
+    var sel=document.getElementById('rp-dashboard-selector');
+    var curVal=sel.value;
+    sel.innerHTML='<option value="">新建仪表盘</option>';
+    var r=await sb.from('custom_dashboards').select('id,title').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
+    if(r.data)for(var i=0;i<r.data.length;i++){
+      var o=document.createElement('option');
+      o.value=r.data[i].id;
+      o.textContent=r.data[i].title||'未命名';
+      if(curVal&&parseInt(curVal)===r.data[i].id)o.selected=true;
+      sel.appendChild(o);
+    }
+  }catch(e){console.warn('loadDashboardList failed:',e);}
+}
+
+async function saveDashboardLayout(){
+  var title=document.getElementById('rp-dashboard-title').value||'我的仪表盘';
+  var scope=document.getElementById('rp-dashboard-scope').value||'personal';
+  var layout=_currentDashboardCards;
+  try{
+    if(_currentDashboardId){
+      await sb.from('custom_dashboards').update({title:title,layout:layout,scope:scope,updated_at:new Date().toISOString()}).eq('id',_currentDashboardId);
+    }else{
+      var r=await sb.from('custom_dashboards').insert({company_id:currentCompanyId,user_id:currentUser.id,title:title,layout:layout,scope:scope}).select('id').single();
+      if(r.data){_currentDashboardId=r.data.id;}
+    }
+    alert('仪表盘已保存');
+    loadDashboardList();
+  }catch(e){console.warn('saveDashboardLayout failed:',e);alert('保存失败：'+e.message);}
+}
+
+function addDashboardCard(){
+  var cardTypes=[
+    {type:'salesFunnel',title:'销售漏斗',chart:'bar',desc:'线索状态分布'},
+    {type:'winRate',title:'赢单率趋势',chart:'line',desc:'月度赢单率变化'},
+    {type:'newClients',title:'新增客户趋势',chart:'line',desc:'月度新增客户数'},
+    {type:'paymentTrend',title:'回款趋势',chart:'line',desc:'月度回款金额'},
+    {type:'orderStats',title:'订单统计',chart:'bar',desc:'月度订单量统计'},
+    {type:'channelDist',title:'获客渠道',chart:'doughnut',desc:'线索来源分布'},
+    {type:'regionalDist',title:'区域分布',chart:'doughnut',desc:'客户地域分布'},
+    {type:'contractStats',title:'合同统计',chart:'bar',desc:'合同金额对比'}
+  ];
+  var type=prompt('选择图表类型：\n1.销售漏斗  2.赢单率  3.新增客户\n4.回款趋势  5.订单统计  6.获客渠道\n7.区域分布  8.合同统计\n\n请输入编号(1-8)：','1');
+  var idx=parseInt(type)-1;
+  if(idx<0||idx>=cardTypes.length)return;
+  var ct=cardTypes[idx];
+  var title=prompt('卡片标题：',ct.title)||ct.title;
+  var card={type:ct.type,title:title,chart:ct.chart,desc:ct.desc};
+  _currentDashboardCards.push(card);
+  // 创建新卡片DOM
+  var grid=document.getElementById('rp-dashboard-grid');
+  if(grid.querySelector('[style*="padding:60px"]'))grid.innerHTML='';
+  var ci=_currentDashboardCards.length-1;
+  var cardEl=document.createElement('div');
+  cardEl.className='report-chart';
+  cardEl.id='rp-dash-card-'+ci;
+  cardEl.style.position='relative';
+  cardEl.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-weight:600;font-size:12px">'+escHtml(title)+'</span><button style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:14px;padding:0 4px" onclick="removeDashboardCard('+ci+')" title="删除">✕</button></div><canvas id="rp-dash-canvas-'+ci+'" style="max-height:260px"></canvas>';
+  grid.appendChild(cardEl);
+  renderDashboardCard(card,document.getElementById('rp-dash-canvas-'+ci),ci);
+}
+
+function removeDashboardCard(cardId){
+  _destroyReportChart('dashCanvas_'+cardId);
+  _currentDashboardCards.splice(cardId,1);
+  var el=document.getElementById('rp-dash-card-'+cardId);
+  if(el)el.remove();
+  if(!_currentDashboardCards.length){
+    document.getElementById('rp-dashboard-grid').innerHTML='<div style="text-align:center;color:var(--text3);padding:60px 0;grid-column:1/-1">仪表盘为空，点击「添加卡片」添加图表</div>';
+  }
+}
+
+async function renderDashboardCard(card,canvas,idx){
+  if(!canvas)return;
+  try{
+    var year=new Date().getFullYear();
+    var chartKey='dashCanvas_'+idx;
+    _destroyReportChart(chartKey);
+    var ctx=canvas.getContext('2d');
+    if(card.type==='salesFunnel'){
+      var stages=['new','assigned','contacted','qualified','negotiation','won','lost'];
+      var stageLabels=['新线索','已分配','已联系','已确认','谈判中','赢单','输单'];
+      var stageColors=['#1565C0','#1E88E5','#E65100','#2E7D32','#6B21A8','#166534','#991B1B'];
+      var yStart=new Date(year,0,1).toISOString(),yEnd=new Date(year,11,31,23,59,59).toISOString();
+      var counts=[];
+      for(var si=0;si<stages.length;si++){
+        var lr=await _reportQuery('lead_pool').eq('status',stages[si]).gte('created_at',yStart).lte('created_at',yEnd);
+        counts.push((lr.data||[]).length);
+      }
+      _reportCharts[chartKey]=new Chart(ctx,{type:'bar',data:{labels:stageLabels,datasets:[{label:'数量',data:counts,backgroundColor:stageColors,borderRadius:4}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
+    }else if(card.type==='winRate'){
+      var labels=[],rates=[];
+      for(var m=1;m<=12;m++){
+        var ms=new Date(year,m-1,1).toISOString(),me=new Date(year,m,0,23,59,59).toISOString();
+        var wonR=await _reportQuery('lead_pool').eq('status','won').gte('created_at',ms).lte('created_at',me);
+        var lostR=await _reportQuery('lead_pool').eq('status','lost').gte('created_at',ms).lte('created_at',me);
+        var w=(wonR.data||[]).length,l=(lostR.data||[]).length,total2=w+l;
+        labels.push(m+'月');rates.push(total2>0?Math.round(w/total2*100):0);
+      }
+      _reportCharts[chartKey]=new Chart(ctx,{type:'line',data:{labels:labels,datasets:[{label:'赢单率(%)',data:rates,borderColor:'#10B981',backgroundColor:'rgba(16,185,129,0.1)',fill:true,tension:0.35,pointRadius:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:0,max:100}}}});
+    }else if(card.type==='newClients'){
+      var labels2=[],counts2=[];
+      for(var m2=1;m2<=12;m2++){
+        var ms2=new Date(year,m2-1,1).toISOString(),me2=new Date(year,m2,0,23,59,59).toISOString();
+        var cr2=await _reportQuery('clients').select('id',{count:'exact',head:true}).gte('created_at',ms2).lte('created_at',me2);
+        labels2.push(m2+'月');counts2.push(cr2.count||0);
+      }
+      _reportCharts[chartKey]=new Chart(ctx,{type:'line',data:{labels:labels2,datasets:[{label:'新增客户',data:counts2,borderColor:'#10B981',backgroundColor:'rgba(16,185,129,0.1)',fill:true,tension:0.35,pointRadius:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
+    }else if(card.type==='paymentTrend'){
+      var labels3=[],amounts3=[];
+      for(var m3=1;m3<=12;m3++){
+        var ms3=new Date(year,m3-1,1).toISOString(),me3=new Date(year,m3,0,23,59,59).toISOString();
+        var pr3=await _reportQuery('payments').select('amount').gte('payment_date',ms3).lte('payment_date',me3);
+        var sum3=0;if(pr3.data)for(var pj=0;pj<pr3.data.length;pj++)sum3+=parseFloat(pr3.data[pj].amount)||0;
+        labels3.push(m3+'月');amounts3.push(sum3);
+      }
+      _reportCharts[chartKey]=new Chart(ctx,{type:'line',data:{labels:labels3,datasets:[{label:'回款金额',data:amounts3,borderColor:'#10B981',backgroundColor:'rgba(16,185,129,0.1)',fill:true,tension:0.35,pointRadius:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:function(v){return v>=10000?'¥'+(v/10000).toFixed(1)+'万':'¥'+v;}}}}}});
+    }else if(card.type==='orderStats'){
+      var labels4=[],totals4=[],completed4=[];
+      for(var m4=1;m4<=12;m4++){
+        var ms4=new Date(year,m4-1,1).toISOString(),me4=new Date(year,m4,0,23,59,59).toISOString();
+        var or4=await _reportQuery('orders').select('stage').gte('created_at',ms4).lte('created_at',me4);
+        var t4=0,c4=0;if(or4.data)for(var oj=0;oj<or4.data.length;oj++){t4++;if(or4.data[oj].stage==='已完成')c4++;}
+        labels4.push(m4+'月');totals4.push(t4);completed4.push(c4);
+      }
+      _reportCharts[chartKey]=new Chart(ctx,{type:'bar',data:{labels:labels4,datasets:[{label:'总数',data:totals4,backgroundColor:'#4F6EF7',borderRadius:4},{label:'已完成',data:completed4,backgroundColor:'#10B981',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
+    }else if(card.type==='channelDist'){
+      var sr=await _reportQuery('lead_pool').select('source');
+      var smap={};if(sr.data)for(var sk=0;sk<sr.data.length;sk++){var ss=sr.data[sk].source||'未知';smap[ss]=(smap[ss]||0)+1;}
+      var slabels=Object.keys(smap),svalues=slabels.map(function(k){return smap[k];});
+      var scolors=['#4F6EF7','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899','#06B6D4','#F97316'];
+      _reportCharts[chartKey]=new Chart(ctx,{type:'doughnut',data:{labels:slabels,datasets:[{data:svalues,backgroundColor:scolors.slice(0,slabels.length)}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:9}}}}}});
+    }else if(card.type==='regionalDist'){
+      var rr=await _reportQuery('clients').select('industry');
+      var rmap={};if(rr.data)for(var rk=0;rk<rr.data.length;rk++){var pp=rr.data[rk].industry||'未知';rmap[pp]=(rmap[pp]||0)+1;}
+      var rlabels=Object.keys(rmap).sort(function(a,b){return rmap[b]-rmap[a];}).slice(0,12);
+      var rvalues=rlabels.map(function(k){return rmap[k];});
+      var rcolors=['#4F6EF7','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899','#06B6D4','#F97316','#84CC16','#6366F1','#A855F7','#14B8A6'];
+      _reportCharts[chartKey]=new Chart(ctx,{type:'doughnut',data:{labels:rlabels,datasets:[{data:rvalues,backgroundColor:rcolors.slice(0,rlabels.length)}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:9}}}}}});
+    }else if(card.type==='contractStats'){
+      var clabels=[],ctotals=[],cpaids=[];
+      for(var cm=1;cm<=12;cm++){
+        var cms=new Date(year,cm-1,1).toISOString(),cme=new Date(year,cm,0,23,59,59).toISOString();
+        var crr=await _reportQuery('contracts').select('total_amount').gte('created_at',cms).lte('created_at',cme);
+        var ctotal=0,cpaid=0;if(crr.data)for(var cj=0;cj<crr.data.length;cj++){ctotal+=parseFloat(crr.data[cj].total_amount)||0;}
+        clabels.push(cm+'月');ctotals.push(ctotal);cpaids.push(cpaid);
+      }
+      _reportCharts[chartKey]=new Chart(ctx,{type:'bar',data:{labels:clabels,datasets:[{label:'总额',data:ctotals,backgroundColor:'#4F6EF7',borderRadius:4},{label:'已回',data:cpaids,backgroundColor:'#10B981',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:function(v){return v>=10000?'¥'+(v/10000).toFixed(1)+'万':'¥'+v;}}}}}});
+    }
+  }catch(e){console.warn('renderDashboardCard failed:',e);}
+}
+
+// ============================================================
+// 📥 导出CSV
+// ============================================================
+function exportReportCSV(type){
+  var year,quarter;
+  if(type==='sales'){year=document.getElementById('rp-sales-year').value;quarter=document.getElementById('rp-sales-quarter').value;}
+  else if(type==='clients'){year=document.getElementById('rp-clients-year').value;quarter=document.getElementById('rp-clients-quarter').value;}
+  else if(type==='collections'){year=document.getElementById('rp-collections-year').value;quarter=document.getElementById('rp-collections-quarter').value;}
+  else if(type==='orders'){year=document.getElementById('rp-orders-year').value;quarter=document.getElementById('rp-orders-quarter').value;}
+  else{return;}
+  year=year||new Date().getFullYear();quarter=quarter||'0';
+  var prefix=type+'_'+year+(quarter!=='0'?'_Q'+quarter:'');
+  var sel=_getReportMonths('rp-'+type+'-year','rp-'+type+'-quarter');
+  var csvHeaders,csvData=[];
+  if(type==='sales'){
+    csvHeaders=['月份','线索新','线索已分配','线索已联系','线索已确认','线索谈判','赢单','输单'];
+    // 异步生成比较复杂，简化：收集当前画布中的图表数据
+    var chart=_reportCharts.salesFunnel;
+    if(chart){csvData=[['-','-(详见图表)']];}else{csvData=[['-','-']];}
+  }else if(type==='clients'){
+    csvData=[];var chart2=_reportCharts.newClientsTrend;
+    if(chart2&&chart2.data&&chart2.data.datasets[0]){
+      csvHeaders=['月份','新增客户数'];
+      var d=chart2.data;for(var di=0;di<d.labels.length;di++)csvData.push([d.labels[di],d.datasets[0].data[di]]);
+    }else{csvHeaders=['月份','数据'];csvData=[['无','-']];}
+  }else if(type==='collections'){
+    csvData=[];var chart3=_reportCharts.paymentTrend;
+    if(chart3&&chart3.data&&chart3.data.datasets[0]){
+      csvHeaders=['月份','回款金额'];
+      var d2=chart3.data;for(var dj=0;dj<d2.labels.length;dj++)csvData.push([d2.labels[dj],d2.datasets[0].data[dj]]);
+    }else{csvHeaders=['月份','数据'];csvData=[['无','-']];}
+  }else if(type==='orders'){
+    var tbody=document.getElementById('rp-orders-detailTable');
+    if(tbody){
+      csvHeaders=['月份','订单数','已完成','已取消','完成率'];
+      var rows=tbody.querySelectorAll('tbody tr');
+      for(var ri=0;ri<rows.length;ri++){var cells=rows[ri].querySelectorAll('td');if(cells.length>=5)csvData.push([cells[0].textContent,cells[1].textContent,cells[2].textContent,cells[3].textContent,cells[4].textContent]);}
+    }else{csvHeaders=['月份'];csvData=[['无']];}
+  }
+  var csv=csvHeaders.join(',')+'\n';
+  for(var ci2=0;ci2<csvData.length;ci2++)csv+=csvData[ci2].map(function(v){return '"'+String(v).replace(/"/g,'""')+'"';}).join(',')+'\n';
   var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
   var url=URL.createObjectURL(blob);
-  var a=document.createElement('a');a.href=url;a.download=type+'_report.csv';a.click();
+  var a=document.createElement('a');a.href=url;a.download=prefix+'_report.csv';a.click();
   URL.revokeObjectURL(url);
 }
 var notifUnread=0;
@@ -1620,7 +2351,7 @@ async function loadNotifs(){
   updateBellBadge();
   // Event delegation for notif clicks
   el.onclick=function(ev){
-    var item=ev.target.closest('.notif-item');
+    var item=ev.target.closest(".notif-item");
     if(!item)return;
     var nid=parseInt(item.getAttribute('data-nid'));
     var link=item.getAttribute('data-link')||'';
@@ -1688,6 +2419,7 @@ function showToast(msg,type){
   var colors={info:'#4F6EF7',success:'#10B981',warning:'#F59E0B',error:'#EF4444'};
   var icons={info:'ℹ️',success:'✅',warning:'⚠️',error:'❌'};
   var tc=document.getElementById('toast-container');
+  if(!tc)return;
   var t=document.createElement('div');t.className='toast toast-'+type;
   t.innerHTML='<span class="toast-icon">'+(icons[type]||'')+'</span>'+escHtml(msg);
   t.style.borderLeftColor=colors[type]||'#4F6EF7';
@@ -1733,11 +2465,11 @@ function switchTab(tab){
   // Hide all views first
   var hv_d=document.getElementById('home-view');var rv_r=document.getElementById('reports-view');
   var lv=document.getElementById('leads-view');
-  var allViews=[hv_d,cv,ov,rv_r,av,sv,iv];if(spv)allViews.push(spv);if(pv)allViews.push(pv);if(lv)allViews.push(lv);if(purchv)allViews.push(purchv);
+  var allViews=[hv_d,cv,ov,rv_r,av,sv,iv];if(spv)allViews.push(spv);if(pv)allViews.push(pv);if(lv)allViews.push(lv);var colv2=document.getElementById('collab-view');if(colv2)allViews.push(colv2);var sv2=document.getElementById('service-view');if(sv2)allViews.push(sv2);if(purchv)allViews.push(purchv);var pjv=document.getElementById('projects-view');if(pjv)allViews.push(pjv);
   for(var i=0;i<allViews.length;i++)if(allViews[i])allViews[i].classList.add('hidden');
   // Deactivate all tabs
   var tr=document.getElementById('tab-reports');var thm=document.getElementById('tab-home');
-  var allTabs=[thm,tc,to,tr,ta,ti];for(var j=0;j<allTabs.length;j++)if(allTabs[j])allTabs[j].classList.remove('active');
+  var allTabs=[thm,tc,to,document.getElementById('tab-service'),document.getElementById('tab-collab'),document.getElementById('tab-projects'),tr,ta,ti];for(var j=0;j<allTabs.length;j++)if(allTabs[j])allTabs[j].classList.remove('active');
   fab.classList.add('hidden');
 
     var hv=document.getElementById('home-view');
@@ -1746,6 +2478,7 @@ function switchTab(tab){
     document.getElementById('tab-home').classList.add('active');
     document.getElementById('topbar-title').textContent='仪表盘';
     document.getElementById('main-fab').classList.add('hidden');
+    loadHomeDashboard();
     loadDashboard();
   }else 
   if(tab==='clients'){
@@ -1759,6 +2492,7 @@ function switchTab(tab){
     document.getElementById('topbar-title').textContent='业务管理';
     switchBizTab('orders');
   }else if(tab==='sales'){
+    console.log('[DEBUG] switchTab sales, calling switchBizTab');
     // Sales accessed via biz-tabs or more-menu → go through orders
     ov.classList.remove('hidden');to.classList.add('active');
     fab.classList.remove('hidden');fab.textContent='+';fab.onclick=function(){openSalesForm()};
@@ -1783,11 +2517,25 @@ function switchTab(tab){
     fab.classList.add('hidden');
     document.getElementById('topbar-title').textContent='报表中心';
     loadReportSummary();switchReportsTab('sales');
-  }else if(tab==='admin'){
+  }else if(tab==='service'){var sv2=document.getElementById('service-view');if(sv2)sv2.classList.remove('hidden');switchServiceTab('tickets');return}
+  if(tab==='projects'){
+    var pjv=document.getElementById('projects-view');pjv.classList.remove('hidden');
+    document.getElementById('tab-projects').classList.add('active');
+    document.getElementById('topbar-title').textContent='项目管理';
+    fab.classList.add('hidden');
+    switchProjectTab('list');
+    return;
+  }
+  if(tab==='admin'){
     av.classList.remove('hidden');ta.classList.add('active');
     document.getElementById('topbar-title').textContent='组织管理';
     switchAdminTab('users');
-  }
+  }else if(tab==='collab'){
+  var colv=document.getElementById('collab-view');
+  colv.classList.remove('hidden');document.getElementById('tab-collab').classList.add('active');
+  document.getElementById('topbar-title').textContent='协同办公';
+  switchCollabTab('schedule');
+}
 }
 
 function handleFab(){
@@ -2022,12 +2770,15 @@ buildFilterSelect();
 sb.auth.getSession().then(async function(res){
   if(res.data&&res.data.session){
     currentUser=res.data.session.user;
+    // Fire-and-forget: update last_login_at on session restore
+    sb.from('profiles').update({last_login_at:new Date().toISOString()}).eq('user_id',currentUser.id).then(function(){}).catch(function(){});
     // Load profile for company/role
     var {data:profile}=await sb.from('profiles').select('role,company_id').eq('user_id',currentUser.id).single();
     if(profile){currentUserRole=profile.role||'user';isSuperAdmin=profile.role==='super_admin';currentCompanyId=profile.company_id;}
     if(!currentCompanyId){document.getElementById('login-screen').classList.remove('hidden');return}
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('main-screen').classList.remove('hidden');
+    switchTab('home');
     if(isSuperAdmin||currentUserRole==='admin')document.getElementById('tab-admin').classList.remove('hidden');
   if(isSuperAdmin){document.getElementById('admin-tab-companies-manage').classList.remove('hidden');document.getElementById('admin-tab-companies').classList.remove('hidden');}
     await loadCustomTypes();
@@ -2196,6 +2947,7 @@ async function submitCompanyReg(){
 
 async function logout(){
   if(window._pendPoll)clearInterval(window._pendPoll);
+  if(currentUser)try{await writeOpLog('logout','auth',currentUser.id,currentUser.email,'用户登出')}catch(e){}
   await sb.auth.signOut();
   currentCompanyId=null;isSuperAdmin=false;
   document.getElementById('main-screen').classList.add('hidden');
@@ -2261,16 +3013,14 @@ async function loadAdminData(){
   var {data:roles,error:rerr}=await sb.from('roles').select('*').eq('company_id',currentCompanyId).order('name');
   if(!rerr)allRoles=roles||[];
   // Load all users for admin (profiles now has email column populated at login)
-  if(currentUserRole==='super_admin'){await loadAdminCompanies();}
+  if(currentUserRole==='admin'||currentUserRole==='super_admin'){await loadAdminCompanies();}
   if(currentUserRole==='admin'||currentUserRole==='super_admin'){
     if(currentUserRole==='super_admin'){
-      try{var {data:rpcUsers,error:rpcErr}=await sb.rpc('list_all_users');if(!rpcErr&&rpcUsers&&rpcUsers.length){adminUserList=rpcUsers;allUsers=rpcUsers;populatePerfSelects();}}catch(e){}
-      if(!adminUserList.length){
-        try{var ur=await fetch(SUPABASE_URL+'/rest/v1/profiles?select=*',{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}});if(ur.ok){adminUserList=await ur.json();allUsers=adminUserList;populatePerfSelects();}}catch(e){}
-      }
+      try{var ur=await fetch(SUPABASE_URL+'/rest/v1/profiles?select=*',{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}});if(ur.ok){adminUserList=await ur.json();allUsers=adminUserList;populatePerfSelects();}}catch(e){}
     }else{
       var {data:pr}=await sb.from('profiles').select('*').eq('company_id',currentCompanyId);
-      adminUserList=pr||[];allUsers=pr||[];populatePerfSelects();
+      adminUserList=(pr||[]).filter(function(u){return u.company_id===currentCompanyId;});
+      allUsers=adminUserList.slice();populatePerfSelects();
     }
   }
 }
@@ -2455,10 +3205,11 @@ async function switchBizTab(sub){
     fab.classList.remove('hidden');fab.textContent='+';fab.onclick=function(){openOrderForm()};
     renderOrders();
   }else if(sub==='sales'){
+    console.log('[DEBUG] switchBizTab sales branch, allClients.length=',allClients.length);
     tabs[1].classList.add('active');
     sv.classList.remove('hidden');
-    fab.classList.remove('hidden');fab.textContent='+';fab.onclick=function(){openSalesForm()};
-    if(!allClients.length)loadClients().then(function(){switchSalesTab('leads')});else switchSalesTab('leads');
+    fab.classList.remove('hidden');fab.textContent='+';fab.onclick=function(){console.log('[DEBUG] FAB onclick fires');openSalesForm();};
+    if(!allClients.length){console.log('[DEBUG] loading clients then calling switchSalesTab');loadClients().then(function(){console.log('[DEBUG] clients loaded, calling switchSalesTab leads');switchSalesTab('leads')});}else{console.log('[DEBUG] clients already cached, direct switchSalesTab');switchSalesTab('leads');}
   }else if(sub==='performance'){
     tabs[2].classList.add('active');
     pv.classList.remove('hidden');
@@ -2479,11 +3230,13 @@ function switchResTab(sub){
   var ipanels=iv.querySelectorAll('.inv-panel');for(var j=0;j<ipanels.length;j++)ipanels[j].classList.remove('active');
   if(sub==='inventory'){
     tabs[0].classList.add('active');
+    var fab3=document.getElementById('main-fab');if(fab3)fab3.classList.remove('hidden');
     if(itabs)itabs.style.display='';
     if(!allProducts.length){loadCategories().then(function(){loadWarehouses().then(function(){switchInventoryTab('products')})})}else{switchInventoryTab('products')}
   }else if(sub==='suppliers'){
     tabs[1].classList.add('active');
     spv.classList.remove('hidden');
+    var fab2=document.getElementById('main-fab');if(fab2)fab2.classList.add('hidden');
     loadSuppliers();
   }else if(sub==='purchase'){
     tabs[2].classList.add('active');
@@ -2522,6 +3275,12 @@ async function switchAdminTab(tab){
   var cm=document.getElementById('admin-companies-manage');
   var subs=document.querySelectorAll('.admin-subtab');
   ut.classList.add('hidden');dt.classList.add('hidden');rt.classList.add('hidden');if(pt)pt.classList.add('hidden');ct.classList.add('hidden');if(cm)cm.classList.add('hidden');
+  var ep=document.getElementById('admin-employees');if(ep)ep.classList.add('hidden');
+  var fa=document.getElementById('admin-freeagents');if(fa)fa.classList.add('hidden');
+  var ra=document.getElementById('admin-resignations');if(ra)ra.classList.add('hidden');
+  var lp=document.getElementById('admin-logs');if(lp)lp.classList.add('hidden');
+  var cp=document.getElementById('admin-config');if(cp)cp.classList.add('hidden');
+  var sp=document.getElementById('admin-security');if(sp)sp.classList.add('hidden');
   for(var i=0;i<subs.length;i++)subs[i].classList.remove('active');
   if(tab==='users'){ut.classList.remove('hidden');subs[0].classList.add('active');await loadAdminData();renderAdminUsers();}
   else if(tab==='depts'){dt.classList.remove('hidden');subs[1].classList.add('active');await loadAdminData();renderAdminDepts();}
@@ -2529,6 +3288,12 @@ async function switchAdminTab(tab){
   else if(tab==='perms'){pt.classList.remove('hidden');subs[3].classList.add('active');await loadAdminData();renderAdminPerms();}
   else if(tab==='companies_manage'){cm.classList.remove('hidden');subs[4].classList.add('active');await loadAdminCompanies();renderAdminCompanies();}
   else if(tab==='companies'){ct.classList.remove('hidden');subs[5].classList.add('active');loadPendingCompanies();}
+  else if(tab==='employees'){var ep=document.getElementById('admin-employees');ep.classList.remove('hidden');subs[6].classList.add('active');await loadAdminData();renderAdminEmployees();}
+  else if(tab==='freeagents'){var fa=document.getElementById('admin-freeagents');fa.classList.remove('hidden');subs[7].classList.add('active');await loadFreeAgents();renderFreeAgents();}
+  else if(tab==='resignations'){var ra=document.getElementById('admin-resignations');ra.classList.remove('hidden');subs[8].classList.add('active');await loadResignations();renderResignations();}
+  else if(tab==='logs'){var lp=document.getElementById('admin-logs');lp.classList.remove('hidden');subs[9].classList.add('active');await loadOperationLogs();renderOperationLogs();}
+  else if(tab==='config'){var cp=document.getElementById('admin-config');cp.classList.remove('hidden');subs[10].classList.add('active');switchConfigTab('fields');}
+  else if(tab==='security'){var sp=document.getElementById('admin-security');sp.classList.remove('hidden');subs[11].classList.add('active');renderSecurityPanel();}
 }
 
 /* ── Users ── */
@@ -2536,10 +3301,13 @@ var allRoles=[];
 
 function renderAdminUsers(){
   var q=(document.getElementById('admin-user-search').value||'').trim().toLowerCase();
-  var list=adminUserList.filter(function(u){return !q||(u.email||'').toLowerCase().indexOf(q)>=0||(u.display_name||'').toLowerCase().indexOf(q)>=0||(u.position||'').toLowerCase().indexOf(q)>=0;});
+  var list=adminUserList.filter(function(u){
+    if(!isSuperAdmin&&currentCompanyId!==null&&u.company_id!==currentCompanyId)return false;
+    return !q||(u.email||'').toLowerCase().indexOf(q)>=0||(u.display_name||'').toLowerCase().indexOf(q)>=0||(u.position||'').toLowerCase().indexOf(q)>=0;
+  });
   var el=document.getElementById('admin-user-list');
   if(list.length===0){el.innerHTML='<div class="empty-state">暂无员工</div>';return}
-  var h='<table class="user-table"><thead><tr><th>姓名</th><th>邮箱</th><th>公司</th><th>部门</th><th>岗位</th><th>状态</th><th>手机</th><th>角色</th><th>操作</th></tr></thead><tbody>';
+  var h='<table class="user-table"><thead><tr><th>姓名</th><th>邮箱</th><th>公司</th><th>部门</th><th>岗位</th><th>状态</th><th>手机</th><th>角色</th><th>最后登录</th><th>操作</th></tr></thead><tbody>';
   for(var i=0;i<list.length;i++){
     var u=list[i];
     var deptName='-';
@@ -2557,7 +3325,10 @@ function renderAdminUsers(){
     h+='<td><span class="badge-status '+status+'">'+statusLabel+'</span></td>';
     h+='<td>'+escHtml(u.phone||'-')+'</td>';
     h+='<td>'+escHtml(roleName)+'</td>';
-    h+='<td><button class="btn-sm btn-sm-primary" onclick="openUserEditForm(\''+u.user_id+'\')" style="font-size:11px;padding:3px 10px">编辑</button>'+(isSuperAdmin?' <button class="btn-sm btn-sm-danger" onclick="openResetPwdForm(\''+u.user_id+'\',\''+escHtml(u.email||u.display_name||'-')+'\')" style="font-size:11px;padding:3px 8px">重置密码</button>':'')+'</td></tr>';
+    var ll=u.last_login_at;
+    var llText=ll?formatDateTime(ll):'从未登录';
+    h+='<td style="font-size:12px;color:var(--text3)">'+escHtml(llText)+'</td>';
+    h+='<td><button class="btn-sm btn-sm-primary" onclick="openUserEditForm(\''+u.user_id+'\')" style="font-size:11px;padding:3px 10px">编辑</button>'+((isSuperAdmin||currentUserRole==='admin')?' <button class="btn-sm btn-sm-danger" onclick="openResetPwdForm(\''+u.user_id+'\',\''+escHtml(u.email||u.display_name||'-')+'\')" style="font-size:11px;padding:3px 8px">重置密码</button>':'')+(isSuperAdmin?' <button class="btn-sm btn-sm-danger" onclick="deleteUser(\''+u.user_id+'\')" style="font-size:11px;padding:3px 8px;background:#e74c3c">删除</button>':'')+'</td></tr>';
   }
   el.innerHTML=h+'</tbody></table>';
 }
@@ -2566,6 +3337,28 @@ async function setUserRole(userId,role){
   var {error}=await sb.from('profiles').upsert({user_id:userId,role:role},{onConflict:'user_id'});
   if(error){alert('操作失败: '+error.message);return}
   for(var i=0;i<adminUserList.length;i++){if(adminUserList[i].user_id===userId){adminUserList[i].role=role;break;}}
+  renderAdminUsers();
+}
+
+async function deleteUser(userId){
+  if(!confirm('确定要删除该员工账号吗？此操作不可撤销，将同时清除其所有关联数据。'))return;
+  // 1. Delete from Auth (admin API)
+  try{
+    var ar=await fetch('https://jyefbatmmbelrhhzsgva.supabase.co/auth/v1/admin/users/'+userId,{
+      method:'DELETE',
+      headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}
+    });
+    if(!ar.ok)throw new Error('Auth delete failed: '+(await ar.text()));
+  }catch(e){
+    // Auth delete may fail if user doesn't exist in auth system; proceed to clean profiles anyway
+    console.warn('Auth delete warning:',e.message);
+  }
+  // 2. Delete from profiles
+  var {error}=await sb.from('profiles').delete().eq('user_id',userId);
+  if(error){alert('删除失败: '+error.message);return}
+  // 3. Remove from local list
+  adminUserList=adminUserList.filter(function(u){return u.user_id!==userId});
+  allUsers=allUsers.filter(function(u){return u.user_id!==userId});
   renderAdminUsers();
 }
 
@@ -2592,10 +3385,10 @@ function openUserEditForm(userId){
     '<label style="font-size:13px;display:block;margin-bottom:4px">姓名</label><input id="uedit-name" value="'+escHtml(u.display_name||'')+'" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:10px">'+
     '<label style="font-size:13px;display:block;margin-bottom:4px">岗位</label><input id="uedit-position" value="'+escHtml(u.position||'')+'" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:10px">'+
     '<label style="font-size:13px;display:block;margin-bottom:4px">手机</label><input id="uedit-phone" value="'+escHtml(u.phone||'')+'" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:10px">'+
-    (isSuperAdmin?'<label style="font-size:13px;display:block;margin-bottom:4px">公司</label><select id="uedit-company" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:10px">'+allCompanies.map(function(c){return '<option value="'+c.id+'"'+(u.company_id===c.id?' selected':'')+'>'+escHtml(c.name)+'</option>';}).join('')+'</select>':'')+
+    '<label style="font-size:13px;display:block;margin-bottom:4px">公司</label><input id="uedit-company" list="uedit-company-list" placeholder="输入或选择公司" autocomplete="off" value="'+escHtml(function(){var cab=typeof allAdminCompanies!=='undefined'?allAdminCompanies:allCompanies||[];for(var i=0;i<cab.length;i++){if(cab[i].id===u.company_id)return cab[i].name}return ''}())+'" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:10px"'+(isSuperAdmin?'':' readonly')+'>'+(isSuperAdmin?'<datalist id="uedit-company-list">'+(typeof allAdminCompanies!=='undefined'?allAdminCompanies:allCompanies||[]).map(function(c){return '<option value="'+escHtml(c.name)+'">';}).join('')+'</datalist>':'')+
     '<label style="font-size:13px;display:block;margin-bottom:4px">部门</label><select id="uedit-dept" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:10px">'+deptOpts+'</select>'+
     '<label style="font-size:13px;display:block;margin-bottom:4px">角色</label><select id="uedit-role" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:10px">'+roleOpts+'</select>'+
-    '<label style="font-size:13px;display:block;margin-bottom:4px">状态</label><select id="uedit-status" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:10px"><option value="active"'+(u.status==='active'||!u.status?' selected':'')+'>在职</option><option value="inactive"'+(u.status==='inactive'?' selected':'')+'>停用</option><option value="leave"'+(u.status==='leave'?' selected':'')+'>离职</option></select>'+
+    (isSuperAdmin||(currentUserRole==='admin'&&u.company_id===currentCompanyId)?'<label style="font-size:13px;display:block;margin-bottom:4px">状态</label><select id="uedit-status" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:10px"><option value="active"'+(u.status==='active'||!u.status?' selected':'')+'>在职</option><option value="inactive"'+(u.status==='inactive'?' selected':'')+'>停用</option><option value="leave"'+(u.status==='leave'?' selected':'')+'>离职</option></select>':'')+
     '<div class="btns"><button class="btn-cancel" onclick="closeUserEditForm()">取消</button><button class="btn-confirm" onclick="saveUserEdit(\''+userId+'\')">保存</button></div></div>';
   document.body.appendChild(div);
 }
@@ -2606,17 +3399,26 @@ async function saveUserEdit(userId){
   var roleVal=document.getElementById('uedit-role').value;
   var role=roleVal,roleId=null;
   if(roleVal&&roleVal.startsWith('r_')){roleId=parseInt(roleVal.slice(2));role='custom'}
-  var companyId=isSuperAdmin?parseInt(document.getElementById('uedit-company').value)||null:null;
+  var companyId=currentCompanyId;if(isSuperAdmin){var cname=document.getElementById('uedit-company').value.trim();if(cname){var found=null;var cab=typeof allAdminCompanies!=='undefined'?allAdminCompanies:allCompanies||[];for(var i=0;i<cab.length;i++){if(cab[i].name===cname){found=cab[i];break}}if(found){companyId=found.id}}}
   var data={
     display_name:document.getElementById('uedit-name').value.trim(),
     position:document.getElementById('uedit-position').value.trim(),
     phone:document.getElementById('uedit-phone').value.trim(),
     department_id:parseInt(document.getElementById('uedit-dept').value)||null,
     role:role,role_id:roleId,
-    status:document.getElementById('uedit-status').value,
+    status:isSuperAdmin||(currentUserRole==='admin'&&targetUser&&targetUser.company_id===currentCompanyId)?document.getElementById('uedit-status').value:undefined,
     company_id:companyId
   };
   var error=null;
+  var targetUser=adminUserList.find(function(u){return u.user_id===userId;});
+  if(!isSuperAdmin&&currentUserRole==='admin'&&targetUser&&targetUser.company_id!==currentCompanyId){
+    showToast('权限不足: 不能修改其他公司的成员');return;
+  }
+  var newStatus=data.status;
+  if(!isSuperAdmin&&userId===currentUser.user.id&&newStatus==='leave'){
+    showToast('不能将自己设为离职，请联系其他管理员操作');return;
+  }
+  if(newStatus==='leave'){data.company_id=null;data.department_id=null;}
   if(isSuperAdmin||currentUserRole==='admin'){
     var ur=await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(userId),{
       method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},
@@ -2739,10 +3541,11 @@ function renderDeptTree(nodes,level){
   return h;
 }
 
+function formatDateTime(iso){if(!iso)return'';try{var d=new Date(iso);var y=d.getFullYear();var m=String(d.getMonth()+1).padStart(2,'0');var day=String(d.getDate()).padStart(2,'0');var h=String(d.getHours()).padStart(2,'0');var min=String(d.getMinutes()).padStart(2,'0');return y+'-'+m+'-'+day+' '+h+':'+min;}catch(e){return iso;}}
 function escHtml(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function closeUserDeptModal(){var m=document.getElementById('user-dept-modal');if(m)m.remove();}
 function commitUserDept(){var m=document.getElementById('user-dept-modal');var uid=m?m._userId:null;var deptId=parseInt(document.getElementById('user-dept-select').value)||null;if(uid)doSetUserDeptCommit(uid,deptId);}
-async function doSetUserDeptCommit(userId,deptId){var{error}=await sb.from('profiles').upsert({user_id:userId,department_id:deptId},{onConflict:'user_id'});if(error){alert('操作失败: '+error.message);return}for(var i=0;i<adminUserList.length;i++){if(adminUserList[i].user_id===userId){adminUserList[i].department_id=deptId;break;}}var m=document.getElementById('user-dept-modal');if(m)m.remove();renderAdminUsers();}
+async function doSetUserDeptCommit(userId,deptId){var tu=adminUserList.find(function(u){return u.user_id===userId;});if(!isSuperAdmin&&currentUserRole==='admin'&&tu&&tu.company_id!==currentCompanyId){showToast('权限不足');return;}var{error}=await sb.from('profiles').update({department_id:deptId}).eq('user_id',userId);if(error){alert('操作失败: '+error.message);return}for(var i=0;i<adminUserList.length;i++){if(adminUserList[i].user_id===userId){adminUserList[i].department_id=deptId;break;}}var m=document.getElementById('user-dept-modal');if(m)m.remove();renderAdminUsers();}
 function closeDeptFormModal(){var m=document.getElementById('dept-form-modal');if(m)m.remove();}
 function delDeptById(id){var dept=null;for(var i=0;i<allDepartments.length;i++){if(allDepartments[i].id===id){dept=allDepartments[i];break;}}if(dept)deleteDept(id,dept.name);}
 
@@ -2823,7 +3626,7 @@ async function doResetPassword(){
   var sk=SUPABASE_SERVICE_KEY;
   if(!sk){showToast('请先配置 SUPABASE_SERVICE_KEY（Supabase Dashboard > Settings > API）');return}
   try{
-    var res=await fetch(SUPABASE_URL+'/auth/v1/admin/users/'+_resetPwdUserId,{method:'PUT',headers:{'Authorization':'Bearer '+sk,'Content-Type':'application/json'},body:JSON.stringify({password:pwd})});
+    var res=await fetch(SUPABASE_URL+'/auth/v1/admin/users/'+_resetPwdUserId,{method:'PUT',headers:{'Authorization':'Bearer '+sk,'apikey':sk,'Content-Type':'application/json'},body:JSON.stringify({password:pwd})});
     if(!res.ok){var txt=await res.text();showToast('重置失败 HTTP '+res.status+': '+txt);return}
     closeResetPwdForm();
     showToast('密码已重置');
@@ -2850,11 +3653,804 @@ function switchSalesTab(tab){
   var fab=document.getElementById('main-fab');
   fab.onclick=function(){openSalesForm()};
   fab.textContent='+';
-  if(tab==='leads'){if(!allLeads.length)loadLeads();else renderLeads()}
-  else if(tab==='quotations'){if(!allQuotations.length)loadQuotations();else renderQuotations()}
-  else if(tab==='contracts'){if(!allContracts.length)loadContracts();else renderContracts()}
-  else if(tab==='payments'){if(!allPayments.length)loadPayments();else renderPayments()}
+  if(tab==='leads'){if(!(allLeads||[]).length)loadLeads();else renderLeads()}
+  else if(tab==='quotations'){if(!(allQuotations||[]).length)loadQuotations();else renderQuotations()}
+  else if(tab==='contracts'){if(!(allContracts||[]).length)loadContracts();else renderContracts()}
+  else if(tab==='payments'){if(!(allPayments||[]).length)loadPayments();else renderPayments()}
 }
+
+
+// ── Quotations ──
+async function loadQuotations(){
+  try{
+    var r=await sb.from('quotations').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
+    if(r.error){console.error('loadQuotations:',r.error);return}
+    allQuotations=r.data||[];renderQuotations();
+  }catch(e){console.error('loadQuotations error:',e)}
+}
+
+
+function renderQuotations(){
+  var filter=document.getElementById('quote-status-filter').value;
+  var q=(document.getElementById('quote-search').value||'').trim().toLowerCase();
+  var list=allQuotations.slice();
+  if(filter!=='all')list=list.filter(function(x){return x.status===filter});
+  if(q)list=list.filter(function(x){return (x.title||'').toLowerCase().indexOf(q)>=0||(x.notes||'').toLowerCase().indexOf(q)>=0});
+  var total=list.length,draft=0,sent=0,approved=0,val=0;
+  for(var i=0;i<list.length;i++){val+=list[i].total_amount||0;if(list[i].status==='draft')draft++;else if(list[i].status==='sent')sent++;else if(list[i].status==='approved')approved++}
+  document.getElementById('quote-stats').innerHTML='<div class="stat-card"><div class="stat-num">'+total+'</div><div class="stat-label">报价数</div></div><div class="stat-card"><div class="stat-num">'+formatMoney(val)+'</div><div class="stat-label">总金额</div></div><div class="stat-card"><div class="stat-num">'+draft+'</div><div class="stat-label">草稿</div></div><div class="stat-card"><div class="stat-num">'+approved+'</div><div class="stat-label">已批准</div></div>';
+  var grid=document.getElementById('quote-grid'),empty=document.getElementById('quote-empty');
+  if(!list.length){grid.innerHTML='';empty.classList.remove('hidden');return}
+  empty.classList.add('hidden');
+  var h='',statusMap={draft:'草稿',sent:'已发送',approved:'已批准',rejected:'已拒绝',expired:'已过期',converted:'已转订单'};
+  for(var i=0;i<list.length;i++){
+    var qt=list[i],sc='sb-'+qt.status;
+    var cn='';var cl=allClients.find(function(x){return x.id===qt.client_id});if(cl)cn=escHtml(cl.name);
+    h+='<div class="pipe-card" onclick="openQuoteForm(\''+qt.id+'\')"><div class="pc-header"><span class="pc-name">'+escHtml(qt.title)+'</span><span class="pc-amount">'+formatMoney(qt.total_amount||0)+'</span></div>';
+    if(cn)h+='<div class="pc-company">🏢 '+cn+'</div>';
+    var meta=[];
+    if(qt.discount_rate>0)meta.push('<span style=\'color:#EF4444\'>折扣 '+qt.discount_rate+'%</span>');
+    if(qt.tax_rate>0)meta.push('<span>税 '+qt.tax_rate+'%</span>');
+    h+='<div class="pc-meta"><span class="status-badge '+sc+'">'+(statusMap[qt.status]||qt.status)+'</span>'+(qt.valid_until?'<span>有效期: '+qt.valid_until+'</span>':'')+meta.join(' ')+'</div>';
+    h+='</div>';
+  }
+  grid.innerHTML=h;
+}
+
+function openQuoteForm(id){
+  console.log('[DEBUG] openQuoteForm START','id=',id,'qfItems=',qeditId);
+  try{
+  qeditId=id||null;qfItems=[];
+  document.getElementById('quote-form-title').textContent=id?'编辑报价':'创建报价';
+  document.getElementById('quote-btn-delete').classList.toggle('hidden',!id);
+  document.getElementById('quote-btn-convert').classList.toggle('hidden',!id||!(id&&allQuotations.find(function(x){return x.id===id&&x.status==='approved'})));
+  document.getElementById('qf-title').value='';
+  document.getElementById('qf-valid-until').value='';
+  document.getElementById('qf-discount-rate').value='0';
+  document.getElementById('qf-tax-rate').value='0';
+  document.getElementById('qf-status').value='draft';
+  document.getElementById('qf-notes').value='';
+  document.getElementById('qf-total').textContent='¥0.00';
+  document.getElementById('qf-discount-amount').textContent='-¥0.00';
+  document.getElementById('qf-tax-amount').textContent='¥0.00';
+  document.getElementById('qf-grand-total').textContent='¥0.00';
+  var csel=document.getElementById('qf-client');
+  csel.innerHTML='<option value="">选择客户...</option>';
+  for(var i=0;i<(allClients||[]).length;i++)csel.innerHTML+='<option value="'+allClients[i].id+'">'+escHtml(allClients[i].name)+'</option>';
+  var tsel=document.getElementById('qf-template');
+  tsel.innerHTML='<option value="">不使用模板</option>';
+  for(var i=0;i<(allQfTemplates||[]).length;i++)tsel.innerHTML+='<option value="'+allQfTemplates[i].id+'">'+escHtml(allQfTemplates[i].name)+'</option>';
+  if(id){var qt=allQuotations.find(function(x){return x.id===id});if(qt){
+    document.getElementById('qf-title').value=qt.title||'';
+    document.getElementById('qf-valid-until').value=qt.valid_until||'';
+    document.getElementById('qf-discount-rate').value=qt.discount_rate||0;
+    document.getElementById('qf-tax-rate').value=qt.tax_rate||0;
+    document.getElementById('qf-status').value=qt.status||'draft';
+    document.getElementById('qf-notes').value=qt.notes||'';
+    csel.value=qt.client_id||'';
+    qfItems=qt.items||[];if(typeof qfItems==='string')qfItems=JSON.parse(qfItems);
+  }}
+  renderQfItems();
+  updateQfTotals();
+  var qm=document.getElementById('quote-modal');
+  console.log('[DEBUG] quote-modal el:',qm,'className before:',qm?qm.className:'null');
+  qm.classList.remove('hidden');
+  qm.style.display='flex';qm.style.position='fixed';qm.style.zIndex='9999';qm.style.opacity='1';qm.style.visibility='visible';qm.style.top='0';qm.style.right='0';qm.style.bottom='0';qm.style.left='0';
+  var cs=getComputedStyle(qm);
+  console.log('[DEBUG] after show: display=',cs.display,'zIndex=',cs.zIndex,'opacity=',cs.opacity,'visibility=',cs.visibility,'width=',cs.width,'height=',cs.height,'position=',cs.position,'pointerEvents=',cs.pointerEvents,'inset=',cs.inset,'top=',cs.top,'right=',cs.right,'bottom=',cs.bottom,'left=',cs.left,'contain=',cs.contain,'parentEl:',qm.parentElement?qm.parentElement.tagName+'#'+qm.parentElement.id:'null','parentDisplay:',qm.parentElement?getComputedStyle(qm.parentElement).display:'null');
+  var rect=qm.getBoundingClientRect();
+  console.log('[DEBUG] bounding rect:',rect.x,rect.y,rect.width,rect.height,'top:',rect.top,'left:',rect.left);
+  }catch(e){console.error('[DEBUG] openQuoteForm error:',e.message,e.stack);showToast('报价表单加载失败: '+e.message)}
+}
+function updateQfTotals(){
+  var subtotal=0;for(var i=0;i<qfItems.length;i++)subtotal+=(qfItems[i].qty||0)*(qfItems[i].price||0);
+  var dr=parseFloat(document.getElementById('qf-discount-rate').value)||0;
+  var da=dr>0?Math.round(subtotal*dr/100*100)/100:0;
+  var ad=subtotal-da;
+  var tr=parseFloat(document.getElementById('qf-tax-rate').value)||0;
+  var ta=tr>0?Math.round(ad*tr/100*100)/100:0;
+  var gt=ad+ta;
+  document.getElementById('qf-total').textContent='¥'+gt.toFixed(2);
+  document.getElementById('qf-discount-amount').textContent='-¥'+da.toFixed(2);
+  document.getElementById('qf-tax-amount').textContent='¥'+ta.toFixed(2);
+  document.getElementById('qf-grand-total').textContent='¥'+gt.toFixed(2);
+}
+function applyQfTemplate(){
+  var tid=document.getElementById('qf-template').value;if(!tid)return;
+  var tpl=allQfTemplates.find(function(x){return x.id==parseInt(tid)});if(!tpl)return;
+  if(tpl.items&&tpl.items.length){qfItems=JSON.parse(JSON.stringify(tpl.items));renderQfItems()}
+  if(tpl.discount_rate)document.getElementById('qf-discount-rate').value=tpl.discount_rate;
+  if(tpl.tax_rate)document.getElementById('qf-tax-rate').value=tpl.tax_rate;
+  updateQfTotals();
+}
+function removeContractFile(){document.getElementById('cf-file').value='';document.getElementById('cf-file-info').classList.add('hidden');document.getElementById('cf-file-link').href='#';}
+function saveContractTemplate(){var n=prompt('模板名称:');if(!n)return;
+  var items=[];for(var i=0;i<qfItems.length;i++)items.push({name:qfItems[i].name||'',spec:qfItems[i].spec||'',unit:qfItems[i].unit||'',qty:qfItems[i].qty||1,price:qfItems[i].price||0});
+  var dr=parseFloat(document.getElementById('qf-discount-rate').value)||0;
+  var tr=parseFloat(document.getElementById('qf-tax-rate').value)||0;
+  sb.from('quote_templates').insert({company_id:currentCompanyId,name:n,items:items,discount_rate:dr,tax_rate:tr,created_at:new Date().toISOString()}).then(function(r){if(r.error)showToast('保存模板失败');else{loadQfTemplates();showToast('模板已保存')}});
+}
+function loadQfTemplates(){
+  sb.from('quote_templates').select('*').eq('company_id',currentCompanyId).order('name').then(function(r){allQfTemplates=r.data||[]});
+}
+function convertQuoteToOrder(){
+  if(!qeditId)return;
+  var qt=allQuotations.find(function(x){return x.id===qeditId});if(!qt)return;
+  confirmDialog('将此报价转为订单？',async function(){
+    var amountEnc=await encryptAmount((qt.total_amount||0).toFixed(2));
+    var order={company_id:currentCompanyId,user_id:currentUser.id,client_id:qt.client_id,
+      order_number:'ORD-'+Date.now().toString(36).toUpperCase(),
+      project_name:qt.title,amount_enc:amountEnc,
+      stage:'谈判中',notes:'从报价 '+qt.title+' 转换',created_at:new Date().toISOString()};
+    var r=await sb.from('orders').insert(order);
+    if(r.error){showToast('转换失败: '+r.error.message);return}
+    await sb.from('quotations').update({status:'converted',updated_at:new Date().toISOString()}).eq('id',qeditId);
+    closeQuoteForm();await loadQuotations();await loadOrders();showToast('报价已转为订单');
+  });
+}
+function closeQuoteForm(){document.getElementById('quote-modal').classList.add('hidden');qeditId=null;qfItems=[]}
+
+function addQuoteItem(){qfItems.push({name:'',spec:'',unit:'',qty:1,price:0});renderQfItems()}
+
+function renderQfItems(){
+  var el=document.getElementById('qf-items'),h='',total=0;
+  for(var i=0;i<qfItems.length;i++){
+    var it=qfItems[i],amt=(it.qty||0)*(it.price||0);total+=amt;
+    h+='<div class="quote-item-row"><input class="qi-name" placeholder="名称" value="'+escHtml(it.name||'')+'" oninput="qfUpdateItem('+i+',\'name\',this.value)"><input class="qi-num" type="number" placeholder="数量" value="'+(it.qty||1)+'" oninput="qfUpdateItem('+i+',\'qty\',parseFloat(this.value)||0)"><input class="qi-price" type="number" step="0.01" placeholder="单价" value="'+(it.price||0)+'" oninput="qfUpdateItem('+i+',\'price\',parseFloat(this.value)||0)"><span class="qi-amount">'+formatMoney(amt)+'</span><button class="qi-del" onclick="qfDeleteItem('+i+')">×</button></div>';
+  }
+  el.innerHTML=h||'<div style="font-size:12px;color:var(--text3);padding:12px;text-align:center">点击"+ 添加行"添加报价项目</div>';
+  document.getElementById('qf-total').textContent=formatMoney(total);
+}
+
+function qfUpdateItem(i,field,val){qfItems[i][field]=val;var rows=document.querySelectorAll('#qf-items .quote-item-row');if(rows[i]){rows[i].querySelector('.qi-amount').textContent=formatMoney((qfItems[i].qty||0)*(qfItems[i].price||0))}var t=0;for(var j=0;j<qfItems.length;j++)t+=(qfItems[j].qty||0)*(qfItems[j].price||0);document.getElementById('qf-total').textContent=formatMoney(t)}
+function qfDeleteItem(i){qfItems.splice(i,1);renderQfItems()}
+
+async function saveQuote(){
+  console.log('[DEBUG] saveQuote START qeditId=',qeditId,'qfItems length=',qfItems.length,'title=',document.getElementById('qf-title').value,'client=',document.getElementById('qf-client').value);
+  try{
+  var title=document.getElementById('qf-title').value.trim();if(!title){showToast('请输入报价标题');return}
+  var cid=document.getElementById('qf-client').value;if(!cid){showToast('请选择关联客户');return}
+  var subtotal=0;for(var i=0;i<qfItems.length;i++)subtotal+=(qfItems[i].qty||0)*(qfItems[i].price||0);
+  var discountRate=parseFloat(document.getElementById('qf-discount-rate').value)||0;
+  var discountAmount=discountRate>0?Math.round(subtotal*discountRate/100*100)/100:0;
+  var afterDiscount=subtotal-discountAmount;
+  var taxRate=parseFloat(document.getElementById('qf-tax-rate').value)||0;
+  var taxAmount=taxRate>0?Math.round(afterDiscount*taxRate/100*100)/100:0;
+  var grandTotal=afterDiscount+taxAmount;
+  var data={
+    company_id:currentCompanyId,user_id:currentUser.id,title:title,client_id:cid,
+    items:qfItems,subtotal:subtotal,total_amount:grandTotal,
+    discount_rate:discountRate,discount_amount:discountAmount,
+    tax_rate:taxRate,tax_amount:taxAmount,
+    status:document.getElementById('qf-status').value,
+    valid_until:document.getElementById('qf-valid-until').value||null,
+    notes:document.getElementById('qf-notes').value.trim(),
+    updated_at:new Date().toISOString()
+  };
+  var error;
+  if(qeditId){var r=await sb.from('quotations').update(data).eq('id',qeditId);error=r.error}
+  else{data.created_at=new Date().toISOString();var r2=await sb.from('quotations').insert(data);error=r2.error}
+  if(error){showToast('保存失败: '+error.message);return}
+  closeQuoteForm();await loadQuotations();showToast(qeditId?'报价已更新':'报价已创建');
+  }catch(e){console.error('[DEBUG] saveQuote error:',e);showToast('保存报价失败: '+e.message)}
+}
+
+function confirmDeleteQuote(){if(qeditId)confirmDialog('确定删除该报价？',async function(){await sb.from('quotations').delete().eq('id',qeditId);closeQuoteForm();loadQuotations();showToast('报价已删除')})}
+
+// ── Contracts ──
+async function loadContracts(){
+  var grid=document.getElementById('contract-grid');grid.innerHTML='<div class="loading"><span class="spinner"></span>加载中...</div>';
+  var {data,error}=await sb.from('contracts').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
+  if(error){grid.innerHTML='<div class="empty">加载失败</div>';return}
+  allContracts=data||[];renderContracts();
+}
+
+function renderContracts(){
+  var filter=document.getElementById('contract-status-filter').value;
+  var q=(document.getElementById('contract-search').value||'').trim().toLowerCase();
+  var list=allContracts.slice();
+  if(filter!=='all')list=list.filter(function(x){return (filter==='expiring'?isContractExpiring(x):x.status===filter)});
+  if(q)list=list.filter(function(x){return (x.title||'').toLowerCase().indexOf(q)>=0||(x.contract_no||'').toLowerCase().indexOf(q)>=0||(x.notes||'').toLowerCase().indexOf(q)>=0});
+  var total=list.length,signed=0,val=0,expiring=0;
+  var today=new Date();today.setHours(0,0,0,0);
+  for(var i=0;i<list.length;i++){
+    val+=list[i].total_amount||list[i].amount||0;
+    if(list[i].status==='signed'||list[i].status==='executing')signed++;
+    if(list[i].end_date){
+      var ed=new Date(list[i].end_date);ed.setHours(0,0,0,0);
+      var diffDays=Math.ceil((ed-today)/(1000*60*60*24));
+      if(diffDays<=30&&diffDays>=0)expiring++;
+    }
+  }
+  document.getElementById('contract-stats').innerHTML='<div class="stat-card"><div class="stat-num">'+total+'</div><div class="stat-label">合同数</div></div><div class="stat-card"><div class="stat-num">'+formatMoney(val)+'</div><div class="stat-label">总金额</div></div><div class="stat-card"><div class="stat-num" style="color:#10B981">'+signed+'</div><div class="stat-label">生效中</div></div><div class="stat-card"><div class="stat-num" style="color:#F59E0B">'+expiring+'</div><div class="stat-label">即将到期</div></div>';
+  var grid=document.getElementById('contract-grid'),empty=document.getElementById('contract-empty');
+  if(!list.length){grid.innerHTML='';empty.classList.remove('hidden');return}
+  empty.classList.add('hidden');
+  var h='';
+  for(var i=0;i<list.length;i++){
+    var ct=list[i],sc={'draft':'sb-draft','signed':'sb-signed','executing':'sb-executing','completed':'sb-completed','terminated':'sb-terminated'}[ct.status]||'sb-draft';
+    var cn='';var cl=allClients.find(function(x){return x.id===ct.client_id});if(cl)cn=cl.name;
+    var paid=0,total=ct.total_amount||1;
+    var pct=Math.round(paid/total*100);
+    var expiryHtml='';
+    if(ct.end_date){
+      var ed=new Date(ct.end_date);ed.setHours(0,0,0,0);
+      var dd=Math.ceil((ed-today)/(1000*60*60*24));
+      if(dd<0)expiryHtml=' <span style=\'background:#FEE2E2;color:#DC2626;padding:1px 6px;border-radius:3px;font-size:11px\'>已逾期</span>';
+      else if(dd<=30)expiryHtml=' <span style=\'background:#FEF3C7;color:#D97706;padding:1px 6px;border-radius:3px;font-size:11px\'>'+dd+'天后到期</span>';
+    }
+    var archiveIcon=ct.archive_status==='archived'?' 📦':'';
+    h+='<div class="pipe-card" onclick="openContractForm(\''+ct.id+'\')"><div class="pc-header"><span class="pc-name">'+escHtml(ct.title)+archiveIcon+'</span><span class="pc-amount">'+formatMoney(ct.total_amount||ct.amount||0)+'</span></div>';
+    if(ct.file_url&&ct.file_url.indexOf('object/public')>0){var fn=ct.file_name||'下载文件';h+='<div class="pc-file" style="font-size:11px;margin-top:2px"><a href="'+ct.file_url+'" target="_blank" rel="noopener" style="color:var(--primary);text-decoration:none">📎 '+escHtml(fn)+'</a></div>'}
+    if(cn)h+='<div class="pc-company">🏢 '+escHtml(cn)+'</div>';
+    h+='<div class="pc-meta">'+(ct.contract_no?'<span>📋 '+escHtml(ct.contract_no)+'</span>':'')+'<span class="status-badge '+sc+'">'+({draft:'草稿',signed:'已签署',executing:'执行中',completed:'已完成',terminated:'已终止'}[ct.status]||ct.status)+'</span>'+expiryHtml+'</div>';
+    h+='<div style=\'margin:6px 0;background:var(--border);border-radius:4px;height:6px;overflow:hidden\'><div style=\'width:'+pct+'%;height:100%;background:'+(pct>=100?'#10B981':'#4F6EF7')+';border-radius:4px;transition:width .3s\'></div></div>';
+    h+='<div style=\'font-size:11px;color:var(--text2);display:flex;justify-content:space-between\'><span>回款 '+formatMoney(paid)+' / '+formatMoney(total)+' ('+pct+'%)</span><span>'+(ct.end_date?'到期: '+ct.end_date:'')+'</span></div>';
+    h+='</div>';
+  }
+  grid.innerHTML=h;
+}
+function isContractExpiring(ct){
+  if(!ct.end_date)return false;
+  var ed=new Date(ct.end_date),today=new Date();
+  ed.setHours(0,0,0,0);today.setHours(0,0,0,0);
+  var diffDays=Math.ceil((ed-today)/(1000*60*60*24));
+  return diffDays>=0&&diffDays<=30;
+}
+function toggleContractArchive(id,archive){
+  confirmDialog(archive?'确定归档该合同？':'确定取消归档？',async function(){
+    var r=await sb.from('contracts').update({archive_status:archive?'archived':'active',updated_at:new Date().toISOString()}).eq('id',id);
+    if(r.error){showToast('操作失败: '+r.error.message);return}
+    await loadContracts();showToast(archive?'合同已归档':'合同已取消归档');
+  });
+}
+
+function openContractForm(id){
+  try{
+  ceditId=id||null;
+  document.getElementById('contract-form-title').textContent=id?'编辑合同':'创建合同';
+  document.getElementById('contract-btn-delete').classList.toggle('hidden',!id);
+  document.getElementById('cf-contract-no').value='';
+  document.getElementById('cf-title').value='';
+  document.getElementById('cf-amount').value='';
+  document.getElementById('cf-our-party').value='';
+  document.getElementById('cf-their-party').value='';
+  document.getElementById('cf-sign-date').value='';
+  document.getElementById('cf-start-date').value='';
+  document.getElementById('cf-end-date').value='';
+  document.getElementById('cf-status').value='draft';
+  var el=document.getElementById('cf-archive-status');if(el)el.value='active';
+  document.getElementById('cf-notes').value='';document.getElementById('cf-file').value='';document.getElementById('cf-file-info').classList.add('hidden');
+  var csel=document.getElementById('cf-client');
+  csel.innerHTML='<option value="">选择客户...</option>';
+  for(var i=0;i<(allClients||[]).length;i++)csel.innerHTML+='<option value="'+allClients[i].id+'">'+escHtml(allClients[i].name)+'</option>';
+  if(id){var ct=(allContracts||[]).find(function(x){return x.id===id});if(ct){
+    document.getElementById('cf-contract-no').value=ct.contract_no||'';
+    document.getElementById('cf-title').value=ct.title||'';
+    document.getElementById('cf-amount').value=ct.total_amount||ct.amount||'';
+    document.getElementById('cf-our-party').value=ct.our_party||'';
+    document.getElementById('cf-their-party').value=ct.their_party||'';
+    document.getElementById('cf-sign-date').value=ct.sign_date||'';
+    document.getElementById('cf-start-date').value=ct.start_date||'';
+    document.getElementById('cf-end-date').value=ct.end_date||'';
+    document.getElementById('cf-status').value=ct.status||'draft';
+    document.getElementById('cf-archive-status').value=ct.archive_status||'active';
+    document.getElementById('cf-notes').value=(ct.notes||'').replace(/^\u5f3f\u0046\u0049\u004c\u0045__:.*?\n*/,'');if(ct.file_url){document.getElementById('cf-file-info').classList.remove('hidden');document.getElementById('cf-file-name').textContent=ct.file_name||'已上传';document.getElementById('cf-file-link').href=ct.file_url};
+    csel.value=ct.client_id||'';
+  }}
+  var cm=document.getElementById('contract-modal');
+  console.log('[DEBUG] openContractForm about to show, el:',!!cm,'className before:',cm?cm.className:'null');
+  cm.classList.remove('hidden');
+  cm.style.display='flex';cm.style.position='fixed';cm.style.zIndex='9999';cm.style.opacity='1';cm.style.visibility='visible';cm.style.top='0';cm.style.right='0';cm.style.bottom='0';cm.style.left='0';
+  var cs=getComputedStyle(cm);
+  console.log('[DEBUG] contract after show: display=',cs.display,'zIndex=',cs.zIndex,'opacity=',cs.opacity,'visibility=',cs.visibility,'width=',cs.width,'height=',cs.height,'position=',cs.position,'inset=',cs.inset,'top=',cs.top,'right=',cs.right,'bottom=',cs.bottom,'left=',cs.left,'parentEl:',cm.parentElement?cm.parentElement.tagName+'#'+cm.parentElement.id:'null','parentDisplay:',cm.parentElement?getComputedStyle(cm.parentElement).display:'null');
+  var rect=cm.getBoundingClientRect();
+  console.log('[DEBUG] contract rect:',rect.x,rect.y,rect.width,rect.height);
+  }catch(e){console.error('[DEBUG] openContractForm error:',e.message,e.stack);showToast('合同表单加载失败: '+e.message)}
+}
+function closeContractForm(){document.getElementById('contract-modal').classList.add('hidden');ceditId=null}
+
+async function saveContract(){
+  var title=document.getElementById('cf-title').value.trim();if(!title){showToast('请输入合同标题');return}
+  var cid=document.getElementById('cf-client').value;if(!cid){showToast('请选择关联客户');return}
+  var totalAmount=parseFloat(document.getElementById('cf-amount').value)||0;
+  var fileUrl='',fileName='';
+  var fileEl=document.getElementById('cf-file');
+  if(fileEl&&fileEl.files&&fileEl.files.length>0){
+    var fl=fileEl.files[0];
+    var ext=fl.name.split('.').pop();
+    var fpath='contract_files/'+currentCompanyId+'/'+Date.now()+'.'+ext;
+    try{var fresp=await fetch(SUPABASE_URL+'/storage/v1/object/'+fpath,{method:'POST',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY},body:fl});
+    if(fresp.ok){fileUrl=SUPABASE_URL+'/storage/v1/object/public/'+fpath;fileName=fl.name}else{showToast('文件上传失败');return}}
+    catch(e){showToast('文件上传失败: '+e.message);return}
+  }else{
+    if(ceditId){var ec=allContracts.find(function(x){return x.id===ceditId});if(ec&&ec.file_url){fileUrl=ec.file_url;fileName=ec.file_name||''}}
+  }
+  var data={
+    company_id:currentCompanyId,user_id:currentUser.id,title:title,client_id:cid,
+    contract_no:document.getElementById('cf-contract-no').value.trim(),
+    total_amount:totalAmount,
+    our_party:document.getElementById('cf-our-party').value.trim(),
+    their_party:document.getElementById('cf-their-party').value.trim(),
+    sign_date:document.getElementById('cf-sign-date').value||null,
+    start_date:document.getElementById('cf-start-date').value||null,
+    end_date:document.getElementById('cf-end-date').value||null,
+    status:document.getElementById('cf-status').value,
+    archive_status:document.getElementById('cf-archive-status').value||'active',
+    notes:document.getElementById('cf-notes').value.trim(),
+    file_url:fileUrl,
+    file_name:fileName,
+    updated_at:new Date().toISOString()
+  };
+  var error;
+  if(ceditId){var r=await sb.from('contracts').update(data).eq('id',ceditId);error=r.error}
+  else{data.created_at=new Date().toISOString();var r2=await sb.from('contracts').insert(data);error=r2.error}
+  if(error){showToast('保存失败: '+error.message);return}
+  closeContractForm();await loadContracts();showToast(ceditId?'合同已更新':'合同已创建');
+}
+function confirmDeleteContract(){if(ceditId)confirmDialog('确定删除该合同？',async function(){await sb.from('contracts').delete().eq('id',ceditId);closeContractForm();loadContracts();showToast('合同已删除')})}
+
+// ── Payments ──
+async function loadPayments(){
+  var grid=document.getElementById('payment-grid');grid.innerHTML='<div class="loading"><span class="spinner"></span>加载中...</div>';
+  var {data,error}=await sb.from('payments').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
+  if(error){grid.innerHTML='<div class="empty">加载失败</div>';return}
+  allPayments=data||[];renderPayments();
+}
+
+function renderPayments(){
+  var filter=document.getElementById('payment-status-filter').value;
+  var q=(document.getElementById('payment-search').value||'').trim().toLowerCase();
+  var list=allPayments.slice();
+  if(filter!=='all')list=list.filter(function(x){return x.status===filter});
+  if(q)list=list.filter(function(x){return (x.invoice_no||'').toLowerCase().indexOf(q)>=0||(x.notes||'').toLowerCase().indexOf(q)>=0});
+  // Summary
+  var total=0,received=0,planned=0,overdue=0;
+  for(var i=0;i<list.length;i++){total+=list[i].amount||0;if(list[i].status==='received')received+=list[i].amount||0;else if(list[i].status==='planned')planned+=list[i].amount||0;else if(list[i].status==='overdue')overdue+=list[i].amount||0}
+  document.getElementById('payment-summary').innerHTML='<div class="ps-item"><div class="ps-num" style="color:var(--primary)">'+formatMoney(total)+'</div><div class="ps-label">总额</div></div><div class="ps-item"><div class="ps-num" style="color:#10B981">'+formatMoney(received)+'</div><div class="ps-label">已收款</div></div><div class="ps-item"><div class="ps-num" style="color:#F59E0B">'+formatMoney(planned)+'</div><div class="ps-label">计划中</div></div><div class="ps-item"><div class="ps-num" style="color:#EF4444">'+formatMoney(overdue)+'</div><div class="ps-label">逾期</div></div>';
+  var grid=document.getElementById('payment-grid'),empty=document.getElementById('payment-empty');
+  if(!list.length){grid.innerHTML='';empty.classList.remove('hidden');return}
+  empty.classList.add('hidden');
+  var h='',methodMap={bank:'🏦 银行',cash:'💵 现金',wechat:'💚 微信',alipay:'💙 支付宝',check:'📝 支票',other:'📌 其他'};
+  for(var i=0;i<list.length;i++){
+    var p=list[i],sc={'received':'sb-received','planned':'sb-planned','overdue':'sb-overdue','cancelled':'sb-cancelled'}[p.status]||'sb-planned';
+    var cn='';var cl=allClients.find(function(x){return x.id===p.client_id});if(cl)cn=cl.name;
+    h+='<div class="pipe-card" onclick="openPaymentForm(\''+p.id+'\')" style="--card-bar:'+({'received':'#10B981','planned':'#F59E0B','overdue':'#EF4444'}[p.status]||'#F59E0B')+'">';
+    h+='<div class="pc-header"><span class="pc-name">'+escHtml(cn||'未知客户')+'</span><span class="pc-amount">'+formatMoney(p.amount||0)+'</span></div>';
+    h+='<div class="pc-meta"><span class="status-badge '+sc+'">'+({received:'已收款',planned:'计划中',overdue:'逾期',cancelled:'已取消'}[p.status]||p.status)+'</span><span>'+methodMap[p.method||'other']+'</span>'+(p.payment_date?'<span>'+p.payment_date+'</span>':'')+(p.invoice_no?'<span>发票: '+escHtml(p.invoice_no)+'</span>':'')+'</div>';
+    if(p.notes)h+='<div style="font-size:12px;color:var(--text2);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">💬 '+escHtml(p.notes)+'</div>';
+    h+='</div>';
+  }
+  grid.innerHTML=h;
+}
+
+function openPaymentForm(id){
+  try{
+  peditId=id||null;
+  document.getElementById('payment-form-title').textContent=id?'编辑回款':'添加回款';
+  document.getElementById('payment-btn-delete').classList.toggle('hidden',!id);
+  document.getElementById('pf-amount').value='';
+  document.getElementById('pf-date').value='';
+  document.getElementById('pf-method').value='bank';
+  document.getElementById('pf-status').value='received';
+  document.getElementById('pf-invoice').value='';
+  document.getElementById('pf-notes').value='';
+  // Populate client and contract selects
+  var cs=document.getElementById('pf-client'),ct=document.getElementById('pf-contract');
+  cs.innerHTML='<option value="">选择客户...</option>';
+  ct.innerHTML='<option value="">选择合同...</option>';
+  for(var i=0;i<(allClients||[]).length;i++)cs.innerHTML+='<option value="'+allClients[i].id+'">'+escHtml(allClients[i].name)+'</option>';
+  cs.onchange=function(){var cid=this.value;ct.innerHTML='<option value="">选择合同...</option>';if(cid){for(var j=0;j<(allContracts||[]).length;j++){if(allContracts[j].client_id===cid)ct.innerHTML+='<option value="'+allContracts[j].id+'">'+escHtml(allContracts[j].title||allContracts[j].contract_no||'合同')+'</option>'}}};
+  if(id){var p=(allPayments||[]).find(function(x){return x.id===id});if(p){
+    document.getElementById('pf-amount').value=p.amount||'';
+    document.getElementById('pf-date').value=p.payment_date||'';
+    document.getElementById('pf-method').value=p.method||'bank';
+    document.getElementById('pf-status').value=p.status||'received';
+    document.getElementById('pf-invoice').value=p.invoice_no||'';
+    document.getElementById('pf-notes').value=p.notes||'';
+    cs.value=p.client_id||'';cs.onchange();setTimeout(function(){document.getElementById('pf-contract').value=p.contract_id||''},200);
+  }}
+  var pm=document.getElementById('payment-modal');
+  console.log('[DEBUG] openPaymentForm about to show, el:',!!pm,'className before:',pm?pm.className:'null');
+  pm.classList.remove('hidden');
+  pm.style.display='flex';pm.style.position='fixed';pm.style.zIndex='9999';pm.style.opacity='1';pm.style.visibility='visible';pm.style.top='0';pm.style.right='0';pm.style.bottom='0';pm.style.left='0';
+  var cs=getComputedStyle(pm);
+  console.log('[DEBUG] payment after show: display=',cs.display,'zIndex=',cs.zIndex,'opacity=',cs.opacity,'visibility=',cs.visibility,'width=',cs.width,'height=',cs.height,'parentEl:',pm.parentElement?pm.parentElement.tagName+'#'+pm.parentElement.id:'null','parentDisplay:',pm.parentElement?getComputedStyle(pm.parentElement).display:'null');
+  }catch(e){console.error('[DEBUG] openPaymentForm error:',e.message,e.stack);showToast('回款表单加载失败: '+e.message)}
+}
+function closePaymentForm(){document.getElementById('payment-modal').classList.add('hidden');peditId=null}
+
+async function savePayment(){
+  var amount=parseFloat(document.getElementById('pf-amount').value)||0;
+  var cid=document.getElementById('pf-client').value;if(!cid){showToast('请选择关联客户');return}
+  var data={
+    company_id:currentCompanyId,user_id:currentUser.id,amount:amount,client_id:cid,
+    payment_date:document.getElementById('pf-date').value||null,
+    method:document.getElementById('pf-method').value,
+    status:document.getElementById('pf-status').value,
+    contract_id:document.getElementById('pf-contract').value||null,
+    invoice_no:document.getElementById('pf-invoice').value.trim(),
+    notes:document.getElementById('pf-notes').value.trim(),
+    updated_at:new Date().toISOString()
+  };
+  var error;
+  if(peditId){var {error:err}=await sb.from('payments').update(data).eq('id',peditId);error=err}
+  else{data.created_at=new Date().toISOString();var {error:err2}=await sb.from('payments').insert(data);error=err2}
+  if(error){showToast('保存失败: '+error.message);return}
+  closePaymentForm();loadPayments();showToast(peditId?'回款记录已更新':'回款记录已添加');
+}
+function confirmDeletePayment(){if(peditId)confirmDialog('确定删除该回款记录？',async function(){await sb.from('payments').delete().eq('id',peditId);closePaymentForm();loadPayments();showToast('回款记录已删除')})}
+
+// ── Common: openSalesForm (FAB) ──
+function openSalesForm(){
+  console.log('[DEBUG] openSalesForm called, currentSalesTab=',currentSalesTab,'typeof openLeadForm=',typeof openLeadForm);
+  if(currentSalesTab==='leads'){leadFormSource='sales';openLeadForm();}
+  else if(currentSalesTab==='quotations')openQuoteForm();
+  else if(currentSalesTab==='contracts')openContractForm();
+  else if(currentSalesTab==='payments')openPaymentForm();
+}
+
+
+// ═══════════ AFTER-SALES SERVICE ═══════════
+var svEditId=null; var allTickets=[],allVisits=[],allWarranties=[],allMaintenance=[],allKB=[];
+
+function switchServiceTab(sub){
+  var tabs=document.querySelectorAll('#moresubs-after .sub-tab');
+  for(var i=0;i<tabs.length;i++)tabs[i].classList.remove('active');
+  var panels=['sv-tickets','sv-visits','sv-warranty','sv-kb'];
+  for(var j=0;j<panels.length;j++){var p=document.getElementById(panels[j]);if(p)p.classList.add('hidden')}
+  var tp=document.getElementById('sv-'+sub);if(tp)tp.classList.remove('hidden');
+  var btns=document.querySelectorAll('#moresubs-after .sub-tab');
+  var map={tickets:0,visits:1,warranty:2,kb:3};
+  if(btns[map[sub]]!=null)btns[map[sub]].classList.add('active');
+  if(sub==='tickets')loadTickets();
+  else if(sub==='visits'){loadVisits();loadVisitTasks()}
+  else if(sub==='warranty'){loadWarranties();loadMaintenancePlans()}
+  else if(sub==='kb')loadKB();
+}
+
+// ── Tickets ──
+async function loadTickets(){
+  var grid=document.getElementById('ticket-grid');grid.innerHTML='<div class="loading"><span class="spinner"></span>加载中...</div>';
+  var{data,error}=await sb.from('service_tickets').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
+  if(error){grid.innerHTML='<div class="empty">加载失败: '+error.message+'</div>';return}
+  allTickets=data||[];renderTickets();
+}
+function renderTickets(){
+  var list=allTickets||[];
+  var sf=document.getElementById('ticket-status-filter'),tf=document.getElementById('ticket-type-filter');
+  var sr=document.getElementById('ticket-search');
+  if(sf&&sf.value!=='all')list=list.filter(function(x){return x.status===sf.value});
+  if(tf&&tf.value!=='all')list=list.filter(function(x){return x.type===tf.value});
+  if(sr){var sq=sr.value.trim().toLowerCase();if(sq)list=list.filter(function(x){return(x.title||'').toLowerCase().indexOf(sq)>=0||(x.description||'').toLowerCase().indexOf(sq)>=0})}
+  var grid=document.getElementById('ticket-grid'),empty=document.getElementById('ticket-empty');
+  if(!list.length){grid.innerHTML='';empty.classList.remove('hidden');return}
+  empty.classList.add('hidden');
+  var sm={pending:'待处理',dispatched:'已派单',in_progress:'处理中',completed:'已完成',confirmed:'已确认',closed:'已关闭'};
+  var tm={complaint:'投诉',repair:'报修',service:'服务',other:'其他'};
+  var pm={urgent:'🔴紧急',high:'🟠高',normal:'🟢普通',low:'⚪低'};
+  var h='';for(var i=0;i<list.length;i++){var t=list[i];
+    h+='<div class="lead-card" onclick="openTicketForm(\''+t.id+'\')">';
+    h+='<div class="lead-name">'+escHtml(t.title)+' <span style="font-size:11px;color:var(--text3)">#'+(t.ticket_no||t.id)+'</span></div>';
+    h+='<div class="lead-meta"><span class="lead-status-badge '+t.status+'">'+(sm[t.status]||t.status)+'</span>';
+    h+='<span>'+escHtml(tm[t.type]||t.type)+'</span><span>'+escHtml(pm[t.priority]||'')+'</span>';
+    if(t.engineer_name)h+='<span>🔧 '+escHtml(t.engineer_name)+'</span>';
+    h+='</div>';
+    if(t.description)h+='<div style="font-size:12px;color:var(--text2);margin-top:4px">'+escHtml(t.description).substring(0,80)+'</div>';
+    h+='<div class="lead-actions"><button class="btn-lead-primary" onclick="event.stopPropagation();changeTicketStatus(\''+t.id+'\',\''+(t.status==='pending'?'dispatched':t.status==='dispatched'?'in_progress':t.status==='in_progress'?'completed':t.status==='completed'?'confirmed':'closed')+'\')">'+(t.status==='pending'?'派单':t.status==='dispatched'?'开始处理':t.status==='in_progress'?'完工':'关闭')+'</button>';
+    h+='<button onclick="event.stopPropagation();openTicketForm(\''+t.id+'\')">编辑</button><button class="btn-lead-danger" onclick="event.stopPropagation();confirmDeleteTicket(\''+t.id+'\')">删除</button></div></div>';
+  }
+  grid.innerHTML=h;
+}
+function openTicketForm(id){
+  svEditId=id||null;
+  var t=id?allTickets.find(function(x){return x.id===id}):null;
+  document.getElementById('ticket-form-title').textContent=id?'编辑工单':'新建工单';
+  document.getElementById('tf-title').value=t?t.title||'':'';
+  document.getElementById('tf-type').value=t?t.type||'service':'service';
+  document.getElementById('tf-priority').value=t?t.priority||'normal':'normal';
+  document.getElementById('tf-engineer').value=t?t.engineer_name||'':'';
+  document.getElementById('tf-desc').value=t?t.description||'':'';
+  document.getElementById('tf-completion').value=t?t.completion_notes||'':'';
+  document.getElementById('tf-satisfaction').value=t?t.satisfaction_rating||5:5;
+  // Populate client dropdown
+  var cs=document.getElementById('tf-client');cs.innerHTML='<option value="">不关联</option>';
+  if(allClients)for(var i=0;i<allClients.length;i++){var c=allClients[i];cs.innerHTML+='<option value="'+c.id+'"'+(t&&t.client_id===c.id?' selected':'')+'>'+h(c.name)+'</option>'}
+  document.getElementById('ticket-modal').classList.remove('hidden');
+}
+function closeTicketForm(){document.getElementById('ticket-modal').classList.add('hidden');svEditId=null}
+async function saveTicket(){
+  var title=document.getElementById('tf-title').value.trim();if(!title){showToast('请输入标题');return}
+  var data={company_id:currentCompanyId,created_by:currentUser.id,title:title,
+    type:document.getElementById('tf-type').value,priority:document.getElementById('tf-priority').value,
+    client_id:document.getElementById('tf-client').value||null,
+    engineer_name:document.getElementById('tf-engineer').value.trim(),
+    description:document.getElementById('tf-desc').value.trim(),
+    completion_notes:document.getElementById('tf-completion').value.trim(),
+    satisfaction_rating:parseInt(document.getElementById('tf-satisfaction').value)||null,
+    updated_at:new Date().toISOString()};
+  if(!svEditId)data.ticket_no='TK-'+Date.now().toString(36).toUpperCase();
+  var error;
+  if(svEditId){var r=await sb.from('service_tickets').update(data).eq('id',svEditId);error=r.error}
+  else{data.created_at=new Date().toISOString();var r2=await sb.from('service_tickets').insert(data);error=r2.error}
+  if(error){showToast('保存失败: '+error.message);return}
+  closeTicketForm();await loadTickets();showToast(svEditId?'工单已更新':'工单已创建');
+}
+async function changeTicketStatus(id,newStatus){
+  await sb.from('service_tickets').update({status:newStatus,updated_at:new Date().toISOString()}).eq('id',id);
+  loadTickets();showToast('状态已更新');
+}
+
+// ── Visits ──
+async function loadVisits(){
+  var{data,error}=await sb.from('client_visits').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
+  if(error){console.error(error);return}
+  allVisits=data||[];renderVisits();
+}
+function renderVisits(){
+  var list=allVisits||[];
+  var tf=document.getElementById('visit-type-filter'),sf=document.getElementById('visit-status-filter');
+  var sr=document.getElementById('visit-search');
+  if(tf&&tf.value!=='all')list=list.filter(function(x){return x.visit_type===tf.value});
+  if(sf&&sf.value!=='all')list=list.filter(function(x){return x.status===sf.value});
+  if(sr){var sq=sr.value.trim().toLowerCase();if(sq)list=list.filter(function(x){return(x.title||'').toLowerCase().indexOf(sq)>=0||(x.content||'').toLowerCase().indexOf(sq)>=0})}
+  var grid=document.getElementById('visit-grid'),empty=document.getElementById('visit-empty');
+  if(!list.length){grid.innerHTML='';empty.classList.remove('hidden');return}
+  empty.classList.add('hidden');
+  var vm={post_sale:'成交回访',care:'关怀回访',churn:'流失回访',other:'其他'};
+  var mth={phone:'📞',wechat:'💬',email:'📧',visit:'🏠',other:'📋'};
+  var ss={planned:'planning',completed:'success',cancelled:'cancelled'};
+  var h='';for(var i=0;i<list.length;i++){var v=list[i];var cn='';if(v.client_id&&allClients){var cc=allClients.find(function(x){return x.id===v.client_id});cn=cc?cc.name:''}
+    h+='<div class="lead-card">';
+    h+='<div class="lead-name">'+escHtml(v.title||'回访记录')+' <span style="font-size:11px;color:var(--text3)">'+escHtml(cn)+'</span></div>';
+    h+='<div class="lead-meta"><span class="lead-status-badge '+(ss[v.status]||'')+'">'+(v.status==='planned'?'计划中':v.status==='completed'?'已完成':'已取消')+'</span>';
+    h+='<span>'+escHtml(vm[v.visit_type]||v.visit_type)+'</span><span>'+(mth[v.visit_method]||'📋')+' '+escHtml(v.visit_method||'')+'</span>';
+    if(v.planned_date)h+='<span>📅 '+v.planned_date+'</span>';
+    if(v.satisfaction)h+='<span>⭐ '+v.satisfaction+'</span>';
+    h+='</div>';
+    if(v.content)h+='<div style="font-size:12px;color:var(--text2);margin-top:4px">'+escHtml(v.content).substring(0,100)+'</div>';
+    h+='<div class="lead-actions"><button onclick="event.stopPropagation();openVisitForm(\''+v.id+'\')">编辑</button><button class="btn-lead-danger" onclick="event.stopPropagation();confirmDeleteVisit(\''+v.id+'\')">删除</button></div></div>';
+  }
+  grid.innerHTML=h;
+}
+function openVisitForm(id){
+  svEditId=id||null;
+  var v=id?allVisits.find(function(x){return x.id===id}):null;
+  document.getElementById('visit-form-title').textContent=id?'编辑回访':'新建回访';
+  document.getElementById('vf-title').value=v?v.title||'':'';
+  document.getElementById('vf-type').value=v?v.visit_type||'care':'care';
+  document.getElementById('vf-method').value=v?v.visit_method||'phone':'phone';
+  document.getElementById('vf-planned-date').value=v?v.planned_date||'':'';
+  document.getElementById('vf-content').value=v?v.content||'':'';
+  document.getElementById('vf-satisfaction').value=v?v.satisfaction||'':'';
+  var cs=document.getElementById('vf-client');cs.innerHTML='<option value="">不关联</option>';
+  if(allClients)for(var i=0;i<allClients.length;i++){var cc=allClients[i];cs.innerHTML+='<option value="'+cc.id+'"'+(v&&v.client_id===cc.id?' selected':'')+'>'+h(cc.name)+'</option>'}
+  document.getElementById('visit-modal').classList.remove('hidden');
+}
+function closeVisitForm(){document.getElementById('visit-modal').classList.add('hidden');svEditId=null}
+async function saveVisit(){
+  var title=document.getElementById('vf-title').value.trim();if(!title){showToast('请输入标题');return}
+  var data={company_id:currentCompanyId,created_by:currentUser.id,title:title,
+    visit_type:document.getElementById('vf-type').value,visit_method:document.getElementById('vf-method').value,
+    client_id:document.getElementById('vf-client').value||null,
+    planned_date:document.getElementById('vf-planned-date').value||null,
+    content:document.getElementById('vf-content').value.trim(),
+    satisfaction:parseInt(document.getElementById('vf-satisfaction').value)||null,
+    updated_at:new Date().toISOString()};
+  var error;
+  if(svEditId){var r=await sb.from('client_visits').update(data).eq('id',svEditId);error=r.error}
+  else{data.created_at=new Date().toISOString();var r2=await sb.from('client_visits').insert(data);error=r2.error}
+  if(error){showToast('保存失败: '+error.message);return}
+  closeVisitForm();await loadVisits();showToast(svEditId?'回访已更新':'回访已创建');
+}
+
+// ── Visit Tasks ──
+var visitTasks=[];
+async function loadVisitTasks(){
+  var{data,error}=await sb.from('visit_tasks').select('*').eq('company_id',currentCompanyId).order('scheduled_date');
+  if(error){console.error(error);return}
+  visitTasks=data||[];
+  var ab=document.getElementById('visit-tasks-alert');
+  if(visitTasks.length){ab.style.display='block';ab.innerHTML='📅 <b>待办回访任务:</b> '+visitTasks.filter(function(x){return x.status==='pending'}).length+' 个待处理';ab.onclick=function(){showVisitTaskList()}}else ab.style.display='none';
+}
+function openVisitTaskForm(){var n=document.getElementById('vf-title').value||'';var c=prompt('回访任务标题:',n);if(!c)return;
+  var date=prompt('计划日期 (YYYY-MM-DD):',new Date().toISOString().split('T')[0]);if(!date)return;
+  sb.from('visit_tasks').insert([{company_id:currentCompanyId,title:c,task_type:'care',scheduled_date:date,status:'pending',created_at:new Date().toISOString()}]).then(function(r){
+    if(r.error)showToast('创建失败: '+r.error.message);else{loadVisitTasks();showToast('回访任务已创建')}
+  });
+}
+function showVisitTaskList(){
+  var rows=visitTasks.map(function(t){return '• '+t.title+' ['+t.scheduled_date+'] '+(t.status==='pending'?'待处理':'已完成')}).join('\n');
+  alert('回访任务列表:\n\n'+rows);
+}
+
+// ── Warranties ──
+async function loadWarranties(){
+  var{data,error}=await sb.from('warranties').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
+  if(error){console.error(error);return}
+  allWarranties=data||[];renderWarranties();
+}
+function renderWarranties(){
+  var list=allWarranties||[];
+  var sf=document.getElementById('warranty-status-filter'),sr=document.getElementById('warranty-search');
+  if(sf&&sf.value!=='all')list=list.filter(function(x){return x.status===sf.value});
+  if(sr){var sq=sr.value.trim().toLowerCase();if(sq)list=list.filter(function(x){return(x.product_name||'').toLowerCase().indexOf(sq)>=0||(x.serial_no||'').toLowerCase().indexOf(sq)>=0})}
+  var grid=document.getElementById('warranty-grid'),empty=document.getElementById('warranty-empty');
+  if(!list.length){grid.innerHTML='';empty.classList.remove('hidden');}else{empty.classList.add('hidden')}
+  // Expiring alert
+  var now=new Date(),expiring=allWarranties.filter(function(w){if(!w.warranty_end||w.status!=='active')return false;var ed=new Date(w.warranty_end);var d=Math.ceil((ed-now)/86400000);return d>=0&&d<=30});
+  var ab=document.getElementById('warranty-alert');
+  if(expiring.length){ab.style.display='block';ab.innerHTML='⚠️ <b>即将到期:</b> '+expiring.length+' 项质保在30天内到期，请关注续费！'}else ab.style.display='none';
+  if(!list.length)return;
+  var ss={active:'🟢有效',expired:'🔴过期',void:'⚫作废',claimed:'🟡理赔'};
+  var h='';for(var i=0;i<list.length;i++){var w=list[i];var cn='';if(w.client_id&&allClients){var cc=allClients.find(function(x){return x.id===w.client_id});cn=cc?cc.name:''}
+    var endLabel=w.warranty_end||'';if(w.status==='active'&&w.warranty_end){var dd=Math.ceil((new Date(w.warranty_end)-now)/86400000);endLabel+=' ('+(dd>0?dd+'天':'已到期')+')'}
+    h+='<div class="lead-card">';
+    h+='<div class="lead-name">'+escHtml(w.product_name)+' <span style="font-size:11px;color:var(--text3)">'+escHtml(cn)+'</span></div>';
+    h+='<div class="lead-meta"><span>'+escHtml(ss[w.status]||w.status)+'</span>';
+    if(w.serial_no)h+='<span># '+escHtml(w.serial_no)+'</span>';
+    h+='<span>📅 '+escHtml(w.warranty_start||'')+' → '+escHtml(endLabel)+'</span>';
+    h+='<span>'+escHtml(w.warranty_type||'')+'</span>';
+    h+='</div>';
+    h+='<div class="lead-actions"><button onclick="event.stopPropagation();openWarrantyForm(\''+w.id+'\')">编辑</button><button class="btn-lead-danger" onclick="event.stopPropagation();confirmDeleteWarranty(\''+w.id+'\')">删除</button></div></div>';
+  }
+  grid.innerHTML=h;
+}
+function openWarrantyForm(id){
+  svEditId=id||null;
+  var w=id?allWarranties.find(function(x){return x.id===id}):null;
+  document.getElementById('warranty-form-title').textContent=id?'编辑质保':'新建质保';
+  document.getElementById('wf-product').value=w?w.product_name||'':'';
+  document.getElementById('wf-serial').value=w?w.serial_no||'':'';
+  document.getElementById('wf-start').value=w?w.warranty_start||'':'';
+  document.getElementById('wf-end').value=w?w.warranty_end||'':'';
+  document.getElementById('wf-type').value=w?w.warranty_type||'standard':'standard';
+  document.getElementById('wf-terms').value=w?w.terms||'':'';
+  var cs=document.getElementById('wf-client');cs.innerHTML='<option value="">不关联</option>';
+  if(allClients)for(var i=0;i<allClients.length;i++){var cc=allClients[i];cs.innerHTML+='<option value="'+cc.id+'"'+(w&&w.client_id===cc.id?' selected':'')+'>'+h(cc.name)+'</option>'}
+  document.getElementById('warranty-modal').classList.remove('hidden');
+}
+function closeWarrantyForm(){document.getElementById('warranty-modal').classList.add('hidden');svEditId=null}
+async function saveWarranty(){
+  var pn=document.getElementById('wf-product').value.trim();if(!pn){showToast('请输入产品名称');return}
+  var data={company_id:currentCompanyId,product_name:pn,
+    serial_no:document.getElementById('wf-serial').value.trim(),
+    client_id:document.getElementById('wf-client').value||null,
+    warranty_start:document.getElementById('wf-start').value||null,
+    warranty_end:document.getElementById('wf-end').value||null,
+    warranty_type:document.getElementById('wf-type').value,
+    terms:document.getElementById('wf-terms').value.trim(),
+    updated_at:new Date().toISOString()};
+  var error;
+  if(svEditId){var r=await sb.from('warranties').update(data).eq('id',svEditId);error=r.error}
+  else{data.created_at=new Date().toISOString();var r2=await sb.from('warranties').insert(data);error=r2.error}
+  if(error){showToast('保存失败: '+error.message);return}
+  closeWarrantyForm();await loadWarranties();showToast(svEditId?'质保已更新':'质保已创建');
+}
+
+// ── Maintenance Plans ──
+async function loadMaintenancePlans(){
+  var{data,error}=await sb.from('maintenance_plans').select('*').eq('company_id',currentCompanyId).order('next_maintenance');
+  if(error){console.error(error);return}
+  allMaintenance=data||[];renderMaintenancePlans();
+}
+function renderMaintenancePlans(){
+  var list=allMaintenance||[];
+  var grid=document.getElementById('maintenance-grid'),empty=document.getElementById('maintenance-empty');
+  if(!list.length){grid.innerHTML='';empty.classList.remove('hidden');return}
+  empty.classList.add('hidden');
+  var ss={scheduled:'计划中',in_progress:'进行中',completed:'已完成',overdue:'已逾期',cancelled:'已取消'};
+  var sc={scheduled:'planning',in_progress:'active',completed:'success',overdue:'urgent',cancelled:'cancelled'};
+  var h='';for(var i=0;i<list.length;i++){var m=list[i];var cn='';if(m.client_id&&allClients){var cc=allClients.find(function(x){return x.id===m.client_id});cn=cc?cc.name:''}
+    h+='<div class="lead-card">';
+    h+='<div class="lead-name">🔧 '+escHtml(m.product_name||'维保计划')+' <span style="font-size:11px;color:var(--text3)">'+escHtml(cn)+'</span></div>';
+    h+='<div class="lead-meta"><span class="lead-status-badge '+(sc[m.status]||'')+'">'+escHtml(ss[m.status]||m.status)+'</span>';
+    h+='<span>'+escHtml(m.plan_type||'')+'</span><span>🔄 '+escHtml(m.schedule_interval||'')+'</span>';
+    if(m.next_maintenance)h+='<span>📅 下次: '+m.next_maintenance+'</span>';
+    h+='</div>';
+    h+='<div class="lead-actions"><button onclick="event.stopPropagation();openMaintenanceForm(\''+m.id+'\')">编辑</button><button class="btn-lead-danger" onclick="event.stopPropagation();confirmDeleteMaintenance(\''+m.id+'\')">删除</button></div></div>';
+  }
+  grid.innerHTML=h;
+}
+function openMaintenanceForm(id){
+  svEditId=id||null;
+  var m=id?allMaintenance.find(function(x){return x.id===id}):null;
+  document.getElementById('maintenance-form-title').textContent=id?'编辑维保计划':'新建维保计划';
+  document.getElementById('mf-product').value=m?m.product_name||'':'';
+  document.getElementById('mf-type').value=m?m.plan_type||'preventive':'preventive';
+  document.getElementById('mf-interval').value=m?m.schedule_interval||'monthly':'monthly';
+  document.getElementById('mf-next').value=m?m.next_maintenance||'':'';
+  document.getElementById('mf-assigned').value=m?(getAssignedName(m.assigned_to)||''):'';
+  document.getElementById('mf-notes').value=m?m.notes||'':'';
+  var cs=document.getElementById('mf-client');cs.innerHTML='<option value="">不关联</option>';
+  if(allClients)for(var i=0;i<allClients.length;i++){var cc=allClients[i];cs.innerHTML+='<option value="'+cc.id+'"'+(m&&m.client_id===cc.id?' selected':'')+'>'+h(cc.name)+'</option>'}
+  document.getElementById('maintenance-modal').classList.remove('hidden');
+}
+function closeMaintenanceForm(){document.getElementById('maintenance-modal').classList.add('hidden');svEditId=null}
+async function saveMaintenance(){
+  var pn=document.getElementById('mf-product').value.trim();if(!pn){showToast('请输入产品名称');return}
+  var data={company_id:currentCompanyId,product_name:pn,
+    client_id:document.getElementById('mf-client').value||null,
+    plan_type:document.getElementById('mf-type').value,schedule_interval:document.getElementById('mf-interval').value,
+    next_maintenance:document.getElementById('mf-next').value||null,
+    notes:document.getElementById('mf-notes').value.trim(),
+    updated_at:new Date().toISOString()};
+  var error;
+  if(svEditId){var r=await sb.from('maintenance_plans').update(data).eq('id',svEditId);error=r.error}
+  else{data.created_at=new Date().toISOString();var r2=await sb.from('maintenance_plans').insert(data);error=r2.error}
+  if(error){showToast('保存失败: '+error.message);return}
+  closeMaintenanceForm();await loadMaintenancePlans();showToast(svEditId?'维保计划已更新':'维保计划已创建');
+}
+function getAssignedName(uid){if(!uid||!allUsers)return'';var u=allUsers.find(function(x){return x.user_id===uid});return u?(u.display_name||u.email||''):''}
+
+// ── Knowledge Base ──
+async function loadKB(){
+  var{data,error}=await sb.from('kb_articles').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
+  if(error){console.error(error);return}
+  allKB=data||[];renderKB();
+}
+function renderKB(){
+  var list=allKB||[];
+  var cf=document.getElementById('kb-category-filter'),sr=document.getElementById('kb-search');
+  if(cf&&cf.value!=='all')list=list.filter(function(x){return x.category===cf.value});
+  if(sr){var sq=sr.value.trim().toLowerCase();if(sq)list=list.filter(function(x){return(x.title||'').toLowerCase().indexOf(sq)>=0||(x.content||'').toLowerCase().indexOf(sq)>=0||(x.tags||[]).some(function(t){return t.toLowerCase().indexOf(sq)>=0})})}
+  var grid=document.getElementById('kb-grid'),empty=document.getElementById('kb-empty');
+  if(!list.length){grid.innerHTML='';empty.classList.remove('hidden');return}
+  empty.classList.add('hidden');
+  var cm={faq:'❓常见问题',solution:'💡解决方案',script:'📝标准话术',policy:'📜政策法规',other:'📋其他'};
+  var h='';for(var i=0;i<list.length;i++){var k=list[i];
+    h+='<div class="lead-card" style="cursor:pointer" onclick="toggleKBDetail('+k.id+')">';
+    h+='<div class="lead-name">'+escHtml(k.title)+' <span style="font-size:11px;color:var(--text3)">'+escHtml(cm[k.category]||k.category)+'</span></div>';
+    h+='<div class="lead-meta">';
+    if(k.tags&&k.tags.length)h+='<span>'+k.tags.map(function(t){return '#'+t}).join(' ')+'</span>';
+    if(k.related_products)h+='<span>📦 '+escHtml(k.related_products)+'</span>';
+    h+='<span>👁 '+k.view_count+'</span>';
+    h+='</div>';
+    h+='<div id="kb-detail-'+k.id+'" style="display:none;padding:12px 0;font-size:13px;color:var(--text);line-height:1.7;white-space:pre-wrap;border-top:1px solid var(--border);margin-top:8px">'+escHtml(k.content||'')+'</div>';
+    h+='<div class="lead-actions"><button onclick="event.stopPropagation();openKBForm(\''+k.id+'\')">编辑</button><button class="btn-lead-danger" onclick="event.stopPropagation();confirmDeleteKB(\''+k.id+'\')">删除</button></div></div>';
+  }
+  grid.innerHTML=h;
+}
+function toggleKBDetail(id){
+  var el=document.getElementById('kb-detail-'+id);if(!el)return;
+  if(el.style.display==='none'){el.style.display='block';sb.from('kb_articles').update({view_count:((allKB.find(function(x){return x.id===id})||{}).view_count||0)+1}).eq('id',id)}
+  else el.style.display='none';
+}
+function openKBForm(id){
+  svEditId=id||null;
+  var k=id?allKB.find(function(x){return x.id===id}):null;
+  document.getElementById('kb-form-title').textContent=id?'编辑文章':'新建文章';
+  document.getElementById('kbf-title').value=k?k.title||'':'';
+  document.getElementById('kbf-category').value=k?k.category||'faq':'faq';
+  document.getElementById('kbf-products').value=k?k.related_products||'':'';
+  document.getElementById('kbf-tags').value=k?(k.tags||[]).join(','):'';
+  document.getElementById('kbf-content').value=k?k.content||'':'';
+  document.getElementById('kb-modal').classList.remove('hidden');
+}
+function closeKBForm(){document.getElementById('kb-modal').classList.add('hidden');svEditId=null}
+async function saveKB(){
+  var title=document.getElementById('kbf-title').value.trim();if(!title){showToast('请输入标题');return}
+  var tags=(document.getElementById('kbf-tags').value||'').split(',').map(function(t){return t.trim()}).filter(Boolean);
+  var data={company_id:currentCompanyId,created_by:currentUser.id,title:title,
+    category:document.getElementById('kbf-category').value,
+    content:document.getElementById('kbf-content').value.trim(),
+        tags:tags,
+    related_products:document.getElementById('kbf-products').value.trim(),
+    updated_at:new Date().toISOString()};
+  var error;
+  if(svEditId){var r=await sb.from('kb_articles').update(data).eq('id',svEditId);error=r.error}
+  else{data.created_at=new Date().toISOString();var r2=await sb.from('kb_articles').insert(data);error=r2.error}
+  if(error){showToast('保存失败: '+error.message);return}
+  closeKBForm();await loadKB();showToast(svEditId?'文章已更新':'文章已创建');
+}
+
+
+// —— After-sales delete helpers
+async function confirmDeleteTicket(id){confirmDialog('确定删除该工单？',async function(){await sb.from('service_tickets').delete().eq('id',id);loadTickets()})}
+async function confirmDeleteVisit(id){confirmDialog('确定删除？',async function(){await sb.from('client_visits').delete().eq('id',id);loadVisits()})}
+async function confirmDeleteWarranty(id){confirmDialog('确定删除？',async function(){await sb.from('warranties').delete().eq('id',id);loadWarranties()})}
+async function confirmDeleteMaintenance(id){confirmDialog('确定删除？',async function(){await sb.from('maintenance_plans').delete().eq('id',id);loadMaintenancePlans()})}
+async function confirmDeleteKB(id){confirmDialog('确定删除？',async function(){await sb.from('kb_articles').delete().eq('id',id);loadKB()})}
 
 
 // ═══════════ INVENTORY ═══════════
@@ -3597,6 +5193,7 @@ async function deleteTransferById(id){
 
 // ====== Stock Ledger 库存台账 ======
 async function loadStockLedger(){
+  try{
   var pid=(document.getElementById('inv-ledger-product')||{}).value||'';
   var wid=(document.getElementById('inv-ledger-warehouse')||{}).value||'';
   var search=((document.getElementById('inv-ledger-search')||{}).value||'').toLowerCase();
@@ -3604,7 +5201,7 @@ async function loadStockLedger(){
   if(pid)q=q.eq('product_id',pid);
   if(wid)q=q.eq('warehouse_id',wid);
   var r=await q.limit(500);
-  if(r.error){console.error(r.error);return}
+  if(r.error){console.error('loadStockLedger:',r.error);showToast('台账加载失败: '+r.error.message);return}
   var records=r.data||[];
   if(search)records=records.filter(function(sr){var pn=findProductName(sr.product_id).toLowerCase();var bn=(sr.batch_no||'').toLowerCase();return pn.indexOf(search)>=0||bn.indexOf(search)>=0});
   // Build running balance
@@ -3629,6 +5226,7 @@ async function loadStockLedger(){
   for(var k2 in outQty){totalOut+=outQty[k2];totalOutAmt+=outAmt[k2]}
   el.innerHTML='入库合计: <b style="color:var(--success)">'+totalIn.toFixed(2)+'</b> 件 / ¥<b style="color:var(--success)">'+totalInAmt.toFixed(2)+'</b> &nbsp;|&nbsp; 出库合计: <b style="color:var(--danger)">'+totalOut.toFixed(2)+'</b> 件 / ¥<b style="color:var(--danger)">'+totalOutAmt.toFixed(2)+'</b> &nbsp;|&nbsp; 记录数: '+records.length;
   renderLedger();
+  }catch(e){console.error('loadStockLedger error:',e);showToast('台账加载失败: '+e.message)}
 }
 function renderLedger(){
   var el=document.getElementById('ledger-table');if(!el)return;
@@ -3961,7 +5559,7 @@ async function loadTargets(){
   var u=document.getElementById('perf-target-user');
   var year=y?parseInt(y.value):new Date().getFullYear();
   var uid=u?u.value:'';
-  var q=sb.from('sales_targets').select('*,profiles!user_id(display_name,email)').eq('company_id',currentCompanyId).eq('target_year',year).order('target_month');
+  var q=sb.from('sales_targets').select('*').eq('company_id',currentCompanyId).eq('target_year',year).order('target_month');
   if(uid)q=q.eq('user_id',uid);
   var r=await q;
   allTargets=r.data||[];
@@ -3975,11 +5573,12 @@ function renderTargets(){
   if(!allTargets.length){tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-secondary)">暂无目标数据</td></tr>';return;}
   var h='';
   for(var i=0;i<allTargets.length;i++){
-    var t=allTargets[i],p=t.profiles||{};
+    var t=allTargets[i];
+    var uname='';var u=(allUsers||[]).find(function(x){return x.user_id===t.user_id});if(u)uname=u.display_name||u.email||'';
     var actual=getPerfActual(t.user_id,t.target_year,t.target_month);
     var rate=t.amount>0?Math.round(actual/t.amount*100):0;
     var rc=rate>=100?'var(--success)':rate>=60?'var(--warning)':'var(--danger)';
-    h+='<tr><td>'+escHtml(p.display_name||p.email||'')+'</td><td>'+t.target_year+'-'+String(t.target_month).padStart(2,'0')+'</td><td style="font-weight:600">¥'+fmtNum(t.amount)+'</td><td>¥'+fmtNum(actual)+'</td><td style="color:'+rc+';font-weight:600">'+rate+'%</td><td>'+targetStatusBadge(rate)+'</td><td><button class="btn-sm" style="background:var(--surface);border:1px solid var(--border)" onclick="openTargetForm('+t.id+')">编辑</button> <button class="btn-sm" style="background:#fff;color:var(--danger);border:1px solid var(--danger)" onclick="deleteTarget('+t.id+')">删除</button></td></tr>';
+    h+='<tr><td>'+escHtml(uname)+'</td><td>'+t.target_year+'-'+String(t.target_month).padStart(2,'0')+'</td><td style="font-weight:600">¥'+fmtNum(t.amount)+'</td><td>¥'+fmtNum(actual)+'</td><td style="color:'+rc+';font-weight:600">'+rate+'%</td><td>'+targetStatusBadge(rate)+'</td><td><button class="btn-sm" style="background:var(--surface);border:1px solid var(--border)" onclick="openTargetForm('+t.id+')">编辑</button> <button class="btn-sm" style="background:#fff;color:var(--danger);border:1px solid var(--danger)" onclick="deleteTarget('+t.id+')">删除</button></td></tr>';
   }
   tbody.innerHTML=h;
 }
@@ -4134,7 +5733,7 @@ async function loadCommission(){
   var y=parseInt(document.getElementById('perf-comm-year').value);
   var m=parseInt(document.getElementById('perf-comm-month').value);
   var s=document.getElementById('perf-comm-status').value;
-  var q=sb.from('commission_details').select('*,profiles!user_id(display_name,email)').eq('company_id',currentCompanyId).eq('calc_year',y).eq('calc_month',m);
+  var q=sb.from('commission_details').select('*').eq('company_id',currentCompanyId).eq('calc_year',y).eq('calc_month',m);
   if(s)q=q.eq('status',s);
   var r=await q;
   allCommission=r.data||[];
@@ -4149,11 +5748,12 @@ function renderCommission(){
   var total=0,paid=0;
   var h='';
   for(var i=0;i<allCommission.length;i++){
-    var c=allCommission[i],p=c.profiles||{};
+    var c=allCommission[i];
+    var uname='';var u2=(allUsers||[]).find(function(x){return x.user_id===c.user_id});if(u2)uname=u2.display_name||u2.email||'';
     total+=parseFloat(c.commission_amount)||0;
     if(c.status==='paid')paid+=parseFloat(c.commission_amount)||0;
     var statusLabels={pending:'🔶 待确认',confirmed:'✅ 已确认',paid:'💰 已发放'};
-    h+='<tr><td>'+escHtml(p.display_name||p.email||'')+'</td><td>'+c.calc_year+'-'+String(c.calc_month).padStart(2,'0')+'</td><td>¥'+fmtNum(c.actual_amount)+'</td><td>¥'+fmtNum(c.target_amount)+'</td><td>'+(parseFloat(c.target_completion_rate)||0)+'%</td><td style="font-weight:600;color:var(--primary)">¥'+fmtNum(c.commission_amount)+'</td><td>'+(statusLabels[c.status]||c.status)+'</td><td>';
+    h+='<tr><td>'+escHtml(uname)+'</td><td>'+c.calc_year+'-'+String(c.calc_month).padStart(2,'0')+'</td><td>¥'+fmtNum(c.actual_amount)+'</td><td>¥'+fmtNum(c.target_amount)+'</td><td>'+(parseFloat(c.target_completion_rate)||0)+'%</td><td style="font-weight:600;color:var(--primary)">¥'+fmtNum(c.commission_amount)+'</td><td>'+(statusLabels[c.status]||c.status)+'</td><td>';
     if(c.status==='pending')h+='<button class="btn-sm" style="background:var(--success);color:#fff;border:none" onclick="updateCommissionStatus('+c.id+',\'confirmed\')">确认</button> ';
     if(c.status==='confirmed')h+='<button class="btn-sm" style="background:var(--primary);color:#fff;border:none" onclick="updateCommissionStatus('+c.id+',\'paid\')">已发放</button> ';
     h+='<button class="btn-sm" style="background:#fff;color:var(--danger);border:1px solid var(--danger)" onclick="deleteCommission('+c.id+')">删除</button></td></tr>';
@@ -4303,7 +5903,6 @@ var ruleEditId=null;
   populatePerfSelects();
 })();
 
-
 // === Supplier Functions ===
 
 async function loadSuppliers(){
@@ -4315,6 +5914,8 @@ async function loadSuppliers(){
   for(var j=0;j<allSuppliers.length;j++)allSuppliers[j].linked_client_name=clientMap[allSuppliers[j].linked_client_id]||'';
   buildSupCategories();
   renderSuppliers();
+  // Defense-in-depth: ensure FAB hidden on supplier view
+  var supFab=document.getElementById('main-fab');if(supFab)supFab.classList.add('hidden');
 }
 
 function buildSupCategories(){
@@ -4597,7 +6198,6 @@ var supLinkedClientId=null;var supLinkedClientName='';
   document.body.appendChild(modals);
 })();
 
-
 // === Client Name Autocomplete ===
 var nameSuggIdx=-1,nameSuggList=[];
 
@@ -4690,7 +6290,6 @@ function selectNameSuggestion(idx){
   }
 }
 
-
 // === Supplier Name Autocomplete ===
 var supNameSuggIdx=-1,supNameSuggList=[];
 
@@ -4776,10 +6375,10 @@ function selectSupNameSuggestion(idx){
 // Click-outside to close suggestions
 document.addEventListener('click',function(e){
   var ddSup=document.getElementById('sup-name-suggestions');
-  if(ddSup&&!ddSup.classList.contains('hidden')&&!e.target.closest('#supplier-modal'))ddSup.classList.add('hidden');
+  if(ddSup&&!ddSup.classList.contains('hidden')&&!e.target.closest("#supplier-modal"))ddSup.classList.add('hidden');
   // Also handle client name suggestions
   var ns=document.getElementById('name-suggestions');
-  if(ns&&!ns.classList.contains('hidden')&&!e.target.closest('#form-modal'))ns.classList.add('hidden');
+  if(ns&&!ns.classList.contains('hidden')&&!e.target.closest("#form-modal"))ns.classList.add('hidden');
 });
 
 // ============ NEW: Client 360 Functions ============
@@ -4835,7 +6434,24 @@ function renderClient360Overview(c,orders){
     if(data&&data.length)lastEng=new Date(data[0].created_at).toLocaleDateString('zh-CN');
     document.getElementById('c360-last-engage').textContent=lastEng;
   })();
-  var html='<div class="c360-card"><div class="c360-card-title">📋 基本信息</div>';
+  var html='<div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button class="btn-sm btn-sm-primary" onclick="closeClient360();openForm(\''+c.id+'\')">✏️ 编辑客户</button></div>';
+  // ── 项目信息
+  var projs=[];
+  try{projs=JSON.parse(c.projects||'[]');if(!Array.isArray(projs))projs=[]}catch(e){projs=[]}
+  if(projs.length>0){
+    html+='<div class="c360-card"><div class="c360-card-title">📦 项目信息</div>';
+    for(var pj=0;pj<projs.length;pj++){
+      var pr=projs[pj];
+      html+='<div style="margin-bottom:10px;padding:10px;background:var(--primary-light);border-radius:8px">';
+      html+='<div style="font-weight:600;font-size:14px;margin-bottom:6px">'+h(pr.project_name||'项目#'+(pj+1))+'</div>';
+      var pfields=[['招标日期',pr.bidding_date||'-'],['中标人',pr.bidder_name||'-'],['中标人电话',pr.bidder_phone||'-'],['中标公司',pr.bidder_company||'-'],['中标金额',pr.bid_amount?formatMoney(pr.bid_amount):'-']];
+      for(var pf=0;pf<pfields.length;pf++)html+='<div class="c360-info-row" style="font-size:12px"><span class="c360-info-label">'+pfields[pf][0]+'</span><span class="c360-info-value">'+h(pfields[pf][1])+'</span></div>';
+      html+='</div>';
+    }
+    html+='</div>';
+  }
+  // ── 基本信息
+  html+='<div class="c360-card"><div class="c360-card-title">📋 基本信息</div>';
   var rows=[
     ['行业',c.industry||'-'],['规模',c.scale||'-'],['来源',c.source||'-'],
     ['信用等级',c.credit_rating||'-'],['客户等级',c.grade?c.grade+'级':'-'],
@@ -4874,7 +6490,7 @@ function renderClient360Contacts(c){
       try{phs=JSON.parse(co.phone||'[]');if(!Array.isArray(phs))phs=[co.phone||'']}catch(e){phs=['']}
       try{lls=JSON.parse(co.landline||'[]');if(!Array.isArray(lls))lls=[]}catch(e){lls=[]}
       try{ems=JSON.parse(co.email||'[]');if(!Array.isArray(ems))ems=[]}catch(e){ems=[]}
-      html+='<div class="c360-contact-item"><div class="c360-contact-name">'+h(co.name||'未命名')+dm+'</div>';
+      html+='<div class="c360-contact-item"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div class="c360-contact-name">'+h(co.name||'未命名')+dm+'</div><button onclick="event.stopPropagation();transferFrom360(\''+co.id+'\')" style="font-size:11px;color:var(--primary);border:1px solid var(--primary);border-radius:12px;background:transparent;padding:2px 10px;cursor:pointer;flex-shrink:0">转移</button></div>';
       html+='<div class="c360-contact-info">';
       if(co.dept)html+='<span>🏢 '+h(co.dept)+'</span>';
       if(co.position)html+='<span>💼 '+h(co.position)+'</span>';
@@ -5016,28 +6632,37 @@ async function autoCheckLifecycle(clientId){
 
 // ============ NEW: Lead Pool Functions ============
 async function loadLeads(){
-  var {data,error}=await sb.from('lead_pool').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
-  if(error){console.error('loadLeads:',error);return}
+  try{
+  // Sales pipeline: only leads assigned to current user
+  var {data,error}=await sb.from('lead_pool').select('*').eq('company_id',currentCompanyId).eq('assigned_to',currentUser.id).in('status',['assigned','contacted']).order('updated_at',{ascending:false});
+  if(error){console.error('loadLeads:',error);}
   allLeads=data||[];
+  }catch(e){console.error('loadLeads exception:',e);allLeads=[]}
   renderLeads();
 }
 
+var poolLeads=[];
+async function loadPoolLeads(){
+  try{
+  // Lead pool: unassigned leads only
+  var {data,error}=await sb.from('lead_pool').select('*').eq('company_id',currentCompanyId).is('assigned_to',null).order('updated_at',{ascending:false});
+  if(error){console.error('loadPoolLeads:',error);}
+  poolLeads=data||[];
+  }catch(e){console.error('loadPoolLeads exception:',e);poolLeads=[]}
+  renderPoolLeads();
+}
+
 function renderLeads(){
+  // Sales pipeline leads (assigned to current user)
   var list=allLeads||[];
-  var q=(document.getElementById('lead-pool-search')||{}).value||'';
+  var q=(document.getElementById('lead-search')||{}).value||'';
   q=q.trim().toLowerCase();
-  var filter=(document.getElementById('lead-pool-filter')||{}).value||'all';
+  var stage=(document.getElementById('lead-stage-filter')||{}).value||'all';
   if(q)list=list.filter(function(l){return(l.name||'').toLowerCase().indexOf(q)>=0||(l.contact_name||'').toLowerCase().indexOf(q)>=0||(l.contact_phone||'').indexOf(q)>=0});
-  if(filter!=='all')list=list.filter(function(l){return l.status===filter});
-  // Stats
-  var total=allLeads.length,assigned=0,converted=0;
-  for(var i=0;i<allLeads.length;i++){if(allLeads[i].status==='assigned'||allLeads[i].status==='contacted')assigned++;if(allLeads[i].status==='converted')converted++}
-  var statsBar=document.getElementById('leads-stats-bar');
-  var convRate=total>0?Math.round(converted/total*100):0;
-  if(statsBar)statsBar.innerHTML='<div class="stat-card"><div class="stat-num">'+list.length+'</div><div class="stat-label">'+(filter!=='all'||q?'筛选结果':'全部线索')+'</div></div><div class="stat-card"><div class="stat-num">'+assigned+'</div><div class="stat-label">已分配</div></div><div class="stat-card"><div class="stat-num">'+convRate+'%</div><div class="stat-label">转化率</div></div>';
-  var grid=document.getElementById('lead-grid'),empty=document.getElementById('lead-empty');
-  if(!list.length){grid.innerHTML='';empty.classList.remove('hidden');return}
-  empty.classList.add('hidden');
+  if(stage!=='all')list=list.filter(function(l){return l.stage===stage||l.status===stage});
+  var grid=document.getElementById('sales-lead-grid'),empty=document.getElementById('sales-lead-empty');
+  if(!list.length){grid.innerHTML='';if(empty)empty.classList.remove('hidden');return}
+  if(empty)empty.classList.add('hidden');
   var statusMap={new:'新线索',assigned:'已分配',contacted:'已联系',converted:'已转化',recycled:'已回收',junk:'无效'};
   var html='';
   for(var i=0;i<list.length;i++){
@@ -5052,20 +6677,152 @@ function renderLeads(){
     if(l.contact_email)html+='<span>📧 '+h(l.contact_email)+'</span>';
     html+='</div>';
     html+='<div class="lead-meta">';
-    html+='<span class="lead-status-badge '+h(l.status)+'">'+(statusMap[l.status]||l.status)+'</span>';
+    html+='<span class="lead-status-badge '+h(l.stage||l.status)+'">'+(l.stage||statusMap[l.status]||l.status)+'</span>';
     if(l.source)html+='<span>来源: '+h(l.source)+'</span>';
     if(assignee)html+='<span>分配: '+h(assignee)+'</span>';
     if(l.last_follow_up)html+='<span>跟进: '+l.last_follow_up+'</span>';
     html+='</div>';
     html+='<div class="lead-actions">';
-    if(l.status!=='converted')html+='<button class="btn-lead-primary" onclick="event.stopPropagation();openLeadForm(\''+l.id+'\')">编辑</button>';
-    if(l.status==='new')html+='<button onclick="event.stopPropagation();assignLead(\''+l.id+'\')">分配</button>';
-    if(l.status==='assigned'||l.status==='contacted')html+='<button class="btn-lead-primary" onclick="event.stopPropagation();convertLeadToClient(\''+l.id+'\')">转客户</button>';
+    html+='<button class="btn-lead-primary" onclick="event.stopPropagation();openLeadForm(\''+l.id+'\')">编辑</button>';
+    html+='<button class="btn-lead-primary" onclick="event.stopPropagation();convertLeadToClient(\''+l.id+'\')">转客户</button>';
     html+='<button class="btn-lead-danger" onclick="event.stopPropagation();deleteLead(\''+l.id+'\')">删除</button>';
     html+='</div></div>';
   }
   grid.innerHTML=html;
 }
+
+function renderPoolLeads(){
+  // Lead pool (unassigned leads)
+  var list=poolLeads||[];
+  var q=(document.getElementById('lead-pool-search')||{}).value||'';
+  q=q.trim().toLowerCase();
+  var filter=(document.getElementById('lead-pool-filter')||{}).value||'all';
+  if(q)list=list.filter(function(l){return(l.name||'').toLowerCase().indexOf(q)>=0||(l.contact_name||'').toLowerCase().indexOf(q)>=0||(l.contact_phone||'').indexOf(q)>=0});
+  if(filter!=='all')list=list.filter(function(l){return l.status===filter});
+  // Stats
+  var total=poolLeads.length,converted=0;
+  for(var i=0;i<poolLeads.length;i++){if(poolLeads[i].status==='converted')converted++}
+  var statsBar=document.getElementById('leads-stats-bar');
+  if(statsBar)statsBar.innerHTML='<div class="stat-card"><div class="stat-num">'+total+'</div><div class="stat-label">公海线索</div></div><div class="stat-card"><div class="stat-num">'+list.length+'</div><div class="stat-label">'+(filter!=='all'||q?'筛选结果':'当前显示')+'</div></div>';
+  var grid=document.getElementById('lead-grid'),empty=document.getElementById('lead-empty');
+  if(!list.length){grid.innerHTML='';if(empty)empty.classList.remove('hidden');return}
+  if(empty)empty.classList.add('hidden');
+  var statusMap={new:'新线索',assigned:'已分配',contacted:'已联系',converted:'已转化',recycled:'已回收',junk:'无效'};
+  var html='';
+  for(var i=0;i<list.length;i++){
+    var l=list[i];
+    html+='<div class="lead-card">';
+    html+='<div class="lead-name">'+h(l.name)+'</div>';
+    html+='<div class="lead-contact">';
+    if(l.contact_name)html+='<span>👤 '+h(l.contact_name)+'</span>';
+    if(l.contact_phone)html+='<span>📞 '+h(l.contact_phone)+'</span>';
+    if(l.contact_email)html+='<span>📧 '+h(l.contact_email)+'</span>';
+    html+='</div>';
+    html+='<div class="lead-meta">';
+    html+='<span class="lead-status-badge '+h(l.status)+'">'+(statusMap[l.status]||l.status)+'</span>';
+    if(l.source)html+='<span>来源: '+h(l.source)+'</span>';
+    if(l.industry)html+='<span>行业: '+h(l.industry)+'</span>';
+    html+='</div>';
+    html+='<div class="lead-actions">';
+    html+='<button class="btn-lead-primary" onclick="event.stopPropagation();openLeadForm(\''+l.id+'\')">编辑</button>';
+    html+='<button class="btn-lead-primary" onclick="event.stopPropagation();assignLead(\''+l.id+'\')">分配</button>';
+    html+='<button class="btn-lead-danger" onclick="event.stopPropagation();deleteLead(\''+l.id+'\')">删除</button>';
+    html+='</div></div>';
+  }
+  grid.innerHTML=html;
+}
+
+// === Lead Company Name Autocomplete ===
+var leadCompSuggIdx=-1,leadCompSuggList=[];
+function onLeadCompanyInput(){
+  var inp=document.getElementById('lf-name');
+  var val=(inp.value||'').trim().toLowerCase();
+  var dd=document.getElementById('lead-name-suggestions');
+  if(!val||val.length<1){dd.classList.add('hidden');leadCompSuggList=[];leadCompSuggIdx=-1;return}
+  var matches=[],seen={};
+  for(var i=0;i<allCompanies.length;i++){
+    var c=allCompanies[i];var cn=(c.name||'').toLowerCase();
+    if(cn&&cn.indexOf(val)>=0&&!seen[cn]){seen[cn]=1;matches.push(c)}
+  }
+  matches.sort(function(a,b){return (a.name||'').length-(b.name||'').length});
+  matches=matches.slice(0,12);
+  if(!matches.length){dd.classList.add('hidden');leadCompSuggList=[];leadCompSuggIdx=-1;return}
+  leadCompSuggList=matches;leadCompSuggIdx=-1;
+  dd.innerHTML=matches.map(function(c,i){return '<div class="name-suggestion'+(i===leadCompSuggIdx?' active':'')+'" data-idx="'+i+'" onmousedown="selectLeadCompany('+i+')"><div class="ns-name">'+escHtml(c.name)+'</div><div class="ns-detail">'+escHtml(c.base||c.legal_person||'')+'</div></div>'}).join('');
+  dd.classList.remove('hidden');
+}
+function onLeadCompanyKey(e){
+  var dd=document.getElementById('lead-name-suggestions');
+  if(dd.classList.contains('hidden'))return;
+  if(e.key==='ArrowDown'){e.preventDefault();leadCompSuggIdx=Math.min(leadCompSuggIdx+1,leadCompSuggList.length-1);updateLeadCompActive()}
+  else if(e.key==='ArrowUp'){e.preventDefault();leadCompSuggIdx=Math.max(leadCompSuggIdx-1,0);updateLeadCompActive()}
+  else if(e.key==='Enter'||e.key==='Tab'){e.preventDefault();if(leadCompSuggIdx>=0)selectLeadCompany(leadCompSuggIdx)}
+  else if(e.key==='Escape'){dd.classList.add('hidden');leadCompSuggIdx=-1}
+}
+function updateLeadCompActive(){
+  var items=document.querySelectorAll('#lead-name-suggestions .name-suggestion');
+  for(var i=0;i<items.length;i++)items[i].classList.toggle('active',i===leadCompSuggIdx);
+  if(leadCompSuggIdx>=0&&items[leadCompSuggIdx])items[leadCompSuggIdx].scrollIntoView({block:'nearest'});
+}
+function selectLeadCompany(idx){
+  var c=leadCompSuggList[idx];if(!c)return;
+  document.getElementById('lf-name').value=c.name;
+  document.getElementById('lead-name-suggestions').classList.add('hidden');
+  leadCompSuggList=[];leadCompSuggIdx=-1;
+  if(c.industry)document.getElementById('lf-industry').value=c.industry;
+  if(c.scale)document.getElementById('lf-scale').value=c.scale;
+}
+
+// === Lead Contact Autocomplete (from existing clients) ===
+var leadContactSuggIdx=-1,leadContactSuggList=[];
+function onLeadContactInput(){
+  var inp=document.getElementById('lf-contact-name');
+  var val=(inp.value||'').trim().toLowerCase();
+  var dd=document.getElementById('lead-contact-suggestions');
+  if(!val||val.length<1){dd.classList.add('hidden');leadContactSuggList=[];leadContactSuggIdx=-1;return}
+  var matches=[],seen={};
+  for(var i=0;i<allContacts.length;i++){
+    var co=allContacts[i];var cn=(co.name||'').toLowerCase();
+    var key=cn+'|'+co.client_id;
+    if(cn&&cn.indexOf(val)>=0&&!seen[key]){
+      seen[key]=1;
+      var cl=allClients.find(function(x){return x.id===co.client_id});
+      var phones='';
+      try{var ph=JSON.parse(co.phone||'[]');if(ph.length)phones=ph[0]}catch(e){phones=co.phone||''}
+      var emails='';
+      try{var em=JSON.parse(co.email||'[]');if(em.length)emails=em[0]}catch(e){emails=co.email||''}
+      matches.push({name:co.name,phone:phones,email:emails,clientName:cl?cl.name:'',dept:co.dept||'',position:co.position||''});
+    }
+  }
+  matches.sort(function(a,b){return (a.name||'').length-(b.name||'').length});
+  matches=matches.slice(0,12);
+  if(!matches.length){dd.classList.add('hidden');leadContactSuggList=[];leadContactSuggIdx=-1;return}
+  leadContactSuggList=matches;leadContactSuggIdx=-1;
+  dd.innerHTML=matches.map(function(m,i){return '<div class="name-suggestion'+(i===leadContactSuggIdx?' active':'')+'" data-idx="'+i+'" onmousedown="selectLeadContact('+i+')"><div><div class="ns-name">'+escHtml(m.name)+'</div><div class="ns-detail">'+escHtml(m.clientName)+(m.position?' · '+escHtml(m.position):'')+(m.phone?' · '+escHtml(m.phone):'')+'</div></div></div>'}).join('');
+  dd.classList.remove('hidden');
+}
+function onLeadContactKey(e){
+  var dd=document.getElementById('lead-contact-suggestions');
+  if(dd.classList.contains('hidden'))return;
+  if(e.key==='ArrowDown'){e.preventDefault();leadContactSuggIdx=Math.min(leadContactSuggIdx+1,leadContactSuggList.length-1);updateLeadContactActive()}
+  else if(e.key==='ArrowUp'){e.preventDefault();leadContactSuggIdx=Math.max(leadContactSuggIdx-1,0);updateLeadContactActive()}
+  else if(e.key==='Enter'||e.key==='Tab'){e.preventDefault();if(leadContactSuggIdx>=0)selectLeadContact(leadContactSuggIdx)}
+  else if(e.key==='Escape'){dd.classList.add('hidden');leadContactSuggIdx=-1}
+}
+function updateLeadContactActive(){
+  var items=document.querySelectorAll('#lead-contact-suggestions .name-suggestion');
+  for(var i=0;i<items.length;i++)items[i].classList.toggle('active',i===leadContactSuggIdx);
+  if(leadContactSuggIdx>=0&&items[leadContactSuggIdx])items[leadContactSuggIdx].scrollIntoView({block:'nearest'});
+}
+function selectLeadContact(idx){
+  var m=leadContactSuggList[idx];if(!m)return;
+  document.getElementById('lf-contact-name').value=m.name;
+  if(m.phone)document.getElementById('lf-contact-phone').value=m.phone;
+  if(m.email)document.getElementById('lf-contact-email').value=m.email;
+  document.getElementById('lead-contact-suggestions').classList.add('hidden');
+  leadContactSuggList=[];leadContactSuggIdx=-1;
+}
+
 
 function openLeadForm(id){
   leadEditId=id||null;
@@ -5083,7 +6840,7 @@ function openLeadForm(id){
   document.getElementById('lf-status').value='new';
   document.getElementById('lf-notes').value='';
   if(id){
-    var l=allLeads.find(function(x){return x.id===id});
+    var l=allLeads.find(function(x){return x.id==id||String(x.id)===String(id)});
     if(l){
       document.getElementById('lf-name').value=l.name||'';
       document.getElementById('lf-contact-name').value=l.contact_name||'';
@@ -5123,14 +6880,18 @@ async function saveLead(){
   if(!leadEditId){
     lead.company_id=currentCompanyId;
     lead.created_by=currentUser.id;
+    if(leadFormSource==='sales'){lead.assigned_to=currentUser.id;lead.status='assigned';lead.assigned_at=new Date().toISOString();}
+    console.log('[DEBUG saveLead] payload:',JSON.stringify(lead));
+    console.log('[DEBUG saveLead] currentCompanyId type:',typeof currentCompanyId,'value:',currentCompanyId);
     var {error}=await sb.from('lead_pool').insert(lead);
-    if(error){showToast('创建失败: '+error.message);return}
+    if(error){console.error('[DEBUG saveLead] full error:',JSON.stringify(error));showToast('创建失败');return}
   }else{
     var {error}=await sb.from('lead_pool').update(lead).eq('id',leadEditId);
     if(error){showToast('更新失败: '+error.message);return}
   }
   closeLeadForm();
-  loadLeads();
+  await loadPoolLeads();
+  if(currentUser&&currentUser.id)await loadLeads();
   showToast(leadEditId?'已更新':'已创建');
 }
 
@@ -5138,7 +6899,8 @@ async function deleteLead(id){
   if(!id)return;
   if(leadEditId===id)closeLeadForm();
   await sb.from('lead_pool').delete().eq('id',id);
-  loadLeads();
+  await loadPoolLeads();
+  if(currentUser&&currentUser.id)await loadLeads();
   showToast('已删除');
 }
 
@@ -5156,7 +6918,7 @@ async function doAssignLead(){
   var {error}=await sb.from('lead_pool').update({assigned_to:userId,assigned_at:new Date().toISOString(),status:'assigned',updated_at:new Date().toISOString()}).eq('id',leadAssignId);
   document.getElementById('lead-assign-modal').classList.add('hidden');
   if(error){showToast('分配失败: '+error.message);return}
-  loadLeads();showToast('已分配');
+  await loadPoolLeads();await loadLeads();showToast('已分配');
 }
 
 async function convertLeadToClient(id){
@@ -5172,7 +6934,7 @@ async function convertLeadToClient(id){
   }
   // Update lead
   await sb.from('lead_pool').update({status:'converted',converted_client_id:clientId,converted_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',id);
-  loadClients();loadLeads();
+  loadClients();await loadLeads();
   showToast('已转化为客户');
 }
 
@@ -5197,16 +6959,16 @@ async function importLeads(){
     if(!error)imported++;
   }
   document.getElementById('lead-import-modal').classList.add('hidden');
-  if(imported>0){loadLeads();showToast('已导入 '+imported+' 条线索')}
+  if(imported>0){await loadPoolLeads();showToast('已导入 '+imported+' 条线索')}
   else showToast('导入失败');
 }
 
 async function recycleStale(){
   var now=new Date();
+  var {data:assignedLeads}=await sb.from('lead_pool').select('*').eq('company_id',currentCompanyId).in('status',['assigned','contacted']);
   var recycled=0;
-  for(var i=0;i<allLeads.length;i++){
-    var l=allLeads[i];
-    if(l.status!=='assigned'&&l.status!=='contacted')continue;
+  for(var i=0;i<(assignedLeads||[]).length;i++){
+    var l=assignedLeads[i];
     var days=l.recycle_days||30;
     var assignedDate=l.assigned_at?new Date(l.assigned_at):null;
     if(!assignedDate)continue;
@@ -5222,8 +6984,329 @@ async function recycleStale(){
       recycled++;
     }
   }
-  if(recycled>0){loadLeads();showToast('已回收 '+recycled+' 条线索')}
+  if(recycled>0){await loadPoolLeads();await loadLeads();showToast('已回收 '+recycled+' 条线索')}
   else showToast('没有需要回收的线索');
+}
+
+
+
+// === Collab: Follow-up Records ===
+async function loadFollowups(){
+  if(!currentCompanyId)return;
+  var clientFilter=document.getElementById('fu-client-filter').value;
+  var typeFilter=document.getElementById('fu-type-filter').value;
+  // Populate client filter
+  var sel=document.getElementById('fu-client-filter');
+  if(sel.options.length<=1){
+    for(var i=0;i<allClients.length;i++){var cl=allClients[i];sel.innerHTML+='<option value="'+cl.id+'">'+escHtml(cl.name)+'</option>'}
+  }
+  var q=sb.from('engagement_logs').select('*').eq('company_id',currentCompanyId).order('created_at',{ascending:false});
+  if(clientFilter)q=q.eq('client_id',clientFilter);
+  if(typeFilter)q=q.eq('type',typeFilter);
+  var {data}=await q;
+  var list=document.getElementById('followup-list');
+  if(!data||!data.length){list.innerHTML='<div class="empty" style="padding:20px">暂无跟进记录</div>';return}
+  var h='';
+  for(var i=0;i<data.length;i++){
+    var f=data[i];var cl2=allClients.find(function(x){return x.id===f.client_id});
+    h+='<div class="schedule-item" style="border-left-color:#8B5CF6"><div class="sch-title"><span style="background:#EDE9FE;color:#7C3AED;padding:1px 6px;border-radius:4px;font-size:11px">'+escHtml(f.type||'其他')+'</span> '+(cl2?escHtml(cl2.name):'未知客户')+'</div><div style="font-size:13px;margin:4px 0">'+escHtml(f.content||'')+'</div>'+(f.outcome?'<div style="font-size:12px;color:#10B981">'+escHtml(f.outcome)+'</div>':'')+(f.next_step?'<div class="sch-meta">下一步: '+escHtml(f.next_step)+(f.next_date?' ('+f.next_date+')':'')+'</div>':'')+'<div class="sch-meta">'+new Date(f.created_at).toLocaleString('zh-CN')+'<button class="btn-sm" style="font-size:10px;padding:1px 6px;color:var(--danger);margin-left:8px" onclick="deleteEngagement(\''+f.id+'\')\">删除</button></div></div>';
+  }
+  list.innerHTML=h;
+}
+
+function openFollowupForm(){
+  var h='<div class="modal-overlay" id="followup-modal"><div class="modal-sheet"><h3>新增跟进记录</h3>';
+  h+='<div class="form-group"><label>客户 *</label><select id="fu-client"><option value="">请选择</option>';
+  for(var i=0;i<allClients.length;i++)h+='<option value="'+allClients[i].id+'">'+escHtml(allClients[i].name)+'</option>';
+  h+='</select></div>';
+  h+='<div class="form-group"><label>跟进类型</label><select id="fu-type"><option value="电话">电话</option><option value="拜访">拜访</option><option value="微信">微信</option><option value="邮件">邮件</option><option value="会议">会议</option><option value="其他">其他</option></select></div>';
+  h+='<div class="form-group"><label>跟进内容 *</label><textarea id="fu-content" rows="3" placeholder="请输入跟进内容..."></textarea></div>';
+  h+='<div class="form-group"><label>结果</label><input id="fu-outcome" placeholder="跟进结果（可选）"></div>';
+  h+='<div class="form-row"><div class="form-group"><label>下一步计划</label><input id="fu-next-step" placeholder="下一步"></div><div class="form-group"><label>下次跟进日期</label><input type="date" id="fu-next-date"></div></div>';
+  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest(".modal-overlay").remove()">取消</button><button class="btn-save" onclick="saveFollowup()">保存</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend',h);
+}
+
+async function saveFollowup(){
+  var clientId=document.getElementById('fu-client').value;
+  var type=document.getElementById('fu-type').value;
+  var content=document.getElementById('fu-content').value.trim();
+  if(!clientId||!content){showToast('请填写客户和内容');return}
+  var outcome=document.getElementById('fu-outcome').value.trim();
+  var nextStep=document.getElementById('fu-next-step').value.trim();
+  var nextDate=document.getElementById('fu-next-date').value||null;
+  var {error}=await sb.from('engagement_logs').insert({company_id:currentCompanyId,client_id:clientId,type:type,content:content,outcome:outcome||null,next_step:nextStep||null,next_date:nextDate,created_by:currentUser.id});
+  document.getElementById('followup-modal').remove();
+  if(error){showToast('保存失败: '+error.message);return}
+  loadFollowups();showToast('已保存');
+}
+
+// === Collab: Department Messages ===
+async function loadMessages(){
+  if(!currentCompanyId)return;
+  var deptFilter=document.getElementById('msg-dept-filter').value;
+  var sel=document.getElementById('msg-dept-filter');
+  if(sel.options.length<=1){
+    for(var i=0;i<allDepartments.length;i++){var d=allDepartments[i];sel.innerHTML+='<option value="'+d.id+'">'+escHtml(d.name)+'</option>'}
+  }
+  var q=sb.from('dept_messages').select('*').eq('company_id',currentCompanyId).order('created_at',{ascending:false});
+  if(deptFilter)q=q.eq('dept_id',deptFilter);
+  var {data}=await q;
+  var list=document.getElementById('msg-list');
+  if(!data||!data.length){list.innerHTML='<div class="empty" style="padding:20px">暂无消息</div>';return}
+  var h='';
+  for(var i=0;i<data.length;i++){
+    var m=data[i];
+    var user=allUsers.find(function(u){return u.user_id===m.user_id});
+    var dept=allDepartments.find(function(d){return d.id===m.dept_id});
+    var userName=user?(user.display_name||user.email||''):'未知';
+    h+='<div class="schedule-item" style="border-left-color:#10B981"><div class="sch-title">'+escHtml(userName)+(dept?' <span style="font-size:11px;color:var(--text3)">@'+escHtml(dept.name)+'</span>':'')+'</div><div style="font-size:14px;margin:4px 0">'+escHtml(m.content)+'</div>'+(m.attachments&&m.attachments.length?'<div style="font-size:11px;color:var(--primary)">附件: '+m.attachments.length+'个</div>':'')+'<div class="sch-meta">'+new Date(m.created_at).toLocaleString('zh-CN')+'</div></div>';
+  }
+  list.innerHTML=h;
+}
+
+function openMsgForm(){
+  var h='<div class="modal-overlay" id="msg-modal"><div class="modal-sheet"><h3>发送部门消息</h3>';
+  h+='<div class="form-group"><label>目标部门</label><select id="msg-dept"><option value="">全公司</option>';
+  for(var i=0;i<allDepartments.length;i++)h+='<option value="'+allDepartments[i].id+'">'+escHtml(allDepartments[i].name)+'</option>';
+  h+='</select></div>';
+  h+='<div class="form-group"><label>消息内容 *</label><textarea id="msg-content" rows="3" placeholder="输入消息..."></textarea></div>';
+  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest(".modal-overlay").remove()">取消</button><button class="btn-save" onclick="sendMsg()">发送</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend',h);
+}
+
+async function sendMsg(){
+  var deptId=document.getElementById('msg-dept').value||null;
+  var content=document.getElementById('msg-content').value.trim();
+  if(!content){showToast('请输入消息内容');return}
+  var {error}=await sb.from('dept_messages').insert({company_id:currentCompanyId,dept_id:deptId?parseInt(deptId):null,user_id:currentUser.id,content:content});
+  document.getElementById('msg-modal').remove();
+  if(error){showToast('发送失败: '+error.message);return}
+  loadMessages();showToast('已发送');
+}
+
+// ============== COLLAB OFFICE MODULE ==============
+var collabActiveTab='schedule';
+
+function switchCollabTab(tab){
+  collabActiveTab=tab;
+  var tabs=document.querySelectorAll('.collab-subtab');
+  for(var i=0;i<tabs.length;i++)tabs[i].classList.toggle('active',tabs[i].getAttribute('data-ctab')===tab);
+  var panels={schedule:'collab-schedule-panel',task:'collab-task-panel',approval:'collab-approval-panel',comment:'collab-comment-panel',followup:'collab-followup-panel',msg:'collab-msg-panel'};
+  for(var k in panels){var el=document.getElementById(panels[k]);if(el)el.classList.toggle('hidden',tab!==k)}
+  if(tab==='schedule')loadSchedules();
+  else if(tab==='task')loadTasks();
+  else if(tab==='approval')loadApprovals();
+  else if(tab==='comment')loadComments();
+  else if(tab==='followup')loadFollowups();
+  else if(tab==='msg')loadMessages();
+}
+
+// === 1. Schedules ===
+async function loadSchedules(){
+  if(!currentCompanyId)return;
+  var today=new Date().toISOString().slice(0,10);
+  var {data}=await sb.from('schedules').select('*').eq('company_id',currentCompanyId).gte('start_time',today).order('start_time');
+  var list=document.getElementById('schedule-list');
+  if(!data||!data.length){list.innerHTML='<div class="empty" style="padding:20px">今日暂无日程</div>';return}
+  var h='';
+  for(var i=0;i<data.length;i++){
+    var s=data[i];
+    var time=s.all_day?'全天':new Date(s.start_time).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
+    h+='<div class="schedule-item" style="border-left-color:'+(s.color||'#4F6EF7')+'"><div class="sch-title">'+escHtml(s.title)+' <span style="font-size:11px;color:var(--text3)">'+time+'</span></div>'+(s.description?'<div style="font-size:13px;color:var(--text2)">'+escHtml(s.description)+'</div>':'')+(s.location?'<div class="sch-meta">📍 '+escHtml(s.location)+'</div>':'')+'<div style="margin-top:6px;display:flex;gap:6px"><button class="btn-sm" style="font-size:11px;padding:2px 8px" onclick="editSchedule(\''+s.id+'\')\">编辑</button><button class="btn-sm" style="font-size:11px;padding:2px 8px;color:var(--danger)" onclick="deleteSchedule(\''+s.id+'\')\">删除</button></div></div>';
+  }
+  list.innerHTML=h;
+}
+
+function openScheduleForm(id){
+  var s=id?allSchedules.find(function(x){return x.id===id}):null;
+  var h='<div class="modal-overlay" id="schedule-modal"><div class="modal-sheet"><h3>'+(s?'编辑日程':'新建日程')+'</h3>';
+  h+='<div class="form-group"><label>标题 *</label><input id="sch-title" value="'+(s?escAttr(s.title):'')+'"></div>';
+  h+='<div class="form-row"><div class="form-group"><label>开始时间 *</label><input type="datetime-local" id="sch-start" value="'+(s?s.start_time.slice(0,16):'')+'"></div><div class="form-group"><label>结束时间</label><input type="datetime-local" id="sch-end" value="'+(s&&s.end_time?s.end_time.slice(0,16):'')+'"></div></div>';
+  h+='<div class="form-row"><div class="form-group"><label><input type="checkbox" id="sch-allday" '+(s&&s.all_day?'checked':'')+'> 全天</label></div><div class="form-group"><label>颜色</label><input type="color" id="sch-color" value="'+(s?s.color||'#4F6EF7':'#4F6EF7')+'"></div></div>';
+  h+='<div class="form-group"><label>地点</label><input id="sch-location" value="'+(s?escAttr(s.location||''):'')+'"></div>';
+  h+='<div class="form-group"><label>描述</label><textarea id="sch-desc" rows="2">'+(s?escHtml(s.description||''):'')+'</textarea></div>';
+  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest(".modal-overlay").remove()">取消</button><button class="btn-save" onclick="saveSchedule(\''+(s?s.id:'')+'\')">保存</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend',h);
+}
+
+async function saveSchedule(id){
+  var title=document.getElementById('sch-title').value.trim();
+  if(!title){showToast('请输入标题');return}
+  var start=document.getElementById('sch-start').value;
+  if(!start){showToast('请选择开始时间');return}
+  var end=document.getElementById('sch-end').value||null;
+  var allDay=document.getElementById('sch-allday').checked;
+  var color=document.getElementById('sch-color').value;
+  var location=document.getElementById('sch-location').value.trim();
+  var desc=document.getElementById('sch-desc').value.trim();
+  var obj={title:title,start_time:new Date(start).toISOString(),end_time:end?new Date(end).toISOString():null,all_day:allDay,color:color,location:location||null,description:desc||null,company_id:currentCompanyId,user_id:currentUser.id};
+  var err;
+  if(id){var r=await sb.from('schedules').update(obj).eq('id',id);err=r.error}
+  else{var r2=await sb.from('schedules').insert(obj);err=r2.error}
+  document.getElementById('schedule-modal').remove();
+  if(err){showToast('保存失败: '+err.message);return}
+  loadSchedules();showToast('已保存');
+}
+
+async function deleteSchedule(id){
+  await sb.from('schedules').delete().eq('id',id);
+  loadSchedules();showToast('已删除');
+}
+
+// === 2. Tasks ===
+async function loadTasks(){
+  if(!currentCompanyId)return;
+  var filter=document.getElementById('task-filter').value;
+  var q=sb.from('tasks').select('*').eq('company_id',currentCompanyId).order('created_at',{ascending:false});
+  if(filter!=='all')q=q.eq('status',filter);
+  var {data}=await q;
+  var list=document.getElementById('task-list');
+  if(!data||!data.length){list.innerHTML='<div class="empty" style="padding:20px">暂无任务</div>';return}
+  var h='';
+  for(var i=0;i<data.length;i++){
+    var t=data[i];
+    var prio=t.priority||'normal';
+    var statusLabel={todo:'待办',in_progress:'进行中',done:'已完成',cancelled:'已取消'}[t.status]||t.status;
+    h+='<div class="task-item task-priority-'+prio+'"><div class="task-title">'+escHtml(t.title)+' <span class="status-badge status-'+(t.status==='in_progress'?'progress':t.status)+'">'+statusLabel+'</span></div>'+(t.description?'<div style="font-size:13px;color:var(--text2)">'+escHtml(t.description)+'</div>':'')+(t.due_date?'<div class="task-meta">📅 截止: '+t.due_date+'</div>':'')+'<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap"><button class="btn-sm" style="font-size:11px;padding:2px 8px" onclick="editTask(\''+t.id+'\')\">编辑</button><button class="btn-sm" style="font-size:11px;padding:2px 8px;color:var(--danger)" onclick="deleteTask(\''+t.id+'\')\">删除</button></div></div>';
+  }
+  list.innerHTML=h;
+}
+
+function openTaskForm(id){
+  var t=id?allTasks.find(function(x){return x.id===id}):null;
+  var h='<div class="modal-overlay" id="task-modal"><div class="modal-sheet"><h3>'+(t?'编辑任务':'新建任务')+'</h3>';
+  h+='<div class="form-group"><label>标题 *</label><input id="ta-title" value="'+(t?escAttr(t.title):'')+'"></div>';
+  h+='<div class="form-group"><label>描述</label><textarea id="ta-desc" rows="2">'+(t?escHtml(t.description||''):'')+'</textarea></div>';
+  h+='<div class="form-row"><div class="form-group"><label>优先级</label><select id="ta-priority"><option value="urgent"'+(t&&t.priority==='urgent'?' selected':'')+'>紧急</option><option value="high"'+(t&&t.priority==='high'?' selected':'')+'>高</option><option value="normal"'+(t&&t.priority==='normal'?' selected':'')+'>普通</option><option value="low"'+(t&&t.priority==='low'?' selected':'')+'>低</option></select></div><div class="form-group"><label>截止日期</label><input type="date" id="ta-due" value="'+(t&&t.due_date?t.due_date:'')+'"></div></div>';
+  h+='<div class="form-row"><div class="form-group"><label>状态</label><select id="ta-status"><option value="todo"'+(t&&t.status==='todo'?' selected':'')+'>待办</option><option value="in_progress"'+(t&&t.status==='in_progress'?' selected':'')+'>进行中</option><option value="done"'+(t&&t.status==='done'?' selected':'')+'>已完成</option></select></div><div class="form-group"><label>分配给</label><select id="ta-assigned">'+(function(){var o='<option value="">自己</option>';for(var k=0;k<allUsers.length;k++){var u=allUsers[k];o+='<option value="'+u.user_id+'"'+(t&&t.assigned_to===u.user_id?' selected':'')+'>'+(u.display_name||u.email||u.user_id)+'</option>'}return o})()+'</select></div></div>';
+  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest(".modal-overlay").remove()">取消</button><button class="btn-save" onclick="saveTask(\''+(t?t.id:'')+'\')">保存</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend',h);
+}
+
+async function saveTask(id){
+  var title=document.getElementById('ta-title').value.trim();
+  if(!title){showToast('请输入标题');return}
+  var desc=document.getElementById('ta-desc').value.trim();
+  var priority=document.getElementById('ta-priority').value;
+  var due=document.getElementById('ta-due').value||null;
+  var status=document.getElementById('ta-status').value;
+  var assigned=document.getElementById('ta-assigned').value||currentUser.id;
+  var obj={title:title,description:desc||null,priority:priority,due_date:due,status:status,assigned_to:assigned,assigned_by:currentUser.id,company_id:currentCompanyId};
+  if(status==='done')obj.completed_at=new Date().toISOString();
+  var err;
+  if(id){var r=await sb.from('tasks').update(obj).eq('id',id);err=r.error}
+  else{var r2=await sb.from('tasks').insert(obj);err=r2.error}
+  document.getElementById('task-modal').remove();
+  if(err){showToast('保存失败: '+err.message);return}
+  loadTasks();showToast('已保存');
+}
+
+async function deleteTask(id){
+  await sb.from('tasks').delete().eq('id',id);
+  loadTasks();showToast('已删除');
+}
+
+function editTask(id){openTaskForm(id)}
+function editSchedule(id){openScheduleForm(id)}
+
+// === 3. Approvals ===
+async function loadApprovals(){
+  if(!currentCompanyId)return;
+  var filter=document.getElementById('approval-filter').value;
+  var q=sb.from('approval_requests').select('*').eq('company_id',currentCompanyId).order('created_at',{ascending:false});
+  if(filter!=='all')q=q.eq('status',filter);
+  var {data}=await q;
+  var list=document.getElementById('approval-list');
+  if(!data||!data.length){list.innerHTML='<div class="empty" style="padding:20px">暂无审批</div>';return}
+  var h='',statusMap={pending:'待审批',approved:'已通过',rejected:'已驳回',cancelled:'已取消'};
+  for(var i=0;i<data.length;i++){
+    var a=data[i];
+    h+='<div class="approval-item approval-'+(a.status==='pending'?'pending':a.status==='approved'?'approved':a.status==='rejected'?'rejected':'')+'"><div class="appr-title">'+escHtml(a.title)+' <span class="status-badge status-'+(a.status==='pending'?'progress':a.status==='approved'?'done':a.status==='rejected'?'cancelled':'cancelled')+'">'+statusMap[a.status]+'</span></div><div class="appr-meta">'+escHtml(a.type)+' · 步骤 '+a.current_step+'/'+a.total_steps+' · '+new Date(a.created_at).toLocaleDateString('zh-CN')+'</div>'+(a.status==='pending'?'<div style="margin-top:6px"><button class="btn-sm" style="font-size:11px;padding:2px 8px;background:#10B981;color:#fff;border:none;border-radius:4px;margin-right:4px" onclick="approveAction('+a.id+',\'approve\')">通过</button><button class="btn-sm" style="font-size:11px;padding:2px 8px;background:#EF4444;color:#fff;border:none;border-radius:4px" onclick="approveAction('+a.id+',\'reject\')">驳回</button></div>':'')+'</div>';
+  }
+  list.innerHTML=h;
+}
+
+function openApprovalForm(){
+  var types=['报价审批','合同审批','折扣审批','出差申请','报销申请','客户转移','投标材料审批','公章使用申请','项目立项审批','交付验收审批','自定义'];
+  var h='<div class="modal-overlay" id="approval-modal"><div class="modal-sheet"><h3>发起审批</h3>';
+  h+='<div class="form-group"><label>审批类型</label><select id="ap-type">';
+  for(var i=0;i<types.length;i++)h+='<option value="'+types[i]+'">'+types[i]+'</option>';
+  h+='</select></div>';
+  h+='<div class="form-group"><label>标题 *</label><input id="ap-title" placeholder="审批标题"></div>';
+  h+='<div class="form-group"><label>内容说明</label><textarea id="ap-content" rows="3" placeholder="请输入审批内容和理由..."></textarea></div>';
+  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest(&apos;.modal-overlay&apos;).remove()">取消</button><button class="btn-save" onclick="submitApproval()">提交</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend',h);
+}
+
+async function submitApproval(){
+  var type=document.getElementById('ap-type').value;
+  var title=document.getElementById('ap-title').value.trim();
+  var content=document.getElementById('ap-content').value.trim();
+  if(!title){showToast('请输入标题');return}
+  var {error}=await sb.from('approval_requests').insert({company_id:currentCompanyId,requestor_id:currentUser.id,title:title,type:type,content:{detail:content||''},status:'pending',total_steps:1});
+  document.getElementById('approval-modal').remove();
+  if(error){showToast('提交失败: '+error.message);return}
+  loadApprovals();showToast('已提交');
+}
+
+async function approveAction(requestId,action){
+  var {data:req}=await sb.from('approval_requests').select('*').eq('id',requestId).single();
+  if(!req){showToast('审批不存在');return}
+  var newStatus=action==='approve'?'approved':'rejected';
+  var {error}=await sb.from('approval_requests').update({status:newStatus,updated_at:new Date().toISOString()}).eq('id',requestId);
+  if(error){showToast('操作失败: '+error.message);return}
+  await sb.from('approval_actions').insert({company_id:currentCompanyId,request_id:requestId,approver_id:currentUser.id,action:action,step:req.current_step||1});
+  loadApprovals();showToast(action==='approve'?'已通过':'已驳回');
+}
+
+// === 4. Client Comments / Collaboration ===
+var commentClientsList=[];
+async function loadComments(){
+  if(!currentCompanyId)return;
+  var clientFilter=document.getElementById('comment-client-filter').value;
+  // Load client options if empty
+  if(!commentClientsList.length){
+    var sel=document.getElementById('comment-client-filter');
+    for(var i=0;i<allClients.length;i++){var cl=allClients[i];sel.innerHTML+='<option value="'+cl.id+'">'+escHtml(cl.name)+'</option>';commentClientsList.push(cl)}
+  }
+  var q=sb.from('client_comments').select('*').eq('company_id',currentCompanyId).order('created_at',{ascending:false});
+  if(clientFilter)q=q.eq('client_id',clientFilter);
+  var {data}=await q;
+  var list=document.getElementById('comment-list');
+  if(!data||!data.length){list.innerHTML='<div class="empty" style="padding:20px">暂无评论</div>';return}
+  var h='';
+  for(var i=0;i<data.length;i++){
+    var cm=data[i];
+    var cl=allClients.find(function(x){return x.id===cm.client_id});
+    h+='<div class="comment-item"><div class="cmt-title">'+escHtml(cm.content)+'</div><div class="cmt-meta">客户: '+(cl?escHtml(cl.name):'未知')+' · '+new Date(cm.created_at).toLocaleString('zh-CN')+'<button class="btn-sm" style="font-size:10px;padding:1px 6px;color:var(--danger);margin-left:8px" onclick="deleteComment(\''+cm.id+'\')\">删除</button></div></div>';
+  }
+  list.innerHTML=h;
+}
+
+function openCommentForm(){
+  var h='<div class="modal-overlay" id="comment-modal"><div class="modal-sheet"><h3>添加客户评论</h3>';
+  h+='<div class="form-group"><label>客户 *</label><select id="cm-client"><option value="">请选择</option>';
+  for(var i=0;i<allClients.length;i++)h+='<option value="'+allClients[i].id+'">'+escHtml(allClients[i].name)+'</option>';
+  h+='</select></div>';
+  h+='<div class="form-group"><label>评论内容 *</label><textarea id="cm-content" rows="3" placeholder="输入评论..."></textarea></div>';
+  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest(".modal-overlay").remove()">取消</button><button class="btn-save" onclick="saveComment()">保存</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend',h);
+}
+
+async function saveComment(){
+  var clientId=document.getElementById('cm-client').value;
+  var content=document.getElementById('cm-content').value.trim();
+  if(!clientId||!content){showToast('请填写完整信息');return}
+  var {error}=await sb.from('client_comments').insert({company_id:currentCompanyId,client_id:parseInt(clientId),user_id:currentUser.id,content:content});
+  document.getElementById('comment-modal').remove();
+  if(error){showToast('保存失败: '+error.message);return}
+  loadComments();showToast('已保存');
+}
+
+async function deleteComment(id){
+  await sb.from('client_comments').delete().eq('id',id);
+  loadComments();showToast('已删除');
 }
 
 // ============ NEW: Birthday Reminder ============
@@ -5259,57 +7342,1196 @@ function showBirthdayReminder(contacts){
   el.style.display='block';
 }
 
-// ============ NEW: Tag & Attachment Helpers ============
-function selectGrade(grade){
-  var hf=document.getElementById('f-grade');if(hf)hf.value=grade;
-  updateGradeSelect(grade);
-}
-function updateGradeSelect(grade){
-  var opts=document.querySelectorAll('#grade-select .grade-option');
-  for(var i=0;i<opts.length;i++)opts[i].classList.toggle('selected',opts[i].textContent.trim()===grade);
-}
-
-function renderClientTags(){
-  var el=document.getElementById('tag-chips');
-  if(!el)return;
-  var html='';
-  for(var i=0;i<clientTags.length;i++)html+='<span class="tag-chip">'+h(clientTags[i])+'<span class="tag-remove" onclick="removeTag('+i+')">×</span></span>';
-  el.innerHTML=html;
-}
-
-function addTag(tag){
-  if(!tag)return;
-  if(clientTags.indexOf(tag)>=0){showToast('标签已存在');return}
-  clientTags.push(tag);
-  renderClientTags();
-}
-
-function removeTag(idx){clientTags.splice(idx,1);renderClientTags()}
-
-function renderClientAttachments(){
-  var el=document.getElementById('attach-list');
-  if(!el)return;
-  var html='';
-  for(var i=0;i<clientAttachments.length;i++){
-    var a=clientAttachments[i];
-    html+='<div class="attach-item"><span class="attach-name">'+h(a.name||a.file_name||'文件'+(i+1))+'</span><button class="attach-remove" onclick="removeAttachment('+i+')">×</button></div>';
+/* ===== EMPLOYEE MANAGEMENT ===== */
+var empEditId=null;
+async function renderAdminEmployees(){
+  var el=document.getElementById('admin-emp-list');if(!el)return;
+  var q=(document.getElementById('admin-emp-search').value||'').toLowerCase();
+  var df=document.getElementById('emp-dept-filter').value;
+  var sf=document.getElementById('emp-status-filter').value;
+  // Build dept filter options
+  var ds=document.getElementById('emp-dept-filter');
+  ds.innerHTML='<option value="">全部部门</option>';
+  if(allDepartments)for(var i=0;i<allDepartments.length;i++){var d=allDepartments[i];ds.innerHTML+='<option value="'+escHtml(d.id)+'">'+escHtml(d.name)+'</option>';}
+  ds.value=df;
+  var list=(allUsers||[]).filter(function(u){
+    if(!isSuperAdmin&&currentCompanyId!==null&&u.company_id!==currentCompanyId)return false;
+    return true;
+  });
+  if(df)list=list.filter(function(u){return u.dept_id==df;});
+  if(sf)list=list.filter(function(u){return u.status===sf;});
+  if(q)list=list.filter(function(u){return (u.display_name||'').toLowerCase().indexOf(q)>=0||(u.email||'').toLowerCase().indexOf(q)>=0;});
+  var h='<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="border-bottom:2px solid var(--border)"><th style="padding:10px 8px;text-align:left">姓名</th><th style="padding:10px 8px;text-align:left">邮箱</th><th style="padding:10px 8px;text-align:left">角色</th><th style="padding:10px 8px;text-align:left">部门</th><th style="padding:10px 8px;text-align:left">数据范围</th><th style="padding:10px 8px;text-align:left">状态</th><th style="padding:10px 8px;text-align:left">最后登录</th><th style="padding:10px 8px;text-align:center">操作</th></tr></thead><tbody>';
+  for(var j=0;j<list.length;j++){
+    var u=list[j];var dn=u.display_name||'';var em=u.email||'';var rn=u.role||'';var did=u.dept_id||'';
+    var deptName='';for(var k=0;k<(allDepartments||[]).length;k++){if(allDepartments[k].id==did){deptName=allDepartments[k].name;break;}}
+    var scopes={own:'仅自己',dept:'本部门',all:'全部'};var dsLabel=scopes[u.data_scope]||'全部';
+    var statusLabel=u.status==='inactive'?'<span style="color:#ef4444">离职</span>':'<span style="color:#10b981">在职</span>';
+    h+='<tr style="border-bottom:1px solid var(--border)"><td style="padding:8px">'+escHtml(dn)+'</td><td style="padding:8px">'+escHtml(em)+'</td><td style="padding:8px">'+escHtml(rn)+'</td><td style="padding:8px">'+escHtml(deptName)+'</td><td style="padding:8px;font-size:12px;color:var(--text3)">'+dsLabel+'</td><td style="padding:8px">'+statusLabel+'</td><td style="padding:8px;font-size:12px;color:var(--text3)">'+escHtml(u.last_login_at?formatDateTime(u.last_login_at):'从未登录')+'</td><td style="padding:8px;text-align:center"> <a href="javascript:void(0)" style="font-size:11px;margin-left:6px" onclick="toggleEmpStatus(\''+u.user_id+'\',\''+(u.status==='active'?'inactive':'active')+'\')">'+(u.status==='active'?'设为离职':'设为在职')+'</a></td><td style="padding:8px;text-align:center"><a href="javascript:void(0)" onclick="editEmployee(\''+u.user_id+'\')" style="color:var(--primary);font-size:13px">编辑</a></td></tr>';
   }
-  if(!html)html='<span style="font-size:11px;color:var(--text3)">暂无附件</span>';
-  el.innerHTML=html;
+  h+='</tbody></table>';
+  if(list.length===0)h='<div style="text-align:center;padding:40px;color:var(--text3)">暂无匹配员工</div>';
+  el.innerHTML=h;
 }
 
-function handleAttachFile(input){
-  var files=input.files;
-  if(!files||!files.length)return;
-  for(var i=0;i<files.length;i++){
-    var f=files[i];
-    // Placeholder URL - real upload would use supabase storage
-    clientAttachments.push({name:f.name,size:f.size,type:f.type,url:'#placeholder-'+Date.now()+'-'+i});
+// === Email Invitation ===
+function openInviteModal(){
+  document.getElementById('invite-email').value='';
+  document.getElementById('invite-err').style.display='none';
+  document.getElementById('invite-modal').style.display='flex';
+}
+function closeInviteModal(){
+  document.getElementById('invite-modal').style.display='none';
+}
+async function sendInvitationByEmail(){
+  var email=document.getElementById('invite-email').value.trim();
+  if(!email){document.getElementById('invite-err').textContent='请输入邮箱地址';document.getElementById('invite-err').style.display='block';return}
+  if(!/^[^@]+@[^@]+$/.test(email)){document.getElementById('invite-err').textContent='邮箱格式不正确';document.getElementById('invite-err').style.display='block';return}
+  try{
+    // Check if already invited
+    var check=await fetch(SUPABASE_URL+'/rest/v1/invitations?to_email=eq.'+encodeURIComponent(email)+'&from_company_id=eq.'+currentCompanyId+'&status=eq.pending',{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}});
+    if(check.ok){var existing=await check.json();if(existing&&existing.length>0){document.getElementById('invite-err').textContent='该邮箱已有待处理的邀请';document.getElementById('invite-err').style.display='block';return}}
+    // Check user exists
+    var userCheck=await fetch(SUPABASE_URL+'/rest/v1/profiles?email=eq.'+encodeURIComponent(email)+'&select=user_id,company_id',{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}});
+    var userData=null;if(userCheck.ok){var ua=await userCheck.json();if(ua&&ua.length>0)userData=ua[0]}
+    // Create invitation
+    var r=await fetch(SUPABASE_URL+'/rest/v1/invitations',{method:'POST',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({from_company_id:currentCompanyId,to_email:email})});
+    if(!r.ok){var j=await r.json().catch(function(){});document.getElementById('invite-err').textContent='发送失败: '+(j&&j.message||r.statusText);document.getElementById('invite-err').style.display='block';return}
+    closeInviteModal();
+    var msg=userData&&userData.company_id?'该用户当前在职，但已发送邀请（需先离职才能接受）。':'邀请已发送，用户将在\'我的\'页面看到邀请。';
+    if(!userData)msg='邀请已发送。该邮箱尚未注册，用户注册后将自动看到邀请。';
+    showToast(msg);
+  }catch(e){document.getElementById('invite-err').textContent='发送失败: '+e.message;document.getElementById('invite-err').style.display='block'}
+}
+
+// === Employee side: load my invitations ===
+var myInvitations=[];
+async function loadMyInvitations(){
+  if(!currentUser||!currentUser.email)return;
+  try{
+    var r=await fetch(SUPABASE_URL+'/rest/v1/invitations?to_email=eq.'+encodeURIComponent(currentUser.email)+'&status=eq.pending&order=created_at.desc',{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}});
+    if(r.ok){myInvitations=await r.json()}else{myInvitations=[]}
+  }catch(e){myInvitations=[];console.error('loadMyInvitations',e)}
+}
+function renderMyInvitations(){
+  var el=document.getElementById('my-invitation-list');
+  if(!el)return;
+  if(myInvitations.length===0){el.innerHTML='';return}
+  var h='<div style="margin-top:16px"><div style="font-weight:600;font-size:14px;margin-bottom:8px">入职邀请</div>';
+  for(var i=0;i<myInvitations.length;i++){
+    var inv=myInvitations[i];
+    var companyName='公司 #'+inv.from_company_id;
+    if(allCompanies)for(var j=0;j<allCompanies.length;j++){if(allCompanies[j].id===inv.from_company_id){companyName=allCompanies[j].name;break}}
+    h+='<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">';
+    h+='<div><div style="font-weight:600;font-size:14px">'+escHtml(companyName)+'</div><div style="font-size:12px;color:var(--muted)">发送于 '+new Date(inv.created_at).toLocaleDateString('zh-CN')+'</div></div>';
+    h+='<div style="display:flex;gap:6px"><button class="btn-save" style="padding:6px 14px;font-size:12px" onclick="acceptMyInvitation('+inv.id+')">接受</button><button class="btn-cancel" style="padding:6px 14px;font-size:12px" onclick="rejectMyInvitation('+inv.id+')">拒绝</button></div>';
+    h+='</div>';
   }
-  renderClientAttachments();
-  input.value='';
+  h+='</div>';
+  el.innerHTML=h;
+}
+async function acceptMyInvitation(invId){
+  if(!confirm('确认加入该公司？'))return;
+  try{
+    var inv=null;for(var i=0;i<myInvitations.length;i++){if(myInvitations[i].id===invId){inv=myInvitations[i];break}}
+    if(!inv){showToast('邀请不存在');return}
+    // Set company on profile
+    var r=await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(currentUser.id),{method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({company_id:inv.from_company_id,role:'user',status:'active',department_id:null})});
+    if(!r.ok){var j=await r.json().catch(function(){});showToast('入职失败: '+(j&&j.message||r.statusText));return}
+    // Mark invitation accepted
+    await fetch(SUPABASE_URL+'/rest/v1/invitations?id=eq.'+invId,{method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json'},body:JSON.stringify({status:'accepted',accepted_at:new Date().toISOString()})});
+    var data=await r.json();
+    if(data&&data.length>0){currentCompanyId=data[0].company_id;currentUserRole=data[0].role||'user';isSuperAdmin=data[0].role==='super_admin'}
+    myInvitations=[];renderMyInvitations();
+    document.getElementById('my-invitation-section').style.display='none';
+    showToast('入职成功');
+    await loadCustomTypes();buildFilterSelect();buildTypeGrid();buildStageGrid();
+    await loadClients();await loadCompanies();
+    document.getElementById('my-screen').style.display='none';
+    document.getElementById('main-screen').classList.remove('hidden');
+    if(isSuperAdmin||currentUserRole==='admin')document.getElementById('tab-admin').classList.remove('hidden');
+    if(isSuperAdmin){document.getElementById('admin-tab-companies-manage').classList.remove('hidden');document.getElementById('admin-tab-companies').classList.remove('hidden');document.getElementById('admin-tab-freeagents').classList.remove('hidden')}
+    pollNotifications();
+    writeOpLog('login','auth',currentUser.id,currentUser.email,'通过邀请入职');
+    switchTab('home');
+  }catch(e){showToast('入职失败: '+e.message)}
+}
+async function rejectMyInvitation(invId){
+  if(!confirm('确认拒绝该邀请？'))return;
+  try{
+    await fetch(SUPABASE_URL+'/rest/v1/invitations?id=eq.'+invId,{method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json'},body:JSON.stringify({status:'rejected',rejected_at:new Date().toISOString()})});
+    myInvitations=myInvitations.filter(function(inv){return inv.id!==invId});
+    renderMyInvitations();
+  }catch(e){showToast('操作失败: '+e.message)}
 }
 
-function removeAttachment(idx){clientAttachments.splice(idx,1);renderClientAttachments()}
+// === Free Agent Pool ===
+var allFreeAgents=[];
+async function loadFreeAgents(){
+  try{
+    var r=await fetch(SUPABASE_URL+'/rest/v1/profiles?select=user_id,email,display_name,phone,status,invited_company_id,invited_at&status=eq.leave&company_id=is.null&order=invited_at.asc.nullslast',{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}});
+    if(r.ok)allFreeAgents=await r.json();
+    else allFreeAgents=[];
+  }catch(e){allFreeAgents=[];console.error('loadFreeAgents',e)}
+}
+function renderFreeAgents(){
+  var el=document.getElementById('admin-fa-list');
+  var q=(document.getElementById('fa-search').value||'').trim().toLowerCase();
+  var list=allFreeAgents;
+  if(q)list=list.filter(function(u){return(u.email||'').toLowerCase().indexOf(q)>=0||(u.display_name||'').toLowerCase().indexOf(q)>=0||(u.phone||'').toLowerCase().indexOf(q)>=0});
+  if(list.length===0){el.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted)">暂无自由员工</div>';return}
+  var h='<table class="data-table"><thead><tr><th>姓名</th><th>邮箱</th><th>电话</th><th>状态</th><th>操作</th></tr></thead><tbody>';
+  for(var i=0;i<list.length;i++){
+    var u=list[i];
+    var badge='离职';
+    if(u.invited_company_id)badge='已邀请';
+    h+='<tr><td>'+escHtml(u.display_name||'-')+'</td><td>'+escHtml(u.email||'-')+'</td><td>'+escHtml(u.phone||'-')+'</td><td><span class="badge '+(u.invited_company_id?'badge-info':'badge-warn')+'">'+badge+'</span></td><td>';
+    if(!u.invited_company_id){
+      h+='<button class="btn-save" style="padding:4px 12px;font-size:12px" onclick="inviteFreeAgent(\''+u.user_id+'\',\''+escHtml(u.email||'')+'\')">邀请入职</button>';
+    }else{
+      h+='<span style="font-size:12px;color:var(--muted)">等待接受</span>';
+    }
+    h+='</td></tr>';
+  }
+  h+='</tbody></table>';
+  el.innerHTML=h;
+}
+async function inviteFreeAgent(uid,email){
+  if(!confirm('确认邀请 '+email+' 入职本公司？'))return;
+  try{
+    var r=await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(uid),{method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({invited_company_id:currentCompanyId,invited_at:new Date().toISOString()})});
+    if(!r.ok){var j=await r.json().catch(function(){});showToast('邀请失败: '+(j&&j.message||r.statusText));return}
+    showToast('邀请已发送');
+    await loadFreeAgents();renderFreeAgents();
+  }catch(e){showToast('邀请失败: '+e.message)}
+}
+
+// === Invitation Accept/Reject ===
+var pendingInvitation=null;
+function showInvitationDialog(companyId){
+  pendingInvitation=companyId;
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('main-screen').classList.add('hidden');
+  document.getElementById('company-reg-screen').classList.add('hidden');
+  document.getElementById('pending-screen').classList.add('hidden');
+  document.getElementById('invitation-screen').classList.remove('hidden');
+  // Load company name
+  fetch(SUPABASE_URL+'/rest/v1/companies?id=eq.'+companyId+'&select=name',{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}}).then(function(r){return r.json()}).then(function(d){
+    if(d&&d.length>0)document.getElementById('invitation-company-name').textContent='公司: '+d[0].name;
+    else document.getElementById('invitation-company-name').textContent='公司ID: '+companyId;
+  }).catch(function(){});
+}
+async function acceptInvitation(){
+  if(!pendingInvitation||!currentUser)return;
+  try{
+    var r=await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(currentUser.id),{method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({company_id:pendingInvitation,role:'user',status:'active',invited_company_id:null,invited_at:null})});
+    if(!r.ok){var j=await r.json().catch(function(){});document.getElementById('invitation-err').textContent='入职失败: '+(j&&j.message||r.statusText);document.getElementById('invitation-err').style.display='block';return}
+    var data=await r.json();
+    if(data&&data.length>0){currentCompanyId=data[0].company_id;currentUserRole=data[0].role||'user';isSuperAdmin=data[0].role==='super_admin'}
+    document.getElementById('invitation-screen').classList.add('hidden');
+    await loadCustomTypes();
+    buildFilterSelect();buildTypeGrid();buildStageGrid();
+    await loadClients();await loadCompanies();
+    document.getElementById('main-screen').classList.remove('hidden');
+    if(isSuperAdmin||currentUserRole==='admin')document.getElementById('tab-admin').classList.remove('hidden');
+    if(isSuperAdmin){document.getElementById('admin-tab-companies-manage').classList.remove('hidden');document.getElementById('admin-tab-companies').classList.remove('hidden');}
+    pollNotifications();
+    writeOpLog('login','auth',currentUser.id,currentUser.email,'通过邀请入职');
+    switchTab('home');
+  }catch(e){document.getElementById('invitation-err').textContent='入职失败: '+e.message;document.getElementById('invitation-err').style.display='block'}
+}
+async function rejectInvitation(){
+  if(!currentUser)return;
+  try{
+    await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(currentUser.id),{method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json'},body:JSON.stringify({invited_company_id:null,invited_at:null})});
+  }catch(e){}
+  pendingInvitation=null;
+  document.getElementById('invitation-screen').classList.add('hidden');
+  showCompanyRegScreen();
+}
+
+// === Resignation ===
+function openResignForm(){
+  var today=new Date();today.setDate(today.getDate()+30);
+  document.getElementById('resign-date').value=today.toISOString().split('T')[0];
+  document.getElementById('resign-reason').value='';
+  document.getElementById('resign-form-err').style.display='none';
+  document.getElementById('resign-form-modal').style.display='flex';
+}
+function closeResignForm(){
+  document.getElementById('resign-form-modal').style.display='none';
+}
+async function submitResignation(){
+  var dateVal=document.getElementById('resign-date').value;
+  var reason=document.getElementById('resign-reason').value.trim();
+  if(!dateVal){document.getElementById('resign-form-err').textContent='请选择预期离职日期';document.getElementById('resign-form-err').style.display='block';return}
+  var d=new Date(dateVal);var today=new Date();today.setHours(0,0,0,0);
+  if(d<today){document.getElementById('resign-form-err').textContent='离职日期不能是过去';document.getElementById('resign-form-err').style.display='block';return}
+  try{
+    var r=await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(currentUser.id),{method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({resignation_status:'pending',resignation_date:dateVal,resignation_reason:reason||null,resignation_requested_at:new Date().toISOString()})});
+    if(!r.ok){var j=await r.json().catch(function(){});document.getElementById('resign-form-err').textContent='提交失败: '+(j&&j.message||r.statusText);document.getElementById('resign-form-err').style.display='block';return}
+    closeResignForm();showToast('离职申请已提交，等待管理员审批');
+    document.getElementById('my-resign-btn').style.display='none';
+  }catch(e){document.getElementById('resign-form-err').textContent='提交失败: '+e.message;document.getElementById('resign-form-err').style.display='block'}
+}
+var allResignations=[];
+async function loadResignations(){
+  try{
+    var r=await fetch(SUPABASE_URL+'/rest/v1/profiles?select=user_id,email,display_name,phone,position,department_id,resignation_status,resignation_date,resignation_reason,resignation_requested_at&company_id=eq.'+currentCompanyId+'&resignation_status=not.is.null&order=resignation_requested_at.desc',{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}});
+    if(r.ok)allResignations=await r.json();
+    else allResignations=[];
+  }catch(e){allResignations=[];console.error('loadResignations',e)}
+}
+function renderResignations(){
+  var el=document.getElementById('admin-resign-list');
+  var filter=document.getElementById('resign-filter').value;
+  var list=allResignations;
+  if(filter!=='all')list=list.filter(function(r){return r.resignation_status===filter});
+  if(list.length===0){el.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted)">暂无离职申请</div>';return}
+  var h='<table class="data-table"><thead><tr><th>姓名</th><th>邮箱</th><th>岗位</th><th>离职日期</th><th>原因</th><th>状态</th><th>操作</th></tr></thead><tbody>';
+  for(var i=0;i<list.length;i++){
+    var r=list[i];
+    var statusText={'pending':'待审批','approved':'已通过','rejected':'已拒绝'}[r.resignation_status]||r.resignation_status;
+    var statusCls={'pending':'badge-warn','approved':'badge-success','rejected':'badge-danger'}[r.resignation_status]||'';
+    h+='<tr><td>'+escHtml(r.display_name||'-')+'</td><td>'+escHtml(r.email||'-')+'</td><td>'+escHtml(r.position||'-')+'</td><td>'+escHtml(r.resignation_date||'-')+'</td><td>'+escHtml((r.resignation_reason||'').substring(0,30))+'</td><td><span class="badge '+statusCls+'">'+statusText+'</span></td><td>';
+    if(r.resignation_status==='pending'){
+      h+='<button class="btn-save" style="padding:4px 12px;font-size:12px;margin-right:4px" onclick="approveResignation(\''+r.user_id+'\')">通过</button>';
+      h+='<button class="btn-cancel" style="padding:4px 12px;font-size:12px" onclick="rejectResignation(\''+r.user_id+'\')">拒绝</button>';
+    }
+    h+='</td></tr>';
+  }
+  h+='</tbody></table>';
+  el.innerHTML=h;
+}
+async function approveResignation(uid){
+  if(!confirm('确认通过该离职申请？'))return;
+  try{
+    var r=await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(uid),{method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json'},body:JSON.stringify({resignation_status:'approved'})});
+    if(!r.ok){var j=await r.json().catch(function(){});showToast('操作失败: '+(j&&j.message||r.statusText));return}
+    showToast('已通过离职申请，到期后将自动解除');
+    await loadResignations();renderResignations();
+  }catch(e){showToast('操作失败: '+e.message)}
+}
+async function rejectResignation(uid){
+  if(!confirm('确认拒绝该离职申请？'))return;
+  try{
+    var r=await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(uid),{method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json'},body:JSON.stringify({resignation_status:'rejected'})});
+    if(!r.ok){var j=await r.json().catch(function(){});showToast('操作失败: '+(j&&j.message||r.statusText));return}
+    showToast('已拒绝离职申请');
+    await loadResignations();renderResignations();
+  }catch(e){showToast('操作失败: '+e.message)}
+}
+
+function openEmployeeForm(){
+  empEditId=null;document.getElementById('emp-form-title').textContent='添加员工';
+  document.getElementById('ef-name').value='';document.getElementById('ef-email').value='';
+  document.getElementById('ef-status').value='active';document.getElementById('ef-data-scope').value='all';
+  document.getElementById('ef-reassign-row').style.display='none';
+  // Populate roles
+  var rs=document.getElementById('ef-role');rs.innerHTML='';
+  for(var i=0;i<allRoles.length;i++)rs.innerHTML+='<option value="'+escHtml(allRoles[i].name)+'">'+escHtml(allRoles[i].name)+'</option>';
+  // Populate depts
+  var ds=document.getElementById('ef-dept');ds.innerHTML='<option value="">未分配</option>';
+  if(allDepartments)for(var j=0;j<allDepartments.length;j++)ds.innerHTML+='<option value="'+allDepartments[j].id+'">'+escHtml(allDepartments[j].name)+'</option>';
+  // Populate reassign
+  var rs2=document.getElementById('ef-reassign');rs2.innerHTML='<option value="">回收公共池</option>';
+  if(allUsers)for(var k=0;k<allUsers.length;k++)rs2.innerHTML+='<option value="'+allUsers[k].user_id+'">'+escHtml(allUsers[k].display_name||allUsers[k].email)+'</option>';
+  document.getElementById('emp-form-modal').style.display='flex';
+}
+function closeEmployeeForm(){document.getElementById('emp-form-modal').style.display='none';}
+async function editEmployee(uid){
+  var u=null;if(allUsers)for(var i=0;i<allUsers.length;i++){if(allUsers[i].user_id===uid){u=allUsers[i];break;}}
+  if(!u){showToast('员工不存在');return}
+  empEditId=uid;document.getElementById('emp-form-title').textContent='编辑员工';
+  document.getElementById('ef-name').value=u.display_name||'';document.getElementById('ef-email').value=u.email||'';
+  document.getElementById('ef-status').value=u.status||'active';document.getElementById('ef-data-scope').value=u.data_scope||'all';
+  // Populate role
+  var rs=document.getElementById('ef-role');rs.innerHTML='';
+  for(var j=0;j<allRoles.length;j++){rs.innerHTML+='<option value="'+escHtml(allRoles[j].name)+'"'+(allRoles[j].name===u.role?' selected':'')+'>'+escHtml(allRoles[j].name)+'</option>';}
+  // Populate depts
+  var ds=document.getElementById('ef-dept');ds.innerHTML='<option value="">未分配</option>';
+  if(allDepartments)for(var k=0;k<allDepartments.length;k++){ds.innerHTML+='<option value="'+allDepartments[k].id+'"'+(allDepartments[k].id==u.dept_id?' selected':'')+'>'+escHtml(allDepartments[k].name)+'</option>';}
+  // Reassign row
+  var rs2=document.getElementById('ef-reassign');rs2.innerHTML='<option value="">回收公共池</option>';
+  if(allUsers)for(var m=0;m<allUsers.length;m++){if(allUsers[m].user_id!==uid)rs2.innerHTML+='<option value="'+allUsers[m].user_id+'">'+escHtml(allUsers[m].display_name||allUsers[m].email)+'</option>';}
+  if(u.status==='inactive'){document.getElementById('ef-reassign-row').style.display='block';}
+  else{document.getElementById('ef-reassign-row').style.display='none';}
+  document.getElementById('emp-form-modal').style.display='flex';
+}
+async function saveEmployee(){
+  var name=document.getElementById('ef-name').value.trim();if(!name){showToast('请输入姓名');return}
+  var email=document.getElementById('ef-email').value.trim();if(!email){showToast('请输入邮箱');return}
+  var role=document.getElementById('ef-role').value;
+  var deptId=document.getElementById('ef-dept').value||null;
+  var status=document.getElementById('ef-status').value;
+  var dataScope=document.getElementById('ef-data-scope').value;
+  var reassignTo=document.getElementById('ef-reassign').value||null;
+  // Update via SERVICE_KEY
+  var body={display_name:name,email:email,role:role,dept_id:deptId,status:status,data_scope:dataScope};
+  if(empEditId){
+    var resp=await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(empEditId),{method:'PATCH',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(body)});
+    if(resp.ok){
+      if(status==='inactive'){await fetch(SUPABASE_URL+'/rest/v1/rpc/reassign_clients_on_deactivate',{method:'POST',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json'},body:JSON.stringify({p_user_id:empEditId,p_company_id:currentCompanyId,p_reassign_to:reassignTo||null})});showToast('员工已更新，客户已交接');}
+      else showToast('员工已更新');
+      closeEmployeeForm();await loadAdminData();renderAdminEmployees();
+    }else{showToast('更新失败')}
+  }else{showToast('新建员工请使用"添加用户"功能')}
+}
+async function toggleEmpStatus(uid,newStatus){
+  if(!isSuperAdmin&&currentUserRole!=='admin'){showToast('权限不足');return;}
+  if(!isSuperAdmin&&uid===currentUser.user.id&&newStatus==='inactive'){showToast('不能将自己设为离职，请联系其他管理员操作');return;}
+  if(!confirm('确认将员工设为'+(newStatus==='inactive'?'离职':'在职')+'？'))return;
+  if(newStatus==='inactive'){
+    var reassign=prompt('输入交接员工ID（留空回收公共池）:','');
+    var body2={status:newStatus,data_scope:'own',company_id:null,department_id:null};
+    await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(uid),{method:'PATCH',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(body2)});
+    if(reassign)await fetch(SUPABASE_URL+'/rest/v1/rpc/reassign_clients_on_deactivate',{method:'POST',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json'},body:JSON.stringify({p_user_id:uid,p_company_id:currentCompanyId,p_reassign_to:reassign})});
+    else await fetch(SUPABASE_URL+'/rest/v1/rpc/reassign_clients_on_deactivate',{method:'POST',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json'},body:JSON.stringify({p_user_id:uid,p_company_id:currentCompanyId,p_reassign_to:null})});
+    showToast('员工已设为离职，客户已回收');
+  }else{
+    await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(uid),{method:'PATCH',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({status:newStatus})});
+    showToast('员工已设为在职');
+  }
+  await loadAdminData();renderAdminEmployees();
+}
+
+/* ===== OPERATION LOGS ===== */
+var allOpLogs=[];var logsError=null;
+async function loadOperationLogs(){
+  try{
+    var resp=await fetch(SUPABASE_URL+'/rest/v1/operation_logs?company_id=eq.'+currentCompanyId+'&order=created_at.desc&limit=500',{headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY}});
+    if(resp.ok){allOpLogs=await resp.json();logsError=null;}
+    else{allOpLogs=[];var t=await resp.text();logsError='HTTP '+resp.status+(' '+t.substring(0,120));console.error('loadOperationLogs:',resp.status,t.substring(0,200));}
+  }catch(e){allOpLogs=[];logsError=e.message;console.error('loadOperationLogs:',e);}
+}
+function renderOperationLogs(){
+  var el=document.getElementById('admin-log-list');if(!el)return;
+  var af=document.getElementById('log-action').value;
+  var ef=document.getElementById('log-entity').value;
+  var q=(document.getElementById('log-search').value||'').toLowerCase();
+  var list=allOpLogs;
+  if(af)list=list.filter(function(l){return l.action===af;});
+  if(ef)list=list.filter(function(l){return l.entity_type===ef;});
+  if(q)list=list.filter(function(l){return (l.user_name||'').toLowerCase().indexOf(q)>=0||(l.entity_name||'').toLowerCase().indexOf(q)>=0;});
+  var h='<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="border-bottom:2px solid var(--border)"><th style="padding:10px 8px;text-align:left;width:140px">时间</th><th style="padding:10px 8px;text-align:left;width:80px">操作人</th><th style="padding:10px 8px;text-align:left;width:60px">动作</th><th style="padding:10px 8px;text-align:left;width:80px">类型</th><th style="padding:10px 8px;text-align:left">目标</th><th style="padding:10px 8px;text-align:left">详情</th></tr></thead><tbody>';
+  var actions={create:'创建',update:'更新',delete:'删除',export:'导出',login:'登录'};
+  for(var i=0;i<list.length;i++){
+    var l=list[i];var dt=new Date(l.created_at).toLocaleString('zh-CN');
+    var detail='';try{var d=typeof l.detail==='string'?JSON.parse(l.detail):l.detail;detail=JSON.stringify(d).substring(0,80);}catch(e){}
+    h+='<tr style="border-bottom:1px solid var(--border)"><td style="padding:8px;font-size:12px;color:var(--text3)">'+dt+'</td><td style="padding:8px">'+escHtml(l.user_name||'')+'</td><td style="padding:8px">'+(actions[l.action]||l.action)+'</td><td style="padding:8px;font-size:12px;color:var(--text3)">'+escHtml(l.entity_type)+'</td><td style="padding:8px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(l.entity_name||'')+'</td><td style="padding:8px;font-size:11px;color:var(--text3)">'+escHtml(detail)+'</td></tr>';
+  }
+  h+='</tbody></table>';
+  if(list.length===0){
+    if(logsError)h='<div style="text-align:center;padding:40px;color:var(--text3)"><p>&#x26A0;&#xFE0F; 日志加载失败</p><p style="font-size:12px;margin-top:8px;color:var(--text3)">'+escHtml(logsError)+'</p><p style="font-size:11px;margin-top:12px;color:var(--primary);cursor:pointer" onclick="navigator.clipboard.writeText(\'operation_logs.sql\').then(function(){showToast(\'已复制文件名\')})">📋 请执行 operation_logs.sql → 点此复制文件名</p></div>';
+    else h='<div style="text-align:center;padding:40px;color:var(--text3)">暂无操作记录</div>';
+  }
+  el.innerHTML=h;
+}
+async function exportOperationLogs(){
+  var csv='时间,操作人,动作,类型,目标,详情\n';
+  for(var i=0;i<allOpLogs.length;i++){
+    var l=allOpLogs[i];var dt=new Date(l.created_at).toLocaleString('zh-CN');
+    var detail='';try{var d=typeof l.detail==='string'?JSON.parse(l.detail):l.detail;detail=JSON.stringify(d);}catch(e){}
+    csv+=[dt,l.user_name||'',l.action,l.entity_type,l.entity_name||'',detail.replace(/"/g,'""')].map(function(c){return '"'+c+'"';}).join(',')+'\n';
+  }
+  var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='operation_logs_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
+  showToast('日志已导出');
+}
+
+/* ===== RPC: write operation log ===== */
+async function writeOpLog(action,entityType,entityId,entityName,detail){
+  try{
+    var body={p_company_id:currentCompanyId,p_user_id:currentUser?currentUser.id:null,p_user_name:(currentUser&&currentUser.email)||'',p_action:action,p_entity_type:entityType,p_entity_id:String(entityId||''),p_entity_name:entityName||'',p_detail:detail?JSON.stringify(detail):null};
+    await fetch(SUPABASE_URL+'/rest/v1/rpc/write_op_log',{method:'POST',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json'},body:JSON.stringify(body)});
+  }catch(e){}
+}
+
+/* ===== SYSTEM CONFIGURATION ===== */
+function switchConfigTab(t){
+  var tabs=document.querySelectorAll('#admin-config .admin-subtab');
+  var panels={fields:document.getElementById('cfg-fields'),forms:document.getElementById('cfg-forms'),stages:document.getElementById('cfg-stages'),tags:document.getElementById('cfg-tags'),numbering:document.getElementById('cfg-numbering')};
+  for(var k in panels)panels[k].classList.add('hidden');
+  for(var i=0;i<tabs.length;i++)tabs[i].classList.remove('active');
+  var idx={fields:0,forms:1,stages:2,tags:3,numbering:4};
+  panels[t].classList.remove('hidden');tabs[idx[t]].classList.add('active');
+  if(t==='fields')renderCustomFields();
+  else if(t==='forms')renderCustomForms();
+  else if(t==='stages')renderSalesStages();
+  else if(t==='tags')renderCustomTags();
+  else if(t==='numbering')renderNumberingRules();
+}
+
+/* Custom Fields */
+var allCustomFields=[],fieldEditId=null;
+async function renderCustomFields(){
+  var el=document.getElementById('cfg-field-list');if(!el)return;
+  var et=document.getElementById('cfg-field-entity').value;
+  var resp=await fetch(SUPABASE_URL+'/rest/v1/custom_field_defs?company_id=eq.'+currentCompanyId+'&entity_type=eq.'+et+'&order=sort_order.asc',{headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY}});
+  if(resp.ok)allCustomFields=await resp.json();else allCustomFields=[];
+  var typeNames={text:'文本',number:'数字',date:'日期',select:'下拉',textarea:'多行文本'};
+  var h='<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="border-bottom:2px solid var(--border)"><th style="padding:10px 8px;text-align:left">标识</th><th style="padding:10px 8px;text-align:left">显示名称</th><th style="padding:10px 8px;text-align:left">类型</th><th style="padding:10px 8px;text-align:left">必填</th><th style="padding:10px 8px;text-align:center">操作</th></tr></thead><tbody>';
+  for(var i=0;i<allCustomFields.length;i++){
+    var f=allCustomFields[i];
+    h+='<tr style="border-bottom:1px solid var(--border)"><td style="padding:8px;font-family:monospace;font-size:12px">'+escHtml(f.field_name)+'</td><td style="padding:8px">'+escHtml(f.field_label)+'</td><td style="padding:8px;font-size:12px;color:var(--text3)">'+(typeNames[f.field_type]||f.field_type)+'</td><td style="padding:8px">'+(f.required?'<span style="color:#ef4444">是</span>':'否')+'</td><td style="padding:8px;text-align:center"><a href="javascript:void(0)" onclick="editField('+f.id+')" style="color:var(--primary);font-size:13px">编辑</a>&nbsp;<a href="javascript:void(0)" onclick="deleteField('+f.id+')" style="color:#ef4444;font-size:13px">删除</a></td></tr>';
+  }
+  h+='</tbody></table>';
+  if(allCustomFields.length===0)h='<div style="text-align:center;padding:40px;color:var(--text3)">暂无自定义字段</div>';
+  el.innerHTML=h;
+}
+function openFieldForm(){
+  fieldEditId=null;document.getElementById('field-form-title').textContent='添加自定义字段';
+  document.getElementById('fif-entity').value=document.getElementById('cfg-field-entity').value;
+  document.getElementById('fif-name').value='';document.getElementById('fif-label').value='';
+  document.getElementById('fif-type').value='text';document.getElementById('fif-options').value='';
+  document.getElementById('fif-required').checked=false;
+  document.getElementById('fif-options-row').style.display='none';
+  document.getElementById('field-form-modal').style.display='flex';
+}
+function closeFieldForm(){document.getElementById('field-form-modal').style.display='none';}
+document.addEventListener('DOMContentLoaded',function(){
+  refreshCaptcha();
+  var ft=document.getElementById('fif-type');if(ft)ft.onchange=function(){document.getElementById('fif-options-row').style.display=this.value==='select'?'block':'none';};
+});
+async function editField(id){
+  var f=null;for(var i=0;i<allCustomFields.length;i++){if(allCustomFields[i].id===id){f=allCustomFields[i];break;}}
+  if(!f)return;fieldEditId=id;document.getElementById('field-form-title').textContent='编辑字段';
+  document.getElementById('fif-entity').value=f.entity_type;
+  document.getElementById('fif-name').value=f.field_name;document.getElementById('fif-label').value=f.field_label;
+  document.getElementById('fif-type').value=f.field_type;document.getElementById('fif-required').checked=f.required;
+  var opts=typeof f.options==='string'?JSON.parse(f.options):(f.options||[]);
+  document.getElementById('fif-options').value=Array.isArray(opts)?opts.join(','):'';
+  document.getElementById('fif-options-row').style.display=f.field_type==='select'?'block':'none';
+  document.getElementById('field-form-modal').style.display='flex';
+}
+async function saveField(){
+  var entity=document.getElementById('fif-entity').value;
+  var name=document.getElementById('fif-name').value.trim();if(!name){showToast('请输入字段标识');return}
+  var label=document.getElementById('fif-label').value.trim();if(!label){showToast('请输入显示名称');return}
+  var type=document.getElementById('fif-type').value;
+  var required=document.getElementById('fif-required').checked;
+  var optionsStr=document.getElementById('fif-options').value;var opts=optionsStr?optionsStr.split(',').map(function(s){return s.trim();}).filter(Boolean):[];
+  var body={company_id:currentCompanyId,entity_type:entity,field_name:name,field_label:label,field_type:type,options:opts,required:required,updated_at:new Date().toISOString()};
+  var resp;
+  if(fieldEditId){
+    resp=await fetch(SUPABASE_URL+'/rest/v1/custom_field_defs?id=eq.'+fieldEditId,{method:'PATCH',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(body)});
+  }else{
+    body.sort_order=allCustomFields.length;body.created_at=new Date().toISOString();
+    resp=await fetch(SUPABASE_URL+'/rest/v1/custom_field_defs',{method:'POST',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(body)});
+  }
+  if(resp.ok){showToast('字段已保存');closeFieldForm();renderCustomFields();await writeOpLog(fieldEditId?'update':'create','custom_field',fieldEditId||'',label);}
+  else{showToast('保存失败')}
+}
+async function deleteField(id){
+  if(!confirm('确认删除此字段？'))return;
+  var resp=await fetch(SUPABASE_URL+'/rest/v1/custom_field_defs?id=eq.'+id,{method:'DELETE',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY}});
+  if(resp.ok){showToast('已删除');renderCustomFields();}else{showToast('删除失败')}
+}
+
+/* Custom Forms */
+var allCustomForms=[];
+async function renderCustomForms(){
+  var el=document.getElementById('cfg-form-list');if(!el)return;
+  var resp=await fetch(SUPABASE_URL+'/rest/v1/custom_forms?company_id=eq.'+currentCompanyId+'&order=created_at.desc',{headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY}});
+  if(resp.ok)allCustomForms=await resp.json();else allCustomForms=[];
+  var h='';
+  for(var i=0;i<allCustomForms.length;i++){
+    var f=allCustomForms[i];var fc=typeof f.fields==='string'?JSON.parse(f.fields):(f.fields||[]);
+    h+='<div class="card" style="padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between"><div><strong>'+escHtml(f.form_name)+'</strong><span style="font-size:12px;color:var(--text3);margin-left:8px">'+escHtml(f.entity_type)+' · '+fc.length+'个字段</span></div><div><a href="javascript:void(0)" onclick="editForm('+f.id+')" style="color:var(--primary);font-size:13px;margin-right:8px">编辑</a><a href="javascript:void(0)" onclick="deleteForm('+f.id+')" style="color:#ef4444;font-size:13px">删除</a></div></div>';
+  }
+  if(allCustomForms.length===0)h='<div style="text-align:center;padding:40px;color:var(--text3)">暂无自定义表单</div>';
+  el.innerHTML=h;
+}
+function openFormBuilder(){
+  var name=prompt('请输入表单名称:');if(!name)return;
+  var et=prompt('实体类型(client/order/lead):','client');if(!et)return;
+  // Simple: create with empty fields
+  fetch(SUPABASE_URL+'/rest/v1/custom_forms',{method:'POST',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({company_id:currentCompanyId,form_name:name,entity_type:et,fields:[],created_at:new Date().toISOString()})}).then(function(r){if(r.ok){showToast('表单已创建');renderCustomForms();}}).catch(function(){showToast('创建失败')});
+}
+async function deleteForm(id){if(!confirm('确认删除？'))return;await fetch(SUPABASE_URL+'/rest/v1/custom_forms?id=eq.'+id,{method:'DELETE',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY}});renderCustomForms();showToast('已删除');}
+
+/* Sales Stages */
+var allSalesStages=[],stageEditId=null;
+async function renderSalesStages(){
+  var el=document.getElementById('cfg-stage-list');if(!el)return;
+  var resp=await fetch(SUPABASE_URL+'/rest/v1/sales_stages_def?company_id=eq.'+currentCompanyId+'&order=sort_order.asc',{headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY}});
+  if(resp.ok)allSalesStages=await resp.json();else allSalesStages=[];
+  var h='';
+  for(var i=0;i<allSalesStages.length;i++){
+    var s=allSalesStages[i];
+    h+='<div class="card" style="padding:10px 16px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:10px"><span style="width:12px;height:12px;border-radius:50%;background:'+escHtml(s.color)+';display:inline-block;flex-shrink:0"></span><strong>'+escHtml(s.stage_name)+'</strong><span style="font-size:11px;color:var(--text3)">'+escHtml(s.stage_key)+' · '+s.probability+'%</span></div><div><a href="javascript:void(0)" onclick="editStage('+s.id+')" style="color:var(--primary);font-size:13px;margin-right:8px">编辑</a><a href="javascript:void(0)" onclick="deleteStage('+s.id+')" style="color:#ef4444;font-size:13px">删除</a></div></div>';
+  }
+  if(allSalesStages.length===0)h='<div style="text-align:center;padding:40px;color:var(--text3)">暂无阶段定义</div>';
+  el.innerHTML=h;
+}
+function openStageForm(){
+  stageEditId=null;document.getElementById('stage-form-title').textContent='添加销售阶段';
+  document.getElementById('sgf-name').value='';document.getElementById('sgf-key').value='';
+  document.getElementById('sgf-color').value='#4F6EF7';document.getElementById('sgf-prob').value='50';
+  document.getElementById('stage-form-modal').style.display='flex';
+}
+function closeStageForm(){document.getElementById('stage-form-modal').style.display='none';}
+async function editStage(id){
+  var s=null;for(var i=0;i<allSalesStages.length;i++){if(allSalesStages[i].id===id){s=allSalesStages[i];break;}}
+  if(!s)return;stageEditId=id;document.getElementById('stage-form-title').textContent='编辑阶段';
+  document.getElementById('sgf-name').value=s.stage_name;document.getElementById('sgf-key').value=s.stage_key;
+  document.getElementById('sgf-color').value=s.color;document.getElementById('sgf-prob').value=s.probability;
+  document.getElementById('stage-form-modal').style.display='flex';
+}
+async function saveStage(){
+  var name=document.getElementById('sgf-name').value.trim();if(!name){showToast('请输入名称');return}
+  var key=document.getElementById('sgf-key').value.trim();if(!key){showToast('请输入标识');return}
+  var color=document.getElementById('sgf-color').value;
+  var prob=parseInt(document.getElementById('sgf-prob').value)||0;
+  var body={company_id:currentCompanyId,stage_name:name,stage_key:key,color:color,probability:prob,updated_at:new Date().toISOString()};
+  var resp;
+  if(stageEditId){
+    resp=await fetch(SUPABASE_URL+'/rest/v1/sales_stages_def?id=eq.'+stageEditId,{method:'PATCH',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(body)});
+  }else{
+    body.sort_order=allSalesStages.length+1;body.created_at=new Date().toISOString();
+    resp=await fetch(SUPABASE_URL+'/rest/v1/sales_stages_def',{method:'POST',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(body)});
+  }
+  if(resp.ok){showToast('阶段已保存');closeStageForm();renderSalesStages();}else{showToast('保存失败')}
+}
+async function deleteStage(id){if(!confirm('确认删除？'))return;await fetch(SUPABASE_URL+'/rest/v1/sales_stages_def?id=eq.'+id,{method:'DELETE',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY}});renderSalesStages();showToast('已删除');}
+
+/* Custom Tags */
+var allCustomTags=[],tagEditId=null;
+async function renderCustomTags(){
+  var el=document.getElementById('cfg-tag-list');if(!el)return;
+  var resp=await fetch(SUPABASE_URL+'/rest/v1/custom_tags?company_id=eq.'+currentCompanyId+'&order=sort_order.asc',{headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY}});
+  if(resp.ok)allCustomTags=await resp.json();else allCustomTags=[];
+  var h='';
+  for(var i=0;i<allCustomTags.length;i++){
+    var t=allCustomTags[i];
+    h+='<div style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:16px;background:'+escHtml(t.tag_color)+'20;border:1px solid '+escHtml(t.tag_color)+';color:'+escHtml(t.tag_color)+';font-size:13px;cursor:pointer" onclick="editTag('+t.id+')">'+escHtml(t.tag_name)+'<span onclick="event.stopPropagation();deleteTag('+t.id+')" style="cursor:pointer;font-size:16px;line-height:1">&times;</span></div>';
+  }
+  if(allCustomTags.length===0)h='<div style="text-align:center;padding:40px;color:var(--text3);width:100%">暂无标签，点击上方添加</div>';
+  el.innerHTML=h;
+}
+function openTagForm(){
+  tagEditId=null;document.getElementById('tag-form-title').textContent='添加标签';
+  document.getElementById('tgf-name').value='';document.getElementById('tgf-color').value='#4F6EF7';
+  document.getElementById('tag-form-modal').style.display='flex';
+}
+function closeTagForm(){document.getElementById('tag-form-modal').style.display='none';}
+async function editTag(id){
+  var t=null;for(var i=0;i<allCustomTags.length;i++){if(allCustomTags[i].id===id){t=allCustomTags[i];break;}}
+  if(!t)return;tagEditId=id;document.getElementById('tag-form-title').textContent='编辑标签';
+  document.getElementById('tgf-name').value=t.tag_name;document.getElementById('tgf-color').value=t.tag_color;
+  document.getElementById('tag-form-modal').style.display='flex';
+}
+async function saveTag(){
+  var name=document.getElementById('tgf-name').value.trim();if(!name){showToast('请输入标签名');return}
+  var color=document.getElementById('tgf-color').value;
+  var body={company_id:currentCompanyId,tag_name:name,tag_color:color,entity_type:'client',updated_at:new Date().toISOString()};
+  var resp;
+  if(tagEditId){
+    resp=await fetch(SUPABASE_URL+'/rest/v1/custom_tags?id=eq.'+tagEditId,{method:'PATCH',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(body)});
+  }else{
+    body.sort_order=allCustomTags.length;body.created_at=new Date().toISOString();
+    resp=await fetch(SUPABASE_URL+'/rest/v1/custom_tags',{method:'POST',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(body)});
+  }
+  if(resp.ok){showToast('标签已保存');closeTagForm();renderCustomTags();}else{showToast('保存失败')}
+}
+async function deleteTag(id){if(!confirm('确认删除？'))return;await fetch(SUPABASE_URL+'/rest/v1/custom_tags?id=eq.'+id,{method:'DELETE',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY}});renderCustomTags();}
+
+/* Numbering Rules */
+var allNumRules=[],numEditId=null;
+async function renderNumberingRules(){
+  var el=document.getElementById('cfg-number-list');if(!el)return;
+  var resp=await fetch(SUPABASE_URL+'/rest/v1/numbering_rules?company_id=eq.'+currentCompanyId+'&order=created_at.desc',{headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY}});
+  if(resp.ok)allNumRules=await resp.json();else allNumRules=[];
+  var entityNames={client:'客户',order:'订单',quotation:'报价',contract:'合同'};
+  var h='';
+  for(var i=0;i<allNumRules.length;i++){
+    var r=allNumRules[i];var sample=r.prefix+'-'+(r.date_format==='none'?'' : '20260118')+'-'+String(r.current_seq).padStart(r.seq_length,'0');
+    h+='<div class="card" style="padding:10px 16px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between"><div><strong style="font-family:monospace">'+escHtml(sample)+'</strong><span style="font-size:12px;color:var(--text3);margin-left:8px">'+(entityNames[r.entity_type]||r.entity_type)+'</span></div><div><a href="javascript:void(0)" onclick="editNumRule('+r.id+')" style="color:var(--primary);font-size:13px;margin-right:8px">编辑</a><a href="javascript:void(0)" onclick="deleteNumRule('+r.id+')" style="color:#ef4444;font-size:13px">删除</a></div></div>';
+  }
+  if(allNumRules.length===0)h='<div style="text-align:center;padding:40px;color:var(--text3)">暂未配置编号规则</div>';
+  el.innerHTML=h;
+}
+function openNumberRule(){
+  numEditId=null;document.getElementById('num-form-title').textContent='添加编号规则';
+  document.getElementById('nmf-entity').value='client';document.getElementById('nmf-prefix').value='KH';
+  document.getElementById('nmf-datefmt').value='YYYYMMDD';document.getElementById('nmf-seqlength').value='3';
+  document.getElementById('num-form-modal').style.display='flex';
+}
+function closeNumberForm(){document.getElementById('num-form-modal').style.display='none';}
+async function editNumRule(id){
+  var r=null;for(var i=0;i<allNumRules.length;i++){if(allNumRules[i].id===id){r=allNumRules[i];break;}}
+  if(!r)return;numEditId=id;document.getElementById('num-form-title').textContent='编辑编号规则';
+  document.getElementById('nmf-entity').value=r.entity_type;document.getElementById('nmf-prefix').value=r.prefix||'';
+  document.getElementById('nmf-datefmt').value=r.date_format||'YYYYMMDD';document.getElementById('nmf-seqlength').value=r.seq_length||3;
+  document.getElementById('num-form-modal').style.display='flex';
+}
+async function saveNumberRule(){
+  var entity=document.getElementById('nmf-entity').value;
+  var prefix=document.getElementById('nmf-prefix').value.trim();
+  var datefmt=document.getElementById('nmf-datefmt').value;
+  var seqlength=parseInt(document.getElementById('nmf-seqlength').value)||3;
+  var body={company_id:currentCompanyId,entity_type:entity,prefix:prefix,date_format:datefmt,seq_length:seqlength,updated_at:new Date().toISOString()};
+  var resp;
+  if(numEditId){
+    resp=await fetch(SUPABASE_URL+'/rest/v1/numbering_rules?id=eq.'+numEditId,{method:'PATCH',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(body)});
+  }else{
+    body.current_seq=1;body.created_at=new Date().toISOString();
+    resp=await fetch(SUPABASE_URL+'/rest/v1/numbering_rules',{method:'POST',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(body)});
+  }
+  if(resp.ok){showToast('规则已保存');closeNumberForm();renderNumberingRules();}else{showToast('保存失败')}
+}
+async function deleteNumRule(id){if(!confirm('确认删除？'))return;await fetch(SUPABASE_URL+'/rest/v1/numbering_rules?id=eq.'+id,{method:'DELETE',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY}});renderNumberingRules();}
+
+/* ===== DATA SECURITY ===== */
+async function renderSecurityPanel(){
+  // Export permission for each role
+  var el=document.getElementById('sec-export-roles');if(!el)return;
+  var h='';var roles=(allRoles||[]).slice();
+  for(var i=0;i<roles.length;i++){
+    var r=roles[i];var fp=typeof r.func_perms==='string'?JSON.parse(r.func_perms):(r.func_perms||{});
+    var canExport=fp.allow_export===true;
+    h+='<label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;cursor:pointer"><input type="checkbox" '+(canExport?'checked':'')+' onchange="toggleRoleExport(\''+escHtml(r.name)+'\','+r.id+',this.checked)"> '+escHtml(r.name)+'</label>';
+  }
+  el.innerHTML=h;
+  // Load masking settings from localStorage
+  var dm=JSON.parse(localStorage.getItem('dataMasking_'+currentCompanyId)||'{}');
+  document.getElementById('dm-mobile').checked=!!dm.hide_mobile;
+  document.getElementById('dm-price').checked=!!dm.hide_price;
+  document.getElementById('dm-email').checked=!!dm.hide_email;
+}
+function toggleDataMasking(){
+  var dm={hide_mobile:document.getElementById('dm-mobile').checked,hide_price:document.getElementById('dm-price').checked,hide_email:document.getElementById('dm-email').checked};
+  localStorage.setItem('dataMasking_'+currentCompanyId,JSON.stringify(dm));
+  showToast('脱敏设置已保存');
+}
+async function toggleRoleExport(roleName,roleId,checked){
+  var resp=await fetch(SUPABASE_URL+'/rest/v1/roles?id=eq.'+roleId,{method:'PATCH',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({func_perms:{allow_export:checked}})});
+  if(resp.ok)showToast('导出权限已更新');else showToast('更新失败');
+}
+async function doBackup(){
+  var types=[];
+  var checks={clients:'bk-clients',contacts:'bk-contacts',orders:'bk-orders',products:'bk-products'};
+  var labels={clients:'客户',contacts:'联系人',orders:'订单',products:'产品'};
+  for(var k in checks){if(document.getElementById(checks[k]).checked)types.push(k);}
+  if(types.length===0){showToast('请选择要备份的数据类型');return}
+  showToast('正在备份...');
+  var allData={};var totalCount=0;
+  for(var i=0;i<types.length;i++){
+    var t=types[i];
+    var resp=await fetch(SUPABASE_URL+'/rest/v1/'+(t==='products'?'products':t)+'?company_id=eq.'+currentCompanyId+'&limit=10000',{headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY}});
+    if(resp.ok){var data=await resp.json();allData[t]=data;totalCount+=data.length;}
+  }
+  var json=JSON.stringify(allData,null,2);
+  var blob=new Blob(['\uFEFF'+json],{type:'application/json;charset=utf-8'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='backup_'+currentCompanyId+'_'+new Date().toISOString().slice(0,10)+'.json';a.click();
+  // Log backup
+  try{
+    await fetch(SUPABASE_URL+'/rest/v1/backup_logs',{method:'POST',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json'},body:JSON.stringify({company_id:currentCompanyId,user_id:currentUser?currentUser.id:null,backup_type:'manual',entity_types:types,record_count:totalCount,file_name:'backup_'+currentCompanyId+'.json',file_size:json.length,created_at:new Date().toISOString()})});
+  }catch(e){}
+  showToast('备份完成！共'+totalCount+'条记录');
+  await writeOpLog('export','backup','','数据备份',{types:types,count:totalCount});
+}
+async function loadBackupHistory(){
+  var el=document.getElementById('bk-history');if(!el)return;
+  var resp=await fetch(SUPABASE_URL+'/rest/v1/backup_logs?company_id=eq.'+currentCompanyId+'&order=created_at.desc&limit=20',{headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY}});
+  if(!resp.ok){el.innerHTML='加载失败';return}
+  var logs=await resp.json();
+  if(logs.length===0){el.innerHTML='暂无备份记录';return}
+  var h='<table style="width:100%;font-size:12px;margin-top:8px"><thead><tr style="border-bottom:1px solid var(--border)"><th style="padding:6px;text-align:left">时间</th><th style="padding:6px;text-align:left">类型</th><th style="padding:6px;text-align:left">记录数</th></tr></thead><tbody>';
+  for(var i=0;i<logs.length;i++){
+    var l=logs[i];h+='<tr><td style="padding:6px">'+new Date(l.created_at).toLocaleString('zh-CN')+'</td><td style="padding:6px">'+(l.backup_type==='auto'?'自动':'手动')+'</td><td style="padding:6px">'+(l.record_count||0)+'</td></tr>';
+  }
+  h+='</tbody></table>';el.innerHTML=h;
+}
+
+/* ===== EXTEND PERMISSION MATRIX ===== */
+/* ADD data scope / func perms / field perms to renderAdminPerms */
+/* Override: extend renderAdminPerms to include advanced permissions */
+var _origRenderAdminPerms=null;
+function extendPermissionMatrix(){
+  // This is called after the original renderAdminPerms if needed
+  // For now, the existing permission matrix handles module-level perms
+  // Advanced perms (data scope, func, field) are managed via employee panel
+}
+
+// Stub for defunct freeze buttons (always hidden, prevent ReferenceError)
+function toggleLeadFrozen(){showToast('冻结功能暂未开放')}
+function editForm(id){showToast('表单编辑功能暂未开放')}
 
 
+// ====== Project Management ======
+var allProjects=[],allStages=[],allBiddings=[],allDeliveries=[],allPayments=[],curProjectId=null,curProjectName='';
+var pStageEditId=null,pBiddingEditId=null,pDeliveryEditId=null,pPaymentEditId=null;
+
+function switchProjectTab(tab){
+  ['list','stages','bidding','contract','delivery','payment'].forEach(function(t){
+    var p=document.getElementById('project-'+t+'-panel');if(p)p.classList.toggle('hidden',t!==tab)
+  });
+  var subs=document.querySelectorAll('#projects-view .sub-tab');
+  for(var i=0;i<subs.length;i++)subs[i].classList.toggle('active',subs[i].getAttribute('data-ptab')===tab);
+  document.getElementById('main-fab').classList.add('hidden');
+  if(tab==='list'){loadProjects()}
+  else if(tab==='stages'){if(curProjectId)loadStages()}
+  else if(tab==='bidding'){if(curProjectId)loadBiddings()}
+  else if(tab==='contract'){if(curProjectId)loadProjectContracts()}
+  else if(tab==='delivery'){if(curProjectId)loadDeliveries()}
+  else if(tab==='payment'){if(curProjectId)loadPayments()}
+}
+
+async function loadProjects(){
+  if(!currentCompanyId)return;
+  var {data,error}=await sb.from('projects').select('*').eq('company_id',currentCompanyId).order('created_at',{ascending:false});
+  if(error){console.error(error);return}
+  allProjects=data||[];
+  renderProjects();
+}
+
+function renderProjects(){
+  var list=document.getElementById('project-list');
+  if(!allProjects.length){list.innerHTML='<div style="text-align:center;padding:40px;color:var(--text2)">无项目，可从销售管道线索中立项创建</div>';return}
+  var s='';
+  var statusMap={planning:'规划中',in_progress:'进行中',completed:'已完成',suspended:'已暂停'};
+  for(var i=0;i<allProjects.length;i++){
+    var p=allProjects[i];
+    var client=allClients.find(function(c){return c.id===p.client_id});
+    var cn=client?client.name:'未关联';
+    s+='<div class="project-card" onclick="openProjectDetail(\''+p.id+'\',\''+h(p.name)+'\')">';
+    s+='<div class="project-card-header"><span class="project-card-name">'+h(p.name)+'</span><span class="project-card-status status-'+p.status+'">'+(statusMap[p.status]||p.status)+'</span></div>';
+    s+='<div class="project-card-meta"><span>\U0001f3e2 '+h(cn)+'</span><span>\U0001f4b0 '+(p.budget?formatMoney(p.budget):'-')+'</span>';
+    if(p.start_date)s+='<span>\U0001f4c5 '+p.start_date+'</span>';
+    if(p.end_date)s+='<span>\u2192 '+p.end_date+'</span>';
+    s+='</div></div>';
+  }
+  list.innerHTML=s;
+}
+
+function openProjectDetail(pid,pname){
+  curProjectId=pid;curProjectName=pname;
+  switchProjectTab('stages');
+  document.getElementById('stages-project-name').textContent=pname;
+  document.getElementById('bidding-project-name').textContent=pname;
+  document.getElementById('contract-project-name').textContent=pname;
+  document.getElementById('delivery-project-name').textContent=pname;
+  document.getElementById('payment-project-name').textContent=pname;
+  document.getElementById('main-fab').classList.add('hidden');
+  loadStages();
+}
+
+// === Project CRUD (launched from lead conversion) ===
+function openProjectFormFromLead(leadId,leadName,leadContactName,leadContactPhone,leadCompany){
+  var s='<div class="modal-overlay" id="project-form-modal"><div class="modal-sheet"><h3>\u4ece\u7ebf\u7d22\u8f6c\u7acb\u9879</h3>';
+  s+='<div class="form-group"><label>\u9879\u76ee\u540d\u79f0 *</label><input id="pf-name" placeholder="\u9879\u76ee\u540d\u79f0" value="'+h(leadName||'')+'"></div>';
+  s+='<div class="form-row"><div class="form-group"><label>\u5173\u8054\u5ba2\u6237</label><select id="pf-client"><option value="">-- \u4e0d\u5173\u8054 --</option>';
+  for(var i=0;i<allClients.length;i++){var cl=allClients[i];s+='<option value="'+cl.id+'"'+(leadCompany&&cl.name===leadCompany?' selected':'')+'>'+h(cl.name)+'</option>'}
+  s+='</select></div><div class="form-group"><label>\u9879\u76ee\u9884\u7b97</label><input id="pf-budget" type="number" step="0.01" placeholder="0.00"></div></div>';
+  s+='<div class="form-row"><div class="form-group"><label>\u5f00\u59cb\u65e5\u671f</label><input id="pf-start" type="date"></div><div class="form-group"><label>\u9884\u8ba1\u7ed3\u675f</label><input id="pf-end" type="date"></div></div>';
+  s+='<div class="form-group"><label>\u72b6\u6001</label><select id="pf-status"><option value="planning">\u89c4\u5212\u4e2d</option><option value="in_progress">\u8fdb\u884c\u4e2d</option></select></div>';
+  s+='<div class="form-group"><label>\u9879\u76ee\u63cf\u8ff0</label><textarea id="pf-desc" rows="3" placeholder="\u9879\u76ee\u63cf\u8ff0..."></textarea></div>';
+  s+='<input type="hidden" id="pf-lead-id" value="'+leadId+'">';
+  s+='<div class="modal-actions"><button class="btn-cancel" onclick="document.getElementById(\'project-form-modal\').remove()">\u53d6\u6d88</button><button class="btn-save" onclick="saveProject()">\u4fdd\u5b58\u5e76\u8f6c\u5316\u7ebf\u7d22</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend',s);
+}
+
+async function saveProject(){
+  var name=document.getElementById('pf-name').value.trim();
+  if(!name){showToast('\u8bf7\u8f93\u5165\u9879\u76ee\u540d\u79f0');return}
+  var leadIdEl=document.getElementById('pf-lead-id');
+  var row={company_id:currentCompanyId,name:name,client_id:document.getElementById('pf-client').value||null,budget:parseFloat(document.getElementById('pf-budget').value)||0,start_date:document.getElementById('pf-start').value||null,end_date:document.getElementById('pf-end').value||null,status:document.getElementById('pf-status').value,description:document.getElementById('pf-desc').value.trim(),created_by:currentUser.id};
+  document.getElementById('project-form-modal').remove();
+  var {data,error}=await sb.from('projects').insert(row).select('id').single();
+  if(error){showToast('\u521b\u5efa\u5931\u8d25: '+error.message);return}
+  var pid=data.id;
+  if(leadIdEl&&leadIdEl.value){
+    await sb.from('leads').update({stage:'converted',project_id:pid,converted_at:new Date().toISOString()}).eq('id',leadIdEl.value);
+  }
+  if(curProjectId || document.getElementById('projects-view')&&!document.getElementById('projects-view').classList.contains('hidden')){
+    loadProjects();
+  }
+  showToast('\u7ebf\u7d22\u5df2\u8f6c\u5316\u4e3a\u9879\u76ee');
+}
+
+// === Stages ===
+async function loadStages(){
+  if(!curProjectId)return;
+  var {data,error}=await sb.from('project_stages').select('*').eq('project_id',curProjectId).order('sort_order');
+  if(error){console.error(error);return}
+  allStages=data||[];
+  renderStages();
+}
+
+function renderStages(){
+  var list=document.getElementById('stages-list');
+  if(!allStages.length){list.innerHTML='<div style="text-align:center;padding:40px;color:var(--text2)">\u6682\u65e0\u9636\u6bb5\uff0c\u70b9\u51fb\u6dfb\u52a0\u9636\u6bb5</div>';return}
+  var statusMap={pending:'\u5f85\u5f00\u59cb',in_progress:'\u8fdb\u884c\u4e2d',completed:'\u5df2\u5b8c\u6210'};
+  var s='';
+  for(var i=0;i<allStages.length;i++){
+    var st=allStages[i];
+    s+='<div class="stage-item">';
+    s+='<div class="stage-item-left"><div class="stage-item-name">'+h(st.name)+'</div><div class="stage-item-dates">'+h(st.description||'')+' '+(st.start_date||'')+' \u2192 '+(st.end_date||'')+'</div></div>';
+    s+='<div class="stage-item-right">';
+    s+='<span class="project-card-status status-'+st.status+'">'+(statusMap[st.status]||st.status)+'</span>';
+    s+='<button class="btn-sm" onclick="openStageForm(\''+st.id+'\')">\u270f\ufe0f</button>';
+    s+='<button class="btn-sm btn-sm-danger" onclick="deleteStage(\''+st.id+'\')">\U0001f5d1</button>';
+    s+='</div></div>';
+  }
+  list.innerHTML=s;
+}
+
+function openStageForm(id){
+  var st=id?allStages.find(function(x){return x.id===id}):null;
+  var s='<div class="modal-overlay" id="stage-form-modal"><div class="modal-sheet"><h3>'+(st?'\u7f16\u8f91\u9636\u6bb5':'\u6dfb\u52a0\u9636\u6bb5')+'</h3>';
+  s+='<div class="form-group"><label>\u9636\u6bb5\u540d\u79f0 *</label><input id="sf-name" placeholder="\u5982\uff1a\u9700\u6c42\u8c03\u7814\u3001\u65b9\u6848\u8bbe\u8ba1\u3001\u5f00\u53d1\u6d4b\u8bd5" value="'+h(st?st.name||'':'')+'"></div>';
+  s+='<div class="form-group"><label>\u63cf\u8ff0</label><input id="sf-desc" placeholder="\u9636\u6bb5\u8bf4\u660e" value="'+h(st?st.description||'':'')+'"></div>';
+  s+='<div class="form-row"><div class="form-group"><label>\u5f00\u59cb\u65e5\u671f</label><input id="sf-start" type="date" value="'+(st?st.start_date||'':'')+'"></div><div class="form-group"><label>\u7ed3\u675f\u65e5\u671f</label><input id="sf-end" type="date" value="'+(st?st.end_date||'':'')+'"></div></div>';
+  var statuses=[{v:'pending',t:'\u5f85\u5f00\u59cb'},{v:'in_progress',t:'\u8fdb\u884c\u4e2d'},{v:'completed',t:'\u5df2\u5b8c\u6210'}];
+  s+='<div class="form-group"><label>\u72b6\u6001</label><select id="sf-status">';
+  for(var i=0;i<statuses.length;i++)s+='<option value="'+statuses[i].v+'"'+(st&&st.status===statuses[i].v?' selected':'')+'>'+statuses[i].t+'</option>';
+  s+='</select></div>';
+  if(st)s+='<input type="hidden" id="sf-edit-id" value="'+st.id+'">';
+  s+='<div class="modal-actions"><button class="btn-cancel" onclick="document.getElementById(\'stage-form-modal\').remove()">\u53d6\u6d88</button><button class="btn-save" onclick="saveStage()">\u4fdd\u5b58</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend',s);
+}
+
+async function saveStage(){
+  var name=document.getElementById('sf-name').value.trim();
+  if(!name){showToast('\u8bf7\u8f93\u5165\u9636\u6bb5\u540d\u79f0');return}
+  var editEl=document.getElementById('sf-edit-id');
+  var row={project_id:curProjectId,name:name,description:document.getElementById('sf-desc').value.trim(),start_date:document.getElementById('sf-start').value||null,end_date:document.getElementById('sf-end').value||null,status:document.getElementById('sf-status').value,sort_order:allStages.length};
+  document.getElementById('stage-form-modal').remove();
+  if(editEl){
+    var {error}=await sb.from('project_stages').update(row).eq('id',editEl.value);
+    if(error){showToast('\u66f4\u65b0\u5931\u8d25: '+error.message);return}
+  }else{
+    var {error}=await sb.from('project_stages').insert(row);
+    if(error){showToast('\u521b\u5efa\u5931\u8d25: '+error.message);return}
+  }
+  loadStages();showToast(editEl?'\u5df2\u66f4\u65b0':'\u5df2\u521b\u5efa');
+}
+
+async function deleteStage(id){
+  if(!confirm('\u786e\u5b9a\u5220\u9664\u8be5\u9636\u6bb5\uff1f'))return;
+  var {error}=await sb.from('project_stages').delete().eq('id',id);
+  if(error){showToast('\u5220\u9664\u5931\u8d25: '+error.message);return}
+  loadStages();showToast('\u5df2\u5220\u9664');
+}
+
+// === Bidding ===
+async function loadBiddings(){
+  if(!curProjectId)return;
+  var {data,error}=await sb.from('project_biddings').select('*').eq('project_id',curProjectId).order('created_at',{ascending:false});
+  if(error){console.error(error);return}
+  allBiddings=data||[];
+  renderBiddings();
+}
+
+function renderBiddings(){
+  var list=document.getElementById('bidding-list');
+  if(!allBiddings.length){list.innerHTML='<div style="text-align:center;padding:40px;color:var(--text2)">\u6682\u65e0\u6295\u6807\u8bb0\u5f55</div>';return}
+  var statusMap={preparing:'\u51c6\u5907\u4e2d',submitted:'\u5df2\u63d0\u4ea4',won:'\u4e2d\u6807',lost:'\u672a\u4e2d\u6807'};
+  var s='';
+  for(var i=0;i<allBiddings.length;i++){
+    var b=allBiddings[i];
+    s+='<div class="bidding-item">';
+    s+='<div class="bidding-item-header">';
+    s+='<div class="bidding-item-title">'+h(b.title)+'</div>';
+    s+='<div style="display:flex;gap:6px;align-items:center">';
+    if(b.seal_requested)s+='<span class="seal-badge">\U0001f512 \u5f85\u76d6\u7ae0</span>';
+    s+='<span class="project-card-status status-'+b.status+'">'+(statusMap[b.status]||b.status)+'</span>';
+    s+='<button class="btn-sm" onclick="openBiddingForm(\''+b.id+'\')">\u270f\ufe0f</button>';
+    s+='<button class="btn-sm btn-sm-danger" onclick="deleteBidding(\''+b.id+'\')">\U0001f5d1</button>';
+    s+='</div></div>';
+    s+='<div class="bidding-item-meta"><span>\U0001f4b0 '+(b.bid_amount?formatMoney(b.bid_amount):'-')+'</span><span>\U0001f4c5 \u622a\u6b62: '+(b.bid_deadline||'-')+'</span><span>\U0001f4cb '+h(b.notes||'')+'</span></div>';
+    if(b.materials_needed&&b.materials_needed!=='[]'){
+      s+='<div style="margin-top:4px;font-size:11px;color:var(--text2)">\U0001f4ce \u6240\u9700\u6750\u6599: '+h(b.materials_needed)+'</div>';
+    }
+    s+='</div>';
+  }
+  list.innerHTML=s;
+}
+
+function openBiddingForm(id){
+  var b=id?allBiddings.find(function(x){return x.id===id}):null;
+  var s='<div class="modal-overlay" id="bidding-form-modal"><div class="modal-sheet"><h3>'+(b?'\u7f16\u8f91\u6295\u6807':'\u65b0\u5efa\u6295\u6807')+'</h3>';
+  s+='<div class="form-group"><label>\u6295\u6807\u6807\u9898 *</label><input id="bf-title" placeholder="\u6295\u6807\u9879\u76ee\u540d\u79f0" value="'+h(b?b.title||'':'')+'"></div>';
+  s+='<div class="form-row"><div class="form-group"><label>\u6295\u6807\u91d1\u989d</label><input id="bf-amount" type="number" step="0.01" placeholder="0.00" value="'+(b?b.bid_amount||'':'')+'"></div><div class="form-group"><label>\u6295\u6807\u622a\u6b62</label><input id="bf-deadline" type="date" value="'+(b?b.bid_deadline||'':'')+'"></div></div>';
+  var statuses=[{v:'preparing',t:'\u51c6\u5907\u4e2d'},{v:'submitted',t:'\u5df2\u63d0\u4ea4'},{v:'won',t:'\u4e2d\u6807'},{v:'lost',t:'\u672a\u4e2d\u6807'}];
+  s+='<div class="form-group"><label>\u72b6\u6001</label><select id="bf-status">';
+  for(var i=0;i<statuses.length;i++)s+='<option value="'+statuses[i].v+'"'+(b&&b.status===statuses[i].v?' selected':'')+'>'+statuses[i].t+'</option>';
+  s+='</select></div>';
+  s+='<div class="form-group"><label>\u6240\u9700\u6750\u6599\uff08\u5982\u6807\u4e66/\u8d44\u8d28/\u516c\u7ae0\uff09</label><input id="bf-materials" placeholder="\u5982\uff1a\u8425\u4e1a\u6267\u7167\u526f\u672c\u3001\u6cd5\u4eba\u6388\u6743\u4e66\u3001\u516c\u7ae0" value="'+h(b?b.materials_needed||'':'')+'"></div>';
+  s+='<div class="form-group"><label><input type="checkbox" id="bf-seal" style="width:auto"'+(b&&b.seal_requested?' checked':'')+'> \u9700\u8981\u7533\u8bf7\u516c\u7ae0</label></div>';
+  s+='<div class="form-group"><label>\u5907\u6ce8</label><textarea id="bf-notes" rows="2" placeholder="\u5907\u6ce8...">'+h(b?b.notes||'':'')+'</textarea></div>';
+  if(b)s+='<input type="hidden" id="bf-edit-id" value="'+b.id+'">';
+  s+='<div class="modal-actions"><button class="btn-cancel" onclick="document.getElementById(\'bidding-form-modal\').remove()">\u53d6\u6d88</button>';
+  s+='<button class="btn-save" onclick="saveBidding()">\u4fdd\u5b58</button>';
+  if(b&&b.seal_requested&&b.status==='preparing')s+='<button class="btn-save" style="background:var(--warning)" onclick="requestSealApproval(\''+b.id+'\')">\U0001f512 \u7533\u8bf7\u516c\u7ae0\u5ba1\u6279</button>';
+  s+='</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend',s);
+}
+
+async function saveBidding(){
+  var title=document.getElementById('bf-title').value.trim();
+  if(!title){showToast('\u8bf7\u8f93\u5165\u6295\u6807\u6807\u9898');return}
+  var editEl=document.getElementById('bf-edit-id');
+  var sealEl=document.getElementById('bf-seal');
+  var row={project_id:curProjectId,title:title,bid_amount:parseFloat(document.getElementById('bf-amount').value)||0,bid_deadline:document.getElementById('bf-deadline').value||null,status:document.getElementById('bf-status').value,materials_needed:document.getElementById('bf-materials').value.trim(),seal_requested:sealEl?sealEl.checked:false,notes:document.getElementById('bf-notes').value.trim()};
+  document.getElementById('bidding-form-modal').remove();
+  if(editEl){
+    var {error}=await sb.from('project_biddings').update(row).eq('id',editEl.value);
+    if(error){showToast('\u66f4\u65b0\u5931\u8d25: '+error.message);return}
+  }else{
+    var {error}=await sb.from('project_biddings').insert(row);
+    if(error){showToast('\u521b\u5efa\u5931\u8d25: '+error.message);return}
+  }
+  loadBiddings();showToast(editEl?'\u5df2\u66f4\u65b0':'\u5df2\u521b\u5efa');
+}
+
+async function deleteBidding(id){
+  if(!confirm('\u786e\u5b9a\u5220\u9664\u8be5\u6295\u6807\u8bb0\u5f55\uff1f'))return;
+  var {error}=await sb.from('project_biddings').delete().eq('id',id);
+  if(error){showToast('\u5220\u9664\u5931\u8d25: '+error.message);return}
+  loadBiddings();showToast('\u5df2\u5220\u9664');
+}
+
+async function requestSealApproval(biddingId){
+  var b=allBiddings.find(function(x){return x.id===biddingId});
+  if(!b)return;
+  var {error}=await sb.from('approval_requests').insert({company_id:currentCompanyId,requestor_id:currentUser.id,title:'\u516c\u7ae0\u4f7f\u7528\u7533\u8bf7 - '+b.title,type:'\u516c\u7ae0\u4f7f\u7528\u7533\u8bf7',content:{detail:'\u9879\u76ee: '+curProjectName+'\n\u6295\u6807: '+b.title+'\n\u6240\u9700\u6750\u6599: '+(b.materials_needed||'\u65e0')},status:'pending',total_steps:1});
+  if(error){showToast('\u63d0\u4ea4\u5ba1\u6279\u5931\u8d25: '+error.message);return}
+  await sb.from('project_biddings').update({seal_requested:true}).eq('id',biddingId);
+  showToast('\u516c\u7ae0\u7533\u8bf7\u5df2\u63d0\u4ea4\u5ba1\u6279');
+  loadBiddings();
+}
+
+// === Project Contracts ===
+var allProjectContracts=[],pContractEditId=null;
+
+async function loadProjectContracts(){
+  if(!curProjectId)return;
+  var {data,error}=await sb.from('project_contracts').select('*').eq('project_id',curProjectId).order('created_at',{ascending:false});
+  if(error){console.error(error);return}
+  allProjectContracts=data||[];
+  renderProjectContracts();
+}
+
+function renderProjectContracts(){
+  var list=document.getElementById('project-contract-list');
+  var addBtn=document.getElementById('project-contract-add-btn');
+  var hasWonBid=allBiddings.filter(function(b){return b.status==='won'}).length>0;
+  if(addBtn)addBtn.classList.toggle('hidden',!hasWonBid);
+  if(!allProjectContracts.length){list.innerHTML='<div style="text-align:center;padding:40px;color:var(--text2)">'+(hasWonBid?'暂无合同，点击上方按钮创建':'暂无中标记录，合同签订前请先在招投标子Tab中将投标状态改为已中标')+'</div>';return}
+  var statusMap={draft:'草稿',signed:'已签署',executing:'执行中',completed:'已完成',terminated:'已终止'};
+  var s='';
+  for(var i=0;i<allProjectContracts.length;i++){
+    var ct=allProjectContracts[i];
+    s+='<div class="contract-item" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px">';
+    s+='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">';
+    s+='<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:14px;color:var(--text);margin-bottom:4px">'+h(ct.title)+'</div>';
+    if(ct.contract_no)s+='<div style="font-size:12px;color:var(--text2);margin-bottom:4px">编号: '+h(ct.contract_no)+'</div>';
+    s+='<div style="font-size:12px;color:var(--text2);display:flex;gap:12px;flex-wrap:wrap">';
+    s+='<span>💰 '+formatMoney(ct.amount||0)+'</span>';
+    if(ct.sign_date)s+='<span>✍ '+ct.sign_date+'</span>';
+    if(ct.start_date&&ct.end_date)s+='<span>📅 '+ct.start_date+' → '+ct.end_date+'</span>';
+    s+='</div></div>';
+    s+='<div style="display:flex;align-items:center;gap:6px;flex-shrink:0">';
+    s+='<span class="project-card-status status-'+ct.status+'">'+(statusMap[ct.status]||ct.status)+'</span>';
+    s+='<button class="btn-sm" onclick="openProjectContractForm(\''+ct.id+'\')">✏️</button>';
+    s+='<button class="btn-sm btn-sm-danger" onclick="deleteProjectContract(\''+ct.id+'\')">🗑</button>';
+    s+='</div></div></div>';
+  }
+  list.innerHTML=s;
+}
+
+function openProjectContractForm(id){
+  var ct=id?allProjectContracts.find(function(x){return x.id===id}):null;
+  var wonBids=allBiddings.filter(function(b){return b.status==='won'});
+  var s='<div class="modal-overlay" id="pcontract-form-modal"><div class="modal-sheet"><h3>'+(ct?'编辑合同':'签订合同')+'</h3>';
+  s+='<div class="form-group"><label>关联中标</label><select id="pcf-bid">';
+  for(var i=0;i<wonBids.length;i++)s+='<option value="'+wonBids[i].id+'"'+(ct&&ct.bid_id===wonBids[i].id?' selected':'')+'>'+h(wonBids[i].title)+' ('+formatMoney(wonBids[i].bid_amount||0)+')</option>';
+  s+='</select></div>';
+  s+='<div class="form-group"><label>合同标题 *</label><input id="pcf-title" placeholder="合同标题" value="'+h(ct?ct.title||'':'')+'"></div>';
+  s+='<div class="form-group"><label>合同编号</label><input id="pcf-no" placeholder="如: HT-2026-001" value="'+h(ct?ct.contract_no||'':'')+'"></div>';
+  s+='<div class="form-row"><div class="form-group"><label>合同金额</label><input id="pcf-amount" type="number" step="0.01" placeholder="0.00" value="'+(ct?ct.amount||'':'')+'"></div><div class="form-group"><label>签字日期</label><input id="pcf-sign" type="date" value="'+(ct?ct.sign_date||'':'')+'"></div></div>';
+  s+='<div class="form-row"><div class="form-group"><label>开始日期</label><input id="pcf-start" type="date" value="'+(ct?ct.start_date||'':'')+'"></div><div class="form-group"><label>结束日期</label><input id="pcf-end" type="date" value="'+(ct?ct.end_date||'':'')+'"></div></div>';
+  s+='<div class="form-row"><div class="form-group"><label>我方</label><input id="pcf-our" placeholder="我方公司" value="'+h(ct?ct.our_party||'':'')+'"></div><div class="form-group"><label>对方</label><input id="pcf-their" placeholder="对方公司" value="'+h(ct?ct.their_party||'':'')+'"></div></div>';
+  var statuses=[{v:'draft',t:'草稿'},{v:'signed',t:'已签署'},{v:'executing',t:'执行中'},{v:'completed',t:'已完成'},{v:'terminated',t:'已终止'}];
+  s+='<div class="form-group"><label>状态</label><select id="pcf-status">';
+  for(var i=0;i<statuses.length;i++)s+='<option value="'+statuses[i].v+'"'+(ct&&ct.status===statuses[i].v?' selected':'')+'>'+statuses[i].t+'</option>';
+  s+='</select></div>';
+  s+='<div class="form-group"><label>备注</label><textarea id="pcf-notes" rows="2" placeholder="备注...">'+h(ct?ct.notes||'':'')+'</textarea></div>';
+  if(ct)s+='<input type="hidden" id="pcf-edit-id" value="'+ct.id+'">';
+  s+='<div class="modal-actions"><button class="btn-cancel" onclick="document.getElementById(\'pcontract-form-modal\').remove()">取消</button><button class="btn-save" onclick="saveProjectContract()">保存</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend',s);
+}
+
+async function saveProjectContract(){
+  var title=document.getElementById('pcf-title').value.trim();
+  if(!title){showToast('请输入合同标题');return}
+  var editEl=document.getElementById('pcf-edit-id');
+  var row={project_id:curProjectId,bid_id:document.getElementById('pcf-bid').value,title:title,contract_no:document.getElementById('pcf-no').value.trim(),amount:parseFloat(document.getElementById('pcf-amount').value)||0,sign_date:document.getElementById('pcf-sign').value||null,start_date:document.getElementById('pcf-start').value||null,end_date:document.getElementById('pcf-end').value||null,our_party:document.getElementById('pcf-our').value.trim(),their_party:document.getElementById('pcf-their').value.trim(),status:document.getElementById('pcf-status').value,notes:document.getElementById('pcf-notes').value.trim()};
+  document.getElementById('pcontract-form-modal').remove();
+  if(editEl){
+    var {error}=await sb.from('project_contracts').update(row).eq('id',editEl.value);
+    if(error){showToast('更新失败: '+error.message);return}
+  }else{
+    row.company_id=currentCompanyId;
+    var {error}=await sb.from('project_contracts').insert(row);
+    if(error){showToast('创建失败: '+error.message);return}
+  }
+  loadProjectContracts();showToast(editEl?'已更新':'已创建');
+}
+
+async function deleteProjectContract(id){
+  if(!confirm('确定删除该合同？'))return;
+  var {error}=await sb.from('project_contracts').delete().eq('id',id);
+  if(error){showToast('删除失败: '+error.message);return}
+  loadProjectContracts();showToast('已删除');
+}
+
+// === Delivery ===
+async function loadDeliveries(){
+  if(!curProjectId)return;
+  var {data,error}=await sb.from('project_deliveries').select('*').eq('project_id',curProjectId).order('created_at',{ascending:false});
+  if(error){console.error(error);return}
+  allDeliveries=data||[];
+  renderDeliveries();
+}
+
+function renderDeliveries(){
+  var list=document.getElementById('delivery-list');
+  if(!allDeliveries.length){list.innerHTML='<div style="text-align:center;padding:40px;color:var(--text2)">\u6682\u65e0\u4ea4\u4ed8\u8bb0\u5f55</div>';return}
+  var statusMap={pending:'\u5f85\u4ea4\u4ed8',delivered:'\u5df2\u4ea4\u4ed8',accepted:'\u5df2\u9a8c\u6536',rejected:'\u5df2\u62d2\u6536'};
+  var s='';
+  for(var i=0;i<allDeliveries.length;i++){
+    var d=allDeliveries[i];
+    s+='<div class="delivery-item">';
+    s+='<div style="flex:1;min-width:200px"><div style="font-weight:600;font-size:14px;color:var(--text)">'+h(d.title)+'</div>';
+    s+='<div style="font-size:12px;color:var(--text2)">'+h(d.description||'')+' '+(d.delivery_date?'\U0001f4c5 '+d.delivery_date:'')+'</div></div>';
+    s+='<div style="display:flex;align-items:center;gap:8px">';
+    s+='<span class="project-card-status status-'+d.status+'">'+(statusMap[d.status]||d.status)+'</span>';
+    s+='<button class="btn-sm" onclick="openDeliveryForm(\''+d.id+'\')">\u270f\ufe0f</button>';
+    s+='<button class="btn-sm btn-sm-danger" onclick="deleteDelivery(\''+d.id+'\')">\U0001f5d1</button>';
+    s+='</div></div>';
+  }
+  list.innerHTML=s;
+}
+
+function openDeliveryForm(id){
+  var d=id?allDeliveries.find(function(x){return x.id===id}):null;
+  var s='<div class="modal-overlay" id="delivery-form-modal"><div class="modal-sheet"><h3>'+(d?'\u7f16\u8f91\u4ea4\u4ed8':'\u65b0\u5efa\u4ea4\u4ed8')+'</h3>';
+  s+='<div class="form-group"><label>\u4ea4\u4ed8\u6807\u9898 *</label><input id="df-title" placeholder="\u4ea4\u4ed8\u7269\u540d\u79f0" value="'+h(d?d.title||'':'')+'"></div>';
+  s+='<div class="form-group"><label>\u63cf\u8ff0</label><textarea id="df-desc" rows="2" placeholder="\u4ea4\u4ed8\u5185\u5bb9\u63cf\u8ff0...">'+h(d?d.description||'':'')+'</textarea></div>';
+  s+='<div class="form-group"><label>\u4ea4\u4ed8\u65e5\u671f</label><input id="df-date" type="date" value="'+(d?d.delivery_date||'':'')+'"></div>';
+  s+='<div class="form-group"><label>\u9a8c\u6536\u6807\u51c6</label><input id="df-criteria" placeholder="\u9a8c\u6536\u6761\u4ef6" value="'+h(d?d.acceptance_criteria||'':'')+'"></div>';
+  var statuses=[{v:'pending',t:'\u5f85\u4ea4\u4ed8'},{v:'delivered',t:'\u5df2\u4ea4\u4ed8'},{v:'accepted',t:'\u5df2\u9a8c\u6536'},{v:'rejected',t:'\u5df2\u62d2\u6536'}];
+  s+='<div class="form-group"><label>\u72b6\u6001</label><select id="df-status">';
+  for(var i=0;i<statuses.length;i++)s+='<option value="'+statuses[i].v+'"'+(d&&d.status===statuses[i].v?' selected':'')+'>'+statuses[i].t+'</option>';
+  s+='</select></div>';
+  s+='<div class="form-group"><label>\u5907\u6ce8</label><textarea id="df-notes" rows="2" placeholder="\u5907\u6ce8...">'+h(d?d.notes||'':'')+'</textarea></div>';
+  if(d)s+='<input type="hidden" id="df-edit-id" value="'+d.id+'">';
+  s+='<div class="modal-actions"><button class="btn-cancel" onclick="document.getElementById(\'delivery-form-modal\').remove()">\u53d6\u6d88</button>';
+  s+='<button class="btn-save" onclick="saveDelivery()">\u4fdd\u5b58</button>';
+  if(d)s+='<button class="btn-save" style="background:var(--warning)" onclick="requestAcceptanceApproval(\''+d.id+'\')">\U0001f4cb \u7533\u8bf7\u9a8c\u6536\u5ba1\u6279</button>';
+  s+='</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend',s);
+}
+
+async function saveDelivery(){
+  var title=document.getElementById('df-title').value.trim();
+  if(!title){showToast('\u8bf7\u8f93\u5165\u4ea4\u4ed8\u6807\u9898');return}
+  var editEl=document.getElementById('df-edit-id');
+  var row={project_id:curProjectId,title:title,description:document.getElementById('df-desc').value.trim(),delivery_date:document.getElementById('df-date').value||null,acceptance_criteria:document.getElementById('df-criteria').value.trim(),status:document.getElementById('df-status').value,notes:document.getElementById('df-notes').value.trim()};
+  document.getElementById('delivery-form-modal').remove();
+  if(editEl){
+    var {error}=await sb.from('project_deliveries').update(row).eq('id',editEl.value);
+    if(error){showToast('\u66f4\u65b0\u5931\u8d25: '+error.message);return}
+  }else{
+    var {error}=await sb.from('project_deliveries').insert(row);
+    if(error){showToast('\u521b\u5efa\u5931\u8d25: '+error.message);return}
+  }
+  loadDeliveries();showToast(editEl?'\u5df2\u66f4\u65b0':'\u5df2\u521b\u5efa');
+}
+
+async function deleteDelivery(id){
+  if(!confirm('\u786e\u5b9a\u5220\u9664\u8be5\u4ea4\u4ed8\u8bb0\u5f55\uff1f'))return;
+  var {error}=await sb.from('project_deliveries').delete().eq('id',id);
+  if(error){showToast('\u5220\u9664\u5931\u8d25: '+error.message);return}
+  loadDeliveries();showToast('\u5df2\u5220\u9664');
+}
+
+async function requestAcceptanceApproval(deliveryId){
+  var d=allDeliveries.find(function(x){return x.id===deliveryId});
+  if(!d)return;
+  var {error}=await sb.from('approval_requests').insert({company_id:currentCompanyId,requestor_id:currentUser.id,title:'\u4ea4\u4ed8\u9a8c\u6536\u5ba1\u6279 - '+d.title,type:'\u4ea4\u4ed8\u9a8c\u6536\u5ba1\u6279',content:{detail:'\u9879\u76ee: '+curProjectName+'\n\u4ea4\u4ed8\u7269: '+d.title+'\n\u9a8c\u6536\u6807\u51c6: '+(d.acceptance_criteria||'\u65e0')},status:'pending',total_steps:1});
+  if(error){showToast('\u63d0\u4ea4\u5ba1\u6279\u5931\u8d25: '+error.message);return}
+  showToast('\u9a8c\u6536\u5ba1\u6279\u5df2\u63d0\u4ea4');
+}
+
+// === Payments ===
+async function loadPayments(){
+  if(!curProjectId)return;
+  var {data,error}=await sb.from('project_payments').select('*').eq('project_id',curProjectId).order('created_at',{ascending:false});
+  if(error){console.error(error);return}
+  allPayments=data||[];
+  renderPayments();
+}
+
+function renderPayments(){
+  var list=document.getElementById('payment-list');
+  if(!allPayments.length){list.innerHTML='<div style="text-align:center;padding:40px;color:var(--text2)">\u6682\u65e0\u6536\u6b3e\u8bb0\u5f55</div>';return}
+  var statusMap={pending:'\u5f85\u6536\u6b3e',received:'\u5df2\u6536\u6b3e',overdue:'\u5df2\u903e\u671f'};
+  var s='';var total=0;
+  for(var i=0;i<allPayments.length;i++){
+    var pm=allPayments[i];
+    total+=pm.amount||0;
+    s+='<div class="payment-item">';
+    s+='<div style="flex:1;min-width:200px"><div style="font-weight:600;font-size:14px;color:var(--text)">'+h(pm.title)+'</div>';
+    s+='<div style="font-size:12px;color:var(--text2)">'+(pm.invoice_no?'\u53d1\u7968: '+h(pm.invoice_no)+' ':'')+(pm.payment_method?h(pm.payment_method)+' ':'')+(pm.payment_date?'\U0001f4c5 '+pm.payment_date:'')+'</div></div>';
+    s+='<div style="display:flex;align-items:center;gap:8px">';
+    s+='<span style="font-weight:700;color:var(--text);margin-right:8px">'+formatMoney(pm.amount||0)+'</span>';
+    s+='<span class="project-card-status status-'+pm.status+'">'+(statusMap[pm.status]||pm.status)+'</span>';
+    s+='<button class="btn-sm" onclick="openPaymentForm(\''+pm.id+'\')">\u270f\ufe0f</button>';
+    s+='<button class="btn-sm btn-sm-danger" onclick="deletePayment(\''+pm.id+'\')">\U0001f5d1</button>';
+    s+='</div></div>';
+  }
+  s+='<div style="text-align:right;font-weight:700;font-size:14px;margin-top:8px;color:var(--text)">\u5408\u8ba1: '+formatMoney(total)+'</div>';
+  list.innerHTML=s;
+}
+
+function openPaymentForm(id){
+  var pm=id?allPayments.find(function(x){return x.id===id}):null;
+  var s='<div class="modal-overlay" id="payment-form-modal"><div class="modal-sheet"><h3>'+(pm?'\u7f16\u8f91\u6536\u6b3e':'\u65b0\u5efa\u6536\u6b3e')+'</h3>';
+  s+='<div class="form-group"><label>\u6536\u6b3e\u6807\u9898 *</label><input id="pmf-title" placeholder="\u5982\uff1a\u9996\u4ed8\u6b3e\u3001\u5c3e\u6b3e" value="'+h(pm?pm.title||'':'')+'"></div>';
+  s+='<div class="form-row"><div class="form-group"><label>\u91d1\u989d</label><input id="pmf-amount" type="number" step="0.01" placeholder="0.00" value="'+(pm?pm.amount||'':'')+'"></div><div class="form-group"><label>\u6536\u6b3e\u65e5\u671f</label><input id="pmf-date" type="date" value="'+(pm?pm.payment_date||'':'')+'"></div></div>';
+  var statuses=[{v:'pending',t:'\u5f85\u6536\u6b3e'},{v:'received',t:'\u5df2\u6536\u6b3e'},{v:'overdue',t:'\u5df2\u903e\u671f'}];
+  s+='<div class="form-row"><div class="form-group"><label>\u72b6\u6001</label><select id="pmf-status">';
+  for(var i=0;i<statuses.length;i++)s+='<option value="'+statuses[i].v+'"'+(pm&&pm.status===statuses[i].v?' selected':'')+'>'+statuses[i].t+'</option>';
+  s+='</select></div><div class="form-group"><label>\u4ed8\u6b3e\u65b9\u5f0f</label><input id="pmf-method" placeholder="\u94f6\u884c\u8f6c\u8d26/\u73b0\u91d1/\u652f\u7968" value="'+h(pm?pm.payment_method||'':'')+'"></div></div>';
+  s+='<div class="form-row"><div class="form-group"><label>\u53d1\u7968\u53f7</label><input id="pmf-invoice" placeholder="\u53d1\u7968\u53f7\u7801" value="'+h(pm?pm.invoice_no||'':'')+'"></div><div class="form-group"><label>\u5907\u6ce8</label><input id="pmf-notes" placeholder="\u5907\u6ce8" value="'+h(pm?pm.notes||'':'')+'"></div></div>';
+  if(pm)s+='<input type="hidden" id="pmf-edit-id" value="'+pm.id+'">';
+  s+='<div class="modal-actions"><button class="btn-cancel" onclick="document.getElementById(\'payment-form-modal\').remove()">\u53d6\u6d88</button><button class="btn-save" onclick="savePayment()">\u4fdd\u5b58</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend',s);
+}
+
+async function savePayment(){
+  var title=document.getElementById('pmf-title').value.trim();
+  if(!title){showToast('\u8bf7\u8f93\u5165\u6536\u6b3e\u6807\u9898');return}
+  var editEl=document.getElementById('pmf-edit-id');
+  var row={project_id:curProjectId,title:title,amount:parseFloat(document.getElementById('pmf-amount').value)||0,payment_date:document.getElementById('pmf-date').value||null,status:document.getElementById('pmf-status').value,payment_method:document.getElementById('pmf-method').value.trim(),invoice_no:document.getElementById('pmf-invoice').value.trim(),notes:document.getElementById('pmf-notes').value.trim()};
+  document.getElementById('payment-form-modal').remove();
+  if(editEl){
+    var {error}=await sb.from('project_payments').update(row).eq('id',editEl.value);
+    if(error){showToast('\u66f4\u65b0\u5931\u8d25: '+error.message);return}
+  }else{
+    var {error}=await sb.from('project_payments').insert(row);
+    if(error){showToast('\u521b\u5efa\u5931\u8d25: '+error.message);return}
+  }
+  loadPayments();showToast(editEl?'\u5df2\u66f4\u65b0':'\u5df2\u521b\u5efa');
+}
+
+async function deletePayment(id){
+  if(!confirm('\u786e\u5b9a\u5220\u9664\u8be5\u6536\u6b3e\u8bb0\u5f55\uff1f'))return;
+  var {error}=await sb.from('project_payments').delete().eq('id',id);
+  if(error){showToast('\u5220\u9664\u5931\u8d25: '+error.message);return}
+  loadPayments();showToast('\u5df2\u5220\u9664');
+}
