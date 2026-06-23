@@ -81,6 +81,7 @@ input,select,textarea,button{font-family:inherit}
 .fab:active{transform:scale(.9);box-shadow:0 2px 8px rgba(79,110,247,.3)}
 
 .modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:300;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+#move-modal{z-index:1000}
 .modal-sheet{background:#fff;width:100%;max-width:480px;border-radius:20px 20px 0 0;max-height:92vh;overflow-y:auto;overflow-x:hidden;padding:20px 16px 32px;animation:slideUp .3s cubic-bezier(.16,1,.3,1);box-sizing:border-box;min-height:0}
 @media(max-width:480px){.modal-sheet{max-width:100%;border-radius:20px 20px 0 0;padding:16px 12px 24px;max-height:88vh}}
 @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
@@ -3341,6 +3342,7 @@ function searchMoveTarget(){
 async function doMove(targetId,targetName){
   var co=moveContactObj;
   if(!co)return;
+  if(!confirm('确认将联系人「'+(co.name||co.contact_name||'')+'」转移到「'+targetName+'」？')) return;
   if(!co._new&&co.id){
     var {error}=await sb.from('contacts').update({client_id:targetId}).eq('id',co.id);
     if(error){showToast('转移失败');return}
