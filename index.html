@@ -9396,21 +9396,42 @@ async function doAssignLead(){
 }
 
 async function convertLeadToClient(id){
-  // Fetch lead from Supabase directly - don't trust possibly-stale local arrays
+  // Fetch lead from Supabase directly
   var {data:leads,error:le}=await sb.from('lead_pool').select('*').eq('id',id).single();
   if(le||!leads){showToast('线索未找到: '+(le?le.message:'数据为空'));return}
   var l=leads;
-  var client={name:l.name,type:'[]',address:'',notes:l.notes||'',industry:l.industry||'',scale:l.scale||'',source:l.source||'',lifecycle_stage:'prospect',user_id:currentUser.id,company_id:currentCompanyId};
-  try{var {data:cd,error}=await sb.from('clients').insert(client).select('id');if(error){showToast('转化失败: '+error.message);return}}catch(e){showToast('转化异常: '+(e.message||e));console.error('convertLeadToClient insert:',e);return}
-  var clientId=cd[0].id;
-  // Create contact if contact info exists
+  // Dedup: check if a client with the same name already exists in this company
+  var clientId=null;
+  var {data:existing}=await sb.from('clients').select('id,name').eq('company_id',currentCompanyId).ilike('name',l.name).limit(1);
+  if(existing&&existing.length>0){
+    clientId=existing[0].id;
+    // Update existing client fields (merge: line info enriches client)
+    var patch={};
+    if(l.industry&&!existing[0].industry)patch.industry=l.industry;
+    if(l.scale)patch.scale=l.scale;
+    if(l.source)patch.source=l.source;
+    if(Object.keys(patch).length>0){await sb.from('clients').update(patch).eq('id',clientId)}
+  }else{
+    var client={name:l.name,type:'[]',address:'',notes:l.notes||'',industry:l.industry||'',scale:l.scale||'',source:l.source||'',lifecycle_stage:'prospect',user_id:currentUser.id,company_id:currentCompanyId};
+    var {data:cd,error}=await sb.from('clients').insert(client).select('id');
+    if(error){showToast('转化失败: '+error.message);return}
+    clientId=cd[0].id;
+  }
+  // Always add contact (dedup by phone within this client)
   if(l.contact_name||l.contact_phone||l.contact_email){
-    await sb.from('contacts').insert({client_id:clientId,name:l.contact_name||'',phone:JSON.stringify(l.contact_phone?[l.contact_phone]:['']),email:JSON.stringify(l.contact_email?[l.contact_email]:['']),company_id:currentCompanyId,user_id:currentUser.id});
+    var phoneArr=l.contact_phone?[l.contact_phone]:[''];
+    // Check if same phone already exists for this client
+    var {data:ec}=await sb.from('contacts').select('id,phone').eq('client_id',clientId);
+    var dupPhone=false;
+    if(ec)for(var ci=0;ci<ec.length;ci++){try{var eph=JSON.parse(ec[ci].phone||'[]');if(!Array.isArray(eph))eph=[String(eph||'')];if(eph.indexOf(l.contact_phone)>=0&&l.contact_phone){dupPhone=true;break}}catch(ex){}}
+    if(!dupPhone){
+      await sb.from('contacts').insert({client_id:clientId,name:l.contact_name||'',phone:JSON.stringify(phoneArr),email:JSON.stringify(l.contact_email?[l.contact_email]:['']),company_id:currentCompanyId,user_id:currentUser.id});
+    }
   }
   // Update lead
   await sb.from('lead_pool').update({status:'converted',converted_client_id:clientId,converted_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',id);
   loadClients();await loadPoolLeads();await loadLeads();
-  showToast('已转化为客户');
+  showToast(existing&&existing.length>0?'线索已关联到已有客户「'+existing[0].name+'」':'已转化为客户');
 }
 
 function openLeadImport(){
