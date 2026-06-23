@@ -2676,9 +2676,10 @@ function closeSettings(){
 }
 
 async function openMy(){
-  document.getElementById('main-screen').classList.add('hidden');
   document.getElementById('settings-screen').style.display='none';
-  document.getElementById('my-screen').style.display='block';
+  var ms=document.getElementById('my-screen');
+  document.body.appendChild(ms);
+  ms.style.display='block';
   // Load full profile
   var {data:profile}=await sb.from('profiles').select('*').eq('user_id',currentUser.id).single();
   if(!profile){profile={}}
@@ -2728,8 +2729,9 @@ async function openMy(){
 }
 
 function closeMy(){
-  document.getElementById('my-screen').style.display='none';
-  document.getElementById('main-screen').classList.remove('hidden');
+  var ms=document.getElementById('my-screen');
+  ms.style.display='none';
+  document.getElementById('main-screen').appendChild(ms);
 }
 
 // === 我的页面 内联编辑 ===
@@ -2938,8 +2940,9 @@ function buildDirFilter(){
   document.getElementById('dir-filter').innerHTML=html;
 }
 function showCompanies(){
-  document.getElementById('main-screen').classList.add('hidden');
-  document.getElementById('dir-screen').classList.remove('hidden');
+  var ds=document.getElementById('dir-screen');
+  document.body.appendChild(ds);
+  ds.classList.remove('hidden');
   renderDir();
 }
 
@@ -2957,8 +2960,9 @@ async function showLeads(){
   await loadPoolLeads();
 }
 function closeDir(){
-  document.getElementById('dir-screen').classList.add('hidden');
-  document.getElementById('main-screen').classList.remove('hidden');
+  var ds=document.getElementById('dir-screen');
+  ds.classList.add('hidden');
+  document.getElementById('main-screen').appendChild(ds);
 }
 function renderDir(){
   var q=(document.getElementById('dir-search').value||'').trim().toLowerCase();
