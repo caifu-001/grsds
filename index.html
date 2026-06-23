@@ -881,6 +881,20 @@ input,select,textarea,button{font-family:inherit}
 .bidding-item-meta{font-size:12px;color:var(--text2);display:flex;gap:12px;flex-wrap:wrap}
 .seal-badge{display:inline-flex;align-items:center;gap:3px;font-size:11px;padding:2px 8px;border-radius:8px;background:#fce8e6;color:#c5221f;font-weight:600}
 .delivery-item,.payment-item{background:var(--card-bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+/* ── Workflow ── */
+.wf-phase{padding:0;margin:0}
+.wf-phase-header{display:flex;align-items:center;gap:8px;padding:6px 12px;background:var(--bg2);border-radius:6px;cursor:pointer;font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px}
+.wf-phase-header .wf-icon{font-size:14px}
+.wf-phase-header .wf-count{font-size:11px;color:var(--text3);margin-left:auto}
+.wf-step{display:flex;align-items:center;gap:10px;padding:6px 12px 6px 28px;cursor:pointer;border-radius:4px;transition:background .12s}
+.wf-step:hover{background:var(--bg2)}
+.wf-step-num{width:22px;height:22px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;background:var(--card-bg);color:var(--text3)}
+.wf-step.done .wf-step-num{background:var(--primary);border-color:var(--primary);color:#fff}
+.wf-step-name{font-size:13px;color:var(--text);flex:1}
+.wf-step.done .wf-step-name{color:var(--text3);text-decoration:line-through}
+.wf-step-badge{font-size:10px;padding:1px 6px;border-radius:8px;font-weight:600;white-space:nowrap}
+.wf-badge-parallel{background:#fef3c7;color:#92400e}
+.wf-badge-decision{background:#fee2e2;color:#991b1b}
 @media(max-width:900px){.project-card-meta{flex-direction:column;gap:4px}.stage-item,.delivery-item,.payment-item{flex-direction:column;align-items:flex-start}}
 
 </style>
@@ -2309,6 +2323,7 @@ input,select,textarea,button{font-family:inherit}
   <button class="sub-tab" data-ptab="contract" onclick="switchProjectTab('contract')">合同</button>
   <button class="sub-tab" data-ptab="delivery" onclick="switchProjectTab('delivery')">项目交付</button>
   <button class="sub-tab" data-ptab="payment" onclick="switchProjectTab('payment')">项目收款</button>
+  <button class="sub-tab" data-ptab="workflow" onclick="switchProjectTab('workflow')">项目流程</button>
  </div>
  <div id="project-list-panel" class="project-panel">
   <div style="background:#ffeb3b;padding:8px 12px;margin-bottom:8px;border-radius:4px;font-size:13px;font-weight:700">🔧 DIAG: panel is visible - JS will replace this</div>
@@ -2367,6 +2382,22 @@ input,select,textarea,button{font-family:inherit}
    <button class="btn-sm btn-sm-primary" onclick="openPaymentForm()">+ 新建收款</button>
   </div>
   <div id="payment-list" style="display:flex;flex-direction:column;gap:8px"></div>
+ </div>
+ <div id="project-workflow-panel" class="project-panel hidden">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+   <div style="display:flex;align-items:center;gap:12px">
+    <button class="btn-sm" onclick="switchProjectTab('list')">← 返回</button>
+    <h3 style="font-size:16px;font-weight:700;margin:0" id="workflow-project-name">项目流程</h3>
+   </div>
+   <div style="display:flex;gap:8px;align-items:center">
+    <span style="font-size:12px;color:var(--text2)" id="wf-progress-text">0/45</span>
+    <button class="btn-sm btn-sm-primary" onclick="resetWorkflow()">重置</button>
+   </div>
+  </div>
+  <div id="workflow-progress" style="height:4px;background:var(--border);border-radius:2px;margin-bottom:12px">
+   <div id="wf-progress-bar" style="height:100%;width:0%;background:var(--primary);border-radius:2px;transition:width .3s"></div>
+  </div>
+  <div id="workflow-container" style="display:flex;flex-direction:column;gap:2px"></div>
  </div>
 </div>
 
@@ -10561,7 +10592,7 @@ var allProjects=[],allStages=[],allBiddings=[],allDeliveries=[],allPayments=[],c
 var pStageEditId=null,pBiddingEditId=null,pDeliveryEditId=null,pPaymentEditId=null;
 
 function switchProjectTab(tab){
-  ['list','stages','bidding','contract','delivery','payment'].forEach(function(t){
+  ['list','stages','bidding','contract','delivery','payment','workflow'].forEach(function(t){
     var p=document.getElementById('project-'+t+'-panel');if(p)p.classList.toggle('hidden',t!==tab)
   });
   var subs=document.querySelectorAll('#projects-view .sub-tab');
@@ -10573,6 +10604,7 @@ function switchProjectTab(tab){
   else if(tab==='contract'){if(curProjectId)loadProjectContracts()}
   else if(tab==='delivery'){if(curProjectId)loadDeliveries()}
   else if(tab==='payment'){if(curProjectId)loadPayments()}
+  else if(tab==='workflow'){if(curProjectId)renderWorkflow()}
 }
 
 async function loadProjects(){
@@ -10612,8 +10644,157 @@ function renderProjects(){
   list.innerHTML=s;
 }
 
+// ===== Project Workflow =====
+var curWorkflow={};
+var WORKFLOW_STEPS=[
+  // Phase 1: 线索
+  {seq:1,phase:'线索',name:'搜集线索',icon:'🔍'},
+  // Phase 2: 商机
+  {seq:2,phase:'商机',name:'分析与验证',icon:'💡'},
+  // Phase 3: 分析与策略
+  {seq:3,phase:'分析与策略',name:'获取竞争对手名单',icon:'📋'},
+  {seq:4,phase:'分析与策略',name:'竞争与分析',icon:'📊'},
+  {seq:5,phase:'分析与策略',name:'参与决策',icon:'🚦',decision:true},
+  // Phase 4: 内部赋能 (5通过后串行)
+  {seq:6,phase:'内部赋能',name:'学习培训',icon:'📖'},
+  {seq:7,phase:'内部赋能',name:'厂家比较',icon:'🔄'},
+  // Phase 5: 初步方案定制
+  {seq:8,phase:'初步方案定制',name:'客户交流方案',icon:'💬'},
+  {seq:9,phase:'初步方案定制',name:'内部审核',icon:'🚦',decision:true},
+  // Phase 6: 项目运作
+  {seq:10,phase:'项目运作',name:'公司介绍交流方案',icon:'🏢'},
+  {seq:11,phase:'项目运作',name:'获取客户详细需求',icon:'📝'},
+  {seq:12,phase:'项目运作',name:'品牌报备',icon:'🏷️'},
+  {seq:13,phase:'项目运作',name:'详细方案',icon:'📐'},
+  {seq:14,phase:'项目运作',name:'配置报价',icon:'💰'},
+  {seq:15,phase:'项目运作',name:'决策链分析',icon:'🔗'},
+  {seq:16,phase:'项目运作',name:'决策链对应汇报',icon:'📤'},
+  {seq:17,phase:'项目运作',name:'总结复盘',icon:'🔄'},
+  {seq:18,phase:'项目运作',name:'方案优化调整',icon:'🔧'},
+  {seq:19,phase:'项目运作',name:'制定招标方案',icon:'📑'},
+  {seq:20,phase:'项目运作',name:'是否借壳',icon:'❓',decision:true},
+  // Phase 7a: 借壳运营商 (20→是)
+  {seq:21,phase:'借壳运营商',name:'标书分析',icon:'📄',branch:'借壳'},
+  {seq:22,phase:'借壳运营商',name:'竞争分析',icon:'📊',branch:'借壳'},
+  {seq:23,phase:'借壳运营商',name:'商务策略',icon:'🤝',branch:'借壳'},
+  {seq:24,phase:'借壳运营商',name:'配合厂家提供',icon:'🏭',branch:'借壳'},
+  {seq:25,phase:'借壳运营商',name:'运营商招标',icon:'🏗️',branch:'借壳'},
+  {seq:26,phase:'借壳运营商',name:'协助运营商制定标书',icon:'✍️',branch:'借壳'},
+  {seq:27,phase:'借壳运营商',name:'有无标签协议',icon:'🚦',decision:true,branch:'借壳'},
+  // Phase 7b: 是否提前过我司投标 (28→29串行 或 28有→直接42)
+  {seq:28,phase:'是否提前过我司投标',name:'提前施工函',icon:'🚦',decision:true},
+  {seq:29,phase:'是否提前过我司投标',name:'供应商注册',icon:'📝'},
+  {seq:30,phase:'是否提前过我司投标',name:'购买标书',icon:'🛒'},
+  {seq:31,phase:'是否提前过我司投标',name:'投标保证金',icon:'💳'},
+  {seq:32,phase:'是否提前过我司投标',name:'标书分析',icon:'📄'},
+  {seq:33,phase:'是否提前过我司投标',name:'竞争情况分析',icon:'📊'},
+  {seq:34,phase:'是否提前过我司投标',name:'商务策略',icon:'🤝'},
+  {seq:35,phase:'是否提前过我司投标',name:'厂家提供',icon:'🏭'},
+  {seq:36,phase:'是否提前过我司投标',name:'竞争对手情况',icon:'👥'},
+  {seq:37,phase:'是否提前过我司投标',name:'应答文件制定检查',icon:'✔️'},
+  // Phase 8: 合同签订
+  {seq:38,phase:'合同签订',name:'条款与信息确认',icon:'📋'},
+  {seq:39,phase:'合同签订',name:'进销项税率确认',icon:'🧾'},
+  {seq:40,phase:'合同签订',name:'法务审核',icon:'⚖️'},
+  {seq:41,phase:'合同签订',name:'签章',icon:'🖊️'},
+  // Phase 9: 交付
+  {seq:42,phase:'交付',name:'工期把控',icon:'⏱️'},
+  {seq:43,phase:'交付',name:'工程文档',icon:'📁'},
+  {seq:44,phase:'交付',name:'签收材料',icon:'📦'},
+  // Phase 10: 开票回款
+  {seq:45,phase:'开票回款',name:'开票回款',icon:'💵'},
+  // End
+  {seq:46,phase:'结束',name:'结束',icon:'⏹️'}
+];
+
+function initWorkflow(){
+  curWorkflow={};
+  for(var i=0;i<WORKFLOW_STEPS.length;i++){
+    curWorkflow[WORKFLOW_STEPS[i].seq]={done:false,note:''};
+  }
+}
+initWorkflow();
+
+function loadWorkflow(){
+  if(!curProjectId)return;
+  var proj=allProjects.find(function(p){return p.id===curProjectId});
+  if(!proj)return;
+  try{curWorkflow=JSON.parse(proj.workflow||'{}');}catch(e){curWorkflow={}}
+  if(!curWorkflow||Object.keys(curWorkflow).length===0)initWorkflow();
+  renderWorkflow();
+}
+
+async function saveWorkflow(){
+  if(!curProjectId)return;
+  var {error}=await sb.from('projects').update({workflow:JSON.stringify(curWorkflow)}).eq('id',curProjectId);
+  if(error){console.error('saveWorkflow:',error);showToast('保存失败: '+error.message);return}
+  // update local cache
+  var proj=allProjects.find(function(p){return p.id===curProjectId});
+  if(proj)proj.workflow=JSON.stringify(curWorkflow);
+}
+
+function toggleWorkflowStep(seq){
+  curWorkflow[seq]=curWorkflow[seq]||{done:false,note:''};
+  curWorkflow[seq].done=!curWorkflow[seq].done;
+  renderWorkflow();
+  saveWorkflow();
+}
+
+function resetWorkflow(){
+  if(!confirm('确定重置所有流程步骤？'))return;
+  initWorkflow();
+  renderWorkflow();
+  saveWorkflow();
+}
+
+function renderWorkflow(){
+  var doc=document.getElementById('workflow-project-name');
+  if(doc)doc.textContent=curProjectName||'项目流程';
+  var container=document.getElementById('workflow-container');
+  if(!container)return;
+  var doneCount=0;
+  for(var i=0;i<WORKFLOW_STEPS.length;i++){
+    var step=WORKFLOW_STEPS[i];
+    var st=curWorkflow[step.seq]||{done:false,note:''};
+    if(st.done)doneCount++;
+  }
+  var pct=Math.round(doneCount/WORKFLOW_STEPS.length*100);
+  var pbar=document.getElementById('wf-progress-bar');if(pbar)pbar.style.width=pct+'%';
+  var ptxt=document.getElementById('wf-progress-text');if(ptxt)ptxt.textContent=doneCount+'/'+WORKFLOW_STEPS.length;
+
+  var phases={},phaseOrder=[];
+  for(var i=0;i<WORKFLOW_STEPS.length;i++){
+    var step=WORKFLOW_STEPS[i];
+    if(!phases[step.phase]){phases[step.phase]=[];phaseOrder.push(step.phase)}
+    phases[step.phase].push(step);
+  }
+  var html='';
+  for(var pi=0;pi<phaseOrder.length;pi++){
+    var pname=phaseOrder[pi];
+    var steps=phases[pname];
+    var pdone=0;
+    for(var j=0;j<steps.length;j++){var st=curWorkflow[steps[j].seq]||{done:false};if(st.done)pdone++}
+    html+='<div class="wf-phase">';
+    html+='<div class="wf-phase-header"><span class="wf-icon">'+(steps[0].icon||'📌')+'</span>'+h(pname)+'<span class="wf-count">'+pdone+'/'+steps.length+'</span></div>';
+    for(var j=0;j<steps.length;j++){
+      var step=steps[j],st=curWorkflow[step.seq]||{done:false,note:''};
+      var cls='wf-step'+(st.done?' done':'');
+      html+='<div class="'+cls+'" onclick="toggleWorkflowStep('+step.seq+')">';
+      html+='<span class="wf-step-num">'+(st.done?'✓':step.seq)+'</span>';
+      html+='<span class="wf-step-name">'+h(step.name)+'</span>';
+      if(step.parallel)html+='<span class="wf-step-badge wf-badge-parallel">并行</span>';
+      if(step.decision)html+='<span class="wf-step-badge wf-badge-decision">判断</span>';
+      if(step.branch)html+='<span class="wf-step-badge" style="background:#e0e7ff;color:#3730a3">'+step.branch+'</span>';
+      html+='</div>';
+    }
+    html+='</div>';
+  }
+  container.innerHTML=html;
+}
+
 function openProjectDetail(pid,pname){
   curProjectId=pid;curProjectName=pname;
+  loadWorkflow();
   switchProjectTab('stages');
   document.getElementById('stages-project-name').textContent=pname;
   document.getElementById('bidding-project-name').textContent=pname;
