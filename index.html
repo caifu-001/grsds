@@ -11389,7 +11389,7 @@ function onOppCompanyInput(){
   if(!matches.length){sug.classList.add('hidden');return}
   var s='';
   for(var i=0;i<matches.length;i++){
-    s+='<div class="name-suggestion-item" onclick="document.getElementById('pf-company-name').value=''+h(matches[i].name)+'';document.getElementById('opp-company-suggestions').classList.add('hidden')">'+h(matches[i].name)+'</div>';
+    s+='<div class="name-suggestion-item" onclick="document.getElementById(\'pf-company-name\').value=\''+h(matches[i].name)+'\';document.getElementById(\'opp-company-suggestions\').classList.add(\'hidden\')">'+h(matches[i].name)+'</div>';
   }
   sug.innerHTML=s;sug.classList.remove('hidden');
 }
