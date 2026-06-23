@@ -814,6 +814,7 @@ input,select,textarea,button{font-family:inherit}
 .lead-actions button{padding:5px 12px;border-radius:6px;font-size:11px;border:1px solid var(--border);cursor:pointer;background:#fff;color:var(--text);font-weight:500;transition:all .15s}
 .lead-actions button:active{background:var(--bg);transform:scale(.95)}
 .lead-actions .btn-lead-primary{background:var(--primary);color:#fff;border-color:var(--primary)}
+.btn-lead-success{background:#10B981;color:#fff;border-color:#10B981}
 .lead-actions .btn-lead-danger{color:var(--danger);border-color:var(--danger)}
 .lead-import-area{background:var(--bg);border-radius:12px;padding:14px;border:2px dashed var(--border);margin:10px 0}
 .lead-import-area textarea{width:100%;min-height:120px;font-size:12px;font-family:monospace;border:1px solid var(--border);border-radius:8px;padding:8px;resize:vertical;outline:none}
@@ -6318,7 +6319,9 @@ async function loadContracts(){
   var grid=document.getElementById('contract-grid');grid.innerHTML='<div class="loading"><span class="spinner"></span>加载中...</div>';
   var {data,error}=await sb.from('contracts').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
   if(error){grid.innerHTML='<div class="empty">加载失败</div>';return}
-  allContracts=data||[];renderContracts();
+  allContracts=data||[];
+  if(!allProjects||!allProjects.length){var {data:prjs}=await sb.from('projects').select('id,name').eq('company_id',currentCompanyId);allProjects=prjs||[]}
+  renderContracts();
 }
 
 function renderContracts(){
@@ -6359,6 +6362,7 @@ function renderContracts(){
     h+='<div class="pipe-card" onclick="openContractForm(\''+ct.id+'\')"><div class="pc-header"><span class="pc-name">'+escHtml(ct.title)+archiveIcon+'</span><span class="pc-amount">'+formatMoney(ct.total_amount||ct.amount||0)+'</span></div>';
     if(ct.file_url&&ct.file_url.indexOf('object/public')>0){var fn=ct.file_name||'下载文件';h+='<div class="pc-file" style="font-size:11px;margin-top:2px"><a href="'+ct.file_url+'" target="_blank" rel="noopener" style="color:var(--primary);text-decoration:none">📎 '+escHtml(fn)+'</a></div>'}
     if(cn)h+='<div class="pc-company">🏢 '+escHtml(cn)+'</div>';
+    if(ct.project_id){var pn='';var prj=(allProjects||[]).find(function(x){return x.id===ct.project_id});if(prj)pn=prj.name;if(pn)h+='<div class="pc-project" style="font-size:12px;color:var(--primary);margin-top:2px">📋 '+escHtml(pn)+'</div>'}
     h+='<div class="pc-meta">'+(ct.contract_no?'<span>📋 '+escHtml(ct.contract_no)+'</span>':'')+'<span class="status-badge '+sc+'">'+({draft:'草稿',signed:'已签署',executing:'执行中',completed:'已完成',terminated:'已终止'}[ct.status]||ct.status)+'</span>'+expiryHtml+'</div>';
     h+='<div style=\'margin:6px 0;background:var(--border);border-radius:4px;height:6px;overflow:hidden\'><div style=\'width:'+pct+'%;height:100%;background:'+(pct>=100?'#10B981':'#4F6EF7')+';border-radius:4px;transition:width .3s\'></div></div>';
     h+='<div style=\'font-size:11px;color:var(--text2);display:flex;justify-content:space-between\'><span>回款 '+formatMoney(paid)+' / '+formatMoney(total)+' ('+pct+'%)</span><span>'+(ct.end_date?'到期: '+ct.end_date:'')+'</span></div>';
@@ -6400,6 +6404,9 @@ function openContractForm(id){
   var csel=document.getElementById('cf-client');
   csel.innerHTML='<option value="">选择客户...</option>';
   for(var i=0;i<(allClients||[]).length;i++)csel.innerHTML+='<option value="'+allClients[i].id+'">'+escHtml(allClients[i].name)+'</option>';
+  var psel=document.getElementById('cf-project');
+  psel.innerHTML='<option value="">选择项目...</option>';
+  for(var i=0;i<(allProjects||[]).length;i++)psel.innerHTML+='<option value="'+allProjects[i].id+'">'+escHtml(allProjects[i].name)+'</option>';
   if(id){var ct=(allContracts||[]).find(function(x){return x.id===id});if(ct){
     document.getElementById('cf-contract-no').value=ct.contract_no||'';
     document.getElementById('cf-title').value=ct.title||'';
@@ -6413,6 +6420,7 @@ function openContractForm(id){
     document.getElementById('cf-archive-status').value=ct.archive_status||'active';
     document.getElementById('cf-notes').value=(ct.notes||'').replace(/^\u5f3f\u0046\u0049\u004c\u0045__:.*?\n*/,'');if(ct.file_url){document.getElementById('cf-file-info').classList.remove('hidden');document.getElementById('cf-file-name').textContent=ct.file_name||'已上传';document.getElementById('cf-file-link').href=ct.file_url};
     csel.value=ct.client_id||'';
+    psel.value=ct.project_id||'';
   }}
   var cm=document.getElementById('contract-modal');
   console.log('[DEBUG] openContractForm about to show, el:',!!cm,'className before:',cm?cm.className:'null');
@@ -6444,6 +6452,7 @@ async function saveContract(){
   }
   var data={
     company_id:currentCompanyId,user_id:currentUser.id,title:title,client_id:cid,
+    project_id:document.getElementById('cf-project').value||null,
     contract_no:document.getElementById('cf-contract-no').value.trim(),
     total_amount:totalAmount,
     our_party:document.getElementById('cf-our-party').value.trim(),
@@ -6471,7 +6480,9 @@ async function loadPayments(){
   var grid=document.getElementById('payment-grid');grid.innerHTML='<div class="loading"><span class="spinner"></span>加载中...</div>';
   var {data,error}=await sb.from('payments').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
   if(error){grid.innerHTML='<div class="empty">加载失败</div>';return}
-  allPayments=data||[];renderPayments();
+  allPayments=data||[];
+  if(!allProjects||!allProjects.length){var {data:prjs}=await sb.from('projects').select('id,name').eq('company_id',currentCompanyId);allProjects=prjs||[]}
+  renderPayments();
 }
 
 function renderPayments(){
@@ -6491,9 +6502,11 @@ function renderPayments(){
   for(var i=0;i<list.length;i++){
     var p=list[i],sc={'received':'sb-received','planned':'sb-planned','overdue':'sb-overdue','cancelled':'sb-cancelled'}[p.status]||'sb-planned';
     var cn='';var cl=allClients.find(function(x){return x.id===p.client_id});if(cl)cn=cl.name;
+    var pn='';if(p.project_id){var prj=(allProjects||[]).find(function(x){return x.id===p.project_id});if(prj)pn=prj.name;}
     h+='<div class="pipe-card" onclick="openPaymentForm(\''+p.id+'\')" style="--card-bar:'+({'received':'#10B981','planned':'#F59E0B','overdue':'#EF4444'}[p.status]||'#F59E0B')+'">';
     h+='<div class="pc-header"><span class="pc-name">'+escHtml(cn||'未知客户')+'</span><span class="pc-amount">'+formatMoney(p.amount||0)+'</span></div>';
     h+='<div class="pc-meta"><span class="status-badge '+sc+'">'+({received:'已收款',planned:'计划中',overdue:'逾期',cancelled:'已取消'}[p.status]||p.status)+'</span><span>'+methodMap[p.method||'other']+'</span>'+(p.payment_date?'<span>'+p.payment_date+'</span>':'')+(p.invoice_no?'<span>发票: '+escHtml(p.invoice_no)+'</span>':'')+'</div>';
+    if(pn)h+='<div style="font-size:12px;color:var(--primary);margin-top:2px">📋 '+escHtml(pn)+'</div>';
     if(p.notes)h+='<div style="font-size:12px;color:var(--text2);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">💬 '+escHtml(p.notes)+'</div>';
     h+='</div>';
   }
@@ -6515,6 +6528,9 @@ function openPaymentForm(id){
   var cs=document.getElementById('pf-client'),ct=document.getElementById('pf-contract');
   cs.innerHTML='<option value="">选择客户...</option>';
   ct.innerHTML='<option value="">选择合同...</option>';
+  var pprj=document.getElementById('pf-project');
+  pprj.innerHTML='<option value="">选择项目...</option>';
+  for(var i=0;i<(allProjects||[]).length;i++)pprj.innerHTML+='<option value="'+allProjects[i].id+'">'+escHtml(allProjects[i].name)+'</option>';
   for(var i=0;i<(allClients||[]).length;i++)cs.innerHTML+='<option value="'+allClients[i].id+'">'+escHtml(allClients[i].name)+'</option>';
   cs.onchange=function(){var cid=this.value;ct.innerHTML='<option value="">选择合同...</option>';if(cid){for(var j=0;j<(allContracts||[]).length;j++){if(allContracts[j].client_id===cid)ct.innerHTML+='<option value="'+allContracts[j].id+'">'+escHtml(allContracts[j].title||allContracts[j].contract_no||'合同')+'</option>'}}};
   if(id){var p=(allPayments||[]).find(function(x){return x.id===id});if(p){
@@ -6525,6 +6541,7 @@ function openPaymentForm(id){
     document.getElementById('pf-invoice').value=p.invoice_no||'';
     document.getElementById('pf-notes').value=p.notes||'';
     cs.value=p.client_id||'';cs.onchange();setTimeout(function(){document.getElementById('pf-contract').value=p.contract_id||''},200);
+    pprj.value=p.project_id||'';
   }}
   var pm=document.getElementById('payment-modal');
   console.log('[DEBUG] openPaymentForm about to show, el:',!!pm,'className before:',pm?pm.className:'null');
@@ -6541,6 +6558,7 @@ async function savePayment(){
   var cid=document.getElementById('pf-client').value;if(!cid){showToast('请选择关联客户');return}
   var data={
     company_id:currentCompanyId,user_id:currentUser.id,amount:amount,client_id:cid,
+    project_id:document.getElementById('pf-project').value||null,
     payment_date:document.getElementById('pf-date').value||null,
     method:document.getElementById('pf-method').value,
     status:document.getElementById('pf-status').value,
@@ -9161,6 +9179,7 @@ function renderLeads(){
     html+='<div class="lead-actions">';
     html+='<button class="btn-lead-primary" onclick="event.stopPropagation();openLeadForm(\''+l.id+'\')">编辑</button>';
     html+='<button class="btn-lead-primary" onclick="event.stopPropagation();convertLeadToClient(\''+l.id+'\')">转客户</button>';
+    html+='<button class="btn-lead-success" onclick="event.stopPropagation();openProjectFormFromLead(\''+l.id+'\',\''+h(l.name||'').replace(/'/g,"\\'")+'\',\''+h(l.contact_name||'').replace(/'/g,"\\'")+'\',\''+(l.contact_phone||'').replace(/'/g,"\\'")+'\',\'\')">转项目</button>';
     html+='<button class="btn-lead-danger" onclick="event.stopPropagation();deleteLead(\''+l.id+'\')">删除</button>';
     html+='</div></div>';
   }
@@ -11174,6 +11193,9 @@ async function deletePayment(id){
   </div>
   <div class="form-row">
    <div class="form-group"><label>关联客户 *</label><select id="cf-client"><option value="">选择客户...</option></select></div>
+   <div class="form-group"><label>关联项目</label><select id="cf-project"><option value="">选择项目...</option></select></div>
+  </div>
+  <div class="form-row">
    <div class="form-group"><label>合同金额(元)</label><input id="cf-amount" type="number" step="0.01" placeholder="0"></div>
   </div>
   <div class="form-row">
@@ -11207,6 +11229,9 @@ async function deletePayment(id){
   <h3 id="payment-form-title">添加回款</h3>
   <div class="form-row">
    <div class="form-group"><label>关联客户 *</label><select id="pf-client"><option value="">选择客户...</option></select></div>
+   <div class="form-group"><label>关联项目</label><select id="pf-project"><option value="">选择项目...</option></select></div>
+  </div>
+  <div class="form-row">
    <div class="form-group"><label>关联合同</label><select id="pf-contract"><option value="">选择合同...</option></select></div>
   </div>
   <div class="form-row">
