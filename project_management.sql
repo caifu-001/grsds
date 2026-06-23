@@ -6,7 +6,7 @@
 -- 1. 项目主表
 CREATE TABLE IF NOT EXISTS projects (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  company_id BIGINT NOT NULL,
+  company_id INTEGER NOT NULL,
   client_id UUID REFERENCES clients(id) ON DELETE SET NULL,
   name TEXT NOT NULL,
   description TEXT DEFAULT '',
@@ -82,7 +82,7 @@ CREATE TABLE IF NOT EXISTS project_payments (
 -- 6. 项目合同（仅中标后可创建）
 CREATE TABLE IF NOT EXISTS project_contracts (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  company_id BIGINT NOT NULL,
+  company_id INTEGER NOT NULL,
   project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
   bid_id UUID REFERENCES project_biddings(id) ON DELETE SET NULL,
   title TEXT NOT NULL,
@@ -107,14 +107,14 @@ CREATE TABLE IF NOT EXISTS project_contracts (
 ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "projects_company_isolation" ON projects;
 CREATE POLICY "projects_company_isolation" ON projects
-  FOR ALL USING (company_id = (current_setting('request.jwt.claims', true)::json->>'company_id')::bigint);
+  FOR ALL USING (company_id = (current_setting('request.jwt.claims', true)::json->>'company_id')::integer);
 
 -- project_stages (通过 project_id 关联 company_id)
 ALTER TABLE project_stages ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "stages_project_isolation" ON project_stages;
 CREATE POLICY "stages_project_isolation" ON project_stages
   FOR ALL USING (
-    project_id IN (SELECT id FROM projects WHERE company_id = (current_setting('request.jwt.claims', true)::json->>'company_id')::bigint)
+    project_id IN (SELECT id FROM projects WHERE company_id = (current_setting('request.jwt.claims', true)::json->>'company_id')::integer)
   );
 
 -- project_biddings
@@ -122,7 +122,7 @@ ALTER TABLE project_biddings ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "biddings_project_isolation" ON project_biddings;
 CREATE POLICY "biddings_project_isolation" ON project_biddings
   FOR ALL USING (
-    project_id IN (SELECT id FROM projects WHERE company_id = (current_setting('request.jwt.claims', true)::json->>'company_id')::bigint)
+    project_id IN (SELECT id FROM projects WHERE company_id = (current_setting('request.jwt.claims', true)::json->>'company_id')::integer)
   );
 
 -- project_deliveries
@@ -130,7 +130,7 @@ ALTER TABLE project_deliveries ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "deliveries_project_isolation" ON project_deliveries;
 CREATE POLICY "deliveries_project_isolation" ON project_deliveries
   FOR ALL USING (
-    project_id IN (SELECT id FROM projects WHERE company_id = (current_setting('request.jwt.claims', true)::json->>'company_id')::bigint)
+    project_id IN (SELECT id FROM projects WHERE company_id = (current_setting('request.jwt.claims', true)::json->>'company_id')::integer)
   );
 
 -- project_payments
@@ -145,7 +145,7 @@ CREATE POLICY "payments_project_isolation" ON project_payments
 ALTER TABLE project_contracts ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "pcontracts_company_isolation" ON project_contracts;
 CREATE POLICY "pcontracts_company_isolation" ON project_contracts
-  FOR ALL USING (company_id = (current_setting('request.jwt.claims', true)::json->>'company_id')::bigint);
+  FOR ALL USING (company_id = (current_setting('request.jwt.claims', true)::json->>'company_id')::integer);
 
 -- ============================================================
 -- 索引

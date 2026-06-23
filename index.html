@@ -10661,7 +10661,7 @@ async function saveProject(){
   if(error){showToast('\u521b\u5efa\u5931\u8d25: '+error.message);return}
   var pid=data.id;
   if(leadIdEl&&leadIdEl.value){
-    await sb.from('leads').update({stage:'converted',project_id:pid,converted_at:new Date().toISOString()}).eq('id',leadIdEl.value);
+    await sb.from('lead_pool').update({status:'converted',converted_client_id:row.client_id,converted_at:new Date().toISOString()}).eq('id',leadIdEl.value);
   }
   if(curProjectId || document.getElementById('projects-view')&&!document.getElementById('projects-view').classList.contains('hidden')){
     loadProjects();
