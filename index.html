@@ -2679,7 +2679,7 @@ async function openMy(){
   document.getElementById('settings-screen').style.display='none';
   var ms=document.getElementById('my-screen');
   document.body.appendChild(ms);
-  ms.style.display='block';
+  ms.style.display='block';ms.style.position='fixed';ms.style.top='0';ms.style.left='0';ms.style.width='100%';ms.style.height='100vh';ms.style.zIndex='10000';ms.style.overflow='auto';ms.style.background='var(--bg)';
   // Load full profile
   var {data:profile}=await sb.from('profiles').select('*').eq('user_id',currentUser.id).single();
   if(!profile){profile={}}
@@ -2730,7 +2730,7 @@ async function openMy(){
 
 function closeMy(){
   var ms=document.getElementById('my-screen');
-  ms.style.display='none';
+  ms.style.display='none';ms.style.position='';ms.style.top='';ms.style.left='';ms.style.width='';ms.style.height='';ms.style.zIndex='';ms.style.overflow='';ms.style.background='';
   document.getElementById('main-screen').appendChild(ms);
 }
 
@@ -2942,7 +2942,7 @@ function buildDirFilter(){
 function showCompanies(){
   var ds=document.getElementById('dir-screen');
   document.body.appendChild(ds);
-  ds.classList.remove('hidden');
+  ds.classList.remove('hidden');ds.style.position='fixed';ds.style.top='0';ds.style.left='0';ds.style.width='100%';ds.style.height='100vh';ds.style.zIndex='10000';ds.style.overflow='auto';ds.style.background='var(--bg)';
   renderDir();
 }
 
@@ -2961,7 +2961,7 @@ async function showLeads(){
 }
 function closeDir(){
   var ds=document.getElementById('dir-screen');
-  ds.classList.add('hidden');
+  ds.classList.add('hidden');ds.style.position='';ds.style.top='';ds.style.left='';ds.style.width='';ds.style.height='';ds.style.zIndex='';ds.style.overflow='';ds.style.background='';
   document.getElementById('main-screen').appendChild(ds);
 }
 function renderDir(){
