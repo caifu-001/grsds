@@ -9172,7 +9172,7 @@ function renderLeads(){
     if(l.contact_email)html+='<span>📧 '+h(l.contact_email)+'</span>';
     html+='</div>';
     html+='<div class="lead-meta">';
-    html+='<span class="lead-status-badge '+h(l.stage||l.status)+'">'++(l.stage||statusMap[l.status]||l.status)+'</span>';
+    html+='<span class="lead-status-badge '+h(l.stage||l.status)+'">'+(l.stage||statusMap[l.status]||l.status)+'</span>';
     if(l.source)html+='<span>来源: '+h(l.source)+'</span>';
     if(assignee)html+='<span>分配: '+h(assignee)+'</span>';
     if(l.last_follow_up)html+='<span>跟进: '+l.last_follow_up+'</span>';
