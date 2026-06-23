@@ -2484,6 +2484,24 @@ input,select,textarea,button{font-family:inherit}
      <div id="wb-payment-list" style="display:flex;flex-direction:column;gap:8px"></div>
     </div>
 
+    <!-- End Panel (step 46) -->
+    <div id="wb-panel-end" class="hidden">
+     <div style="text-align:center;padding:40px 20px">
+      <div style="font-size:48px;margin-bottom:16px">⏹️</div>
+      <h2 style="font-size:20px;font-weight:700;margin:0 0 8px" id="wb-end-title">流程结束</h2>
+      <p style="color:var(--text2);margin:0 0 24px">该项目流程已完成</p>
+      <div style="background:var(--bg2);border-radius:12px;padding:20px;text-align:left;max-width:400px;margin:0 auto">
+       <div style="font-weight:600;margin-bottom:8px">📋 决策结论</div>
+       <div style="font-size:18px;font-weight:700;margin-bottom:12px" id="wb-end-conclusion">-</div>
+       <div style="color:var(--text2);font-size:14px" id="wb-end-conclusion-notes"></div>
+      </div>
+      <div style="margin-top:24px;display:flex;gap:12px;justify-content:center">
+       <button class="btn-save" onclick="markStepDone()">✓ 确认结束</button>
+       <button class="btn-cancel" onclick="closeProjectWorkbench()">返回项目列表</button>
+      </div>
+     </div>
+    </div>
+
     <!-- Stage Management (kept for compatibility) -->
     <div id="wb-panel-stages" class="hidden">
      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -11026,7 +11044,7 @@ function showStepPanel(seq){
   // Hide all panels
   var panels=['wb-panel-basic','wb-panel-editor','wb-panel-competitor','wb-panel-decision-chain',
               'wb-panel-tender','wb-panel-bidding','wb-panel-contract','wb-panel-delivery',
-              'wb-panel-payment','wb-panel-stages','wb-content-default'];
+              'wb-panel-payment','wb-panel-end','wb-panel-stages','wb-content-default'];
   for(var i=0;i<panels.length;i++){
     var el=document.getElementById(panels[i]);if(el)el.classList.add('hidden')
   }
@@ -11095,6 +11113,18 @@ function showStepPanel(seq){
     case 'payment':
       if(panelEl)panelEl.classList.remove('hidden');
       loadPaymentsTo('wb-payment-list');
+      break;
+    case 'end':
+      // Show project conclusion
+      var proj2=allProjects.find(function(p){return p.id===curProjectId});
+      if(proj2){
+        var concl=proj2.conclusion||'';
+        var concMap={approved:'✓ 认可商机，进入下一步',rejected:'✗ 不认可，流程结束'};
+        document.getElementById('wb-end-conclusion').textContent=concMap[concl]||concl||'未填写';
+        document.getElementById('wb-end-conclusion-notes').textContent=proj2.conclusion_notes||'';
+        document.getElementById('wb-end-title').textContent=concl==='rejected'?'流程结束 - 商机不认可':'流程结束 - 商机已完成';
+      }
+      if(panelEl)panelEl.classList.remove('hidden');
       break;
     default:
       document.getElementById('wb-panel-editor').classList.remove('hidden');
@@ -11348,6 +11378,8 @@ function openProjectForm(id,leadId){
   document.getElementById('pf-budget').value='';
   document.getElementById('pf-status').value='planning';
   document.getElementById('pf-conclusion').value='';
+  document.getElementById('pf-conclusion-notes').value='';
+  document.getElementById('pf-conclusion-notes-group').style.display='none';
   document.getElementById('pf-notes').value='';
   if(leadId){document.getElementById('pf-lead-id').value=leadId;oppLeadId=leadId}else oppLeadId=null;
   if(!id){
@@ -11372,6 +11404,8 @@ function openProjectForm(id,leadId){
       document.getElementById('pf-budget').value=p.budget||'';
       document.getElementById('pf-status').value=p.status||'planning';
       document.getElementById('pf-conclusion').value=p.conclusion||'';
+      document.getElementById('pf-conclusion-notes').value=p.conclusion_notes||'';
+      if(p.conclusion)document.getElementById('pf-conclusion-notes-group').style.display='block';
       document.getElementById('pf-notes').value=p.notes||'';
     }
   }
@@ -11379,6 +11413,12 @@ function openProjectForm(id,leadId){
 }
 
 function closeOppForm(){document.getElementById('opp-form-modal').classList.add('hidden');oppEditId=null;oppLeadId=null}
+
+function onConclusionChange(){
+  var val=document.getElementById('pf-conclusion').value;
+  var notesGroup=document.getElementById('pf-conclusion-notes-group');
+  if(notesGroup)notesGroup.style.display=val?'block':'none';
+}
 
 function onOppCompanyInput(){
   var val=document.getElementById('pf-company-name').value.trim();
@@ -11422,7 +11462,9 @@ async function saveProject(){
     co_sales:document.getElementById('pf-co-sales').value.trim(),
     budget:parseFloat(document.getElementById('pf-budget').value)||null,
     status:document.getElementById('pf-status').value,
-    conclusion:document.getElementById('pf-conclusion').value.trim(),
+    conclusion:document.getElementById('pf-conclusion').value,
+    conclusion_notes:document.getElementById('pf-conclusion-notes').value.trim(),
+    status:document.getElementById('pf-conclusion').value==='rejected'?'suspended':document.getElementById('pf-status').value,
     notes:document.getElementById('pf-notes').value.trim(),
     updated_at:new Date().toISOString()
   };
@@ -11900,7 +11942,8 @@ async function deletePayment(id){if(confirm('确定删除？')){var {error}=awai
    <div class="form-group"><label>预算金额</label><input type="number" id="pf-budget" placeholder="万元" step="0.01"></div>
    <div class="form-group"><label>状态</label><select id="pf-status"><option value="planning">规划中</option><option value="in_progress">进行中</option><option value="completed">已完成</option><option value="suspended">已暂停</option></select></div>
   </div>
-  <div class="form-group"><label>结论</label><textarea id="pf-conclusion" placeholder="针对商机进行决策层分析验证，认可商机则转下一步，不认可则转46结束" rows="3"></textarea></div>
+  <div class="form-group"><label>结论 *</label><select id="pf-conclusion" onchange="onConclusionChange()"><option value="">请选择</option><option value="approved">✓ 认可商机，进入下一步</option><option value="rejected">✗ 不认可，转步骤46结束</option></select></div>
+  <div class="form-group" id="pf-conclusion-notes-group" style="display:none"><label>结论说明</label><textarea id="pf-conclusion-notes" placeholder="决策层分析验证详情，为什么认可/不认可..." rows="3"></textarea></div>
   <div class="form-group"><label>备注</label><textarea id="pf-notes" placeholder="备注信息..." rows="2"></textarea></div>
   <div class="modal-actions">
    <button class="btn-delete hidden" id="opp-btn-delete" onclick="deleteOpp()">删除商机</button>
