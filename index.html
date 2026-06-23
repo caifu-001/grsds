@@ -9396,8 +9396,10 @@ async function doAssignLead(){
 }
 
 async function convertLeadToClient(id){
-  var l=allLeads.find(function(x){return x.id===id})||(poolLeads||[]).find(function(x){return x.id===id});
-  if(!l){showToast('线索未找到');return}
+  // Fetch lead from Supabase directly - don't trust possibly-stale local arrays
+  var {data:leads,error:le}=await sb.from('lead_pool').select('*').eq('id',id).single();
+  if(le||!leads){showToast('线索未找到: '+(le?le.message:'数据为空'));return}
+  var l=leads;
   var client={name:l.name,type:'[]',address:'',notes:l.notes||'',industry:l.industry||'',scale:l.scale||'',source:l.source||'',lifecycle_stage:'prospect',user_id:currentUser.id,company_id:currentCompanyId};
   try{var {data:cd,error}=await sb.from('clients').insert(client).select('id');if(error){showToast('转化失败: '+error.message);return}}catch(e){showToast('转化异常: '+(e.message||e));console.error('convertLeadToClient insert:',e);return}
   var clientId=cd[0].id;
@@ -9407,7 +9409,7 @@ async function convertLeadToClient(id){
   }
   // Update lead
   await sb.from('lead_pool').update({status:'converted',converted_client_id:clientId,converted_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',id);
-  loadClients();await loadLeads();
+  loadClients();await loadPoolLeads();await loadLeads();
   showToast('已转化为客户');
 }
 
