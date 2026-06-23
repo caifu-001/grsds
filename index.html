@@ -9394,11 +9394,10 @@ async function doAssignLead(){
 }
 
 async function convertLeadToClient(id){
-  var l=allLeads.find(function(x){return x.id===id});
-  if(!l)return;
+  var l=allLeads.find(function(x){return x.id===id})||(poolLeads||[]).find(function(x){return x.id===id});
+  if(!l){showToast('线索未找到');return}
   var client={name:l.name,type:'[]',address:'',notes:l.notes||'',industry:l.industry||'',scale:l.scale||'',source:l.source||'',lifecycle_stage:'prospect',user_id:currentUser.id,company_id:currentCompanyId};
-  var {data:cd,error}=await sb.from('clients').insert(client).select('id');
-  if(error){showToast('转化失败: '+error.message);return}
+  try{var {data:cd,error}=await sb.from('clients').insert(client).select('id');if(error){showToast('转化失败: '+error.message);return}}catch(e){showToast('转化异常: '+(e.message||e));console.error('convertLeadToClient insert:',e);return}
   var clientId=cd[0].id;
   // Create contact if contact info exists
   if(l.contact_name||l.contact_phone||l.contact_email){
@@ -10619,7 +10618,8 @@ async function openProjectFormFromLead(leadId,projectName,companyName,clientId){
   s+='<div class="form-group"><label>\u9879\u76ee\u540d\u79f0 *</label><input id="pf-name" placeholder="\u9879\u76ee\u540d\u79f0" value="'+h(projectName||'').replace(/\"/g,'&quot;')+'"></div>';
   s+='<div class="form-row"><div class="form-group"><label>\u5173\u8054\u5ba2\u6237</label><select id="pf-client"><option value="">-- \u4e0d\u5173\u8054 --</option>';
   var cnLower=(companyName||'').toLowerCase();
-  for(var i=0;i<allClients.length;i++){var cl=allClients[i];var matched=clientId?cl.id===clientId:(cnLower&&cl.name&&cl.name.toLowerCase()===cnLower);s+='<option value="'+cl.id+'"'+(matched?' selected':'')+'>'+h(cl.name)+'</option>'}
+  var foundClient=false;
+  for(var i=0;i<allClients.length;i++){var cl=allClients[i];var matched=clientId?cl.id===clientId:(cnLower&&cl.name&&cl.name.toLowerCase()===cnLower);if(matched)foundClient=true;s+='<option value="'+cl.id+'"'+(matched?' selected':'')+'>'+h(cl.name)+'</option>'}
   s+='</select></div><div class="form-group"><label>\u9879\u76ee\u9884\u7b97</label><input id="pf-budget" type="number" step="0.01" placeholder="0.00"></div></div>';
   s+='<div class="form-row"><div class="form-group"><label>\u5f00\u59cb\u65e5\u671f</label><input id="pf-start" type="date"></div><div class="form-group"><label>\u9884\u8ba1\u7ed3\u675f</label><input id="pf-end" type="date"></div></div>';
   s+='<div class="form-group"><label>\u72b6\u6001</label><select id="pf-status"><option value="planning">\u89c4\u5212\u4e2d</option><option value="in_progress">\u8fdb\u884c\u4e2d</option></select></div>';
@@ -10627,6 +10627,7 @@ async function openProjectFormFromLead(leadId,projectName,companyName,clientId){
   s+='<input type="hidden" id="pf-lead-id" value="'+leadId+'">';
   s+='<div class="modal-actions"><button class="btn-cancel" onclick="document.getElementById(\'project-form-modal\').remove()">\u53d6\u6d88</button><button class="btn-save" onclick="saveProject()">\u4fdd\u5b58\u5e76\u8f6c\u5316\u7ebf\u7d22</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend',s);
+  if(clientId&&!foundClient){(async function(){try{var {data:sc}=await sb.from('clients').select('id,name').eq('id',clientId).single();if(sc){var opt=document.getElementById('pf-client');if(opt)opt.innerHTML=opt.innerHTML+'<option value="'+sc.id+'" selected>'+h(sc.name)+'</option>'}}catch(e){}})()}
 }
 
 async function saveProject(){
