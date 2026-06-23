@@ -9221,16 +9221,17 @@ function updateLeadCompActive(){
   for(var i=0;i<items.length;i++)items[i].classList.toggle('active',i===leadCompSuggIdx);
   if(leadCompSuggIdx>=0&&items[leadCompSuggIdx])items[leadCompSuggIdx].scrollIntoView({block:'nearest'});
 }
-function selectLeadCompany(idx){
+async function selectLeadCompany(idx){
   var c=leadCompSuggList[idx];if(!c)return;
   document.getElementById('lf-name').value=c.name;
   document.getElementById('lead-name-suggestions').classList.add('hidden');
   leadCompSuggList=[];leadCompSuggIdx=-1;
   if(c.industry)document.getElementById('lf-industry').value=c.industry;
   if(c.scale)document.getElementById('lf-scale').value=c.scale;
-  // 自动匹配客户库
+  // 自动匹配客户库（懒加载）
+  if(!allClients||!allClients.length){try{var {data}=await sb.from('clients').select('id,name').eq('company_id',currentCompanyId).order('name');if(data)allClients=data;}catch(e){}}
   var cnLower=c.name.toLowerCase();
-  var client=allClients.find(function(cl){return cl.name&&cl.name.toLowerCase()===cnLower});
+  var client=(allClients||[]).find(function(cl){return cl.name&&cl.name.toLowerCase()===cnLower});
   document.getElementById('lf-client-id').value=client?client.id:'';
 }
 
