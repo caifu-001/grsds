@@ -9099,8 +9099,8 @@ async function loadLeads(){
 var poolLeads=[];
 async function loadPoolLeads(){
   try{
-  // Lead pool: unassigned leads only
-  var {data,error}=await sb.from('lead_pool').select('*').eq('company_id',currentCompanyId).is('assigned_to',null).order('updated_at',{ascending:false});
+  // Lead pool: unassigned leads only, exclude converted
+  var {data,error}=await sb.from('lead_pool').select('*').eq('company_id',currentCompanyId).is('assigned_to',null).neq('status','converted').neq('status','junk').order('updated_at',{ascending:false});
   if(error){console.error('loadPoolLeads:',error);}
   poolLeads=data||[];
   }catch(e){console.error('loadPoolLeads exception:',e);poolLeads=[]}
@@ -10684,6 +10684,8 @@ async function saveProject(){
   if(leadIdEl&&leadIdEl.value){
     await sb.from('lead_pool').update({status:'converted',converted_client_id:row.client_id,converted_at:new Date().toISOString()}).eq('id',leadIdEl.value);
   }
+  // Refresh lead views to hide converted lead
+  if(leadIdEl&&leadIdEl.value){await loadLeads();await loadPoolLeads()}
   if(curProjectId || document.getElementById('projects-view')&&!document.getElementById('projects-view').classList.contains('hidden')){
     loadProjects();
   }
