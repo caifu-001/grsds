@@ -9142,6 +9142,8 @@ function renderLeads(){
     html+='<button class="btn-lead-primary" onclick="event.stopPropagation();openLeadForm(\''+l.id+'\')">编辑</button>';
     html+='<button class="btn-lead-primary" onclick="event.stopPropagation();convertLeadToClient(\''+l.id+'\')">转客户</button>';
     html+='<button class="btn-lead-success" onclick="event.stopPropagation();openProjectFormFromLead(\''+l.id+'\',\''+h(l.project_name||l.name||'').replace(/'/g,"\\'")+'\',\''+h(l.name||'').replace(/'/g,"\\'")+'\',\''+(l.client_id||'')+'\')">转项目</button>';
+    html+='<button class="btn-lead-primary" onclick="event.stopPropagation();convertLeadToClient(\''+l.id+'\')">转客户</button>';
+    html+='<button class="btn-lead-success" onclick="event.stopPropagation();openProjectFormFromLead(\''+l.id+'\',\''+h(l.project_name||l.name||'').replace(/'/g,"\\'")+'\',\''+h(l.name||'').replace(/'/g,"\\'")+'\',\''+(l.client_id||'')+'\')">转项目</button>';
     html+='<button class="btn-lead-danger" onclick="event.stopPropagation();deleteLead(\''+l.id+'\')">删除</button>';
     html+='</div></div>';
   }
@@ -10628,6 +10630,20 @@ async function openProjectFormFromLead(leadId,projectName,companyName,clientId){
   s+='<div class="modal-actions"><button class="btn-cancel" onclick="document.getElementById(\'project-form-modal\').remove()">\u53d6\u6d88</button><button class="btn-save" onclick="saveProject()">\u4fdd\u5b58\u5e76\u8f6c\u5316\u7ebf\u7d22</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend',s);
   if(clientId&&!foundClient){(async function(){try{var {data:sc}=await sb.from('clients').select('id,name').eq('id',clientId).single();if(sc){var opt=document.getElementById('pf-client');if(opt)opt.innerHTML=opt.innerHTML+'<option value="'+sc.id+'" selected>'+h(sc.name)+'</option>'}}catch(e){}})()}
+  // If allClients is empty and companyName is given, auto-create client
+  if(!allClients||!allClients.length){
+    (async function(){
+      try{
+        var cn=companyName;
+        if(!cn||!cn.trim())return;
+        var {data:newc,error}=await sb.from('clients').insert({name:cn.trim(),type:'[]',address:'',lifecycle_stage:'prospect',user_id:currentUser.id,company_id:currentCompanyId}).select('id,name');
+        if(newc&&newc.length&&!error){
+          var opt=document.getElementById('pf-client');
+          if(opt){opt.innerHTML=opt.innerHTML.replace('<option value="">','<option value="'+newc[0].id+'" selected>'+h(newc[0].name)+'</option><option value="">')}
+        }
+      }catch(er){console.error('auto-create client:',er)}
+    })();
+  }
 }
 
 async function saveProject(){
