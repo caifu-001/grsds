@@ -3332,7 +3332,8 @@ async function updateContactCount(clientId){
 var formProjects=[];
 function addProjectEntry(prefill){
   prefill=prefill||{};
-  var list=document.getElementById('pm-project-list');
+  var list=document.getElementById('project-list');
+  if(!list)return;
   var idx=list.children.length+1;
   var div=document.createElement('div');
   div.className='project-entry';
