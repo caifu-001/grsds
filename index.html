@@ -9196,6 +9196,9 @@ function onLeadCompanyInput(){
   var val=(inp.value||'').trim().toLowerCase();
   var dd=document.getElementById('lead-name-suggestions');
   if(!val||val.length<1){dd.classList.add('hidden');leadCompSuggList=[];leadCompSuggIdx=-1;return}
+  // 输入时实时匹配客户库
+  var ci=document.getElementById('lf-client-id');
+  if(allClients&&allClients.length){var mc=allClients.find(function(cl){return cl.name&&cl.name.toLowerCase()===val});ci.value=mc?mc.id:'';}
   var matches=[],seen={};
   for(var i=0;i<allCompanies.length;i++){
     var c=allCompanies[i];var cn=(c.name||'').toLowerCase();
@@ -9345,12 +9348,13 @@ async function saveLead(){
     notes:document.getElementById('lf-notes').value.trim(),
     updated_at:new Date().toISOString()
   };
+  if(!lead.client_id&&lead.name){
+    try{var {data:cm}=await sb.from('clients').select('id').eq('company_id',currentCompanyId).ilike('name',lead.name).limit(1);if(cm&&cm.length)lead.client_id=cm[0].id}catch(e){}
+  }
   if(!leadEditId){
     lead.company_id=currentCompanyId;
     lead.created_by=currentUser.id;
     if(leadFormSource==='sales'){lead.assigned_to=currentUser.id;lead.status='assigned';lead.assigned_at=new Date().toISOString();}
-    console.log('[DEBUG saveLead] payload:',JSON.stringify(lead));
-    console.log('[DEBUG saveLead] currentCompanyId type:',typeof currentCompanyId,'value:',currentCompanyId);
     var {error}=await sb.from('lead_pool').insert(lead);
     if(error){console.error('[DEBUG saveLead] full error:',JSON.stringify(error));showToast('创建失败');return}
   }else{
