@@ -2599,8 +2599,9 @@ function pickColor(el,i){
 
 // === Settings ===
 function openSettings(){
-  document.getElementById('main-screen').classList.add('hidden');
-  document.getElementById('settings-screen').style.display='block';
+  var ss=document.getElementById('settings-screen');
+  document.body.appendChild(ss);
+  ss.style.display='block';ss.style.position='fixed';ss.style.top='0';ss.style.left='0';ss.style.width='100%';ss.style.height='100vh';ss.style.zIndex='10000';ss.style.overflow='auto';ss.style.background='var(--bg)';
   renderCustomTypes();
 }
 
@@ -2626,9 +2627,9 @@ async function doChangePassword(){
 }
 
 function closeSettings(){
-  document.getElementById('settings-screen').style.display='none';
-    document.getElementById('my-screen').style.display='none';
-  document.getElementById('main-screen').classList.remove('hidden');
+  var ss=document.getElementById('settings-screen'),mn=document.getElementById('main-screen');
+  ss.style.display='none';ss.style.position='';ss.style.top='';ss.style.left='';ss.style.width='';ss.style.height='';ss.style.zIndex='';ss.style.overflow='';ss.style.background='';
+  mn.classList.remove('hidden');mn.appendChild(ss);
 }
 
 async function openMy(){
