@@ -9141,7 +9141,7 @@ function renderLeads(){
     html+='<div class="lead-actions">';
     html+='<button class="btn-lead-primary" onclick="event.stopPropagation();openLeadForm(\''+l.id+'\')">编辑</button>';
     html+='<button class="btn-lead-primary" onclick="event.stopPropagation();convertLeadToClient(\''+l.id+'\')">转客户</button>';
-    html+='<button class="btn-lead-success" onclick="event.stopPropagation();openProjectFormFromLead(\''+l.id+'\',\''+h(l.project_name||l.name||'').replace(/'/g,"\\'")+'\',\''+h(l.name||'').replace(/'/g,"\\'")+'\')">转项目</button>';
+    html+='<button class="btn-lead-success" onclick="event.stopPropagation();openProjectFormFromLead(\''+l.id+'\',\''+h(l.project_name||l.name||'').replace(/'/g,"\\'")+'\',\''+h(l.name||'').replace(/'/g,"\\'")+'\',\''+(l.client_id||'')+'\')">转项目</button>';
     html+='<button class="btn-lead-danger" onclick="event.stopPropagation();deleteLead(\''+l.id+'\')">删除</button>';
     html+='</div></div>';
   }
@@ -9228,6 +9228,10 @@ function selectLeadCompany(idx){
   leadCompSuggList=[];leadCompSuggIdx=-1;
   if(c.industry)document.getElementById('lf-industry').value=c.industry;
   if(c.scale)document.getElementById('lf-scale').value=c.scale;
+  // 自动匹配客户库
+  var cnLower=c.name.toLowerCase();
+  var client=allClients.find(function(cl){return cl.name&&cl.name.toLowerCase()===cnLower});
+  document.getElementById('lf-client-id').value=client?client.id:'';
 }
 
 // === Lead Contact Autocomplete (from existing clients) ===
@@ -9297,6 +9301,7 @@ function openLeadForm(id){
   document.getElementById('lf-status').value='new';
   document.getElementById('lf-notes').value='';
   document.getElementById('lf-project-name').value='';
+  document.getElementById('lf-client-id').value='';
   if(id){
     var l=allLeads.find(function(x){return x.id==id||String(x.id)===String(id)});
     if(l){
@@ -9312,6 +9317,7 @@ function openLeadForm(id){
       document.getElementById('lf-status').value=l.status||'new';
       document.getElementById('lf-notes').value=l.notes||'';
       document.getElementById('lf-project-name').value=l.project_name||'';
+      document.getElementById('lf-client-id').value=l.client_id||'';
     }
   }
   document.getElementById('lead-form-modal').classList.remove('hidden');
@@ -9334,6 +9340,7 @@ async function saveLead(){
     recycle_days:parseInt(document.getElementById('lf-recycle-days').value)||30,
     status:document.getElementById('lf-status').value,
     project_name:document.getElementById('lf-project-name').value.trim(),
+    client_id:document.getElementById('lf-client-id').value||null,
     notes:document.getElementById('lf-notes').value.trim(),
     updated_at:new Date().toISOString()
   };
@@ -10601,13 +10608,13 @@ function openProjectForm(){
   document.body.insertAdjacentHTML('beforeend',s);
 }
 
-async function openProjectFormFromLead(leadId,projectName,companyName){
+async function openProjectFormFromLead(leadId,projectName,companyName,clientId){
   if(!allClients||!allClients.length){try{var {data}=await sb.from('clients').select('id,name').eq('company_id',currentCompanyId).order('name');if(data)allClients=data;}catch(e){}}
   var s='<div class="modal-overlay" id="project-form-modal"><div class="modal-sheet"><h3>\u4ece\u7ebf\u7d22\u8f6c\u7acb\u9879</h3>';
   s+='<div class="form-group"><label>\u9879\u76ee\u540d\u79f0 *</label><input id="pf-name" placeholder="\u9879\u76ee\u540d\u79f0" value="'+h(projectName||'').replace(/\"/g,'&quot;')+'"></div>';
   s+='<div class="form-row"><div class="form-group"><label>\u5173\u8054\u5ba2\u6237</label><select id="pf-client"><option value="">-- \u4e0d\u5173\u8054 --</option>';
   var cnLower=(companyName||'').toLowerCase();
-  for(var i=0;i<allClients.length;i++){var cl=allClients[i];var matched=cnLower&&cl.name&&cl.name.toLowerCase()===cnLower;s+='<option value="'+cl.id+'"'+(matched?' selected':'')+'>'+h(cl.name)+'</option>'}
+  for(var i=0;i<allClients.length;i++){var cl=allClients[i];var matched=clientId?cl.id===clientId:(cnLower&&cl.name&&cl.name.toLowerCase()===cnLower);s+='<option value="'+cl.id+'"'+(matched?' selected':'')+'>'+h(cl.name)+'</option>'}
   s+='</select></div><div class="form-group"><label>\u9879\u76ee\u9884\u7b97</label><input id="pf-budget" type="number" step="0.01" placeholder="0.00"></div></div>';
   s+='<div class="form-row"><div class="form-group"><label>\u5f00\u59cb\u65e5\u671f</label><input id="pf-start" type="date"></div><div class="form-group"><label>\u9884\u8ba1\u7ed3\u675f</label><input id="pf-end" type="date"></div></div>';
   s+='<div class="form-group"><label>\u72b6\u6001</label><select id="pf-status"><option value="planning">\u89c4\u5212\u4e2d</option><option value="in_progress">\u8fdb\u884c\u4e2d</option></select></div>';
@@ -11379,7 +11386,7 @@ async function deletePayment(id){
 <div class="modal-overlay hidden" id="lead-form-modal">
  <div class="modal-sheet">
   <h3 id="lead-form-title">新建线索</h3>
-  <div class="form-group" style="position:relative"><label>公司/单位名称 *</label><input id="lf-name" placeholder="搜索或输入公司名称..." autocomplete="off" oninput="onLeadCompanyInput()" onkeydown="onLeadCompanyKey(event)"><div class="name-suggestions hidden" id="lead-name-suggestions"></div></div>
+  <div class="form-group" style="position:relative"><label>公司/单位名称 *</label><input id="lf-name" placeholder="搜索或输入公司名称..." autocomplete="off" oninput="onLeadCompanyInput()" onkeydown="onLeadCompanyKey(event)"><div class="name-suggestions hidden" id="lead-name-suggestions"></div><input type="hidden" id="lf-client-id" value=""></div>
   <div class="form-group" style="position:relative"><label>联系人 (可从客户库关联)</label><input id="lf-contact-name" placeholder="输入姓名搜索已有联系人..." autocomplete="off" oninput="onLeadContactInput()" onkeydown="onLeadContactKey(event)"><div class="name-suggestions hidden" id="lead-contact-suggestions"></div></div>
   <div class="form-group"><label>联系人电话</label><input id="lf-contact-phone" placeholder="手机号"></div>
   <div class="form-group"><label>联系人邮箱</label><input id="lf-contact-email" placeholder="邮箱"></div>
