@@ -11497,7 +11497,7 @@ function onCompSearchInput(){
   if(!matches.length){sug.classList.add('hidden');return}
   var s='';
   for(var i=0;i<matches.length;i++){
-    s+='<div class="name-suggestion-item" onclick="selectCompClient(''+h(matches[i].id)+'',''+h(matches[i].name).replace(/'/g,"\\'")+'')">'+h(matches[i].name)+'</div>';
+    s+='<div class="name-suggestion-item" onclick="selectCompClient('+JSON.stringify(matches[i].id)+','+JSON.stringify(matches[i].name)+')">'+h(matches[i].name)+'</div>';
   }
   sug.innerHTML=s;sug.classList.remove('hidden');
 }
