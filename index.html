@@ -5192,9 +5192,15 @@ function switchTab(tab){
     document.getElementById('topbar-title').textContent='组织管理';
     switchAdminTab('users');
   }else if(tab==='collab'){
+  console.log('[DEBUG switchTab] collab branch entered');
   var colv=document.getElementById('collab-view');
+  console.log('[DEBUG switchTab] collab-view found:',!!colv,'hidden:',colv?colv.classList.contains('hidden'):'N/A');
   colv.classList.remove('hidden');document.getElementById('tab-collab').classList.add('active');
   document.getElementById('topbar-title').textContent='协同办公';
+  console.log('[DEBUG switchTab] collab-view hidden after remove:',colv.classList.contains('hidden'));
+  console.log('[DEBUG switchTab] collab-view display:',getComputedStyle(colv).display);
+  console.log('[DEBUG switchTab] collab-view innerHTML length:',colv.innerHTML.length);
+  console.log('[DEBUG switchTab] about to call switchCollabTab schedule');
   switchCollabTab('schedule');
 }
 }
@@ -9873,11 +9879,18 @@ async function sendMsg(){
 var collabActiveTab='schedule';
 
 function switchCollabTab(tab){
+  console.log('[DEBUG switchCollabTab] called with tab:',tab);
   collabActiveTab=tab;
   var tabs=document.querySelectorAll('.collab-subtab');
+  console.log('[DEBUG switchCollabTab] sub-tabs found:',tabs.length);
   for(var i=0;i<tabs.length;i++)tabs[i].classList.toggle('active',tabs[i].getAttribute('data-ctab')===tab);
   var panels={schedule:'collab-schedule-panel',task:'collab-task-panel',approval:'collab-approval-panel',comment:'collab-comment-panel',followup:'collab-followup-panel',msg:'collab-msg-panel'};
-  for(var k in panels){var el=document.getElementById(panels[k]);if(el)el.classList.toggle('hidden',tab!==k)}
+  for(var k in panels){
+    var el=document.getElementById(panels[k]);
+    console.log('[DEBUG switchCollabTab] panel',panels[k],'found:',!!el);
+    if(el)el.classList.toggle('hidden',tab!==k)
+  }
+  console.log('[DEBUG switchCollabTab] about to loadSchedules, tab==schedule:',tab==='schedule');
   if(tab==='schedule')loadSchedules();
   else if(tab==='task')loadTasks();
   else if(tab==='approval')loadApprovals();
@@ -9888,10 +9901,14 @@ function switchCollabTab(tab){
 
 // === 1. Schedules ===
 async function loadSchedules(){
-  if(!currentCompanyId)return;
+  console.log('[DEBUG loadSchedules] entered, currentCompanyId:',currentCompanyId);
+  if(!currentCompanyId){console.log('[DEBUG loadSchedules] NO currentCompanyId, returning');return;}
   var today=new Date().toISOString().slice(0,10);
+  console.log('[DEBUG loadSchedules] querying Supabase for today>=',today);
   var {data}=await sb.from('schedules').select('*').eq('company_id',currentCompanyId).gte('start_time',today).order('start_time');
+  console.log('[DEBUG loadSchedules] Supabase returned, data length:',data?data.length:'null');
   var list=document.getElementById('schedule-list');
+  console.log('[DEBUG loadSchedules] schedule-list element found:',!!list);
   if(!data||!data.length){list.innerHTML='<div class="empty" style="padding:20px">今日暂无日程</div>';return}
   var h='';
   for(var i=0;i<data.length;i++){
