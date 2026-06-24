@@ -10854,8 +10854,7 @@ var WORKFLOW_STEPS=[
 
 // Build lookup
 var WFLookup={};
-var st0=getTemplateSteps(curProject?curProject.template_id:null);
-for(var i=0;i<st0.length;i++){WFLookup[st0[i].seq]=st0[i]}
+(function(){var st0=WORKFLOW_STEPS;for(var i=0;i<st0.length;i++){WFLookup[st0[i].seq]=st0[i]}})()
 
 function initWorkflow(templateId){
   var steps=getTemplateSteps(templateId||(curProject?curProject.template_id:null));
