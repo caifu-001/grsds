@@ -9398,19 +9398,23 @@ function onLeadCompanyInput(){
   var val=(inp.value||'').trim().toLowerCase();
   var dd=document.getElementById('lead-name-suggestions');
   if(!val||val.length<1){dd.classList.add('hidden');leadCompSuggList=[];leadCompSuggIdx=-1;return}
-  // 输入时实时匹配客户库
-  var ci=document.getElementById('lf-client-id');
-  if(allClients&&allClients.length){var mc=allClients.find(function(cl){return cl.name&&cl.name.toLowerCase()===val});ci.value=mc?mc.id:'';}
-  var matches=[],seen={};
-  for(var i=0;i<allCompanies.length;i++){
-    var c=allCompanies[i];var cn=(c.name||'').toLowerCase();
-    if(cn&&cn.indexOf(val)>=0&&!seen[cn]){seen[cn]=1;matches.push(c)}
+  // 客户库懒加载
+  if(!allClients||!allClients.length){
+    sb.from('clients').select('*').eq('company_id',currentCompanyId).order('name').then(function(r){if(r.data){allClients=r.data;onLeadCompanyInput()}});
+    return;
+  }
+  var matches=[];
+  for(var i=0;i<allClients.length;i++){
+    var c=allClients[i];var cn=(c.name||'').toLowerCase();
+    if(cn.indexOf(val)>=0)matches.push(c);
   }
   matches.sort(function(a,b){return (a.name||'').length-(b.name||'').length});
   matches=matches.slice(0,12);
   if(!matches.length){dd.classList.add('hidden');leadCompSuggList=[];leadCompSuggIdx=-1;return}
   leadCompSuggList=matches;leadCompSuggIdx=-1;
-  dd.innerHTML=matches.map(function(c,i){return '<div class="name-suggestion'+(i===leadCompSuggIdx?' active':'')+'" data-idx="'+i+'" onmousedown="selectLeadCompany('+i+')"><div class="ns-name">'+escHtml(c.name)+'</div><div class="ns-detail">'+escHtml(c.base||c.legal_person||'')+'</div></div>'}).join('');
+  var clientIdxMap={};
+  for(var j=0;j<matches.length;j++)clientIdxMap[matches[j].id]=j;
+  dd.innerHTML=matches.map(function(c,i){return '<div class="name-suggestion'+(i===leadCompSuggIdx?' active':'')+'" data-idx="'+i+'" onmousedown="selectLeadCompany('+i+')"><div class="ns-name">'+escHtml(c.name)+'</div><div class="ns-detail">'+escHtml(c.industry||'')+(c.address?' · '+escHtml(c.address).substring(0,15):'')+'</div></div>'}).join('');
   dd.classList.remove('hidden');
 }
 function onLeadCompanyKey(e){
@@ -9426,67 +9430,73 @@ function updateLeadCompActive(){
   for(var i=0;i<items.length;i++)items[i].classList.toggle('active',i===leadCompSuggIdx);
   if(leadCompSuggIdx>=0&&items[leadCompSuggIdx])items[leadCompSuggIdx].scrollIntoView({block:'nearest'});
 }
-async function selectLeadCompany(idx){
-  var c=leadCompSuggList[idx];if(!c)return;
-  document.getElementById('lf-name').value=c.name;
+function selectLeadCompany(idx){
+  var client=leadCompSuggList[idx];if(!client)return;
+  document.getElementById('lf-name').value=client.name||'';
   document.getElementById('lead-name-suggestions').classList.add('hidden');
   leadCompSuggList=[];leadCompSuggIdx=-1;
-  if(c.industry)document.getElementById('lf-industry').value=c.industry;
-  if(c.scale)document.getElementById('lf-scale').value=c.scale;
-  // 自动匹配客户库（懒加载）
-  if(!allClients||!allClients.length){try{var {data}=await sb.from('clients').select('id,name').eq('company_id',currentCompanyId).order('name');if(data)allClients=data;}catch(e){}}
-  var cnLower=c.name.toLowerCase();
-  var client=(allClients||[]).find(function(cl){return cl.name&&cl.name.toLowerCase()===cnLower});
-  document.getElementById('lf-client-id').value=client?client.id:'';
+  // 锁定 client_id
+  document.getElementById('lf-client-id').value=client.id||'';
+  // 自动填充客户信息
+  if(client.industry)document.getElementById('lf-industry').value=client.industry;
+  if(client.scale)document.getElementById('lf-scale').value=client.scale;
+  if(client.credit_code)document.getElementById('lf-credit-code').value=client.credit_code;
+  if(client.address)document.getElementById('lf-address')?document.getElementById('lf-address').value=client.address:null;
+  // 客户类型
+  if(client.type){try{var types=JSON.parse(client.type);if(Array.isArray(types)&&types.length){document.getElementById('lf-customer-type').value=types[0]==='B2B企业客户'?'B2B':types[0]==='B2C个人客户'?'B2C':''}}catch(e){}}
+  // 自动填充联系人（第一个联系人）
+  var contacts=[];
+  try{contacts=JSON.parse(client.contacts||'[]')}catch(e){contacts=client.contacts||[]}
+  if(!Array.isArray(contacts))contacts=[];
+  if(contacts.length>0){
+    document.getElementById('lf-contact-name').value=contacts[0].name||'';
+    document.getElementById('lf-contact-phone').value=contacts[0].phone||'';
+    document.getElementById('lf-contact-email').value=contacts[0].email||'';
+  } else {
+    document.getElementById('lf-contact-name').value='';
+    document.getElementById('lf-contact-phone').value='';
+    document.getElementById('lf-contact-email').value='';
+  }
+  // 归属销售默认填充当前用户
+  if(!document.getElementById('lf-assigned-sales').value){
+    document.getElementById('lf-assigned-sales').value=currentUser?(currentUser.realname||currentUser.name||''):'';
+  }
 }
 
-// === Lead Contact Autocomplete (from existing clients) ===
+// === Lead Contact picker — from selected client's contacts only ===
 var leadContactSuggIdx=-1,leadContactSuggList=[];
-function onLeadContactInput(){
-  var inp=document.getElementById('lf-contact-name');
-  var val=(inp.value||'').trim().toLowerCase();
-  var dd=document.getElementById('lead-contact-suggestions');
-  if(!val||val.length<1){dd.classList.add('hidden');leadContactSuggList=[];leadContactSuggIdx=-1;return}
-  var matches=[],seen={};
-  for(var i=0;i<allContacts.length;i++){
-    var co=allContacts[i];var cn=(co.name||'').toLowerCase();
-    var key=cn+'|'+co.client_id;
-    if(cn&&cn.indexOf(val)>=0&&!seen[key]){
-      seen[key]=1;
-      var cl=allClients.find(function(x){return x.id===co.client_id});
-      var phones='';
-      try{var ph=JSON.parse(co.phone||'[]');if(ph.length)phones=ph[0]}catch(e){phones=co.phone||''}
-      var emails='';
-      try{var em=JSON.parse(co.email||'[]');if(em.length)emails=em[0]}catch(e){emails=co.email||''}
-      matches.push({name:co.name,phone:phones,email:emails,clientName:cl?cl.name:'',dept:co.dept||'',position:co.position||''});
-    }
+function onLeadContactPicker(){
+  var clientId=document.getElementById('lf-client-id').value;
+  if(!clientId){showToast('请先选择客户');return}
+  if(!allClients||!allClients.length){showToast('客户数据未加载');return}
+  var client=allClients.find(function(c){return c.id===clientId});
+  if(!client){showToast('未找到关联客户');return}
+  var contacts=[];
+  try{contacts=JSON.parse(client.contacts||'[]')}catch(e){contacts=client.contacts||[]}
+  if(!Array.isArray(contacts))contacts=[];
+  if(contacts.length<=1){showToast('该客户只有一个联系人');return}
+  leadContactSuggList=contacts;
+  var html='';
+  for(var i=0;i<contacts.length;i++){
+    var ct=contacts[i];
+    html+='<div class="name-suggestion" style="cursor:pointer;padding:8px 12px;border-bottom:1px solid var(--border)" onmousedown="selectLeadContact('+i+')"><div class="ns-name">'+escHtml(ct.name||'')+'</div><div class="ns-detail">📞 '+escHtml(ct.phone||'')+(ct.email?' · 📧 '+escHtml(ct.email):'')+(ct.title?' · '+escHtml(ct.title):'')+'</div></div>';
   }
-  matches.sort(function(a,b){return (a.name||'').length-(b.name||'').length});
-  matches=matches.slice(0,12);
-  if(!matches.length){dd.classList.add('hidden');leadContactSuggList=[];leadContactSuggIdx=-1;return}
-  leadContactSuggList=matches;leadContactSuggIdx=-1;
-  dd.innerHTML=matches.map(function(m,i){return '<div class="name-suggestion'+(i===leadContactSuggIdx?' active':'')+'" data-idx="'+i+'" onmousedown="selectLeadContact('+i+')"><div><div class="ns-name">'+escHtml(m.name)+'</div><div class="ns-detail">'+escHtml(m.clientName)+(m.position?' · '+escHtml(m.position):'')+(m.phone?' · '+escHtml(m.phone):'')+'</div></div></div>'}).join('');
-  dd.classList.remove('hidden');
+  var dd=document.getElementById('lead-contact-suggestions');
+  if(dd){dd.innerHTML=html;dd.classList.remove('hidden');}
 }
 function onLeadContactKey(e){
   var dd=document.getElementById('lead-contact-suggestions');
-  if(dd.classList.contains('hidden'))return;
-  if(e.key==='ArrowDown'){e.preventDefault();leadContactSuggIdx=Math.min(leadContactSuggIdx+1,leadContactSuggList.length-1);updateLeadContactActive()}
-  else if(e.key==='ArrowUp'){e.preventDefault();leadContactSuggIdx=Math.max(leadContactSuggIdx-1,0);updateLeadContactActive()}
-  else if(e.key==='Enter'||e.key==='Tab'){e.preventDefault();if(leadContactSuggIdx>=0)selectLeadContact(leadContactSuggIdx)}
-  else if(e.key==='Escape'){dd.classList.add('hidden');leadContactSuggIdx=-1}
+  if(!dd||dd.classList.contains('hidden'))return;
+  if(e.key==='Escape'){dd.classList.add('hidden');leadContactSuggIdx=-1}
 }
-function updateLeadContactActive(){
-  var items=document.querySelectorAll('#lead-contact-suggestions .name-suggestion');
-  for(var i=0;i<items.length;i++)items[i].classList.toggle('active',i===leadContactSuggIdx);
-  if(leadContactSuggIdx>=0&&items[leadContactSuggIdx])items[leadContactSuggIdx].scrollIntoView({block:'nearest'});
-}
+
 function selectLeadContact(idx){
   var m=leadContactSuggList[idx];if(!m)return;
-  document.getElementById('lf-contact-name').value=m.name;
-  if(m.phone)document.getElementById('lf-contact-phone').value=m.phone;
-  if(m.email)document.getElementById('lf-contact-email').value=m.email;
-  document.getElementById('lead-contact-suggestions').classList.add('hidden');
+  document.getElementById('lf-contact-name').value=m.name||'';
+  document.getElementById('lf-contact-phone').value=m.phone||'';
+  document.getElementById('lf-contact-email').value=m.email||'';
+  var dd=document.getElementById('lead-contact-suggestions');
+  if(dd)dd.classList.add('hidden');
   leadContactSuggList=[];leadContactSuggIdx=-1;
 }
 
@@ -9571,6 +9581,7 @@ async function saveLead(){
     credit_code:document.getElementById('lf-credit-code').value.trim(),
     assigned_sales:document.getElementById('lf-assigned-sales').value.trim(),
     department:document.getElementById('lf-department').value,
+    address:document.getElementById('lf-address')?document.getElementById('lf-address').value.trim():'',
     creator:document.getElementById('lf-creator').value.trim(),
     notes:document.getElementById('lf-notes').value.trim(),
     updated_at:new Date().toISOString()
@@ -12231,10 +12242,10 @@ async function deletePayment(id){if(confirm('确定删除？')){var {error}=awai
 <div class="modal-overlay hidden" id="lead-form-modal">
  <div class="modal-sheet">
   <h3 id="lead-form-title">新建线索</h3>
-  <div class="form-group" style="position:relative"><label>公司/单位名称 *</label><input id="lf-name" placeholder="搜索或输入公司名称..." autocomplete="off" oninput="onLeadCompanyInput()" onkeydown="onLeadCompanyKey(event)"><div class="name-suggestions hidden" id="lead-name-suggestions"></div><input type="hidden" id="lf-client-id" value=""></div>
-  <div class="form-group" style="position:relative"><label>联系人 (可从客户库关联)</label><input id="lf-contact-name" placeholder="输入姓名搜索已有联系人..." autocomplete="off" oninput="onLeadContactInput()" onkeydown="onLeadContactKey(event)"><div class="name-suggestions hidden" id="lead-contact-suggestions"></div></div>
-  <div class="form-group"><label>联系人电话</label><input id="lf-contact-phone" placeholder="手机号"></div>
-  <div class="form-group"><label>联系人邮箱</label><input id="lf-contact-email" placeholder="邮箱"></div>
+  <div class="form-group" style="position:relative"><label>公司/单位名称 *</label><input id="lf-name" placeholder="🔍 搜索客户库选择公司..." autocomplete="off" oninput="onLeadCompanyInput()" onkeydown="onLeadCompanyKey(event)"><div class="name-suggestions hidden" id="lead-name-suggestions"></div><input type="hidden" id="lf-client-id" value=""></div>
+  <div class="form-group" style="position:relative"><label>联系人 <a href="javascript:void(0)" onclick="onLeadContactPicker()" style="font-size:11px;color:var(--primary);margin-left:6px">[切换联系人]</a></label><input id="lf-contact-name" placeholder="选择客户后自动填充" readonly style="background:var(--bg2);color:var(--text3)"><div class="name-suggestions hidden" id="lead-contact-suggestions"></div></div>
+  <div class="form-group"><label>联系人电话</label><input id="lf-contact-phone" placeholder="选择客户后自动填充" readonly style="background:var(--bg2);color:var(--text3)"></div>
+  <div class="form-group"><label>联系人邮箱</label><input id="lf-contact-email" placeholder="选择客户后自动填充" readonly style="background:var(--bg2);color:var(--text3)"></div>
   <div class="form-row">
    <div class="form-group"><label>来源</label><select id="lf-source"><option value="">请选择</option><option value="自主开发">自主开发</option><option value="客户介绍">客户介绍</option><option value="展会">展会</option><option value="网络推广">网络推广</option><option value="电话营销">电话营销</option><option value="合作伙伴">合作伙伴</option><option value="其他">其他</option></select></div>
    <div class="form-group"><label>行业</label><select id="lf-industry"><option value="">请选择</option><option value="信息技术">信息技术</option><option value="制造业">制造业</option><option value="建筑业">建筑业</option><option value="金融">金融</option><option value="教育">教育</option><option value="医疗">医疗</option><option value="政府">政府</option><option value="能源">能源</option><option value="零售">零售</option><option value="其他">其他</option></select></div>
@@ -12254,7 +12265,7 @@ async function deletePayment(id){if(confirm('确定删除？')){var {error}=awai
   </div>
   <div class="form-row">
    <div class="form-group"><label>客户类型 *</label><select id="lf-customer-type"><option value="">请选择</option><option value="B2B">B2B 企业客户</option><option value="B2C">B2C 个人客户</option></select></div>
-   <div class="form-group"><label>统一社会信用代码</label><input id="lf-credit-code" placeholder="B2B客户填写"></div>
+   <div class="form-group"><label>统一社会信用代码</label><input id="lf-credit-code" placeholder="B2B客户填写" readonly style="background:var(--bg2);color:var(--text3)"></div><div class="form-group"><label>客户地址</label><input id="lf-address" placeholder="选择客户后自动填充" readonly style="background:var(--bg2);color:var(--text3)"></div>
   </div>
   <div class="form-row">
    <div class="form-group"><label>归属销售</label><input id="lf-assigned-sales" placeholder="销售人员姓名"></div>
