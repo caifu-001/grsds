@@ -9446,10 +9446,11 @@ function selectLeadCompany(idx){
   if(client.type){try{var types=JSON.parse(client.type);if(Array.isArray(types)&&types.length){document.getElementById('lf-customer-type').value=types[0]==='B2B企业客户'?'B2B':types[0]==='B2C个人客户'?'B2C':''}}catch(e){}}
   // 自动填充联系人（从 allContacts 表按 client_id 查找）
   var contacts=(allContacts||[]).filter(function(ct){return ct.client_id===client.id});
+  function firstVal(v){if(typeof v==='string'){try{v=JSON.parse(v)}catch(e){}}if(Array.isArray(v))v=v[0]||'';return String(v||'');}
   if(contacts.length>0){
     document.getElementById('lf-contact-name').value=contacts[0].name||'';
-    document.getElementById('lf-contact-phone').value=contacts[0].phone||'';
-    document.getElementById('lf-contact-email').value=contacts[0].email||'';
+    document.getElementById('lf-contact-phone').value=firstVal(contacts[0].phone);
+    document.getElementById('lf-contact-email').value=firstVal(contacts[0].email);
   } else {
     document.getElementById('lf-contact-name').value='';
     document.getElementById('lf-contact-phone').value='';
@@ -9581,7 +9582,6 @@ async function saveLead(){
     credit_code:document.getElementById('lf-credit-code').value.trim(),
     assigned_sales:document.getElementById('lf-assigned-sales').value.trim(),
     department:document.getElementById('lf-department').value,
-    address:document.getElementById('lf-address')?document.getElementById('lf-address').value.trim():'',
     creator:document.getElementById('lf-creator').value.trim(),
     notes:document.getElementById('lf-notes').value.trim(),
     updated_at:new Date().toISOString()
