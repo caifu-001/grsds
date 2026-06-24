@@ -10852,7 +10852,7 @@ async function loadBackupHistory(){
 /* ===== WORKFLOW TEMPLATES ===== */
 var wtEditId=null;
 
-async function renderWorkflowTemplates(){
+async async async async function renderWorkflowTemplates(){
   var list=document.getElementById('workflow-template-list');
   if(!list)return;
   try{
@@ -11931,7 +11931,7 @@ function openProjectFormFromLead(leadId,projectName,companyName,clientId){
       if(client.type){try{var types=JSON.parse(client.type);if(Array.isArray(types)&&types.length)document.getElementById('pf-customer-type').value=types[0];}catch(e){}}
       // Load contacts from contacts table
       try{
-        var {data:cts}=await sb.from('contacts').select('name,title,phone,email').eq('client_id',clientId);
+        var {data:cts}=await sb.from('contacts').select('name,phone,email').eq('client_id',clientId);
         if(cts&&cts.length){
           var ct=cts[0];
           document.getElementById('pf-contact-name').value=ct.name||'';
@@ -11954,7 +11954,7 @@ function openProjectFormFromLead(leadId,projectName,companyName,clientId){
   // Lazy load allClients if needed
   if(!allClients||!allClients.length){
     (async function(){
-      try{var {data}=await sb.from('clients').select('id,name,industry,address,type').eq('company_id',currentCompanyId);if(data)allClients=data;}catch(e){}
+      try{var {data}=await sb.from('clients').select('id,name,industry,address,type,credit_code').eq('company_id',currentCompanyId);if(data)allClients=data;}catch(e){}
     })();
   }
   // Populate template dropdown
