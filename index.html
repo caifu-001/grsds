@@ -9444,10 +9444,8 @@ function selectLeadCompany(idx){
   if(client.address)document.getElementById('lf-address')?document.getElementById('lf-address').value=client.address:null;
   // 客户类型
   if(client.type){try{var types=JSON.parse(client.type);if(Array.isArray(types)&&types.length){document.getElementById('lf-customer-type').value=types[0]==='B2B企业客户'?'B2B':types[0]==='B2C个人客户'?'B2C':''}}catch(e){}}
-  // 自动填充联系人（第一个联系人）
-  var contacts=[];
-  try{contacts=JSON.parse(client.contacts||'[]')}catch(e){contacts=client.contacts||[]}
-  if(!Array.isArray(contacts))contacts=[];
+  // 自动填充联系人（从 allContacts 表按 client_id 查找）
+  var contacts=(allContacts||[]).filter(function(ct){return ct.client_id===client.id});
   if(contacts.length>0){
     document.getElementById('lf-contact-name').value=contacts[0].name||'';
     document.getElementById('lf-contact-phone').value=contacts[0].phone||'';
@@ -9471,15 +9469,16 @@ function onLeadContactPicker(){
   if(!allClients||!allClients.length){showToast('客户数据未加载');return}
   var client=allClients.find(function(c){return c.id===clientId});
   if(!client){showToast('未找到关联客户');return}
-  var contacts=[];
-  try{contacts=JSON.parse(client.contacts||'[]')}catch(e){contacts=client.contacts||[]}
-  if(!Array.isArray(contacts))contacts=[];
+  var contacts=(allContacts||[]).filter(function(ct){return ct.client_id===clientId});
   if(contacts.length<=1){showToast('该客户只有一个联系人');return}
   leadContactSuggList=contacts;
+  function pickPhone(ct){var p=ct.phone;if(typeof p==='string'){try{p=JSON.parse(p)}catch(e){}}if(Array.isArray(p))p=p[0]||'';return String(p||'');}
+  function pickEmail(ct){var e=ct.email;if(typeof e==='string'){try{e=JSON.parse(e)}catch(e){}}if(Array.isArray(e))e=e[0]||'';return String(e||'');}
   var html='';
   for(var i=0;i<contacts.length;i++){
     var ct=contacts[i];
-    html+='<div class="name-suggestion" style="cursor:pointer;padding:8px 12px;border-bottom:1px solid var(--border)" onmousedown="selectLeadContact('+i+')"><div class="ns-name">'+escHtml(ct.name||'')+'</div><div class="ns-detail">📞 '+escHtml(ct.phone||'')+(ct.email?' · 📧 '+escHtml(ct.email):'')+(ct.title?' · '+escHtml(ct.title):'')+'</div></div>';
+    var ph=pickPhone(ct),em=pickEmail(ct);
+    html+='<div class="name-suggestion" style="cursor:pointer;padding:8px 12px;border-bottom:1px solid var(--border)" onmousedown="selectLeadContact('+i+')"><div class="ns-name">'+escHtml(ct.name||'')+'</div><div class="ns-detail">📞 '+escHtml(ph)+(em?' · 📧 '+escHtml(em):'')+(ct.position?' · '+escHtml(ct.position):'')+'</div></div>';
   }
   var dd=document.getElementById('lead-contact-suggestions');
   if(dd){dd.innerHTML=html;dd.classList.remove('hidden');}
@@ -9492,9 +9491,10 @@ function onLeadContactKey(e){
 
 function selectLeadContact(idx){
   var m=leadContactSuggList[idx];if(!m)return;
+  function pv(v){if(typeof v==='string'){try{v=JSON.parse(v)}catch(e){}}if(Array.isArray(v))v=v[0]||'';return String(v||'');}
   document.getElementById('lf-contact-name').value=m.name||'';
-  document.getElementById('lf-contact-phone').value=m.phone||'';
-  document.getElementById('lf-contact-email').value=m.email||'';
+  document.getElementById('lf-contact-phone').value=pv(m.phone);
+  document.getElementById('lf-contact-email').value=pv(m.email);
   var dd=document.getElementById('lead-contact-suggestions');
   if(dd)dd.classList.add('hidden');
   leadContactSuggList=[];leadContactSuggIdx=-1;
