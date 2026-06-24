@@ -2717,6 +2717,7 @@ async function onLoginSuccess(user){
  buildStageGrid();
  await loadClients();
  await loadCompanies();
+  await loadTemplates();
   document.getElementById('main-screen').classList.remove('hidden');
   if(isSuperAdmin||currentUserRole==='admin')document.getElementById('tab-admin').classList.remove('hidden');
   if(isSuperAdmin){document.getElementById('admin-tab-companies-manage').classList.remove('hidden');document.getElementById('admin-tab-companies').classList.remove('hidden');}
@@ -10853,12 +10854,14 @@ var WORKFLOW_STEPS=[
 
 // Build lookup
 var WFLookup={};
-for(var i=0;i<WORKFLOW_STEPS.length;i++){WFLookup[WORKFLOW_STEPS[i].seq]=WORKFLOW_STEPS[i]}
+var st0=getTemplateSteps(curProject?curProject.template_id:null);
+for(var i=0;i<st0.length;i++){WFLookup[st0[i].seq]=st0[i]}
 
-function initWorkflow(){
+function initWorkflow(templateId){
+  var steps=getTemplateSteps(templateId||(curProject?curProject.template_id:null));
   curWorkflow={};curStep=1;
-  for(var i=0;i<WORKFLOW_STEPS.length;i++){
-    curWorkflow[WORKFLOW_STEPS[i].seq]={done:false,note:'',data:{}};
+  for(var i=0;i<steps.length;i++){
+    curWorkflow[steps[i].seq]={done:false,note:'',data:{}};
   }
 }
 initWorkflow();
@@ -10867,7 +10870,7 @@ function loadWorkflow(){
   var proj=allProjects.find(function(p){return p.id===curProjectId});
   if(!proj)return;
   try{var wf=JSON.parse(proj.workflow||'{}');curWorkflow=wf;curStep=proj.current_step||1}catch(e){initWorkflow()}
-  if(!curWorkflow||Object.keys(curWorkflow).length===0)initWorkflow();
+  if(!curWorkflow||Object.keys(curWorkflow).length===0)initWorkflow(proj?proj.template_id:null);
   renderWorkbench();
 }
 
@@ -10920,8 +10923,8 @@ function renderWorkflowNav(){
   var nav=document.getElementById('wb-workflow-nav');
   if(!nav)return;
   var phases={},phaseOrder=[];
-  for(var i=0;i<WORKFLOW_STEPS.length;i++){
-    var s=WORKFLOW_STEPS[i];
+  for(var i=0;i<getTemplateSteps(curProject?curProject.template_id:null).length;i++){
+    var s=getTemplateSteps(curProject?curProject.template_id:null)[i];
     if(!phases[s.phase]){phases[s.phase]=[];phaseOrder.push(s.phase)}
     phases[s.phase].push(s);
   }
@@ -10956,10 +10959,10 @@ function renderWorkflowNav(){
 
 function updateProgress(){
   var doneCount=0;
-  for(var i=0;i<WORKFLOW_STEPS.length;i++){if(stepDone(WORKFLOW_STEPS[i].seq))doneCount++}
-  var pct=Math.round(doneCount/WORKFLOW_STEPS.length*100);
+  for(var i=0;i<getTemplateSteps(curProject?curProject.template_id:null).length;i++){if(stepDone(getTemplateSteps(curProject?curProject.template_id:null)[i].seq))doneCount++}
+  var pct=Math.round(doneCount/getTemplateSteps(curProject?curProject.template_id:null).length*100);
   var bar=document.getElementById('wb-progress-bar');if(bar)bar.style.width=pct+'%';
-  var txt=document.getElementById('wb-progress-text');if(txt)txt.textContent=doneCount+'/'+WORKFLOW_STEPS.length;
+  var txt=document.getElementById('wb-progress-text');if(txt)txt.textContent=doneCount+'/'+getTemplateSteps(curProject?curProject.template_id:null).length;
   var label=document.getElementById('wb-step-label');
   if(label){var cs=WFLookup[curStep];label.textContent='当前步骤：'+(cs?cs.seq+'. '+cs.name:'-')}
 }
@@ -11499,6 +11502,15 @@ function openProjectFormFromLead(leadId,projectName,companyName,clientId){
       try{var {data}=await sb.from('clients').select('id,name,industry,address,type').eq('company_id',currentCompanyId);if(data)allClients=data;}catch(e){}
     })();
   }
+  // Populate template dropdown
+  var templateSel=document.getElementById('pf-template-id');
+  if(templateSel){
+    templateSel.innerHTML='<option value="">默认（46步标准流程）</option>';
+    for(var i=0;i<allTemplates.length;i++){
+      var t=allTemplates[i];
+      templateSel.innerHTML+='<option value="'+t.id+'">'+escHtml(t.name)+'</option>';
+    }
+  }
   document.getElementById('opp-form-modal').classList.remove('hidden');
 }
 
@@ -11553,6 +11565,15 @@ function openProjectForm(id,leadId){
       document.getElementById('pf-conclusion-notes').value=p.conclusion_notes||'';
       if(p.conclusion)document.getElementById('pf-conclusion-notes-group').style.display='block';
       document.getElementById('pf-notes').value=p.notes||'';
+    }
+  }
+  // Populate template dropdown
+  var templateSel=document.getElementById('pf-template-id');
+  if(templateSel){
+    templateSel.innerHTML='<option value="">默认（46步标准流程）</option>';
+    for(var i=0;i<allTemplates.length;i++){
+      var t=allTemplates[i];
+      templateSel.innerHTML+='<option value="'+t.id+'">'+escHtml(t.name)+'</option>';
     }
   }
   document.getElementById('opp-form-modal').classList.remove('hidden');
@@ -11764,7 +11785,8 @@ function completeTraining(){
   curWorkflow[6].completed_at=new Date().toISOString();
   saveWorkflow();
   // Auto-advance to step 7
-  var step7Idx=WORKFLOW_STEPS.findIndex(function(s){return s.key==='identity_decision'});
+  var steps=getTemplateSteps(curProject?curProject.template_id:null);
+  var step7Idx=steps.findIndex(function(s){return s.key==='product_training'});
   if(step7Idx>=0){
     curProject.current_step=step7Idx+1;
     updateProjectCurrentStep();
@@ -11848,7 +11870,7 @@ async function saveProject(){
     var yyyy=today.getFullYear(),mm=String(today.getMonth()+1).padStart(2,'0'),dd=String(today.getDate()).padStart(2,'0');
     var datePrefix='BUS'+yyyy+mm+dd;
     try{var {data:cnt}=await sb.from('projects').select('bus_id',{count:'exact',head:true}).like('bus_id',datePrefix+'%');var seq=(cnt||0)+1;proj.bus_id=datePrefix+String(seq).padStart(3,'0');}catch(e){proj.bus_id=datePrefix+'001';}
-    proj.workflow='{}';proj.current_step=1;
+    proj.workflow='{}';proj.current_step=1;proj.template_id=document.getElementById('pf-template-id')?(parseInt(document.getElementById('pf-template-id').value)||null):null;
     var {error}=await sb.from('projects').insert(proj);
     if(error){showToast('创建失败: '+error.message);return}
   }else{
@@ -12293,6 +12315,7 @@ async function deletePayment(id){if(confirm('确定删除？')){var {error}=awai
    <div class="form-group"><label>关联线索 ID</label><input id="pf-lead-id" placeholder="从线索转入时自动填写" disabled style="background:var(--bg2);color:var(--text3)"></div>
   </div>
   <div class="form-group"><label>商机名称 *</label><input id="pf-name" placeholder="如：XX科技 CRM系统采购项目"></div>
+  <div class="form-group"><label>流程模板</label><select id="pf-template-id"><option value="">默认（46步标准流程）</option></select></div>
   <div class="form-row">
    <div class="form-group"><label>客户类型 *</label><select id="pf-customer-type"><option value="">请选择</option><option value="B2B">B2B 企业客户</option><option value="B2C">B2C 个人客户</option></select></div>
    <div class="form-group"><label>主营行业</label><select id="pf-industry"><option value="">请选择</option><option value="制造业">制造业</option><option value="教育">教育</option><option value="零售">零售</option><option value="政务">政务</option><option value="互联网">互联网</option><option value="医疗">医疗</option><option value="金融">金融</option><option value="建筑">建筑</option><option value="能源">能源</option><option value="其他">其他</option></select></div>
