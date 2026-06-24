@@ -11499,7 +11499,7 @@ function openProjectFormFromLead(leadId,projectName,companyName,clientId){
       try{var {data}=await sb.from('clients').select('id,name,industry,address,type').eq('company_id',currentCompanyId);if(data)allClients=data;}catch(e){}
     })();
   }
-  document.getElementById('opp-form-overlay').classList.remove('hidden');
+  document.getElementById('opp-form-modal').classList.remove('hidden');
 }
 
 function openProjectForm(id,leadId){
