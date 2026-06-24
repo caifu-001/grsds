@@ -2119,25 +2119,6 @@ input,select,textarea,button{font-family:inherit}
   <div id="po-list"></div>
  </div>
 
-<!-- ====== Client 360 Modal ====== -->
-<div class="client-360-overlay hidden" id="client360-modal">
- <div class="client-360-sheet">
-  <button class="client-360-close" onclick="closeClient360()">✕</button>
-  <div class="client-360-header">
-   <div class="client-360-name" id="c360-name">-</div>
-   <div class="client-360-badges" id="c360-badges"></div>
-  </div>
-  <div class="client-360-tabs">
-   <button class="client-360-tab active" data-tab="overview" onclick="switchClient360Tab('overview')">概览</button>
-   <button class="client-360-tab" data-tab="contacts" onclick="switchClient360Tab('contacts')">联系人</button>
-   <button class="client-360-tab" data-tab="orders" onclick="switchClient360Tab('orders')">订单</button>
-   <button class="client-360-tab" data-tab="engagements" onclick="switchClient360Tab('engagements')">跟进</button>
-   <button class="client-360-tab" data-tab="lifecycle" onclick="switchClient360Tab('lifecycle')">生命周期</button>
-  </div>
-  <div class="client-360-body" id="c360-body"></div>
- </div>
-</div>
-
 <!-- ====== Leads View ====== -->
 
  <div id="collab-view" class="hidden">
@@ -12829,6 +12810,24 @@ async function deletePayment(id){if(confirm('确定删除？')){var {error}=awai
  </div>
 </div>
 
+<!-- ====== Client 360 Modal ====== -->
+<div class="client-360-overlay hidden" id="client360-modal">
+ <div class="client-360-sheet">
+  <button class="client-360-close" onclick="closeClient360()">✕</button>
+  <div class="client-360-header">
+   <div class="client-360-name" id="c360-name">-</div>
+   <div class="client-360-badges" id="c360-badges"></div>
+  </div>
+  <div class="client-360-tabs">
+   <button class="client-360-tab active" data-tab="overview" onclick="switchClient360Tab('overview')">概览</button>
+   <button class="client-360-tab" data-tab="contacts" onclick="switchClient360Tab('contacts')">联系人</button>
+   <button class="client-360-tab" data-tab="orders" onclick="switchClient360Tab('orders')">订单</button>
+   <button class="client-360-tab" data-tab="engagements" onclick="switchClient360Tab('engagements')">跟进</button>
+   <button class="client-360-tab" data-tab="lifecycle" onclick="switchClient360Tab('lifecycle')">生命周期</button>
+  </div>
+  <div class="client-360-body" id="c360-body"></div>
+ </div>
+</div>
 
 </div>
 
