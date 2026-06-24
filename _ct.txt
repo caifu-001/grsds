@@ -1,0 +1,10 @@
+﻿lf-customer-type at: 784060
+round:var(--bg2);color:var(--text3)"></div>
+   <div class="form-group"><label>鍏宠仈鍟嗘満ID</label><input id="lf-opportunity-id" placeholder="杞晢鏈哄悗鑷姩鍏宠仈" disabled style="background:var(--bg2);color:var(--text3)"></div>
+  </div>
+  <div class="form-row">
+   <div class="form-group"><label>瀹㈡埛绫诲瀷 *</label><select id="lf-customer-type"><option value="">璇烽€夋嫨</option><option value="B2B">B2B 浼佷笟瀹㈡埛</option><option value="B2C">B2C 涓汉瀹㈡埛</option></select></div>
+   <div class="form-group"><label>缁熶竴绀句細淇＄敤浠ｇ爜</label><input id="lf-credit-code" placeholder="B2B瀹㈡埛濉啓" readonly style="background:var(--bg2);color:var(--text3)"></div><div class="form-group"><label>瀹㈡埛鍦板潃</label><input id="lf-address" placeholder="閫夋嫨瀹㈡埛鍚庤嚜鍔ㄥ～鍏? readonly style="background:var(--bg2);color:var(--text3)"></div>
+  </div>
+  <div class="form-row">
+   <div

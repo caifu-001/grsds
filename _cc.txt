@@ -1,0 +1,43 @@
+﻿=== selectLeadCompany ===
+function selectLeadCompany(idx){
+  var client=leadCompSuggList[idx];if(!client)return;
+  document.getElementById('lf-name').value=client.name||'';
+  document.getElementById('lead-name-suggestions').classList.add('hidden');
+  leadCompSuggList=[];leadCompSuggIdx=-1;
+  // 閿佸畾 client_id
+  document.getElementById('lf-client-id').value=client.id||'';
+  // 鑷姩濉厖瀹㈡埛淇℃伅
+  if(client.industry)document.getElementById('lf-industry').value=client.industry;
+  if(client.scale)document.getElementById('lf-scale').value=client.scale;
+  if(client.credit_code)document.getElementById('lf-credit-code').value=client.credit_code;
+  if(client.address)document.getElementById('lf-address')?document.getElementById('lf-address').value=client.address:null;
+  // 瀹㈡埛绫诲瀷
+  if(client.type){try{var types=JSON.parse(client.type);if(Array.isArray(types)&&types.length){document.getElementById('lf-customer-type').value=types[0]==='B2B浼佷笟瀹㈡埛'?'B2B':types[0]==='B2C涓汉瀹㈡埛'?'B2C':''}}catch(e){}}
+  // 鑷姩濉厖鑱旂郴浜猴紙浠?allContacts 琛ㄦ寜 client_id 鏌ユ壘锛?
+  var contacts=(allContacts||[]).filter(function(ct){return ct.client_id===client.id});
+  function firstVal(v){if(typeof v==='string'){try{v=JSON.parse(v)}catch(e){}}if(Array.isArray(v))v=v[0]||'';return String(v||'');}
+  if(contacts.length>0){
+    document.getElementById('lf-contact-name').value=contacts[0].name||'';
+    document.getElementById('lf-contact-phone').value=fmtMulti(contacts[0].phone);
+    document.getElementById('lf-contact-email').value=fmtMulti(contacts[0].email);
+  } else {
+    document.getElementById('lf-contact-name').value='';
+    document.getElementById('lf-contact-phone').value='';
+    document.getElementById('lf-contact-email').value='';
+  }
+  // 褰掑睘閿€鍞粯璁ゅ～鍏呭綋鍓嶇敤鎴?
+  if(!document.getElementById('lf-assigned-sales').value){
+    document.getElementById('lf-assigned-sales').value=currentUser?(currentUser.realname||currentUser.name||''):'';
+  }
+}
+
+=== allClients loading ===
+
+function loadClients at 220041
+function loadClients(){
+  var grid=document.getElementById('client-grid');
+  var statsBar=document.getElementById('stats-bar');
+  grid.innerHTML='<div class="loading"><span class="spinner"></span>鍔犺浇涓?..</div>';
+  statsBar.innerHTML='';
+  try{
+    var {data,error}=await sb.from('clients').select('*')

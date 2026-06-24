@@ -1,0 +1,64 @@
+﻿renderWorkflowTemplates at 685985
+function renderWorkflowTemplates(){
+  var list=document
+
+clients select at 220314: from('clients').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
+    if(error){grid.innerHTML='<div class="empty">
+
+clients select at 257014: from('clients').select('*').order('created_at').then(function(r1){
+    sb.from('contacts').select('*').order('created_at').then(function(r2){
+      va
+
+clients select at 264798: from('clients').select('id',{count:'exact',head:true}).eq('company_id',currentCompanyId).then(function(r){
+    document.getElementById('dash-client-co
+
+clients select at 271816: from('clients').select('type').eq('company_id',currentCompanyId);
+    var typeMap={};
+    if(cr.data)for(var ci=0;ci<cr.data.length;ci++){var tp=cr.da
+
+clients select at 277334: from('clients').select('id',{count:'exact',head:true}).eq('company_id',currentCompanyId).gte('created_at',mStart).then(function(r){
+    document.getEl
+
+clients select at 585951: from('clients').select('*').eq('company_id',currentCompanyId).order('name').then(function(r){if(r.data){allClients=r.data;onLeadCompanyInput()}});
+   
+
+clients select at 598291: from('clients').select('id').eq('company_id',currentCompanyId).ilike('name',lead.name).limit(1);if(cm&&cm.length)lead.client_id=cm[0].id}catch(e){}
+  
+
+clients select at 601307: from('clients').select('id,name').eq('company_id',currentCompanyId).ilike('name',l.name).limit(1);
+  if(existing&&existing.length>0){
+    clientId=exi
+
+clients select at 738590: from('clients').select('id,name,industry,address,type,credit_code').eq('id',clientId).maybeSingle();if(data)client=data}catch(e){}
+    }
+    if(client
+
+clients select at 740665: from('clients').select('id,name,industry,address,type').eq('company_id',currentCompanyId);if(data)allClients=data;}catch(e){}
+    })();
+  }
+  // Popul
+
+contacts select at 220669: from('contacts').select('*').eq('company_id',currentCompanyId);
+    allContacts=(cd||[]);
+    await 
+
+contacts select at 241920: from('contacts').select('*').eq('client_id',id).order('created_at',{ascending:true});
+    if(data&&d
+
+contacts select at 245998: from('contacts').select('*',{count:'exact',head:true}).eq('client_id',clientId);
+  if(!error) await 
+
+contacts select at 253747: from('contacts').select('id').eq('client_id',editId);existingIds=(oc||[]).map(function(x){return x.i
+
+contacts select at 257088: from('contacts').select('*').order('created_at').then(function(r2){
+      var wb=XLSX.utils.book_new
+
+contacts select at 547459: from('contacts').select('*').eq('client_id',supLinkedClientId).then(function(r){
+    if(r.error){sho
+
+contacts select at 602434: from('contacts').select('id,phone').eq('client_id',clientId);
+    var dupPhone=false;
+    if(ec)for(
+
+contacts select at 739351: from('contacts').select('name,title,phone,email').eq('client_id',clientId);
+        if(cts&&cts.leng

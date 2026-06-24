@@ -1,0 +1,39 @@
+﻿=== selectLeadCompany function ===
+function selectLeadCompany(idx){
+  var client=leadCompSuggList[idx];if(!client)return;
+  document.getElementById('lf-name').value=client.name||'';
+  document.getElementById('lead-name-suggestions').classList.add('hidden');
+  leadCompSuggList=[];leadCompSuggIdx=-1;
+  // 閿佸畾 client_id
+  document.getElementById('lf-client-id').value=client.id||'';
+  // 鑷姩濉厖瀹㈡埛淇℃伅
+  if(client.industry)document.getElementById('lf-industry').value=client.industry;
+  if(client.scale)document.getElementById('lf-scale').value=client.scale;
+  if(client.credit_code)document.getElementById('lf-credit-code').value=client.credit_code;
+  if(client.address)document.getElementById('lf-address')?document.getElementById('lf-address').value=client.address:null;
+  // 瀹㈡埛绫诲瀷
+  if(client.type){try{var types=JSON.parse(client.type);if(Array.isArray(types)&&types.length){var t=types[0]||'';document.getElementById('lf-customer-type').value=t.indexOf('B2B')===0?'B2B':t.indexOf('B2C')===0?'B2C':''}}catch(e){}if(!document.getElementById('lf-customer-type').value&&client.credit_code)document.getElementById('lf-customer-type').value='B2B';}
+  onLeadTypeChange();
+  // 鑷姩濉厖鑱旂郴浜猴紙浠?allContacts 琛ㄦ寜 client_id 鏌ユ壘锛?
+  var contacts=(allContacts||[]).filter(function(ct){return ct.client_id===client.id});
+  function firstVal(v){if(typeof v==='string'){try{v=JSON.parse(v)}catch(e){}}if(Array.isArray(v))v=v[0]||'';return String(v||'');}
+  if(contacts.length>0){
+    document.getElementById('lf-contact-name').value=contacts[0].name||'';
+    document.getElementById('lf-contact-phone').value=fmtMulti(contacts[0].phone);
+    document.getElementById('lf-contact-email').value=fmtMulti(contacts[0].email);
+  } else {
+    document.getElementById('lf-contact-name').value='';
+    document.getElementById('lf-contact-phone').value='';
+    document.getElementById('lf-contact-email').value='';
+  }
+  // 褰掑睘閿€鍞粯璁ゅ～鍏呭綋鍓嶇敤鎴?
+  if(!document.getElementById('lf-assigned-sales').value){
+    document.getElementById('lf-assigned-sales').value=currentUser?(currentUser.realname||currentUser.name||''):'';
+  }
+}
+
+=== Lead form credit code field ===
+<div class="form-group"><label>缁熶竴绀句細淇＄敤浠ｇ爜</label><input id="lf-credit-code" placeholder="B2B瀹㈡埛濉啓" readonly style="background:var(--bg2);color:var(--text3)"></div><div class="form-gro
+
+=== saveLead credit_code in payload ===
+credit_code:document.getElementById('lf-credit-code').value.trim(),

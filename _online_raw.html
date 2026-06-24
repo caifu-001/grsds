@@ -446,7 +446,6 @@ input,select,textarea,button{font-family:inherit}
 .link-select-row select{flex:1}
 .link-select-row button{padding:6px 14px;border-radius:8px;border:1px solid var(--primary);background:var(--primary-light);color:var(--primary);cursor:pointer;font-size:13px;font-weight:500;white-space:nowrap}
 
-
 /* === Inventory === */
 
 .collab-subtabs{display:flex;gap:6px;padding:6px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap;background:var(--card);border-radius:12px 12px 0 0}
@@ -645,7 +644,6 @@ input,select,textarea,button{font-family:inherit}
   .ns-group-label{font-size:11px;color:var(--primary);padding:6px 14px 2px;font-weight:700;text-transform:uppercase}
   .ns-empty{font-size:13px;color:var(--text-secondary);padding:12px 14px;text-align:center}
 
-
 .project-entry{border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;background:#fff}
 .pe-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
 .pe-num{font-size:13px;font-weight:600;color:var(--primary)}
@@ -689,7 +687,6 @@ input,select,textarea,button{font-family:inherit}
 .dash-action-btn:hover{background:var(--primary);color:#fff;border-color:var(--primary)}
 @media(max-width:640px){.dashboard-grid{grid-template-columns:1fr}.dashboard-sections{grid-template-columns:1fr}.reports-tabs{flex-wrap:wrap;padding:6px 8px;gap:3px}.report-toolbar{flex-wrap:wrap}.report-panel{overflow-x:auto}.report-table{min-width:500px}}
 
-
 /* Reports */
 .reports-tabs{display:flex;gap:4px;padding:8px 16px;border-bottom:1px solid var(--border);overflow-x:auto}
 .report-panel{padding:12px 16px}
@@ -718,7 +715,6 @@ input,select,textarea,button{font-family:inherit}
 .report-chart-row{display:grid;grid-template-columns:1fr;gap:12px}
 .report-metric{font-size:36px;font-weight:700;text-align:center;padding:8px 0}
 @media(min-width:900px){.report-chart-row{grid-template-columns:1fr 1fr}#rp-dashboard-grid{grid-template-columns:1fr 1fr}}
-
 
 /* Notifications */
 .notif-bell{position:relative;font-size:18px;padding:6px 10px;cursor:pointer;background:none;border:none;border-radius:8px;transition:background .15s;line-height:1;margin-left:auto}
@@ -1396,6 +1392,7 @@ input,select,textarea,button{font-family:inherit}
     <button class="btn-save" style="width:100%;margin-top:12px;padding:10px;font-size:14px" onclick="sendInvitationByEmail()">发送邀请</button>
    </div>
   </div></div>
+  </div>
 
   <!-- Free Agent Pool -->
   <div id="admin-freeagents" class="admin-panel hidden">
@@ -1543,6 +1540,7 @@ input,select,textarea,button{font-family:inherit}
      </div>
     </div>
    </div>
+
 <!-- Workflow Templates -->
   <div id="admin-workflows" class="admin-panel hidden">
    <div class="card" style="padding:16px">
@@ -1552,7 +1550,9 @@ input,select,textarea,button{font-family:inherit}
     </div>
     <div id="workflow-template-list" style="display:flex;flex-direction:column;gap:8px"></div>
    </div>
-  </div>
+  
+
+</div>
 
   
   </div>
@@ -1892,7 +1892,6 @@ input,select,textarea,button{font-family:inherit}
   </div>
  </div>
 </div>
-
 
 <!-- Delete Confirm -->
 <div class="confirm-overlay hidden" id="confirm-dialog">
@@ -3380,7 +3379,6 @@ var addEm=function(i){if(!formContacts[i].emails)formContacts[i].emails=[];formC
 var rmEm=function(i,e){formContacts[i].emails.splice(e,1);if(!formContacts[i].emails.length)formContacts[i].emails=[''];refCt()};
 var upCtEm=function(i,e,v){if(formContacts[i]&&formContacts[i].emails)formContacts[i].emails[e]=(v||'').trim()};
 
-
 function selectGrade(grade){
   var hf=document.getElementById('f-grade');if(hf)hf.value=grade;
   updateGradeSelect(grade);
@@ -3908,7 +3906,6 @@ async function confirmImport(){
   loadClients();
   showToast('导入了 '+added+' 个客户 + '+contactAdded+' 个联系人，跳过 '+skipped+' 个已存在');
 }
-
 
 // === Crypto helpers (AES-GCM for amount encryption) ===
 var _cryptoKey=null;
@@ -6128,7 +6125,6 @@ async function saveUserEdit(userId){
   renderAdminUsers();
 }
 
-
 /* ── Departments ── */
 var deptFormId=null;
 
@@ -6290,7 +6286,6 @@ async function saveNewUser(){
   renderAdminUsers();
 }
 
-
 var _resetPwdUserId=null;
 function openResetPwdForm(userId,userName){
   _resetPwdUserId=userId;
@@ -6314,7 +6309,6 @@ async function doResetPassword(){
     showToast('密码已重置');
   }catch(e){showToast('网络错误: '+e.message)}
 }
-
 
 // ═══════════ Sales Pipeline ═══════════
 var currentSalesTab='leads';
@@ -6341,7 +6335,6 @@ function switchSalesTab(tab){
   else if(tab==='payments'){if(!(allPayments||[]).length)loadPayments();else renderPayments()}
 }
 
-
 // ── Quotations ──
 async function loadQuotations(){
   try{
@@ -6350,7 +6343,6 @@ async function loadQuotations(){
     allQuotations=r.data||[];renderQuotations();
   }catch(e){console.error('loadQuotations error:',e)}
 }
-
 
 function renderQuotations(){
   var filter=document.getElementById('quote-status-filter').value;
@@ -6789,7 +6781,6 @@ function openSalesForm(){
   else if(currentSalesTab==='payments')openPaymentForm();
 }
 
-
 // ═══════════ AFTER-SALES SERVICE ═══════════
 var svEditId=null; var allTickets=[],allVisits=[],allWarranties=[],allMaintenance=[],allKB=[];
 
@@ -7143,14 +7134,12 @@ async function saveKB(){
   closeKBForm();await loadKB();showToast(svEditId?'文章已更新':'文章已创建');
 }
 
-
 // —— After-sales delete helpers
 async function confirmDeleteTicket(id){confirmDialog('确定删除该工单？',async function(){await sb.from('service_tickets').delete().eq('id',id);loadTickets()})}
 async function confirmDeleteVisit(id){confirmDialog('确定删除？',async function(){await sb.from('client_visits').delete().eq('id',id);loadVisits()})}
 async function confirmDeleteWarranty(id){confirmDialog('确定删除？',async function(){await sb.from('warranties').delete().eq('id',id);loadWarranties()})}
 async function confirmDeleteMaintenance(id){confirmDialog('确定删除？',async function(){await sb.from('maintenance_plans').delete().eq('id',id);loadMaintenancePlans()})}
 async function confirmDeleteKB(id){confirmDialog('确定删除？',async function(){await sb.from('kb_articles').delete().eq('id',id);loadKB()})}
-
 
 // ═══════════ INVENTORY ═══════════
 var currentInventoryTab='products';
@@ -8203,8 +8192,6 @@ async function deleteSettlement(){
   closeSettlementForm();
 }
 
-
-
 // === Performance Functions ===
 
 function switchPerfTab(sub){
@@ -8761,7 +8748,6 @@ function syncSupProducts(){
 function addSupPhone(){var el=document.getElementById('sup-phones');var row=document.createElement('div');row.className='sup-prod-row';row.style.marginBottom='6px';row.innerHTML='<input oninput="syncSupPhones()" placeholder="\u8054\u7cfb\u7535\u8bdd" style="flex:2"><button class="btn-sm" style="background:#fff;color:var(--danger);border:1px solid var(--danger)" onclick="this.parentElement.remove();syncSupPhones()">\u00d7</button>';el.appendChild(row)}
 function addSupProduct(){var el=document.getElementById('sup-products');var row=document.createElement('div');row.className='sup-prod-row';row.innerHTML='<input class="prod-name" oninput="syncSupProducts()" placeholder="\u4ea7\u54c1\u540d\u79f0"><input class="prod-moq" oninput="syncSupProducts()" placeholder="MOQ"><input class="prod-price" oninput="syncSupProducts()" type="number" step="0.01" placeholder="\u5355\u4ef7"><button class="btn-sm" style="background:#fff;color:var(--danger);border:1px solid var(--danger)" onclick="this.parentElement.remove();syncSupProducts()">\u00d7</button>';el.appendChild(row)}
 
-
 function searchSupplierLinkClient(){
   var q=document.getElementById('sup-link-client').value.trim().toLowerCase();
   var list=document.getElementById('sup-link-list');
@@ -8837,7 +8823,6 @@ function doImportContact(ct){
   document.getElementById('sup-contact-picker').classList.add('hidden');
   showToast('\u5df2\u5bfc\u5165\u8054\u7cfb\u4eba\u4fe1\u606f');
 }
-
 
 function closeSupplierForm(){
   document.getElementById('supplier-modal').classList.add('hidden');
@@ -9567,7 +9552,6 @@ function selectLeadContact(idx){
   leadContactSuggList=[];leadContactSuggIdx=-1;
 }
 
-
 function openLeadForm(id){
   leadEditId=id||null;
   document.getElementById('lead-form-title').textContent=id?'编辑线索':'新建线索';
@@ -9791,8 +9775,6 @@ async function recycleStale(){
   if(recycled>0){await loadPoolLeads();await loadLeads();showToast('已回收 '+recycled+' 条线索')}
   else showToast('没有需要回收的线索');
 }
-
-
 
 // === Collab: Follow-up Records ===
 async function loadFollowups(){
@@ -11145,8 +11127,6 @@ function wfAutoLayout(){
   wfRenderAll();
 }
 
-
-
 async function saveWtVisual(){
   var name=document.getElementById('wt-name').value.trim();
   var desc=document.getElementById('wt-desc').value.trim();
@@ -11181,7 +11161,6 @@ async function saveWtVisual(){
 }
 function saveWt(){saveWtVisual()}
 
-
 async function deleteWt(id){
   var t=allTemplates.find(function(x){return x.id===id});
   if(!t)return;
@@ -11208,7 +11187,6 @@ function extendPermissionMatrix(){
 // Stub for defunct freeze buttons (always hidden, prevent ReferenceError)
 function toggleLeadFrozen(){showToast('冻结功能暂未开放')}
 function editForm(id){showToast('表单编辑功能暂未开放')}
-
 
 // ====== Project Management ======
 var allProjects=[],allStages=[],allBiddings=[],allDeliveries=[],allPayments=[],allTemplates=[],curProjectId=null,curProjectName='';
@@ -12378,7 +12356,6 @@ async function deletePayment(id){if(confirm('确定删除？')){var {error}=awai
  <div class="empty hidden" id="lead-empty"><div class="empty-icon">🎯</div>暂无线索<br><span style="font-size:12px;color:var(--text3)">点击「+ 新线索」开始添加</span></div>
 </div>
 
-
 <!-- Transfer Form Modal -->
 <div class="modal-overlay hidden" id="transfer-modal">
  <div class="modal-sheet">
@@ -12701,16 +12678,6 @@ async function deletePayment(id){if(confirm('确定删除？')){var {error}=awai
  </div>
 </div>
 
-
-
-
-
-
-
-
-
-
-
 <div id="toast-container"></div>
 
 <!-- Lead Form Modal -->
@@ -12802,7 +12769,6 @@ async function deletePayment(id){if(confirm('确定删除？')){var {error}=awai
  </div>
 </div>
 
-
 <!-- Lead Assign Modal -->
 <div class="modal-overlay hidden" id="lead-assign-modal">
  <div class="modal-sheet">
@@ -12829,7 +12795,6 @@ async function deletePayment(id){if(confirm('确定删除？')){var {error}=awai
   </div>
  </div>
 </div>
-
 
 </div>
 

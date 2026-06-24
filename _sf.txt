@@ -1,0 +1,13 @@
+﻿renderWorkflowTemplates at line 10855: async=True
+  async function renderWorkflowTemplates(){
+  var list=documen
+
+8 issues found:
+  - Line 5477: setupCompanyAutocomplete() has 1 await(s) but is NOT async
+  - Line 6459: convertQuoteToOrder() has 5 await(s) but is NOT async
+  - Line 6521: confirmDeleteQuote() has 1 await(s) but is NOT async
+  - Line 6586: toggleContractArchive() has 2 await(s) but is NOT async
+  - Line 6682: confirmDeleteContract() has 1 await(s) but is NOT async
+  - Line 6782: confirmDeletePayment() has 1 await(s) but is NOT async
+  - Line 9127: renderClient360Overview() has 1 await(s) but is NOT async
+  - Line 11888: openProjectFormFromLead() has 3 await(s) but is NOT async

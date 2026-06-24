@@ -1,0 +1,32 @@
+﻿admin-workflows at 121143
+center;gap:8px"><input type="checkbox" id="dm-mobile" onchange="toggleDataMasking()"> 闅愯棌瀹㈡埛鎵嬫満鍙凤紙鏄剧ず138****1234锛?/label>
+      <label style="font-size:13px;display:flex;align-items:center;gap:8px"><input type="checkbox" id="dm-price" onchange="toggleDataMasking()"> 闅愯棌閲戦/浠锋牸</label>
+      <label style="font-size:13px;display:flex;align-items:center;gap:8px"><input type="checkbox" id="dm-email" onchange="toggleDataMasking()"> 闅愯棌閭鍦板潃</label>
+     </div>
+    </div>
+   
+<!-- Workflow Templates -->
+  <div id="admin-workflows" class="admin-panel hidden">
+   <div class="card" style="padding:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+     <h4 style="margin:0">娴佺▼妯℃澘绠＄悊</h4>
+     <button class="btn-primary" onclick="openWorkflowTemplateForm()">+ 鏂板缓妯℃澘</button>
+    </div>
+    <div id="workflow-template-list" style="display:flex;flex-direction:column;gap:8px"></div>
+   </div>
+</div>
+
+  </div>
+
+  
+  </div>
+
+  <button class="fab" id="main-fab" onclick="handleFab()">+</button>
+
+<!-- Settings Page -->
+<div id="settings-screen" style="display:none
+
+
+=== Checking div structure ===
+<div count: 5, </div> count: 8
+Net: -3

@@ -1,0 +1,20 @@
+﻿    10851: 
+    10852: /* ===== WORKFLOW TEMPLATES ===== */
+    10853: var wtEditId=null;
+    10854: 
+*** 10855: async async async async function renderWorkflowTemplates(){
+    10856:   var list=document.getElementById('workflow-template-list');
+    10857:   if(!list)return;
+    10858:   try{
+    10859:     var url=SUPABASE_URL+'/rest/v1/workflow_templates?order=id';
+    10860:     var r=await fetch(url,{headers:{apikey:SUPABASE_SERVICE_KEY,Authorization:'Bearer '+SUPABASE_SERVICE_KEY}});
+    10861:     if(!r.ok){list.innerHTML='<p style="color:var(--text2)">鍔犺浇澶辫触</p>';return}
+    10862:     var data=await r.json();
+    10863:     allTemplates=data;
+    10864:     var h='';
+    10865:     if(!data||!data.length){h='<p style="color:var(--text2);text-align:center;padding:20px">鏆傛棤妯℃澘锛岀偣鍑讳笂鏂规寜閽柊寤?/p>'}
+    10866:     else{
+    10867:       for(var i=0;i<data.length;i++){
+    10868:         var t=data[i];
+    10869:         var stepCount=0;
+    10870:         try{var s=typeof t.steps==='string'?JSON.parse(t.steps):t.steps;stepCount=Array.isArray(s)?s.length:0}catch(e){}
