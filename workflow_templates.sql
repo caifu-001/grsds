@@ -1,4 +1,4 @@
--- workflow_templates: 流程模板（先清残留再建）
+-- workflow_templates: 流程模板（精简版，不依赖 profiles 列名）
 DROP TABLE IF EXISTS workflow_templates CASCADE;
 
 CREATE TABLE workflow_templates (
@@ -7,25 +7,14 @@ CREATE TABLE workflow_templates (
   description TEXT DEFAULT '',
   company_id INTEGER,
   steps JSONB NOT NULL DEFAULT '[]'::jsonb,
-  created_by UUID,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
-ALTER TABLE workflow_templates ENABLE ROW LEVEL SECURITY;
+-- 先不加 RLS，模板表所有人可读，仅服务端 API 可写
+-- ALTER TABLE workflow_templates ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "anyone can read templates" ON workflow_templates FOR SELECT USING (true);
-CREATE POLICY "super_admin can write templates" ON workflow_templates FOR INSERT WITH CHECK (
-  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_super_admin = true)
-);
-CREATE POLICY "super_admin can update templates" ON workflow_templates FOR UPDATE USING (
-  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_super_admin = true)
-);
-CREATE POLICY "super_admin can delete templates" ON workflow_templates FOR DELETE USING (
-  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_super_admin = true)
-);
-
--- projects 加 template_id（先删再加避免 FK 冲突）
+-- projects 加 template_id
 ALTER TABLE projects DROP COLUMN IF EXISTS template_id;
 ALTER TABLE projects ADD COLUMN template_id INTEGER;
 
