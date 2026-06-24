@@ -10878,13 +10878,15 @@ async function loadBackupHistory(){
 var wtEditId=null;
 
 async function renderWorkflowTemplates(){
+  console.log('renderWorkflowTemplates: start');
   var list=document.getElementById('workflow-template-list');
-  if(!list)return;
+  if(!list){console.log('renderWorkflowTemplates: list element not found');return}
   try{
     var url=SUPABASE_URL+'/rest/v1/workflow_templates?order=id';
+    console.log('renderWorkflowTemplates: fetching',url);
     var r=await fetch(url,{headers:{apikey:SUPABASE_SERVICE_KEY,Authorization:'Bearer '+SUPABASE_SERVICE_KEY}});
-    if(!r.ok){list.innerHTML='<p style="color:var(--text2)">加载失败</p>';return}
-    var data=await r.json();
+    if(!r.ok){console.log('renderWorkflowTemplates: fetch failed',r.status);list.innerHTML='<p style="color:var(--text2)">加载失败 (HTTP '+r.status+')</p>';return}
+    var data=await r.json();console.log('renderWorkflowTemplates: got',data.length,'templates');
     allTemplates=data;
     var h='';
     if(!data||!data.length){h='<p style="color:var(--text2);text-align:center;padding:20px">暂无模板，点击上方按钮新建</p>'}
@@ -10905,7 +10907,7 @@ async function renderWorkflowTemplates(){
       }
     }
     list.innerHTML=h;
-  }catch(e){list.innerHTML='<p style="color:var(--text2)">加载异常: '+escHtml(e.message)+'</p>'}
+  }catch(e){console.error('renderWorkflowTemplates: exception',e);list.innerHTML='<p style="color:var(--text2)">加载异常: '+escHtml(e.message)+'</p>'}
 }
 
 function openWorkflowTemplateForm(){
