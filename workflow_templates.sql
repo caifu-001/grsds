@@ -1,43 +1,35 @@
--- workflow_templates: 流程模板
--- super_admin 管理全局模板，后续公司可选不同模板
-CREATE TABLE IF NOT EXISTS workflow_templates (
+-- workflow_templates: 流程模板（先清残留再建）
+DROP TABLE IF EXISTS workflow_templates CASCADE;
+
+CREATE TABLE workflow_templates (
   id SERIAL PRIMARY KEY,
   name TEXT NOT NULL,
   description TEXT DEFAULT '',
-  company_id INTEGER,  -- NULL=全局模板(super_admin专用), 非NULL=公司自定义
-  steps JSONB NOT NULL DEFAULT '[]'::jsonb,  -- [{seq,phase,key,name,icon,panel,decision,decisionAsk,decisionYes,decisionNo,end}]
-  created_by UUID REFERENCES profiles(id),
+  company_id INTEGER,
+  steps JSONB NOT NULL DEFAULT '[]'::jsonb,
+  created_by UUID,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
--- RLS: 所有人可读，仅 super_admin 可写
 ALTER TABLE workflow_templates ENABLE ROW LEVEL SECURITY;
 
--- 读：所有人可读（包括全局模板和自己公司的模板）
-CREATE POLICY "anyone can read templates" ON workflow_templates
-  FOR SELECT USING (true);
+CREATE POLICY "anyone can read templates" ON workflow_templates FOR SELECT USING (true);
+CREATE POLICY "super_admin can write templates" ON workflow_templates FOR INSERT WITH CHECK (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_super_admin = true)
+);
+CREATE POLICY "super_admin can update templates" ON workflow_templates FOR UPDATE USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_super_admin = true)
+);
+CREATE POLICY "super_admin can delete templates" ON workflow_templates FOR DELETE USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_super_admin = true)
+);
 
--- 写：仅 super_admin
-CREATE POLICY "super_admin can write templates" ON workflow_templates
-  FOR INSERT WITH CHECK (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_super_admin = true)
-  );
+-- projects 加 template_id（先删再加避免 FK 冲突）
+ALTER TABLE projects DROP COLUMN IF EXISTS template_id;
+ALTER TABLE projects ADD COLUMN template_id INTEGER;
 
-CREATE POLICY "super_admin can update templates" ON workflow_templates
-  FOR UPDATE USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_super_admin = true)
-  );
-
-CREATE POLICY "super_admin can delete templates" ON workflow_templates
-  FOR DELETE USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_super_admin = true)
-  );
-
--- projects 加 template_id
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS template_id INTEGER REFERENCES workflow_templates(id);
-
--- 插入默认模板（46步标准流程）
+-- 插入默认 46 步模板
 INSERT INTO workflow_templates (name, description, steps) VALUES (
   '标准销售流程',
   '46步全流程销售模板，覆盖线索→商机→分析策略→内部赋能→方案交流→招投标→合同签订→交付→开票回款',
@@ -89,5 +81,4 @@ INSERT INTO workflow_templates (name, description, steps) VALUES (
     {"seq":45,"phase":"开票回款","key":"invoice_collect","name":"开票回款","icon":"💵","panel":"payment"},
     {"seq":46,"phase":"结束","key":"end","name":"结束","icon":"⏹️","end":true}
   ]'::jsonb
-)
-ON CONFLICT DO NOTHING;
+);
