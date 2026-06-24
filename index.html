@@ -5474,7 +5474,7 @@ sb.auth.getSession().then(async function(res){
 
 // === 鍏徃鍚嶇О鑷姩琛ュ叏 ===
 let acTimer=null,acSelected=-1;
-function setupCompanyAutocomplete(){
+async function setupCompanyAutocomplete(){
   var input=document.getElementById('f-name');if(!input)return;
   var dd=document.createElement('div');dd.className='company-ac-dropdown';dd.id='company-ac';
   input.parentElement.style.position='relative';input.parentElement.appendChild(dd);
@@ -6456,7 +6456,7 @@ function saveContractTemplate(){var n=prompt('模板名称:');if(!n)return;
 function loadQfTemplates(){
   sb.from('quote_templates').select('*').eq('company_id',currentCompanyId).order('name').then(function(r){allQfTemplates=r.data||[]});
 }
-function convertQuoteToOrder(){
+async function convertQuoteToOrder(){
   if(!qeditId)return;
   var qt=allQuotations.find(function(x){return x.id===qeditId});if(!qt)return;
   confirmDialog('将此报价转为订单？',async function(){
@@ -6518,7 +6518,7 @@ async function saveQuote(){
   }catch(e){console.error('[DEBUG] saveQuote error:',e);showToast('保存报价失败: '+e.message)}
 }
 
-function confirmDeleteQuote(){if(qeditId)confirmDialog('确定删除该报价？',async function(){await sb.from('quotations').delete().eq('id',qeditId);closeQuoteForm();loadQuotations();showToast('报价已删除')})}
+async function confirmDeleteQuote(){if(qeditId)confirmDialog('确定删除该报价？',async function(){await sb.from('quotations').delete().eq('id',qeditId);closeQuoteForm();loadQuotations();showToast('报价已删除')})}
 
 // ── Contracts ──
 async function loadContracts(){
@@ -6583,7 +6583,7 @@ function isContractExpiring(ct){
   var diffDays=Math.ceil((ed-today)/(1000*60*60*24));
   return diffDays>=0&&diffDays<=30;
 }
-function toggleContractArchive(id,archive){
+async function toggleContractArchive(id,archive){
   confirmDialog(archive?'确定归档该合同？':'确定取消归档？',async function(){
     var r=await sb.from('contracts').update({archive_status:archive?'archived':'active',updated_at:new Date().toISOString()}).eq('id',id);
     if(r.error){showToast('操作失败: '+r.error.message);return}
@@ -6679,7 +6679,7 @@ async function saveContract(){
   if(error){showToast('保存失败: '+error.message);return}
   closeContractForm();await loadContracts();showToast(ceditId?'合同已更新':'合同已创建');
 }
-function confirmDeleteContract(){if(ceditId)confirmDialog('确定删除该合同？',async function(){await sb.from('contracts').delete().eq('id',ceditId);closeContractForm();loadContracts();showToast('合同已删除')})}
+async function confirmDeleteContract(){if(ceditId)confirmDialog('确定删除该合同？',async function(){await sb.from('contracts').delete().eq('id',ceditId);closeContractForm();loadContracts();showToast('合同已删除')})}
 
 // ── Payments ──
 async function loadPayments(){
@@ -6779,7 +6779,7 @@ async function savePayment(){
   if(error){showToast('保存失败: '+error.message);return}
   closePaymentForm();loadPayments();showToast(peditId?'回款记录已更新':'回款记录已添加');
 }
-function confirmDeletePayment(){if(peditId)confirmDialog('确定删除该回款记录？',async function(){await sb.from('payments').delete().eq('id',peditId);closePaymentForm();loadPayments();showToast('回款记录已删除')})}
+async function confirmDeletePayment(){if(peditId)confirmDialog('确定删除该回款记录？',async function(){await sb.from('payments').delete().eq('id',peditId);closePaymentForm();loadPayments();showToast('回款记录已删除')})}
 
 // ── Common: openSalesForm (FAB) ──
 function openSalesForm(){
@@ -9124,7 +9124,7 @@ function switchClient360Tab(tab){
   else if(tab==='lifecycle')renderClient360Lifecycle(c.id);
 }
 
-function renderClient360Overview(c,orders){
+async function renderClient360Overview(c,orders){
   var stageMap={prospect:'潜在客户',qualified:'合格线索',deal:'成交客户',atrisk:'流失预警',churned:'流失客户',repurchase:'复购客户'};
   var totalRev=0,paidCount=0;
   for(var i=0;i<orders.length;i++){totalRev+=parseFloat(orders[i].amount||0)||parseFloat(orders[i]._amount||0);if(orders[i].stage==='已完成')paidCount++}
@@ -10852,7 +10852,7 @@ async function loadBackupHistory(){
 /* ===== WORKFLOW TEMPLATES ===== */
 var wtEditId=null;
 
-async async async async function renderWorkflowTemplates(){
+async function renderWorkflowTemplates(){
   var list=document.getElementById('workflow-template-list');
   if(!list)return;
   try{
@@ -11885,7 +11885,7 @@ function openProjectFormFromLeadIdx(idx){
   if(!entry){showToast('线索数据丢失');return}
   openProjectFormFromLead(entry.id,entry.projectName,entry.companyName,entry.clientId);
 }
-function openProjectFormFromLead(leadId,projectName,companyName,clientId){
+async function openProjectFormFromLead(leadId,projectName,companyName,clientId){
   oppLeadId=leadId||null;
   oppEditId=null;
   var title=document.getElementById('opp-form-title');
