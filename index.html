@@ -10798,7 +10798,7 @@ function editForm(id){showToast('表单编辑功能暂未开放')}
 
 
 // ====== Project Management ======
-var allProjects=[],allStages=[],allBiddings=[],allDeliveries=[],allPayments=[],curProjectId=null,curProjectName='';
+var allProjects=[],allStages=[],allBiddings=[],allDeliveries=[],allPayments=[],allTemplates=[],curProjectId=null,curProjectName='';
 var pStageEditId=null,pBiddingEditId=null,pDeliveryEditId=null,pPaymentEditId=null;
 
 // ---- Workflow Data ----
@@ -10865,6 +10865,18 @@ function initWorkflow(templateId){
   }
 }
 initWorkflow();
+
+async function loadTemplates(){
+  try{if(isSuperAdmin){var {data}=await sbAdmin.from('workflow_templates').select('*');if(data)allTemplates=data;}else{var {data}=await sb.from('workflow_templates').select('*');if(data)allTemplates=data;}}
+  catch(e){console.error('loadTemplates',e)}
+}
+function getTemplateSteps(templateId){
+  if(!templateId||!allTemplates||!allTemplates.length)return WORKFLOW_STEPS;
+  var t=allTemplates.find(function(x){return x.id===templateId});
+  if(!t)return WORKFLOW_STEPS;
+  try{if(typeof t.steps==='string')return JSON.parse(t.steps);if(Array.isArray(t.steps))return t.steps;}catch(e){}
+  return WORKFLOW_STEPS;
+}
 
 function loadWorkflow(){
   var proj=allProjects.find(function(p){return p.id===curProjectId});
