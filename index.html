@@ -9337,7 +9337,9 @@ function renderLeads(){
     html+='<div class="lead-actions">';
     html+='<button class="btn-lead-primary" onclick="event.stopPropagation();openLeadForm(\''+l.id+'\')">编辑</button>';
     html+='<button class="btn-lead-primary" onclick="event.stopPropagation();convertLeadToClient(\''+l.id+'\')">转客户</button>';
-    html+='<button class="btn-lead-success" onclick="event.stopPropagation();openProjectFormFromLead('+JSON.stringify(l.id)+','+JSON.stringify(l.project_name||l.name||'')+','+JSON.stringify(l.name||'')+','+JSON.stringify(l.client_id||'')+')">转项目</button>';
+    var li=_leadProjectCache.length;
+    _leadProjectCache.push({id:l.id,projectName:l.project_name||l.name||'',companyName:l.name||'',clientId:l.client_id||''});
+    html+='<button class="btn-lead-success" onclick="event.stopPropagation();openProjectFormFromLeadIdx('+li+')">转项目</button>';
     html+='<button class="btn-lead-danger" onclick="event.stopPropagation();deleteLead(\''+l.id+'\')">删除</button>';
     html+='</div></div>';
   }
@@ -9380,7 +9382,9 @@ function renderPoolLeads(){
     html+='<button class="btn-lead-primary" onclick="event.stopPropagation();openLeadForm(\''+l.id+'\')">编辑</button>';
     html+='<button class="btn-lead-primary" onclick="event.stopPropagation();assignLead(\''+l.id+'\')">分配</button>';
     html+='<button class="btn-lead-primary" onclick="event.stopPropagation();convertLeadToClient(\''+l.id+'\')">转客户</button>';
-    html+='<button class="btn-lead-success" onclick="event.stopPropagation();openProjectFormFromLead('+JSON.stringify(l.id)+','+JSON.stringify(l.project_name||l.name||'')+','+JSON.stringify(l.name||'')+','+JSON.stringify(l.client_id||'')+')">转项目</button>';
+    var li=_leadProjectCache.length;
+    _leadProjectCache.push({id:l.id,projectName:l.project_name||l.name||'',companyName:l.name||'',clientId:l.client_id||''});
+    html+='<button class="btn-lead-success" onclick="event.stopPropagation();openProjectFormFromLeadIdx('+li+')">转项目</button>';
     html+='<button class="btn-lead-danger" onclick="event.stopPropagation();deleteLead(\''+l.id+'\')">删除</button>';
     html+='</div></div>';
   }
@@ -11430,6 +11434,11 @@ async function loadPayments(){
   }catch(e){console.error(e)}
 }
 
+function openProjectFormFromLeadIdx(idx){
+  var entry=_leadProjectCache[idx];
+  if(!entry){showToast('线索数据丢失');return}
+  openProjectFormFromLead(entry.id,entry.projectName,entry.companyName,entry.clientId);
+}
 function openProjectFormFromLead(leadId,projectName,companyName,clientId){
   oppLeadId=leadId||null;
   oppEditId=null;
@@ -11844,6 +11853,7 @@ async function saveProject(){
   showToast(oppEditId?'已更新':'已创建商机');
 }
 
+var _leadProjectCache=[];
 var oppEditId=null,oppLeadId=null;
 
 async function deleteOpp(){
