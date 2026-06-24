@@ -11480,22 +11480,45 @@ function openProjectFormFromLead(leadId,projectName,companyName,clientId){
   var notesGrp=document.getElementById('pf-conclusion-notes-group');
   if(notesGrp)notesGrp.style.display='none';
   document.getElementById('pf-notes').value='';
-  // If clientId provided and allClients loaded, auto-fill
-  if(clientId&&allClients&&allClients.length){
-    var client=allClients.find(function(c){return c.id===clientId});
+  // If clientId provided, load all clients and auto-fill
+  (async function(){
+    var client=null;
+    // Try local cache first
+    if(clientId&&allClients&&allClients.length){
+      client=allClients.find(function(c){return c.id===clientId});
+    }
+    // Fallback: fetch from Supabase
+    if(!client&&clientId){
+      try{var {data}=await sb.from('clients').select('id,name,industry,address,type,credit_code').eq('id',clientId).maybeSingle();if(data)client=data}catch(e){}
+    }
     if(client){
-      document.getElementById('pf-company-name').value=client.name||'';
+      document.getElementById('pf-company-name').value=client.name||companyName||'';
       if(client.industry)document.getElementById('pf-industry').value=client.industry;
       if(client.address)document.getElementById('pf-address').value=client.address;
+      if(client.credit_code)document.getElementById('pf-credit-code').value=client.credit_code;
       if(client.type){try{var types=JSON.parse(client.type);if(Array.isArray(types)&&types.length)document.getElementById('pf-customer-type').value=types[0];}catch(e){}}
-      var contacts=client.contacts||[];
-      if(contacts.length){
-        document.getElementById('pf-contact-name').value=contacts[0].name||'';
-        document.getElementById('pf-contact-title').value=contacts[0].title||'';
-        document.getElementById('pf-contact-phone').value=contacts[0].phone||'';
+      // Load contacts from contacts table
+      try{
+        var {data:cts}=await sb.from('contacts').select('name,title,phone,email').eq('client_id',clientId);
+        if(cts&&cts.length){
+          var ct=cts[0];
+          document.getElementById('pf-contact-name').value=ct.name||'';
+          document.getElementById('pf-contact-title').value=ct.title||'';
+          document.getElementById('pf-contact-phone').value=(function(v){if(!v)return'';if(typeof v==='string'){try{v=JSON.parse(v)}catch(e){return v}}if(Array.isArray(v))return v.filter(function(x){return x}).join('\n');return String(v)})(ct.phone);
+          document.getElementById('pf-contact-email').value=(function(v){if(!v)return'';if(typeof v==='string'){try{v=JSON.parse(v)}catch(e){return v}}if(Array.isArray(v))return v.filter(function(x){return x}).join('\n');return String(v)})(ct.email);
+        }
+      }catch(e){}
+    }
+    // Populate template dropdown
+    var templateSel=document.getElementById('pf-template-id');
+    if(templateSel){
+      templateSel.innerHTML='<option value="">默认（46步标准流程）</option>';
+      for(var i=0;i<allTemplates.length;i++){
+        var t=allTemplates[i];
+        templateSel.innerHTML+='<option value="'+t.id+'">'+escHtml(t.name)+'</option>';
       }
     }
-  }
+  })();
   // Lazy load allClients if needed
   if(!allClients||!allClients.length){
     (async function(){
@@ -11857,7 +11880,6 @@ async function saveProject(){
     budget:parseFloat(document.getElementById('pf-budget').value)||null,
     status:document.getElementById('pf-status').value,
     conclusion:document.getElementById('pf-conclusion').value,
-    conclusion_notes:document.getElementById('pf-conclusion-notes').value.trim(),
     status:document.getElementById('pf-conclusion').value==='rejected'?'suspended':document.getElementById('pf-status').value,
     notes:document.getElementById('pf-notes').value.trim(),
     updated_at:new Date().toISOString()
