@@ -9510,6 +9510,7 @@ function selectLeadCompany(idx){
   if(client.address)document.getElementById('lf-address')?document.getElementById('lf-address').value=client.address:null;
   // 客户类型
   if(client.type){try{var types=JSON.parse(client.type);if(Array.isArray(types)&&types.length){var t=types[0]||'';document.getElementById('lf-customer-type').value=t.indexOf('B2B')===0?'B2B':t.indexOf('B2C')===0?'B2C':''}}catch(e){}if(!document.getElementById('lf-customer-type').value&&client.credit_code)document.getElementById('lf-customer-type').value='B2B';}
+  onLeadTypeChange();
   // 自动填充联系人（从 allContacts 表按 client_id 查找）
   var contacts=(allContacts||[]).filter(function(ct){return ct.client_id===client.id});
   function firstVal(v){if(typeof v==='string'){try{v=JSON.parse(v)}catch(e){}}if(Array.isArray(v))v=v[0]||'';return String(v||'');}
@@ -10851,7 +10852,7 @@ async function loadBackupHistory(){
 /* ===== WORKFLOW TEMPLATES ===== */
 var wtEditId=null;
 
-async function renderWorkflowTemplates(){
+async async function renderWorkflowTemplates(){
   var list=document.getElementById('workflow-template-list');
   if(!list)return;
   try{
