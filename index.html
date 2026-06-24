@@ -11879,10 +11879,8 @@ async function openProjectFormFromLead(leadId,projectName,companyName,clientId){
   document.getElementById('pf-industry').value='';
   document.getElementById('pf-company-name').value=companyName||'';
   document.getElementById('pf-credit-code').value='';
-  document.getElementById('pf-contact-name').value='';
-  document.getElementById('pf-contact-title').value='';
-  document.getElementById('pf-contact-phone').value='';
   document.getElementById('pf-address').value='';
+  pfContactsData=[];renderPfContacts();
   document.getElementById('pf-assigned-sales').value=currentUser?(currentUser.realname||currentUser.name||''):'';
   document.getElementById('pf-co-sales').value='';
   document.getElementById('pf-budget').value='';
@@ -11962,10 +11960,8 @@ function openProjectForm(id,leadId){
   document.getElementById('pf-industry').value='';
   document.getElementById('pf-company-name').value='';
   document.getElementById('pf-credit-code').value='';
-  document.getElementById('pf-contact-name').value='';
-  document.getElementById('pf-contact-title').value='';
-  document.getElementById('pf-contact-phone').value='';
   document.getElementById('pf-address').value='';
+  pfContactsData=[];renderPfContacts();
   document.getElementById('pf-assigned-sales').value='';
   document.getElementById('pf-co-sales').value='';
   document.getElementById('pf-budget').value='';
@@ -11988,9 +11984,6 @@ function openProjectForm(id,leadId){
       document.getElementById('pf-industry').value=p.industry||'';
       document.getElementById('pf-company-name').value=p.company_name||'';
       document.getElementById('pf-credit-code').value=p.credit_code||'';
-      document.getElementById('pf-contact-name').value=p.contact_name||'';
-      document.getElementById('pf-contact-title').value=p.contact_title||'';
-      document.getElementById('pf-contact-phone').value=p.contact_phone||'';
       document.getElementById('pf-address').value=p.address||'';
       document.getElementById('pf-assigned-sales').value=p.assigned_sales||'';
       document.getElementById('pf-co-sales').value=p.co_sales||'';
@@ -12000,6 +11993,10 @@ function openProjectForm(id,leadId){
       document.getElementById('pf-conclusion-notes').value=p.conclusion_notes||'';
       if(p.conclusion)document.getElementById('pf-conclusion-notes-group').style.display='block';
       document.getElementById('pf-notes').value=p.notes||'';
+      // Restore contacts
+      pfContactsData=[];
+      if(p.contacts_json){try{pfContactsData=JSON.parse(p.contacts_json)}catch(e){}}else if(p.contact_phone){try{var phones=JSON.parse(p.contact_phone);var names=(p.contact_name||'').split(', ');var titles=(p.contact_title||'').split(', ');for(var ci=0;ci<Math.max(phones.length,names.length,titles.length);ci++)pfContactsData.push({name:names[ci]||'',title:titles[ci]||'',phone:phones[ci]||'',email:''})}catch(e){}}
+      renderPfContacts();
     }
   }
   // Populate template dropdown
@@ -12276,6 +12273,11 @@ function deleteStage(id){if(confirm('确定删除？')){sb.from('project_stages'
 async function saveProject(){
   var name=document.getElementById('pf-name').value.trim();
   if(!name){showToast('请输入商机名称');return}
+  var conList=[];
+  for(var ci=0;ci<pfContactsData.length;ci++){
+    var ct=pfContactsData[ci];
+    if(ct.name||ct.phone)conList.push({name:ct.name||'',title:ct.title||'',phone:ct.phone||'',email:ct.email||''});
+  }
   var proj={
     name:name,
     lead_id:document.getElementById('pf-lead-id').value.trim()||null,
@@ -12283,9 +12285,10 @@ async function saveProject(){
     industry:document.getElementById('pf-industry').value,
     company_name:document.getElementById('pf-company-name').value.trim(),
     credit_code:document.getElementById('pf-credit-code').value.trim(),
-    contact_name:document.getElementById('pf-contact-name').value.trim(),
-    contact_title:document.getElementById('pf-contact-title').value,
-    contact_phone:document.getElementById('pf-contact-phone').value.trim(),
+    contact_name:conList.length>0?conList.map(function(x){return x.name}).join(', '):'',
+    contact_title:conList.length>0?conList.map(function(x){return x.title}).join(', '):'',
+    contact_phone:conList.length>0?JSON.stringify(conList.map(function(x){return x.phone})):'[]',
+    contacts_json:conList.length>0?JSON.stringify(conList):null,
     address:document.getElementById('pf-address').value.trim(),
     assigned_sales:document.getElementById('pf-assigned-sales').value.trim(),
     co_sales:document.getElementById('pf-co-sales').value.trim(),
@@ -12318,6 +12321,28 @@ async function saveProject(){
     try{await sb.from('lead_pool').update({opportunity_id:proj.bus_id,status:'converted'}).eq('id',oppLeadId)}catch(e){}
   }
   showToast(oppEditId?'已更新':'已创建商机');
+}
+
+var pfContactsData=[];
+
+function addPfContact(){pfContactsData.push({name:'',title:'',phone:'',email:''});renderPfContacts();}
+function rmPfContact(idx){pfContactsData.splice(idx,1);renderPfContacts();}
+function upPfContact(idx,field,val){pfContactsData[idx][field]=val;}
+function renderPfContacts(){
+  var el=document.getElementById('pf-contacts-container');
+  if(!el)return;
+  if(!pfContactsData.length){el.innerHTML='<div style="font-size:12px;color:var(--text3);padding:4px 0">暂无联系人</div>';return}
+  var h='';
+  for(var ci=0;ci<pfContactsData.length;ci++){
+    var ct=pfContactsData[ci];
+    h+='<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap">';
+    h+='<input value="'+escHtml(ct.name||'')+'" oninput="upPfContact('+ci+',\'name\',this.value)" placeholder="姓名" style="flex:1;min-width:80px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px">';
+    h+='<select onchange="upPfContact('+ci+',\'title\',this.value)" style="min-width:80px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px"><option value="">职位</option><option value="采购"'+(ct.title==='采购'?' selected':'')+'>采购</option><option value="总经理"'+(ct.title==='总经理'?' selected':'')+'>总经理</option><option value="技术负责人"'+(ct.title==='技术负责人'?' selected':'')+'>技术负责人</option><option value="行政"'+(ct.title==='行政'?' selected':'')+'>行政</option><option value="IT"'+(ct.title==='IT'?' selected':'')+'>IT</option><option value="财务"'+(ct.title==='财务'?' selected':'')+'>财务</option><option value="其他"'+(ct.title==='其他'?' selected':'')+'>其他</option></select>';
+    h+='<input value="'+escHtml(ct.phone||'')+'" oninput="upPfContact('+ci+',\'phone\',this.value)" placeholder="电话" style="flex:1;min-width:100px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px">';
+    h+='<button type="button" onclick="rmPfContact('+ci+')" style="padding:4px 8px;background:var(--danger);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer">✕</button>';
+    h+='</div>';
+  }
+  el.innerHTML=h;
 }
 
 var _leadProjectCache=[];
@@ -12755,14 +12780,8 @@ async function deletePayment(id){if(confirm('确定删除？')){var {error}=awai
   </div>
   <div class="form-group"><label>客户名称 *</label><input id="pf-company-name" placeholder="企业客户填工商全称，个人客户填姓名" autocomplete="off" oninput="onOppCompanyInput()" onkeydown="onOppCompanyKey(event)"><div class="name-suggestions hidden" id="opp-company-suggestions"></div></div>
   <div class="form-group"><label>统一社会信用代码</label><input id="pf-credit-code" placeholder="B端客户必填，C端留空"></div>
-  <div class="form-row">
-   <div class="form-group"><label>对接联系人</label><input id="pf-contact-name" placeholder="主要沟通人姓名"></div>
-   <div class="form-group"><label>对接人职位</label><select id="pf-contact-title"><option value="">请选择</option><option value="采购">采购</option><option value="总经理">总经理</option><option value="技术负责人">技术负责人</option><option value="行政">行政</option><option value="IT">IT</option><option value="财务">财务</option><option value="其他">其他</option></select></div>
-  </div>
-  <div class="form-row">
-   <div class="form-group"><label>联系电话</label><input id="pf-contact-phone" placeholder="手机号"></div>
-   <div class="form-group"><label>客户地址</label><input id="pf-address" placeholder="企业注册 / 收货地址"></div>
-  </div>
+  <div class="form-group"><label>对接联系人</label><div id="pf-contacts-container"></div><button type="button" class="btn-add-project" style="margin-top:4px" onclick="addPfContact()">+ 添加联系人</button></div>
+  <div class="form-group"><label>客户地址</label><input id="pf-address" placeholder="企业注册 / 收货地址"></div>
   <div class="form-row">
    <div class="form-group"><label>归属销售 *</label><input id="pf-assigned-sales" placeholder="负责跟进业务员姓名"></div>
    <div class="form-group"><label>协助跟进人</label><input id="pf-co-sales" placeholder="协同销售、售前顾问"></div>
