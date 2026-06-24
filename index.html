@@ -5947,7 +5947,7 @@ function closeMoreMenu(){
   if(menu)menu.classList.remove('show');
   if(overlay)overlay.classList.remove('show');
 }
-async function switchAdminTab(tab){
+async async function switchAdminTab(tab){
   var ut=document.getElementById('admin-users');
   var dt=document.getElementById('admin-depts');
   var rt=document.getElementById('admin-roles');
@@ -10851,7 +10851,7 @@ async function loadBackupHistory(){
 /* ===== WORKFLOW TEMPLATES ===== */
 var wtEditId=null;
 
-async function renderWorkflowTemplates(){
+async async function renderWorkflowTemplates(){
   var list=document.getElementById('workflow-template-list');
   if(!list)return;
   try{
