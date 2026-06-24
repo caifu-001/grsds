@@ -9503,7 +9503,7 @@ function selectLeadCompany(idx){
   // 自动填充客户信息
   if(client.industry)document.getElementById('lf-industry').value=client.industry;
   if(client.scale)document.getElementById('lf-scale').value=client.scale;
-  if(client.credit_code)document.getElementById('lf-credit-code').value=client.credit_code;
+  var cc=client.credit_code||'';if(!cc){try{var ci=typeof client.company_info==='string'?JSON.parse(client.company_info):(client.company_info||{});cc=ci.credit_code||'';}catch(e){}}if(cc)document.getElementById('lf-credit-code').value=cc;
   if(client.address)document.getElementById('lf-address')?document.getElementById('lf-address').value=client.address:null;
   // 客户类型
   if(client.type){try{var types=JSON.parse(client.type);if(Array.isArray(types)&&types.length){var t=types[0]||'';document.getElementById('lf-customer-type').value=t.indexOf('B2B')===0?'B2B':t.indexOf('B2C')===0?'B2C':''}}catch(e){}if(!document.getElementById('lf-customer-type').value&&client.credit_code)document.getElementById('lf-customer-type').value='B2B';}
@@ -9631,7 +9631,7 @@ function syncLeadFromClient(clientId){
   if(!c)return;
   // 同步信用代码：优先从 company_info JSONB，兼容 credit_code 独立列
   var cc='';
-  try{var ci=typeof c.company_info==='string'?JSON.parse(c.company_info):(c.company_info||{});cc=ci.credit_code||'';}catch(e){cc=c.credit_code||'';}
+  try{var ci=typeof c.company_info==='string'?JSON.parse(c.company_info):(c.company_info||{});cc=c.credit_code||ci.credit_code||'';}catch(e){cc=c.credit_code||'';}
   if(cc){document.getElementById('lf-credit-code').value=cc;}
   if(c.address){document.getElementById('lf-address')?document.getElementById('lf-address').value=c.address:null;}
   if(c.industry){document.getElementById('lf-industry').value=c.industry;}
@@ -11944,13 +11944,13 @@ async function openProjectFormFromLead(leadId,projectName,companyName,clientId){
     }
     // Fallback: fetch from Supabase
     if(!client&&clientId){
-      try{var {data}=await sb.from('clients').select('id,name,industry,address,type,credit_code').eq('id',clientId).maybeSingle();if(data)client=data}catch(e){}
+      try{var {data}=await sb.from('clients').select('id,name,industry,address,type,credit_code,company_info').eq('id',clientId).maybeSingle();if(data)client=data}catch(e){}
     }
     if(client){
       document.getElementById('pf-company-name').value=client.name||companyName||'';
       if(client.industry)document.getElementById('pf-industry').value=client.industry;
       if(client.address)document.getElementById('pf-address').value=client.address;
-      if(client.credit_code)document.getElementById('pf-credit-code').value=client.credit_code;
+      var cc=client.credit_code||'';if(!cc){try{var ci=typeof client.company_info==='string'?JSON.parse(client.company_info):(client.company_info||{});cc=ci.credit_code||'';}catch(e){}}if(cc)document.getElementById('pf-credit-code').value=cc;
       if(client.type){try{var types=JSON.parse(client.type);if(Array.isArray(types)&&types.length)document.getElementById('pf-customer-type').value=types[0];}catch(e){}}
       // Load contacts from contacts table and populate pfContactsData
       try{
