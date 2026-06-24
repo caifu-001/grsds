@@ -5165,25 +5165,36 @@ function switchTab(tab){
     document.getElementById('topbar-title').textContent='业务管理';
     switchBizTab('performance');
   }else if(tab==='inventory'){
+    console.log('[DEBUG switchTab] inventory branch, iv hidden:',iv.classList.contains('hidden'));
     iv.classList.remove('hidden');ti.classList.add('active');
     document.getElementById('topbar-title').textContent='资源管理';
+    console.log('[DEBUG switchTab] inventory-view display:',getComputedStyle(iv).display,'innerHTML len:',iv.innerHTML.length);
     switchResTab('inventory');
   }else if(tab==='suppliers'){
-    // Suppliers accessed via res-tabs or more-menu → go through inventory
+    console.log('[DEBUG switchTab] suppliers branch');
     iv.classList.remove('hidden');ti.classList.add('active');
     document.getElementById('topbar-title').textContent='资源管理';
     switchResTab('suppliers');
   }else if(tab==='reports'){
+    console.log('[DEBUG switchTab] reports branch, rv_r hidden:',rv_r.classList.contains('hidden'));
     rv_r.classList.remove('hidden');tr.classList.add('active');
     fab.classList.add('hidden');
     document.getElementById('topbar-title').textContent='报表中心';
+    console.log('[DEBUG switchTab] reports-view display:',getComputedStyle(rv_r).display,'innerHTML len:',rv_r.innerHTML.length);
     loadReportSummary();switchReportsTab('sales');
-  }else if(tab==='service'){var sv2=document.getElementById('service-view');if(sv2)sv2.classList.remove('hidden');switchServiceTab('tickets');return}
+  }else if(tab==='service'){
+    var sv2=document.getElementById('service-view');
+    console.log('[DEBUG switchTab] service branch, sv2 found:',!!sv2);
+    if(sv2){sv2.classList.remove('hidden');console.log('[DEBUG switchTab] service-view display:',getComputedStyle(sv2).display,'innerHTML len:',sv2.innerHTML.length);}
+    switchServiceTab('tickets');return}
   if(tab==='projects'){
-    var pjv=document.getElementById('projects-view');pjv.classList.remove('hidden');pjv.style.display='';pjv.style.visibility='visible';
+    var pjv=document.getElementById('projects-view');
+    console.log('[DEBUG switchTab] projects branch, pjv found:',!!pjv);
+    pjv.classList.remove('hidden');pjv.style.display='';pjv.style.visibility='visible';
     document.getElementById('tab-projects').classList.add('active');
     document.getElementById('topbar-title').textContent='项目管理';
     fab.classList.add('hidden');
+    console.log('[DEBUG switchTab] projects-view display:',getComputedStyle(pjv).display,'innerHTML len:',pjv.innerHTML.length);
     if(typeof switchProjectTab==='function'){switchProjectTab('list')}else{console.error('switchProjectTab not defined')};
     return;
   }
