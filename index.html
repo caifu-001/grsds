@@ -5959,6 +5959,7 @@ async function switchAdminTab(tab){
   var lp=document.getElementById('admin-logs');if(lp)lp.classList.add('hidden');
   var cp=document.getElementById('admin-config');if(cp)cp.classList.add('hidden');
   var sp=document.getElementById('admin-security');if(sp)sp.classList.add('hidden');
+  var wf=document.getElementById('admin-workflows');if(wf)wf.classList.add('hidden');
   for(var i=0;i<subs.length;i++)subs[i].classList.remove('active');
   if(tab==='users'){ut.classList.remove('hidden');subs[0].classList.add('active');await loadAdminData();renderAdminUsers();}
   else if(tab==='depts'){dt.classList.remove('hidden');subs[1].classList.add('active');await loadAdminData();renderAdminDepts();}
@@ -9618,9 +9619,26 @@ function openLeadForm(id){
       document.getElementById('lf-department').value=l.department||'';
       document.getElementById('lf-creator').value=l.creator||'';
       document.getElementById('lf-created-at').value=l.created_at?new Date(l.created_at).toLocaleString('zh-CN'):'';
+      // 同步关联客户的最新信用代码、地址、行业、联系人
+      syncLeadFromClient(l.client_id);
     }
   }
   document.getElementById('lead-form-modal').classList.remove('hidden');
+}
+function syncLeadFromClient(clientId){
+  if(!clientId||!allClients||!allClients.length)return;
+  var c=allClients.find(function(x){return x.id===clientId||String(x.id)===String(clientId)});
+  if(!c)return;
+  // 同步信用代码：优先从 company_info JSONB，兼容 credit_code 独立列
+  var cc='';
+  try{var ci=typeof c.company_info==='string'?JSON.parse(c.company_info):(c.company_info||{});cc=ci.credit_code||'';}catch(e){cc=c.credit_code||'';}
+  if(cc){document.getElementById('lf-credit-code').value=cc;}
+  if(c.address){document.getElementById('lf-address')?document.getElementById('lf-address').value=c.address:null;}
+  if(c.industry){document.getElementById('lf-industry').value=c.industry;}
+  // 同步联系人
+  try{var cts=allContacts.filter(function(ct){return ct.client_id===clientId||String(ct.client_id)===String(clientId)});
+    if(cts.length>0){document.getElementById('lf-contact-name').value=cts[0].name||'';var ph=fmtMulti(cts[0].phone);if(ph)document.getElementById('lf-contact-phone').value=ph;if(cts[0].email)document.getElementById('lf-contact-email').value=cts[0].email;}}
+  catch(e){}
 }
 
 function closeLeadForm(){document.getElementById('lead-form-modal').classList.add('hidden');leadEditId=null}
@@ -11934,15 +11952,16 @@ async function openProjectFormFromLead(leadId,projectName,companyName,clientId){
       if(client.address)document.getElementById('pf-address').value=client.address;
       if(client.credit_code)document.getElementById('pf-credit-code').value=client.credit_code;
       if(client.type){try{var types=JSON.parse(client.type);if(Array.isArray(types)&&types.length)document.getElementById('pf-customer-type').value=types[0];}catch(e){}}
-      // Load contacts from contacts table
+      // Load contacts from contacts table and populate pfContactsData
       try{
-        var {data:cts}=await sb.from('contacts').select('name,phone,email').eq('client_id',clientId);
+        var {data:cts}=await sb.from('contacts').select('name,title,phone,email').eq('client_id',clientId);
         if(cts&&cts.length){
-          var ct=cts[0];
-          document.getElementById('pf-contact-name').value=ct.name||'';
-          document.getElementById('pf-contact-title').value=ct.title||'';
-          document.getElementById('pf-contact-phone').value=(function(v){if(!v)return'';if(typeof v==='string'){try{v=JSON.parse(v)}catch(e){return v}}if(Array.isArray(v))return v.filter(function(x){return x}).join('\n');return String(v)})(ct.phone);
-          document.getElementById('pf-contact-email').value=(function(v){if(!v)return'';if(typeof v==='string'){try{v=JSON.parse(v)}catch(e){return v}}if(Array.isArray(v))return v.filter(function(x){return x}).join('\n');return String(v)})(ct.email);
+          for(var ci=0;ci<cts.length;ci++){
+            var ct=cts[ci];
+            var ph=ct.phone||'';if(typeof ph==='string'){try{var arr=JSON.parse(ph);ph=Array.isArray(arr)?arr:[ph];}catch(e){}}
+            pfContactsData.push({name:ct.name||'',title:ct.title||'',phone:ph||'',email:ct.email||''});
+          }
+          renderPfContacts();
         }
       }catch(e){}
     }
