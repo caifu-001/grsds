@@ -10856,8 +10856,15 @@ var WORKFLOW_STEPS=[
 var WFLookup={};
 (function(){var st0=WORKFLOW_STEPS;for(var i=0;i<st0.length;i++){WFLookup[st0[i].seq]=st0[i]}})()
 
+function safeGetSteps(){
+  try{return getTemplateSteps(curProject?curProject.template_id:null);}
+  catch(e){return WORKFLOW_STEPS;}
+}
+
 function initWorkflow(templateId){
-  var steps=getTemplateSteps(templateId||(curProject?curProject.template_id:null));
+  var steps;
+  if(templateId){steps=getTemplateSteps(templateId)}
+  else{try{steps=safeGetSteps()}catch(e){steps=WORKFLOW_STEPS}}
   curWorkflow={};curStep=1;
   for(var i=0;i<steps.length;i++){
     curWorkflow[steps[i].seq]={done:false,note:'',data:{}};
@@ -10934,8 +10941,8 @@ function renderWorkflowNav(){
   var nav=document.getElementById('wb-workflow-nav');
   if(!nav)return;
   var phases={},phaseOrder=[];
-  for(var i=0;i<getTemplateSteps(curProject?curProject.template_id:null).length;i++){
-    var s=getTemplateSteps(curProject?curProject.template_id:null)[i];
+  for(var i=0;i<safeGetSteps().length;i++){
+    var s=safeGetSteps()[i];
     if(!phases[s.phase]){phases[s.phase]=[];phaseOrder.push(s.phase)}
     phases[s.phase].push(s);
   }
@@ -10970,10 +10977,10 @@ function renderWorkflowNav(){
 
 function updateProgress(){
   var doneCount=0;
-  for(var i=0;i<getTemplateSteps(curProject?curProject.template_id:null).length;i++){if(stepDone(getTemplateSteps(curProject?curProject.template_id:null)[i].seq))doneCount++}
-  var pct=Math.round(doneCount/getTemplateSteps(curProject?curProject.template_id:null).length*100);
+  for(var i=0;i<safeGetSteps().length;i++){if(stepDone(safeGetSteps()[i].seq))doneCount++}
+  var pct=Math.round(doneCount/safeGetSteps().length*100);
   var bar=document.getElementById('wb-progress-bar');if(bar)bar.style.width=pct+'%';
-  var txt=document.getElementById('wb-progress-text');if(txt)txt.textContent=doneCount+'/'+getTemplateSteps(curProject?curProject.template_id:null).length;
+  var txt=document.getElementById('wb-progress-text');if(txt)txt.textContent=doneCount+'/'+safeGetSteps().length;
   var label=document.getElementById('wb-step-label');
   if(label){var cs=WFLookup[curStep];label.textContent='当前步骤：'+(cs?cs.seq+'. '+cs.name:'-')}
 }
@@ -11819,7 +11826,7 @@ function completeTraining(){
   curWorkflow[6].completed_at=new Date().toISOString();
   saveWorkflow();
   // Auto-advance to step 7
-  var steps=getTemplateSteps(curProject?curProject.template_id:null);
+  var steps=safeGetSteps();
   var step7Idx=steps.findIndex(function(s){return s.key==='product_training'});
   if(step7Idx>=0){
     curProject.current_step=step7Idx+1;
