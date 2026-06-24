@@ -9430,6 +9430,7 @@ function updateLeadCompActive(){
   for(var i=0;i<items.length;i++)items[i].classList.toggle('active',i===leadCompSuggIdx);
   if(leadCompSuggIdx>=0&&items[leadCompSuggIdx])items[leadCompSuggIdx].scrollIntoView({block:'nearest'});
 }
+function fmtMulti(v){if(!v)return'';if(typeof v==='string'){try{v=JSON.parse(v)}catch(e){return v}}if(Array.isArray(v))return v.filter(function(x){return x}).join('\n');return String(v);}
 function selectLeadCompany(idx){
   var client=leadCompSuggList[idx];if(!client)return;
   document.getElementById('lf-name').value=client.name||'';
@@ -9449,8 +9450,8 @@ function selectLeadCompany(idx){
   function firstVal(v){if(typeof v==='string'){try{v=JSON.parse(v)}catch(e){}}if(Array.isArray(v))v=v[0]||'';return String(v||'');}
   if(contacts.length>0){
     document.getElementById('lf-contact-name').value=contacts[0].name||'';
-    document.getElementById('lf-contact-phone').value=firstVal(contacts[0].phone);
-    document.getElementById('lf-contact-email').value=firstVal(contacts[0].email);
+    document.getElementById('lf-contact-phone').value=fmtMulti(contacts[0].phone);
+    document.getElementById('lf-contact-email').value=fmtMulti(contacts[0].email);
   } else {
     document.getElementById('lf-contact-name').value='';
     document.getElementById('lf-contact-phone').value='';
@@ -9494,8 +9495,8 @@ function selectLeadContact(idx){
   var m=leadContactSuggList[idx];if(!m)return;
   function pv(v){if(typeof v==='string'){try{v=JSON.parse(v)}catch(e){}}if(Array.isArray(v))v=v[0]||'';return String(v||'');}
   document.getElementById('lf-contact-name').value=m.name||'';
-  document.getElementById('lf-contact-phone').value=pv(m.phone);
-  document.getElementById('lf-contact-email').value=pv(m.email);
+  document.getElementById('lf-contact-phone').value=fmtMulti(m.phone);
+  document.getElementById('lf-contact-email').value=fmtMulti(m.email);
   var dd=document.getElementById('lead-contact-suggestions');
   if(dd)dd.classList.add('hidden');
   leadContactSuggList=[];leadContactSuggIdx=-1;
@@ -9536,7 +9537,7 @@ function openLeadForm(id){
     if(l){
       document.getElementById('lf-name').value=l.name||'';
       document.getElementById('lf-contact-name').value=l.contact_name||'';
-      document.getElementById('lf-contact-phone').value=l.contact_phone||'';
+      document.getElementById('lf-contact-phone').value=fmtMulti(l.contact_phone)||'';
       document.getElementById('lf-contact-email').value=l.contact_email||'';
       document.getElementById('lf-source').value=l.source||'';
       document.getElementById('lf-industry').value=l.industry||'';
@@ -9568,7 +9569,7 @@ async function saveLead(){
   var lead={
     name:name,
     contact_name:document.getElementById('lf-contact-name').value.trim(),
-    contact_phone:document.getElementById('lf-contact-phone').value.trim(),
+    contact_phone:(function(){var v=document.getElementById('lf-contact-phone').value.trim();if(!v)return'';var lines=v.split('\n').filter(function(x){return x.trim()});return lines.length>1?JSON.stringify(lines):lines[0]||'';})(),
     contact_email:document.getElementById('lf-contact-email').value.trim(),
     source:document.getElementById('lf-source').value,
     industry:document.getElementById('lf-industry').value,
@@ -12245,7 +12246,7 @@ async function deletePayment(id){if(confirm('确定删除？')){var {error}=awai
   <h3 id="lead-form-title">新建线索</h3>
   <div class="form-group" style="position:relative"><label>公司/单位名称 *</label><input id="lf-name" placeholder="🔍 搜索客户库选择公司..." autocomplete="off" oninput="onLeadCompanyInput()" onkeydown="onLeadCompanyKey(event)"><div class="name-suggestions hidden" id="lead-name-suggestions"></div><input type="hidden" id="lf-client-id" value=""></div>
   <div class="form-group" style="position:relative"><label>联系人 <a href="javascript:void(0)" onclick="onLeadContactPicker()" style="font-size:11px;color:var(--primary);margin-left:6px">[切换联系人]</a></label><input id="lf-contact-name" placeholder="选择客户后自动填充" readonly style="background:var(--bg2);color:var(--text3)"><div class="name-suggestions hidden" id="lead-contact-suggestions"></div></div>
-  <div class="form-group"><label>联系人电话</label><input id="lf-contact-phone" placeholder="选择客户后自动填充" readonly style="background:var(--bg2);color:var(--text3)"></div>
+  <div class="form-group"><label>联系人电话</label><textarea id="lf-contact-phone" placeholder="选择客户后自动填充（多号分行）" readonly style="background:var(--bg2);color:var(--text3);resize:vertical;min-height:38px" rows="2"></textarea></div>
   <div class="form-group"><label>联系人邮箱</label><input id="lf-contact-email" placeholder="选择客户后自动填充" readonly style="background:var(--bg2);color:var(--text3)"></div>
   <div class="form-row">
    <div class="form-group"><label>来源</label><select id="lf-source"><option value="">请选择</option><option value="自主开发">自主开发</option><option value="客户介绍">客户介绍</option><option value="展会">展会</option><option value="网络推广">网络推广</option><option value="电话营销">电话营销</option><option value="合作伙伴">合作伙伴</option><option value="其他">其他</option></select></div>
