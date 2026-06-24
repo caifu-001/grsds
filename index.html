@@ -9478,6 +9478,24 @@ function updateLeadCompActive(){
   if(leadCompSuggIdx>=0&&items[leadCompSuggIdx])items[leadCompSuggIdx].scrollIntoView({block:'nearest'});
 }
 function fmtMulti(v){if(!v)return'';if(typeof v==='string'){try{v=JSON.parse(v)}catch(e){return v}}if(Array.isArray(v))return v.filter(function(x){return x}).join('\n');return String(v);}
+function onLeadTypeChange(){
+  var type=document.getElementById('lf-customer-type').value;
+  var crEl=document.getElementById('lf-credit-code');
+  var addrEl=document.getElementById('lf-address');
+  var clientId=document.getElementById('lf-client-id').value;
+  if(type==='B2B'){
+    crEl.readOnly=false;crEl.style.background='';crEl.style.color='';
+    if(addrEl){addrEl.readOnly=false;addrEl.style.background='';addrEl.style.color='';}
+    if(clientId){
+      var client=(allClients||[]).find(function(c){return c.id===clientId});
+      if(client&&client.credit_code)crEl.value=client.credit_code;
+      if(client&&client.address&&addrEl)addrEl.value=client.address;
+    }
+  }else{
+    crEl.value='';crEl.readOnly=true;crEl.style.background='var(--bg2)';crEl.style.color='var(--text3)';
+    if(addrEl){addrEl.value='';addrEl.readOnly=true;addrEl.style.background='var(--bg2)';addrEl.style.color='var(--text3)';}
+  }
+}
 function selectLeadCompany(idx){
   var client=leadCompSuggList[idx];if(!client)return;
   document.getElementById('lf-name').value=client.name||'';
@@ -9491,7 +9509,7 @@ function selectLeadCompany(idx){
   if(client.credit_code)document.getElementById('lf-credit-code').value=client.credit_code;
   if(client.address)document.getElementById('lf-address')?document.getElementById('lf-address').value=client.address:null;
   // 客户类型
-  if(client.type){try{var types=JSON.parse(client.type);if(Array.isArray(types)&&types.length){document.getElementById('lf-customer-type').value=types[0]==='B2B企业客户'?'B2B':types[0]==='B2C个人客户'?'B2C':''}}catch(e){}}
+  if(client.type){try{var types=JSON.parse(client.type);if(Array.isArray(types)&&types.length){var t=types[0]||'';document.getElementById('lf-customer-type').value=t.indexOf('B2B')===0?'B2B':t.indexOf('B2C')===0?'B2C':''}}catch(e){}if(!document.getElementById('lf-customer-type').value&&client.credit_code)document.getElementById('lf-customer-type').value='B2B';}
   // 自动填充联系人（从 allContacts 表按 client_id 查找）
   var contacts=(allContacts||[]).filter(function(ct){return ct.client_id===client.id});
   function firstVal(v){if(typeof v==='string'){try{v=JSON.parse(v)}catch(e){}}if(Array.isArray(v))v=v[0]||'';return String(v||'');}
@@ -12721,7 +12739,7 @@ async function deletePayment(id){if(confirm('确定删除？')){var {error}=awai
    <div class="form-group"><label>关联商机ID</label><input id="lf-opportunity-id" placeholder="转商机后自动关联" disabled style="background:var(--bg2);color:var(--text3)"></div>
   </div>
   <div class="form-row">
-   <div class="form-group"><label>客户类型 *</label><select id="lf-customer-type"><option value="">请选择</option><option value="B2B">B2B 企业客户</option><option value="B2C">B2C 个人客户</option></select></div>
+   <div class="form-group"><label>客户类型 *</label><select id="lf-customer-type" onchange="onLeadTypeChange()"><option value="">请选择</option><option value="B2B">B2B 企业客户</option><option value="B2C">B2C 个人客户</option></select></div>
    <div class="form-group"><label>统一社会信用代码</label><input id="lf-credit-code" placeholder="B2B客户填写" readonly style="background:var(--bg2);color:var(--text3)"></div><div class="form-group"><label>客户地址</label><input id="lf-address" placeholder="选择客户后自动填充" readonly style="background:var(--bg2);color:var(--text3)"></div>
   </div>
   <div class="form-row">
