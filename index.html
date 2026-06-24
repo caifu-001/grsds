@@ -10815,8 +10815,8 @@ async function renderWorkflowTemplates(){
         try{var s=typeof t.steps==='string'?JSON.parse(t.steps):t.steps;stepCount=Array.isArray(s)?s.length:0}catch(e){}
         var isGlobal=t.company_id===null?'全局':'公司';
         h+='<div class="card" style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center">'+
-          '<div><strong>'+he(t.name)+'</strong> <span style="font-size:11px;color:var(--text2);margin-left:8px">'+isGlobal+' · '+stepCount+'步</span>'+
-          (t.description?'<br><span style="font-size:12px;color:var(--text2)">'+he(t.description)+'</span>':'')+
+          '<div><strong>'+escHtml(t.name)+'</strong> <span style="font-size:11px;color:var(--text2);margin-left:8px">'+isGlobal+' · '+stepCount+'步</span>'+
+          (t.description?'<br><span style="font-size:12px;color:var(--text2)">'+escHtml(t.description)+'</span>':'')+
           '</div>'+
           '<div style="display:flex;gap:6px">'+
           '<button class="btn-sm" onclick="openWtEdit('+t.id+')">编辑</button>'+
@@ -10825,7 +10825,7 @@ async function renderWorkflowTemplates(){
       }
     }
     list.innerHTML=h;
-  }catch(e){list.innerHTML='<p style="color:var(--text2)">加载异常: '+he(e.message)+'</p>'}
+  }catch(e){list.innerHTML='<p style="color:var(--text2)">加载异常: '+escHtml(e.message)+'</p>'}
 }
 
 function openWorkflowTemplateForm(){
@@ -10848,7 +10848,7 @@ function showWtModal(title,stepsJson){
     document.body.appendChild(overlay);
   }
   overlay.innerHTML='<div style="background:var(--bg);border-radius:16px;padding:24px;width:700px;max-height:85vh;overflow:auto;box-shadow:0 8px 40px rgba(0,0,0,.3)">'+
-    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><h3 style="margin:0">'+he(title)+'</h3>'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><h3 style="margin:0">'+escHtml(title)+'</h3>'+
     '<button onclick="document.getElementById(\'wt-modal-overlay\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer">✕</button></div>'+
     '<div style="display:flex;flex-direction:column;gap:10px">'+
     '<label style="font-size:13px;color:var(--text2)">模板名称</label>'+
@@ -10856,7 +10856,7 @@ function showWtModal(title,stepsJson){
     '<label style="font-size:13px;color:var(--text2)">描述</label>'+
     '<input id="wt-desc" class="input" placeholder="模板描述" value="'+(wtEditId?(allTemplates.find(function(x){return x.id===wtEditId})||{}).description||'':'')+'" style="width:100%">'+
     '<label style="font-size:13px;color:var(--text2)">步骤 JSON</label>'+
-    '<textarea id="wt-steps" class="input" rows="20" style="font-family:monospace;font-size:12px;width:100%">'+he(stepsJson||'[]')+'</textarea>'+
+    '<textarea id="wt-steps" class="input" rows="20" style="font-family:monospace;font-size:12px;width:100%">'+escHtml(stepsJson||'[]')+'</textarea>'+
     '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">'+
     '<button class="btn-sm" onclick="document.getElementById(\'wt-modal-overlay\').remove()">取消</button>'+
     '<button class="btn-primary" id="wt-save-btn" onclick="saveWt()">保存</button></div>'+
