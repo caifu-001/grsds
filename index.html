@@ -11113,6 +11113,13 @@ function wfShowProps(idx){
     h+='</div>';
   }
   h+='<div style="margin-top:10px"><label>提示文字</label><input value="'+escHtml(s.tip||'')+'" onchange="wfSetProp('+idx+',\'tip\',this.value)"></div>';
+  // Custom params
+  var params=s.params||[];
+  h+='<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px"><label style="font-weight:600;margin-bottom:6px">⚙️ 自定义参数</label>';
+  h+='<div id="wf-params-'+idx+'">';
+  for(var pi=0;pi<params.length;pi++){h+=wfBuildParamRow(idx,pi,params[pi]);}
+  h+='</div>';
+  h+='<button onclick="wfAddParam('+idx+')" style="margin-top:6px;font-size:11px;padding:4px 10px;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer">+ 添加参数</button></div>';
   panel.innerHTML=h;
 }
 function wfSetProp(idx,key,value){
@@ -11135,6 +11142,30 @@ function wfCanvasClick(e){
     wfShowProps(-1);
   }
 }
+
+// Custom params for workflow node
+function wfBuildParamRow(nodeIdx,paramIdx,p){
+  var k=escHtml(p.key||''),v=escHtml(p.value||'');
+  return '<div style="display:flex;gap:4px;align-items:center;margin-top:4px">'+
+    '<input value="'+k+'" placeholder="参数名" onchange="wfSetParam('+nodeIdx+','+paramIdx+',\'key\',this.value)" style="flex:1;padding:4px 6px;font-size:11px">'+
+    '<input value="'+v+'" placeholder="参数值" onchange="wfSetParam('+nodeIdx+','+paramIdx+',\'value\',this.value)" style="flex:2;padding:4px 6px;font-size:11px">'+
+    '<button onclick="wfRemoveParam('+nodeIdx+','+paramIdx+')" style="background:none;border:none;color:#f44336;font-size:14px;cursor:pointer;padding:0 4px">&times;</button>'+
+    '</div>';
+}
+function wfAddParam(nodeIdx){
+  if(!wfEditorSteps[nodeIdx].params)wfEditorSteps[nodeIdx].params=[];
+  wfEditorSteps[nodeIdx].params.push({key:'',value:''});
+  wfShowProps(nodeIdx);
+}
+function wfSetParam(nodeIdx,paramIdx,field,value){
+  if(!wfEditorSteps[nodeIdx].params)return;
+  wfEditorSteps[nodeIdx].params[paramIdx][field]=value;
+}
+function wfRemoveParam(nodeIdx,paramIdx){
+  wfEditorSteps[nodeIdx].params.splice(paramIdx,1);
+  wfShowProps(nodeIdx);
+}
+
 // Drag nodes on canvas
 var wfDragNode=null,wfDragOffX=0,wfDragOffY=0;
 function wfNodeDragStart(e,idx){
