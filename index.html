@@ -2426,7 +2426,7 @@ input,select,textarea,button{font-family:inherit}
      <h3 style="margin:0 0 4px" id="wb-editor-title">📝 步骤详情</h3>
      <div style="font-size:12px;color:var(--text3);margin-bottom:12px" id="wb-editor-desc"></div>
      <textarea id="wb-editor-note" rows="6" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;resize:vertical;background:var(--card-bg);color:var(--text)" placeholder="记录备注..."></textarea>
-     <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
+     <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap" id="wb-action-buttons">
       <button class="btn-save" onclick="saveStepNote()">💾 保存备注</button>
       <button class="btn-sm btn-sm-primary" onclick="markStepDone()">✓ 标记完成</button>
       <span style="font-size:11px;color:var(--text3)" id="wb-save-status"></span>
@@ -11120,12 +11120,73 @@ function wfShowProps(idx){
   for(var pi=0;pi<params.length;pi++){h+=wfBuildParamRow(idx,pi,params[pi]);}
   h+='</div>';
   h+='<button onclick="wfAddParam('+idx+')" style="margin-top:6px;font-size:11px;padding:4px 10px;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer">+ 添加参数</button></div>';
+  // ── 审批设置 ──
+  var appr=s.approval||{enabled:false,approverRole:'',onReject:'stay'};
+  h+='<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:8px">';
+  h+='<div onclick="var n=this.nextElementSibling;n.style.display=n.style.display===\'none\'?\'block\':\'none\'" style="cursor:pointer;font-weight:600;font-size:12px;padding:4px 0;display:flex;align-items:center;gap:4px">🔒 审批设置 <span style="font-size:10px;color:var(--text3)">'+(appr.enabled?'已启用':'未启用')+'</span></div>';
+  h+='<div style="padding:6px 0;display:none">';
+  h+='<label style="display:flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" '+(appr.enabled?'checked':'')+' onchange="wfSetApproval('+idx+',\'enabled\',this.checked)"> 启用审批</label>';
+  h+='<label>审批人角色</label><select onchange="wfSetApproval('+idx+',\'approverRole\',this.value)"><option value="">无</option>';
+  for(var ri=0;ri<(allRoles||[]).length;ri++){h+='<option value="'+escHtml(allRoles[ri].name)+'"'+(appr.approverRole===allRoles[ri].name?' selected':'')+'>'+escHtml(allRoles[ri].name)+'</option>';}
+  h+='</select>';
+  h+='<label>驳回行为</label><select onchange="wfSetApproval('+idx+',\'onReject\',this.value)"><option value="stay"'+(appr.onReject==='stay'?' selected':'')+'>停留在当前步骤</option></select>';
+  h+='</div></div>';
+  // ── 负责人设置 ──
+  var asg=s.assignee||{enabled:false,type:'role',value:''};
+  h+='<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">';
+  h+='<div onclick="var n=this.nextElementSibling;n.style.display=n.style.display===\'none\'?\'block\':\'none\'" style="cursor:pointer;font-weight:600;font-size:12px;padding:4px 0;display:flex;align-items:center;gap:4px">👤 负责人设置 <span style="font-size:10px;color:var(--text3)">'+(asg.enabled?'已启用':'未启用')+'</span></div>';
+  h+='<div style="padding:6px 0;display:none">';
+  h+='<label style="display:flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" '+(asg.enabled?'checked':'')+' onchange="wfSetAssignee('+idx+',\'enabled\',this.checked)"> 指定负责人</label>';
+  h+='<label>负责人角色</label><select onchange="wfSetAssignee('+idx+',\'value\',this.value)"><option value="">无</option>';
+  for(var ri2=0;ri2<(allRoles||[]).length;ri2++){h+='<option value="'+escHtml(allRoles[ri2].name)+'"'+(asg.value===allRoles[ri2].name?' selected':'')+'>'+escHtml(allRoles[ri2].name)+'</option>';}
+  h+='</select>';
+  h+='</div></div>';
+  // ── 编辑权限设置 ──
+  var perm=s.permissions||{editFields:[],editableBy:['admin']};
+  h+='<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">';
+  h+='<div onclick="var n=this.nextElementSibling;n.style.display=n.style.display===\'none\'?\'block\':\'none\'" style="cursor:pointer;font-weight:600;font-size:12px;padding:4px 0">✏️ 编辑权限</div>';
+  h+='<div style="padding:6px 0;display:none">';
+  h+='<label>可编辑字段（逗号分隔）</label><input value="'+escHtml((perm.editFields||[]).join(','))+'" onchange="wfSetPermField('+idx+',\'editFields\',this.value)" placeholder="空=全部可编辑">';
+  var ebRoles=['assignee','approver','admin'];
+  h+='<label>谁可编辑</label><div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">';
+  for(var ebi=0;ebi<ebRoles.length;ebi++){
+    var er=ebRoles[ebi];var checked=(perm.editableBy||[]).indexOf(er)>=0;
+    h+='<label style="font-size:11px;display:flex;align-items:center;gap:3px;padding:2px 6px;background:var(--bg);border-radius:4px;cursor:pointer"><input type="checkbox" '+(checked?'checked':'')+' onchange="wfToggleEditableBy('+idx+',\''+er+'\',this.checked)"> '+er+'</label>';
+  }
+  h+='</div></div></div>';
   panel.innerHTML=h;
+}
+function wfSetApproval(idx,key,val){
+  if(idx<0||idx>=wfEditorSteps.length)return;
+  if(!wfEditorSteps[idx].approval)wfEditorSteps[idx].approval={enabled:false,approverRole:'',onReject:'stay'};
+  wfEditorSteps[idx].approval[key]=val;
+  wfShowProps(idx);
+}
+function wfSetAssignee(idx,key,val){
+  if(idx<0||idx>=wfEditorSteps.length)return;
+  if(!wfEditorSteps[idx].assignee)wfEditorSteps[idx].assignee={enabled:false,type:'role',value:''};
+  wfEditorSteps[idx].assignee[key]=val;
+  wfShowProps(idx);
+}
+function wfSetPermField(idx,key,val){
+  if(idx<0||idx>=wfEditorSteps.length)return;
+  if(!wfEditorSteps[idx].permissions)wfEditorSteps[idx].permissions={editFields:[],editableBy:['admin']};
+  wfEditorSteps[idx].permissions.editFields=(val||'').split(',').map(function(x){return x.trim()}).filter(function(x){return x});
+  wfShowProps(idx);
+}
+function wfToggleEditableBy(idx,role,checked){
+  if(idx<0||idx>=wfEditorSteps.length)return;
+  if(!wfEditorSteps[idx].permissions)wfEditorSteps[idx].permissions={editFields:[],editableBy:['admin']};
+  var arr=wfEditorSteps[idx].permissions.editableBy||[];
+  if(checked){if(arr.indexOf(role)<0)arr.push(role)}
+  else{var pos=arr.indexOf(role);if(pos>=0)arr.splice(pos,1)}
+  wfEditorSteps[idx].permissions.editableBy=arr;
 }
 function wfSetProp(idx,key,value){
   if(idx<0||idx>=wfEditorSteps.length)return;
   wfEditorSteps[idx][key]=value;
   wfRenderAll();
+  if(key==='seq')wfShowProps(idx);
 }
 function wfDeleteStep(idx){
   if(idx<0||idx>=wfEditorSteps.length)return;
@@ -11217,6 +11278,7 @@ async function saveWtVisual(){
   for(var i=0;i<wfEditorSteps.length;i++){
     var s=Object.assign({},wfEditorSteps[i]);
     delete s._x;delete s._y;
+    // Preserve new approval/assignee/permissions fields as-is (already merged by Object.assign)
     steps.push(s);
   }
   var btn=document.getElementById('wt-save-btn');
@@ -11276,7 +11338,7 @@ var allProjects=[],allStages=[],allBiddings=[],allDeliveries=[],allPayments=[],a
 var pStageEditId=null,pBiddingEditId=null,pDeliveryEditId=null,pPaymentEditId=null;
 
 // ---- Workflow Data ----
-var curWorkflow={}, curStep=0;
+var curWorkflow={}, curWorkflowState={}, curStep=0;
 var WORKFLOW_STEPS=[
   {seq:1,phase:'线索',key:'gather',name:'搜集线索',icon:'🔍'},
   {seq:2,phase:'商机',key:'analyze',name:'分析与验证',icon:'💡'},
@@ -11339,9 +11401,19 @@ function initWorkflow(templateId){
   var steps;
   if(templateId){steps=getTemplateSteps(templateId)}
   else{try{steps=safeGetSteps()}catch(e){steps=WORKFLOW_STEPS}}
-  curWorkflow={};curStep=1;
+  curWorkflow={};curWorkflowState={};curStep=1;
   for(var i=0;i<steps.length;i++){
-    curWorkflow[steps[i].seq]={done:false,note:'',data:{}};
+    var seq=steps[i].seq;
+    curWorkflow[seq]={done:false,note:'',data:{}};
+    // Initialize workflow_state from template step's approval/assignee
+    var initStatus='pending';
+    if(seq===1)initStatus='active';
+    var initSt={status:initStatus,assignedTo:null,approvedBy:null,approvedAt:null};
+    // If step 1 has assignee, set assignedTo (resolved later when user selects)
+    if(steps[i].assignee&&steps[i].assignee.enabled){
+      // assignedTo is set later when project is saved (user picks assignee)
+    }
+    curWorkflowState[seq]=initSt;
   }
 }
 initWorkflow();
@@ -11362,17 +11434,34 @@ function loadWorkflow(){
   var proj=allProjects.find(function(p){return p.id===curProjectId});
   if(!proj)return;
   try{var wf=JSON.parse(proj.workflow||'{}');curWorkflow=wf;curStep=proj.current_step||1}catch(e){initWorkflow()}
+  try{curWorkflowState=JSON.parse(proj.workflow_state||'{}')}catch(e){curWorkflowState={}}
   if(!curWorkflow||Object.keys(curWorkflow).length===0)initWorkflow(proj?proj.template_id:null);
+  if(!curWorkflowState||Object.keys(curWorkflowState).length===0){
+    console.log('[loadWorkflow] initializing workflow_state from template');
+    wfInitStateFromTemplate(proj?proj.template_id:null);
+  }
   renderWorkbench();
+}
+function wfInitStateFromTemplate(templateId){
+  var steps;
+  if(templateId){steps=getTemplateSteps(templateId)}
+  else{try{steps=safeGetSteps()}catch(e){steps=WORKFLOW_STEPS}}
+  curWorkflowState={};
+  for(var i=0;i<steps.length;i++){
+    var seq=steps[i].seq;
+    var initStatus='pending';
+    if(seq===1)initStatus='active';
+    curWorkflowState[seq]={status:initStatus,assignedTo:null,approvedBy:null,approvedAt:null};
+  }
 }
 
 async function saveWorkflow(){
   if(!curProjectId)return;
-  var payload={workflow:JSON.stringify(curWorkflow),current_step:curStep};
+  var payload={workflow:JSON.stringify(curWorkflow),current_step:curStep,workflow_state:JSON.stringify(curWorkflowState)};
   var {error}=await sb.from('projects').update(payload).eq('id',curProjectId);
   if(error){console.error('saveWorkflow:',error);showToast('保存失败: '+error.message);return}
   var proj=allProjects.find(function(p){return p.id===curProjectId});
-  if(proj){proj.workflow=JSON.stringify(curWorkflow);proj.current_step=curStep}
+  if(proj){proj.workflow=JSON.stringify(curWorkflow);proj.current_step=curStep;proj.workflow_state=JSON.stringify(curWorkflowState)}
 }
 
 function stepDone(seq){var s=curWorkflow[seq];return s?s.done:false}
@@ -11467,15 +11556,20 @@ function clickWorkflowStep(seq){
   // Skipped: can't interact
   if(status==='skipped')return;
 
+  // Permission check: admin always has access
+  var hasPerm=wfCanEditStep(seq);
+  if(!hasPerm){
+    showToast('⚠️ 你没有编辑当前步骤的权限，仅可查看');
+  }
+
   // Decision node: show popup
-  if(step.decision && seq===curStep){
+  if(step.decision && seq===curStep && hasPerm){
     showDecisionPopup(step);
     return;
   }
 
   // Set as current step
   if(status==='done'){
-    // Clicking a done step just shows its panel
     curStep=seq;
     renderWorkflowNav();
     updateProgress();
@@ -11518,6 +11612,8 @@ function decideYes(seq){
   curWorkflow[seq]=curWorkflow[seq]||{done:false,note:'',data:{}};
   curWorkflow[seq].done=true;
   curWorkflow[seq].data={decision:'yes'};
+  curWorkflowState[seq]=curWorkflowState[seq]||{status:'active'};
+  curWorkflowState[seq].status='done';
   // Jump to yes target
   var step=WFLookup[seq];
   var nextSeq=parseInt(step.decisionYes)||(seq+1);
@@ -11526,6 +11622,8 @@ function decideYes(seq){
     for(var i=29;i<=37;i++){var s=curWorkflow[i]||{done:false};s.done=false;s.skipped=true;curWorkflow[i]=s}
   }
   curStep=nextSeq;
+  // Activate next step's state
+  wfActivateStep(nextSeq);
   renderWorkbench();
   saveWorkflow();
 }
@@ -11536,6 +11634,8 @@ function decideNo(seq){
   curWorkflow[seq]=curWorkflow[seq]||{done:false,note:'',data:{}};
   curWorkflow[seq].done=true;
   curWorkflow[seq].data={decision:'no'};
+  curWorkflowState[seq]=curWorkflowState[seq]||{status:'active'};
+  curWorkflowState[seq].status='done';
   // Jump to no target
   var step=WFLookup[seq];
   var nextSeq=parseInt(step.decisionNo)||(seq+1);
@@ -11548,6 +11648,8 @@ function decideNo(seq){
     for(var i=29;i<=37;i++){var s=curWorkflow[i]||{done:false};s.done=false;s.skipped=true;curWorkflow[i]=s}
   }
   curStep=nextSeq;
+  // Activate next step's state
+  wfActivateStep(nextSeq);
   renderWorkbench();
   saveWorkflow();
 }
@@ -11559,18 +11661,115 @@ function closeDecisionPopup(){
 
 function markStepDone(){
   if(!curStep)return;
-  curWorkflow[curStep]=curWorkflow[curStep]||{done:false,note:'',data:{}};
-  curWorkflow[curStep].done=true;
+  var step=WFLookup[curStep];
+  // Check if this step requires approval
+  if(step&&step.approval&&step.approval.enabled){
+    // Need approval - check if already submitted
+    var wst=curWorkflowState[curStep]||{};
+    if(wst.status==='pending_approval'){showToast('⚠️ 已提交审批，请等待审批人处理');return}
+    if(wst.status==='done'){showToast('✓ 审批已通过');return}
+    // Submit for approval
+    wfSubmitApproval(curStep);
+    return;
+  }
+  // No approval needed - mark directly
+  wfDoMarkStepDone(curStep);
+}
+function wfDoMarkStepDone(seq){
+  curWorkflow[seq]=curWorkflow[seq]||{done:false,note:'',data:{}};
+  curWorkflow[seq].done=true;
+  curWorkflowState[seq]=curWorkflowState[seq]||{status:'active'};
+  curWorkflowState[seq].status='done';
   // Advance to next non-skipped step
-  var next=curStep+1;
+  var next=seq+1;
   while(next<=46){
     if(!stepDone(next)&&stepStatus(next)!=='skipped')break;
     next++;
   }
-  if(next<=46)curStep=next;
+  if(next<=46){curStep=next;wfActivateStep(next)}
   renderWorkbench();
   saveWorkflow();
-  showToast('✓ 已完成：'+(WFLookup[curStep-1]?WFLookup[curStep-1].name:''));
+  showToast('✓ 已完成：'+(WFLookup[seq]?WFLookup[seq].name:''));
+}
+function wfSubmitApproval(seq){
+  curWorkflowState[seq]=curWorkflowState[seq]||{status:'active'};
+  curWorkflowState[seq].status='pending_approval';
+  curWorkflowState[seq].submittedAt=new Date().toISOString();
+  saveWorkflow();
+  renderWorkbench();
+  showStepPanel(seq);
+  showToast('📨 已提交审批，等待审批人处理');
+  console.log('[wfSubmitApproval] step',seq,'submitted for approval');
+}
+function wfApprove(seq){
+  curWorkflowState[seq]=curWorkflowState[seq]||{status:'pending_approval'};
+  curWorkflowState[seq].approvedBy=currentUser.id;
+  curWorkflowState[seq].approvedAt=new Date().toISOString();
+  curWorkflowState[seq].status='approved';
+  // Now mark done
+  wfDoMarkStepDone(seq);
+  showToast('✓ 审批通过');
+  console.log('[wfApprove] step',seq,'approved by',currentUser.id);
+}
+function wfReject(seq){
+  curWorkflowState[seq]=curWorkflowState[seq]||{status:'pending_approval'};
+  curWorkflowState[seq].approvedBy=currentUser.id;
+  curWorkflowState[seq].approvedAt=new Date().toISOString();
+  curWorkflowState[seq].status='active'; // back to active
+  saveWorkflow();
+  renderWorkbench();
+  showStepPanel(seq);
+  showToast('↩️ 审批驳回，请修改后重新提交');
+  console.log('[wfReject] step',seq,'rejected by',currentUser.id);
+}
+function wfActivateStep(seq){
+  curWorkflowState[seq]=curWorkflowState[seq]||{status:'pending',assignedTo:null,approvedBy:null,approvedAt:null};
+  curWorkflowState[seq].status='active';
+  // Check if step has assignee configured
+  var step=WFLookup[seq];
+  if(step&&step.assignee&&step.assignee.enabled&&step.assignee.value){
+    // Find a user with that role
+    var assignee=wfFindUserByRole(step.assignee.value);
+    if(assignee){
+      curWorkflowState[seq].assignedTo=assignee.user_id;
+      console.log('[wfActivateStep] assigned step',seq,'to',assignee.display_name,'(role:',step.assignee.value,')');
+    }
+  }
+}
+function wfCanEditStep(seq){
+  // Admin/superAdmin always has access
+  if(isSuperAdmin||currentUserRole==='admin')return true;
+  var step=WFLookup[seq];
+  if(!step)return true;
+  var perm=step.permissions||{};
+  var editableBy=perm.editableBy||['admin'];
+  // Check if currentUser is assigned to this step
+  var wst=curWorkflowState[seq]||{};
+  var isAssignee=wst.assignedTo===currentUser.id;
+  // Check if currentUser is the approver for this step
+  var isApprover=false;
+  if(step.approval&&step.approval.enabled&&step.approval.approverRole){
+    isApprover=(currentUserRole===step.approval.approverRole);
+  }
+  // Check against editableBy list
+  if(editableBy.indexOf('admin')>=0){return true}
+  if(editableBy.indexOf('assignee')>=0&&isAssignee)return true;
+  if(editableBy.indexOf('approver')>=0&&isApprover)return true;
+  return false;
+}
+function wfFindUserByRole(roleName){
+  if(!allUsers||!allUsers.length)return null;
+  for(var i=0;i<allUsers.length;i++){
+    var u=allUsers[i];
+    if(u.role===roleName)return u;
+    // Also check role_id mapped name
+    if(u.role_id&&allRoles){
+      for(var k=0;k<allRoles.length;k++){
+        if(allRoles[k].id===u.role_id&&allRoles[k].name===roleName)return u;
+      }
+    }
+  }
+  return null;
 }
 
 function saveStepNote(){
@@ -11716,6 +11915,8 @@ function showStepPanel(seq){
       document.getElementById('wb-editor-desc').textContent='阶段：'+step.phase;
       if(document.getElementById('wb-editor-note'))document.getElementById('wb-editor-note').value=note;
   }
+  // Render approval status & action buttons
+  wfRenderActionButtons(seq,step);
 }
 
 function autoSelectPanel(){
@@ -11733,6 +11934,66 @@ function resetWorkflow(){
   initWorkflow();
   renderWorkbench();
   saveWorkflow();
+}
+
+// ── Approval / Permission action buttons rendering ──
+function wfRenderActionButtons(seq,step){
+  var container=document.getElementById('wb-action-buttons');
+  if(!container){return}
+  var wst=curWorkflowState[seq]||{};
+  var status=wst.status||'active';
+  var isDone=curWorkflow[seq]?curWorkflow[seq].done:false;
+  var hasPerm=wfCanEditStep(seq);
+  var isApprover=wfIsApprover(seq);
+  var html='';
+
+  // Show current status badge
+  var statusLabel='';
+  if(isDone){statusLabel='✅ 已完成'}
+  else if(status==='pending_approval'){statusLabel='⏳ 等待审批'}
+  else if(status==='approved'){statusLabel='✅ 审批通过'}
+  else{statusLabel='📌 进行中'}
+  html+='<span style="font-size:12px;color:var(--text2);margin-right:8px">'+statusLabel+'</span>';
+
+  // Show assignee info
+  if(wst.assignedTo){
+    var assigneeName=wst.assignedTo;
+    for(var ui=0;ui<(allUsers||[]).length;ui++){if(allUsers[ui].user_id===wst.assignedTo){assigneeName=allUsers[ui].display_name||allUsers[ui].email||wst.assignedTo;break}}
+    html+='<span style="font-size:11px;color:var(--text3);margin-right:8px">👤 '+h(assigneeName)+'</span>';
+  }
+
+  // Action buttons based on status
+  if(!isDone&&hasPerm){
+    if(status==='pending_approval'){
+      // Pending approval - show approver buttons if current user is approver
+      if(isApprover){
+        html+='<button class="btn-save" onclick="wfApprove('+seq+')">✅ 通过</button>';
+        html+='<button class="btn-save" style="background:#f44336" onclick="wfReject('+seq+')">↩️ 驳回</button>';
+      }else{
+        html+='<span style="font-size:11px;color:var(--warning)">已提交审批，等待处理...</span>';
+      }
+    }else{
+      // Active - show submit/save and mark-done buttons
+      html+='<button class="btn-sm btn-sm-primary" onclick="saveStepNote()">💾 保存备注</button>';
+      if(step&&step.approval&&step.approval.enabled){
+        html+='<button class="btn-save" onclick="markStepDone()">📨 提交审批</button>';
+      }else{
+        html+='<button class="btn-save" onclick="markStepDone()">✓ 标记完成</button>';
+      }
+    }
+  }else if(!isDone&&!hasPerm){
+    html+='<span style="font-size:11px;color:var(--text3)">🔒 仅可查看</span>';
+  }
+  html+='<span style="font-size:11px;color:var(--text3);margin-left:8px" id="wb-save-status"></span>';
+  container.innerHTML=html;
+}
+function wfIsApprover(seq){
+  if(isSuperAdmin)return true;
+  var step=WFLookup[seq];if(!step)return false;
+  if(step.approval&&step.approval.enabled&&step.approval.approverRole){
+    return currentUserRole===step.approval.approverRole;
+  }
+  return false;
 }
 
 // ---- Bridge: load module data into workbench sub-containers ----
@@ -12296,19 +12557,18 @@ function saveTrainingData(){
 }
 function completeTraining(){
   saveTrainingData();
+  curWorkflow[6]=curWorkflow[6]||{done:false,note:'',data:{}};
   curWorkflow[6].done=true;
   curWorkflow[6].note='培训完成';
   curWorkflow[6].completed_at=new Date().toISOString();
+  curWorkflowState[6]=curWorkflowState[6]||{status:'active'};
+  curWorkflowState[6].status='done';
+  curStep=7;
+  wfActivateStep(7);
   saveWorkflow();
-  // Auto-advance to step 7
-  var steps=safeGetSteps();
-  var step7Idx=steps.findIndex(function(s){return s.key==='product_training'});
-  if(step7Idx>=0){
-    curProject.current_step=step7Idx+1;
-    updateProjectCurrentStep();
-  }
-  currentWorkflowStep=6;
-  markStepDone();
+  renderWorkbench();
+  showToast('✓ 培训完成，已跳转步骤7');
+  console.log('[completeTraining] advanced to step 7');
 }
 function onTrainingOrgInput(){
   var val=document.getElementById('wb-training-org').value.trim();
@@ -12392,6 +12652,16 @@ async function saveProject(){
     var datePrefix='BUS'+yyyy+mm+dd;
     try{var {data:cnt}=await sb.from('projects').select('bus_id',{count:'exact',head:true}).like('bus_id',datePrefix+'%');var seq=(cnt||0)+1;proj.bus_id=datePrefix+String(seq).padStart(3,'0');}catch(e){proj.bus_id=datePrefix+'001';}
     proj.workflow='{}';proj.current_step=1;proj.template_id=document.getElementById('pf-template-id')?(parseInt(document.getElementById('pf-template-id').value)||null):null;
+    // Initialize workflow_state from template
+    if(proj.template_id){
+      var tmplSteps=getTemplateSteps(proj.template_id);
+      var wfStateInit={};
+      for(var wsi=0;wsi<tmplSteps.length;wsi++){
+        var wfSeq=tmplSteps[wsi].seq;
+        wfStateInit[wfSeq]={status:wfSeq===1?'active':'pending',assignedTo:null,approvedBy:null,approvedAt:null};
+      }
+      proj.workflow_state=JSON.stringify(wfStateInit);
+    }
     var {error}=await sb.from('projects').insert(proj);
     if(error){showToast('创建失败: '+error.message);return}
   }else{
