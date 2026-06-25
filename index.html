@@ -5307,7 +5307,7 @@ function pickOrderClient(id,name){
 }
 
 // === Save Order ===
-async async function saveOrder(){
+async function saveOrder(){
   console.log('[saveOrder] start',{orderEditId,orderClientId,orderStage,currentCompanyId});
   if(!orderClientId){showToast('请选择关联客户');return}
   var number=document.getElementById('of-number').value.trim();if(!number){showToast('请输入订单编号');return}
