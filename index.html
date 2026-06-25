@@ -5334,7 +5334,7 @@ async function saveOrder(){
     order.company_id=currentCompanyId;
     console.log('[saveOrder] inserting order',{cols:Object.keys(order),vals:order});
     var {error}=await sb.from('orders').insert(order);
-    if(error){console.error('[saveOrder] insert error',error);showToast('创建失败: '+error.message);return}
+    if(error){console.error('[saveOrder] insert error',JSON.stringify(error));showToast('创建失败: '+(error.message||JSON.stringify(error)));return}
     showToast('订单已创建');
   }else{
     var {error}=await sb.from('orders').update(order).eq('id',orderEditId);
@@ -11959,7 +11959,8 @@ async function openProjectFormFromLead(leadId,projectName,companyName,clientId){
       // Load contacts from contacts table and populate pfContactsData
       console.log('[openProjectFormFromLead] loading contacts for clientId=',clientId);
       try{
-        var {data:cts}=await sb.from('contacts').select('name,title,phone,email').eq('client_id',clientId);
+        var {data:cts,error:ctErr}=await sb.from('contacts').select('name,title,phone,email').eq('client_id',clientId);
+        if(ctErr){console.error('[openProjectFormFromLead] contacts query error',JSON.stringify(ctErr));return}
         console.log('[openProjectFormFromLead] contacts loaded',{count:cts?cts.length:0,data:cts});
         if(cts&&cts.length){
           for(var ci=0;ci<cts.length;ci++){
@@ -12370,7 +12371,7 @@ async function saveProject(){
   await loadProjects();
   // If created from lead, mark lead as converted
   if(oppLeadId&&!oppEditId){
-    try{await sb.from('lead_pool').update({opportunity_id:proj.bus_id,status:'converted'}).eq('id',oppLeadId)}catch(e){}
+    try{await sb.from('lead_pool').update({opportunity_id:proj.bus_id,status:'converted'}).eq('id',oppLeadId);console.log('[saveProject] lead',oppLeadId,'converted')}catch(e){console.error('[saveProject] lead convert error',e)}
   }
   showToast(oppEditId?'已更新':'已创建商机');
 }
