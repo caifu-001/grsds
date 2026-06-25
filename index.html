@@ -5332,7 +5332,7 @@ async function saveOrder(){
 
   if(!orderEditId){
     order.company_id=currentCompanyId;
-    console.log('[saveOrder] inserting order',{cols:Object.keys(order),vals:order});
+    console.log('[saveOrder] inserting order',{cols:Object.keys(order),vals:JSON.stringify(order)});
     var {error}=await sb.from('orders').insert(order);
     if(error){console.error('[saveOrder] insert error',JSON.stringify(error));showToast('创建失败: '+(error.message||JSON.stringify(error)));return}
     showToast('订单已创建');
