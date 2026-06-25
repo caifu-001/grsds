@@ -5307,7 +5307,8 @@ function pickOrderClient(id,name){
 }
 
 // === Save Order ===
-async function saveOrder(){
+async async function saveOrder(){
+  console.log('[saveOrder] start',{orderEditId,orderClientId,orderStage,currentCompanyId});
   if(!orderClientId){showToast('请选择关联客户');return}
   var number=document.getElementById('of-number').value.trim();if(!number){showToast('请输入订单编号');return}
   var amountStr=document.getElementById('of-amount').value.trim();
@@ -5331,8 +5332,9 @@ async function saveOrder(){
 
   if(!orderEditId){
     order.company_id=currentCompanyId;
+    console.log('[saveOrder] inserting order',{cols:Object.keys(order),vals:order});
     var {error}=await sb.from('orders').insert(order);
-    if(error){showToast('创建失败: '+error.message);return}
+    if(error){console.error('[saveOrder] insert error',error);showToast('创建失败: '+error.message);return}
     showToast('订单已创建');
   }else{
     var {error}=await sb.from('orders').update(order).eq('id',orderEditId);
@@ -11955,8 +11957,10 @@ async function openProjectFormFromLead(leadId,projectName,companyName,clientId){
       var cc=client.credit_code||'';if(!cc){try{var ci=typeof client.company_info==='string'?JSON.parse(client.company_info):(client.company_info||{});cc=ci.credit_code||'';}catch(e){}}if(cc)document.getElementById('pf-credit-code').value=cc;
       if(client.type){try{var types=JSON.parse(client.type);if(Array.isArray(types)&&types.length)document.getElementById('pf-customer-type').value=types[0];}catch(e){}}
       // Load contacts from contacts table and populate pfContactsData
+      console.log('[openProjectFormFromLead] loading contacts for clientId=',clientId);
       try{
         var {data:cts}=await sb.from('contacts').select('name,title,phone,email').eq('client_id',clientId);
+        console.log('[openProjectFormFromLead] contacts loaded',{count:cts?cts.length:0,data:cts});
         if(cts&&cts.length){
           for(var ci=0;ci<cts.length;ci++){
             var ct=cts[ci];
