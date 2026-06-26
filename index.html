@@ -1184,7 +1184,7 @@ input,select,textarea,button{font-family:inherit}
    <button class="topbar-tab" id="tab-inventory" onclick="switchTab('inventory')">库存</button>
 <button class="topbar-tab" id="tab-service" onclick="switchTab('service')">售后</button>
 <button class="topbar-tab" id="tab-projects" onclick="switchTab('projects')">项目</button>
-   <button class="topbar-tab" id="tab-analytics" onclick="switchTab('analytics')">📊 经营</button>
+   
    
    <button class="topbar-tab" id="tab-fieldwork" onclick="switchTab('fieldwork')">📍 外勤</button>
    <button class="notif-bell" id="notif-bell" onclick="toggleNotifPanel()" title="通知">🔔<span id="notif-badge" class="notif-badge hidden">0</span></button>
@@ -4438,10 +4438,7 @@ function stageColor(stage){
 }
 
 // === Tab Switching ===
-function loadHomeDashboard(){
-  var now=new Date();
-  var mStart=new Date(now.getFullYear(),now.getMonth(),1).toISOString();
-  sb.from('clients').select('id',{count:'exact',head:true}).eq('company_id',currentCompanyId).then(function(r){
+).eq('company_id',currentCompanyId).then(function(r){
     document.getElementById('dash-client-count').textContent=r.count||0;
   }).catch(function(){document.getElementById('dash-client-count').textContent='-';});
   sb.from('orders').select('id',{count:'exact',head:true}).eq('company_id',currentCompanyId).gte('created_at',mStart).then(function(r){
@@ -8879,18 +8876,7 @@ async function deleteTarget(id){
 
 var targetEditId=null;
 
-async function loadDashboard(){
-  await loadTargets();
-  await loadPerfRecords();
-  var y=parseInt(document.getElementById('perf-dash-year').value);
-  var m=parseInt(document.getElementById('perf-dash-month').value);
-  var u=document.getElementById('perf-dash-user').value;
-  // Filter records
-  var records=[];
-  for(var i=0;i<allPerfRecords.length;i++){
-    var r=allPerfRecords[i];
-    if(r.record_year===y&&r.record_month===m&&(!u||r.user_id===u))records.push(r);
-  }
+async 
   renderDashboard(records,y,m,u);
 }
 
