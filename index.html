@@ -14968,11 +14968,12 @@ async function doCheckIn(type){
   if(type==='in'){btnIn.disabled=true;btnIn.textContent='签到中...'}
   else{btnOut.disabled=true;btnOut.textContent='签退中...'}
   try{
-    // Try to get geolocation (low accuracy first for desktop compatibility)
+    // Geolocation (high accuracy on mobile)
     var lat=null,lng=null,addr='';
     if(navigator.geolocation){
       try{
-        var pos=await new Promise(function(res,rej){navigator.geolocation.getCurrentPosition(res,rej,{timeout:4000,enableHighAccuracy:false})});
+        var isMobile=/Mobi|Android|iPhone/i.test(navigator.userAgent)||('ontouchstart' in window);
+        var pos=await new Promise(function(res,rej){navigator.geolocation.getCurrentPosition(res,rej,{timeout:8000,enableHighAccuracy:isMobile})});
         lat=pos.coords.latitude;lng=pos.coords.longitude;
       }catch(g){console.log('GPS not available, check-in saved without location')}
     }
@@ -15054,10 +15055,10 @@ function closeVisitForm(){document.getElementById('fw-visit-modal').classList.ad
 async function saveFVisit(){
   var clientName=document.getElementById('fw-vm-client').value.trim();
   if(!clientName){showToast('请输入客户名称');return}
-  // Get geolocation
+  // Geolocation (high accuracy on mobile)
   var lat=null,lng=null;
   if(navigator.geolocation){
-    try{var pos=await new Promise(function(res,rej){navigator.geolocation.getCurrentPosition(res,rej,{timeout:4000,enableHighAccuracy:false})});lat=pos.coords.latitude;lng=pos.coords.longitude}catch(g){}
+    try{var isMobile=/Mobi|Android|iPhone/i.test(navigator.userAgent)||('ontouchstart' in window);var pos=await new Promise(function(res,rej){navigator.geolocation.getCurrentPosition(res,rej,{timeout:8000,enableHighAccuracy:isMobile})});lat=pos.coords.latitude;lng=pos.coords.longitude}catch(g){}
   }
   var data={
     user_id:currentUser.id,
