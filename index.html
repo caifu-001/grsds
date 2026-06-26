@@ -13843,6 +13843,7 @@ function switchMyOfficeTab(tab){
   // Legacy stub - tabs merged into collab-view
   switchCollabTab(tab==='overview'?'mo-overview':tab==='docs'?'mo-docs':tab);
 }async function renderMyOfficeOverview(){
+  console.log("[DEBUG mo-overview] START currentCompanyId:"+currentCompanyId+" currentUser:"+(currentUser?currentUser.id:"null"));
   var el=document.getElementById('mo-overview-content');
   if(!currentCompanyId){el.innerHTML='<div class="empty">请先选择公司</div>';return}
   var myName=currentUser&&currentUser.display_name?currentUser.display_name:(currentUser&&currentUser.email?currentUser.email:'同事');
@@ -13886,7 +13887,9 @@ function switchMyOfficeTab(tab){
   
   // Load data
   if(typeof loadTasks!=='undefined'){
+    console.log('[DEBUG mo-overview] querying tasks...');
     var {data:tasks}=await sb.from('tasks').select('*').eq('company_id',currentCompanyId).in('status',['todo','in_progress']).order('due_date',{ascending:true,nullsFirst:false});
+    console.log('[DEBUG mo-overview] querying approvals...');
     var {data:approvals}=await sb.from('approval_requests').select('*').eq('company_id',currentCompanyId).eq('status','pending').order('created_at',{ascending:false});
     var pendingCount=0;
     if(approvals)for(var a=0;a<approvals.length;a++){if(approvals[a].requestor_id!==currentUser.id)pendingCount++;}
@@ -13927,6 +13930,7 @@ function switchMyOfficeTab(tab){
     var todayISO=today.toISOString().slice(0,10);
     var tomorrow=new Date(today);tomorrow.setDate(today.getDate()+1);
     var tomorrowISO=tomorrow.toISOString().slice(0,10);
+    console.log('[DEBUG mo-overview] querying schedules...');
     var {data:schedules}=await sb.from('schedules').select('*').eq('company_id',currentCompanyId).gte('start_time',todayISO).lte('start_time',tomorrowISO+'T23:59:59Z').order('start_time');
     var schHtml='';
     if(schedules&&schedules.length){
@@ -13946,6 +13950,7 @@ function switchMyOfficeTab(tab){
   
   // Load announcements
   try{
+    console.log('[DEBUG mo-overview] querying announcements...');
     var {data:anns}=await sb.from('announcements').select('*').eq('company_id',currentCompanyId).order('created_at',{ascending:false}).limit(3);
     var annHtml='';
     if(anns&&anns.length){
@@ -14093,11 +14098,13 @@ async function loadMoAnnouncements(){
 /* ===== Docs Panel ===== */
 var _moDocFilter='all';
 async function renderMyOfficeDocs(filter){
+  console.log("[DEBUG mo-docs] START filter:"+filter+" currentCompanyId:"+currentCompanyId+" currentUser:"+(currentUser?currentUser.id:"null"));
   _moDocFilter=filter;
   var el=document.getElementById('mo-docs-list');
   if(!currentCompanyId){el.innerHTML='<div class="empty">请先选择公司</div>';return}
   var fb=document.querySelectorAll('#mo-doc-filters button');
   for(var i=0;i<fb.length;i++){fb[i].classList.remove('active');if(fb[i].getAttribute('data-cat')===filter)fb[i].classList.add('active')}
+  console.log('[DEBUG mo-docs] querying my_documents...');
   var q=sb.from('my_documents').select('*').eq('user_id',currentUser.id).order('is_pinned',{ascending:false}).order('updated_at',{ascending:false});
   if(filter!=='all')q=q.eq('category',filter);
   var {data}=await q;
