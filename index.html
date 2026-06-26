@@ -945,9 +945,15 @@ input,select,textarea,button{font-family:inherit}
 .wb-connector-line{flex:1;height:0;border-top:1px dashed var(--border)}
 .wb-connector-label{flex-shrink:0;font-weight:600}
 @media(max-width:768px){
-  #wb-left{width:200px!important}
+  #wb-left{position:fixed;top:0;left:0;bottom:0;width:260px!important;z-index:200;background:var(--bg);box-shadow:4px 0 20px rgba(0,0,0,.3);transform:translateX(-100%);transition:transform .25s ease;padding-top:56px}
+  #wb-left.open{transform:translateX(0)}
+  #wb-mobile-overlay{display:none;position:fixed;inset:0;z-index:199;background:rgba(0,0,0,.4)}
+  #wb-mobile-overlay.open{display:block}
+  #wb-right{padding:12px!important}
+  #wb-right > div{max-width:100%!important}
   #wb-topbar{gap:4px;padding:6px 8px}
   #wb-topbar h3{font-size:13px}
+  #wb-hamburger{display:inline-flex!important}
 }
 /* ── Workflow ── */
 .wf-phase{padding:0;margin:0}
@@ -2387,6 +2393,7 @@ input,select,textarea,button{font-family:inherit}
  <div id="project-workbench" class="hidden" style="display:none;flex-direction:column;height:calc(100vh - 60px)">
   <!-- Top Bar -->
   <div id="wb-topbar" style="display:flex;align-items:center;gap:10px;padding:8px 16px;border-bottom:1px solid var(--border);background:var(--card-bg);flex-shrink:0;flex-wrap:wrap">
+   <button id="wb-hamburger" class="btn-sm" onclick="toggleWbSidebar()" style="display:none;flex-shrink:0;align-items:center;justify-content:center;width:32px;height:32px;padding:0;font-size:18px">☰</button>
    <button class="btn-sm" onclick="closeProjectWorkbench()" style="flex-shrink:0">← 返回列表</button>
    <h3 style="font-size:15px;font-weight:700;margin:0;flex:1;min-width:120px" id="wb-project-name">-</h3>
    <span style="font-size:11px;color:var(--text2);flex-shrink:0" id="wb-step-label">当前步骤：-</span>
@@ -2820,6 +2827,8 @@ input,select,textarea,button{font-family:inherit}
    </div><!-- /wb-right -->
   </div><!-- /split -->
  </div><!-- /project-workbench -->
+<!-- Mobile sidebar overlay -->
+<div id="wb-mobile-overlay" onclick="toggleWbSidebar()"></div>
 </div><!-- /projects-view -->
 <div id="script-loaded-check" style="padding:10px 16px;background:#2ecc71;color:#fff;font-size:13px;position:fixed;bottom:0;left:0;right:0;z-index:99998;text-align:center">✅ 主脚本未加载或已崩溃 — 此横幅应该被 JS 移除</div><script>
 // Supabase
@@ -11714,6 +11723,13 @@ function openProjectWorkbench(pid,pname){
   document.querySelector('#projects-view').style.maxHeight='100vh';
 }
 
+function toggleWbSidebar(){
+  var l=document.getElementById('wb-left');var o=document.getElementById('wb-mobile-overlay');
+  if(!l||!o)return;
+  var isOpen=l.classList.contains('open');
+  if(isOpen){l.classList.remove('open');o.classList.remove('open')}
+  else{l.classList.add('open');o.classList.add('open')}
+}
 function closeProjectWorkbench(){
   document.getElementById('project-workbench').classList.add('hidden');
   document.getElementById('project-workbench').style.display='none';
@@ -11790,6 +11806,9 @@ function clickWorkflowStep(seq){
   if(!hasPerm){
     showToast('⚠️ 你没有编辑当前步骤的权限，仅可查看');
   }
+
+  // Mobile: close sidebar after selecting step
+  if(window.innerWidth<=768){toggleWbSidebar()}
 
   // Decision node: show popup
   if(step.decision && seq===curStep && hasPerm){
@@ -12248,6 +12267,20 @@ function showStepPanel(seq){
   }
   // Render approval status & action buttons
   wfRenderActionButtons(seq,step);
+  // Mobile: convert 2-col grids to single column
+  if(window.innerWidth<=768){adaptPanelForMobile()}
+}
+
+function adaptPanelForMobile(){
+  // Convert inline 2-col grids to single column in visible panel
+  var right=document.getElementById('wb-right');if(!right)return;
+  var grids=right.querySelectorAll('div[style*="grid-template-columns"]');
+  for(var i=0;i<grids.length;i++){
+    var g=grids[i];
+    if(!g.classList.contains('hidden')||g.offsetParent!==null){
+      g.style.gridTemplateColumns='1fr';
+    }
+  }
 }
 
 function autoSelectPanel(){
