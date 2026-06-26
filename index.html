@@ -15054,6 +15054,11 @@ function closeVisitForm(){document.getElementById('fw-visit-modal').classList.ad
 async function saveFVisit(){
   var clientName=document.getElementById('fw-vm-client').value.trim();
   if(!clientName){showToast('请输入客户名称');return}
+  // Get geolocation
+  var lat=null,lng=null;
+  if(navigator.geolocation){
+    try{var pos=await new Promise(function(res,rej){navigator.geolocation.getCurrentPosition(res,rej,{timeout:4000,enableHighAccuracy:false})});lat=pos.coords.latitude;lng=pos.coords.longitude}catch(g){}
+  }
   var data={
     user_id:currentUser.id,
     client_id:fwVisitClientId||null,
@@ -15062,6 +15067,7 @@ async function saveFVisit(){
     notes:document.getElementById('fw-vm-notes').value.trim(),
     result:document.getElementById('fw-vm-result').value,
     visit_date:document.getElementById('fw-vm-date').value,
+    latitude:lat,longitude:lng,
     company_id:currentCompanyId
   };
   try{
