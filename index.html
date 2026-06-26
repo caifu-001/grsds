@@ -9952,7 +9952,106 @@ async function exportOperationLogs(){
 }
 
 /* ===== RPC: write operation log ===== */
-async function writeOpLog(action,entityType,entityId,entityName,detail){
+async function formatTimeAgo(ts){
+  if(!ts)return '';
+  var now=Date.now();
+  var d=new Date(ts).getTime();
+  var diff=now-d;
+  if(diff<60000)return '刚刚';
+  if(diff<3600000)return Math.floor(diff/60000)+'分钟前';
+  if(diff<86400000)return Math.floor(diff/3600000)+'小时前';
+  if(diff<604800000)return Math.floor(diff/86400000)+'天前';
+  var dt=new Date(ts);
+  return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+}
+
+function toggleNotifPanel(){
+  var p=document.getElementById('notif-panel');
+  if(!p)return;
+  p.classList.toggle('hidden');
+  if(!p.classList.contains('hidden')){switchNotifTab('notifications')}
+}
+function switchNotifTab(sub){
+  var tabs=document.querySelectorAll('#notif-panel .biz-subtab');
+  for(var i=0;i<tabs.length;i++)tabs[i].classList.remove('active');
+  var nl=document.getElementById('notif-list');
+  var al=document.getElementById('activity-list');
+  if(nl)nl.classList.add('hidden');
+  if(al)al.classList.add('hidden');
+  if(sub==='notifications'){
+    if(tabs[0])tabs[0].classList.add('active');
+    loadNotifs();
+    if(nl)nl.classList.remove('hidden');
+  }else if(sub==='activity'){
+    if(tabs[1])tabs[1].classList.add('active');
+    loadActivity();
+    if(al)al.classList.remove('hidden');
+  }
+}
+function loadNotifs(){
+  if(!sb||!currentCompanyId)return;
+  sb.from('notifications').select('*').eq('company_id',currentCompanyId).order('created_at',{ascending:false}).limit(50).then(function(r){
+    var nl=document.getElementById('notif-list');
+    if(!nl)return;
+    if(!r.data||!r.data.length){nl.innerHTML='<div class="empty-state" style="padding:20px;text-align:center;color:var(--text2)">暂无通知</div>';return}
+    var h='';
+    for(var i=0;i<r.data.length;i++){
+      var n=r.data[i];
+      var icon=n.type==='warning'?'⚠️':n.type==='success'?'✅':n.type==='error'?'❌':'📋';
+      h+='<div class="notif-item" style="padding:12px 16px;border-bottom:1px solid var(--border);'+(n.read?'opacity:0.6':'')+'">';
+      h+='<div style="display:flex;gap:8px;align-items:flex-start">';
+      h+='<span style="font-size:16px">'+icon+'</span>';
+      h+='<div style="flex:1"><div style="font-size:13px;line-height:1.4">'+escHtml(n.message||'')+'</div>';
+      h+='<div style="font-size:11px;color:var(--text2);margin-top:4px">'+formatTimeAgo(n.created_at)+'</div></div></div></div>';
+    }
+    nl.innerHTML=h;
+  }).catch(function(){});
+}
+function loadActivity(){
+  if(!sb||!currentCompanyId)return;
+  sb.from('activity_logs').select('*').eq('company_id',currentCompanyId).order('created_at',{ascending:false}).limit(50).then(function(r){
+    var al=document.getElementById('activity-list');
+    if(!al)return;
+    if(!r.data||!r.data.length){al.innerHTML='<div class="empty-state" style="padding:20px;text-align:center;color:var(--text2)">暂无动态</div>';return}
+    var h='';
+    for(var i=0;i<r.data.length;i++){
+      var a=r.data[i];
+      h+='<div class="notif-item" style="padding:10px 16px;border-bottom:1px solid var(--border)">';
+      h+='<div style="font-size:12px;line-height:1.4">'+escHtml(a.action||'')+'</div>';
+      h+='<div style="font-size:11px;color:var(--text2);margin-top:3px">'+formatTimeAgo(a.created_at)+'</div></div>';
+    }
+    al.innerHTML=h;
+  }).catch(function(){});
+}
+var _pollNotifTimer=null;
+function pollNotifications(){
+  if(!currentUser||!currentCompanyId)return;
+  if(_pollNotifTimer)return;
+  _pollNotifTimer=setInterval(function(){
+    if(!sb||!currentCompanyId){clearInterval(_pollNotifTimer);_pollNotifTimer=null;return}
+    sb.from('notifications').select('id',{count:'exact',head:true}).eq('company_id',currentCompanyId).eq('read',false).then(function(r){
+      var badge=document.getElementById('notif-badge');
+      if(!badge)return;
+      var c=r.count||0;
+      badge.textContent=c>99?'99+':c;
+      if(c>0)badge.classList.remove('hidden');
+      else badge.classList.add('hidden');
+    }).catch(function(){});
+  },30000);
+  // fire once immediately
+  if(sb&&currentCompanyId){
+    sb.from('notifications').select('id',{count:'exact',head:true}).eq('company_id',currentCompanyId).eq('read',false).then(function(r){
+      var badge=document.getElementById('notif-badge');
+      if(!badge)return;
+      var c=r.count||0;
+      badge.textContent=c>99?'99+':c;
+      if(c>0)badge.classList.remove('hidden');
+      else badge.classList.add('hidden');
+    }).catch(function(){});
+  }
+}
+
+function writeOpLog(action,entityType,entityId,entityName,detail){
   try{
     var body={p_company_id:currentCompanyId,p_user_id:currentUser?currentUser.id:null,p_user_name:(currentUser&&currentUser.email)||'',p_action:action,p_entity_type:entityType,p_entity_id:String(entityId||''),p_entity_name:entityName||'',p_detail:detail?JSON.stringify(detail):null};
     await fetch(SUPABASE_URL+'/rest/v1/rpc/write_op_log',{method:'POST',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json'},body:JSON.stringify(body)});
