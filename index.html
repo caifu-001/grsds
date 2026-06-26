@@ -14968,13 +14968,13 @@ async function doCheckIn(type){
   if(type==='in'){btnIn.disabled=true;btnIn.textContent='签到中...'}
   else{btnOut.disabled=true;btnOut.textContent='签退中...'}
   try{
-    // Try to get geolocation
+    // Try to get geolocation (low accuracy first for desktop compatibility)
     var lat=null,lng=null,addr='';
     if(navigator.geolocation){
       try{
-        var pos=await new Promise(function(res,rej){navigator.geolocation.getCurrentPosition(res,rej,{timeout:5000,enableHighAccuracy:true})});
+        var pos=await new Promise(function(res,rej){navigator.geolocation.getCurrentPosition(res,rej,{timeout:4000,enableHighAccuracy:false})});
         lat=pos.coords.latitude;lng=pos.coords.longitude;
-      }catch(g){console.log('Geolocation failed:',g)}
+      }catch(g){console.log('GPS not available, check-in saved without location')}
     }
     var r=await sb.from('field_checkins').insert({user_id:currentUser.id,type:type,latitude:lat,longitude:lng,address:addr,note:note||null,company_id:currentCompanyId}).select();
     if(r.error){showToast('签到失败: '+r.error.message);return}
