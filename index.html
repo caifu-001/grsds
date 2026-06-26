@@ -1130,6 +1130,7 @@ input,select,textarea,button{font-family:inherit}
 
 </head>
 <body>
+<div id="fw-debug" style="position:fixed;top:60px;right:12px;background:rgba(0,0,0,0.85);color:#0f0;padding:8px 12px;border-radius:6px;font:11px monospace;z-index:9999;max-width:350px;max-height:400px;overflow-y:auto;display:none"></div>
 <div id="global-error-banner" style="display:none;background:#e74c3c;color:#fff;padding:10px 16px;font-size:13px;position:fixed;top:0;left:0;right:0;z-index:99999;text-align:center;white-space:pre-wrap;line-height:1.4"></div>
 <script>(function(){var el=document.getElementById('global-error-banner');window.onerror=function(m,u,l,c,e){el.style.display='block';el.innerHTML='🔴 JS ERROR: '+m+'<br><small>line '+l+':'+c+' | '+u.substr(u.lastIndexOf('/')+1)+'</small>';if(e&&e.stack)el.innerHTML+='<br><small>'+e.stack.split('\n').slice(0,3).join('<br>')+'</small>'};window.addEventListener('unhandledrejection',function(ev){el.style.display='block';el.innerHTML='🔴 PROMISE REJECTION: '+ev.reason});console.error=function(){el.style.display='block';el.innerHTML='🔴 console.error: '+Array.from(arguments).join(' ')}})();</script>
 
@@ -3077,7 +3078,7 @@ input,select,textarea,button{font-family:inherit}
   </div>
   <!-- ══════════ 外勤管理 ══════════ -->
   <div id="fieldwork-view" class="hidden">
-<div id="fw-debug" style="position:fixed;top:60px;right:12px;background:rgba(0,0,0,0.85);color:#0f0;padding:8px 12px;border-radius:6px;font:11px monospace;z-index:9999;max-width:350px;max-height:400px;overflow-y:auto;display:none"></div>
+
     <div class="fw-tabs">
       <button onclick="switchFWTab('overview')" id="fwt-overview">📊 外勤概览</button>
       <button onclick="switchFWTab('checkin')" id="fwt-checkin">📍 签到打卡</button>
@@ -5700,6 +5701,9 @@ function escAttr(s){return (s||'').replace(/'/g,"\'").replace(/"/g,'&quot;')}
 
 // Toast system
 function showToast(msg,type){
+  console.log("[TOAST] "+msg);
+  var dbg3=document.getElementById("fw-debug");if(dbg3){dbg3.innerHTML+="<br>🔔 "+msg;dbg3.style.display="block";}
+
   type=type||'info';
   var colors={info:'#4F6EF7',success:'#10B981',warning:'#F59E0B',error:'#EF4444'};
   var icons={info:'ℹ️',success:'✅',warning:'⚠️',error:'❌'};
@@ -5925,6 +5929,9 @@ function switchTab(tab){
     fab.classList.add('hidden');
 
   var dbg=document.getElementById("fw-debug");if(dbg){dbg.style.display="block";dbg.innerHTML="FW init...";}
+
+  console.log("[FW] switchTab fieldwork triggered");
+  var dbg2=document.getElementById("fw-debug");if(dbg2){dbg2.style.display="block";dbg2.innerHTML="FW init...<br>▶ switchTab fieldwork triggered";}
     switchFWTab('overview');
   }
 
