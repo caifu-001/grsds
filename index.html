@@ -14002,7 +14002,7 @@ async function loadMoAnnouncements(){
 
 /* ===== Docs Panel ===== */
 var _moDocFilter='all';
-async async function renderMyOfficeDocs(filter){
+async function renderMyOfficeDocs(filter){
   console.log("[DEBUG mo-docs] START filter:"+filter+" currentCompanyId:"+currentCompanyId+" currentUser:"+(currentUser?currentUser.id:"null"));
   _moDocFilter=filter;
   var el=document.getElementById('mo-docs-list');
@@ -14048,7 +14048,7 @@ function openMoDocForm(id){
   document.body.insertAdjacentHTML('beforeend',h);
 }
 
-async async function saveMoDoc(id){
+async function saveMoDoc(id){
   var title=document.getElementById('mo-doc-title').value.trim();
   if(!title){showToast('请输入标题');return}
   var content=document.getElementById('mo-doc-content').value.trim();
