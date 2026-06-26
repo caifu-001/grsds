@@ -2305,8 +2305,7 @@ input,select,textarea,button{font-family:inherit}
    <button class="collab-subtab" data-ctab="followup" onclick="switchCollabTab('followup')">跟进</button>
    <button class="collab-subtab" data-ctab="comment" onclick="switchCollabTab('comment')">协作</button>
    <button class="collab-subtab" data-ctab="msg" onclick="switchCollabTab('msg')">消息</button>
-  </div>
-   <button class="collab-subtab" data-ctab="mo-overview" onclick="switchCollabTab('mo-overview')">📊 概览</button>
+     <button class="collab-subtab" data-ctab="mo-overview" onclick="switchCollabTab('mo-overview')">📊 概览</button>
    <button class="collab-subtab" data-ctab="mo-docs" onclick="switchCollabTab('mo-docs')">📄 文档</button>
   <div id="collab-schedule-panel" class="collab-panel">
    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -2382,18 +2381,7 @@ input,select,textarea,button{font-family:inherit}
  <div id="mo-overview" class="mo-panel">
   <div id="mo-overview-content">加载中...</div>
  </div>
-
- <!-- Todo Panel -->
- 
-
- <!-- Approvals Panel -->
- 
-
- <!-- Messages Panel -->
- 
-
- <!-- Docs Panel -->
- <div id="mo-docs" class="mo-panel hidden">
+<div id="mo-docs" class="mo-panel hidden">
   <div class="mo-doc-filter" id="mo-doc-filters">
    <button class="active" data-cat="all" onclick="renderMyOfficeDocs('all')">全部</button>
    <button data-cat="work" onclick="renderMyOfficeDocs('work')">工作</button>
@@ -2406,6 +2394,19 @@ input,select,textarea,button{font-family:inherit}
   </div>
   <div id="mo-docs-list">加载中...</div>
  </div>
+</div>
+
+ <!-- Todo Panel -->
+ 
+
+ <!-- Approvals Panel -->
+ 
+
+ <!-- Messages Panel -->
+ 
+
+ <!-- Docs Panel -->
+ 
 
 
 
@@ -10554,18 +10555,18 @@ function switchCollabTab(tab){  // Hide all non-mo collab panels when showing mo
   if(tab==="mo-overview"&&typeof renderMyOfficeOverview==="function")renderMyOfficeOverview();
   else if(tab==="mo-docs"&&typeof renderMyOfficeDocs==="function")renderMyOfficeDocs("all");
 
-  console.log('[DEBUG switchCollabTab] called with tab:',tab);
+
   collabActiveTab=tab;
   var tabs=document.querySelectorAll('.collab-subtab');
-  console.log('[DEBUG switchCollabTab] sub-tabs found:',tabs.length);
+
   for(var i=0;i<tabs.length;i++)tabs[i].classList.toggle('active',tabs[i].getAttribute('data-ctab')===tab);
   var panels={schedule:'collab-schedule-panel',task:'collab-task-panel',approval:'collab-approval-panel',comment:'collab-comment-panel',followup:'collab-followup-panel',msg:'collab-msg-panel'};
   for(var k in panels){
     var el=document.getElementById(panels[k]);
-    console.log('[DEBUG switchCollabTab] panel',panels[k],'found:',!!el);
+
     if(el)el.classList.toggle('hidden',tab!==k)
   }
-  console.log('[DEBUG switchCollabTab] about to loadSchedules, tab==schedule:',tab==='schedule');
+
   if(tab==='schedule')loadSchedules();
   else if(tab==='task')loadTasks();
   else if(tab==='approval')loadApprovals();
