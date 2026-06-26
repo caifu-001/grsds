@@ -10550,7 +10550,7 @@ function switchCollabTab(tab){  // Hide all non-mo collab panels when showing mo
 
   // [INTEGRATED] Handle my-office panels (overview + docs only)
   var moPanels=document.querySelectorAll("#collab-view .mo-panel");
-  for(var mp=0;mp<moPanels.length;mp++)moPanels[mp].classList.toggle("hidden",moPanels[mp].id!=="mo-"+tab);
+  for(var mp=0;mp<moPanels.length;mp++)moPanels[mp].classList.toggle("hidden",moPanels[mp].id!==tab);
   // Init on demand
   if(tab==="mo-overview"&&typeof renderMyOfficeOverview==="function")renderMyOfficeOverview();
   else if(tab==="mo-docs"&&typeof renderMyOfficeDocs==="function")renderMyOfficeDocs("all");
