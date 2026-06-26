@@ -1081,8 +1081,8 @@ input,select,textarea,button{font-family:inherit}
 
 
 /* Fieldwork */
-.fw-tabs{display:flex;gap:4px;padding:8px 16px;border-bottom:1px solid var(--border);background:var(--card-bg);overflow-x:auto}
-.fw-tabs button{padding:6px 14px;border-radius:16px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:var(--bg2);color:var(--text2);white-space:nowrap}
+.fw-tabs{display:flex;gap:4px;padding:8px 12px;border-bottom:1px solid var(--border);background:var(--card-bg);overflow-x:auto;flex-wrap:wrap}
+.fw-tabs button{padding:5px 10px;border-radius:14px;font-size:12px;font-weight:600;cursor:pointer;border:none;background:var(--bg2);color:var(--text2);white-space:nowrap;flex-shrink:0}
 .fw-tabs button.active{background:var(--primary);color:#fff}
 .fw-panel{padding:16px}
 .fw-kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
@@ -2376,13 +2376,7 @@ input,select,textarea,button{font-family:inherit}
 
   <!-- My Office panels (integrated) -->
   
- <div class="my-office-tabs">
-  <button class="active" data-motab="overview" onclick="switchMyOfficeTab('overview')">📊 工作概览</button>
-  <button data-motab="todo" onclick="switchMyOfficeTab('todo')">✅ 我的待办</button>
-  <button data-motab="approvals" onclick="switchMyOfficeTab('approvals')">📋 我的审批</button>
-  <button data-motab="messages" onclick="switchMyOfficeTab('messages')">💬 消息</button>
-  <button data-motab="docs" onclick="switchMyOfficeTab('docs')">📄 文档</button>
- </div>
+ 
 
  <!-- Overview Panel -->
  <div id="mo-overview" class="mo-panel">
@@ -13845,23 +13839,9 @@ async function deletePayment(id){if(confirm('确定删除？')){var {error}=awai
 // ===== My Office =====
 var _moCurrentTab='overview';
 function switchMyOfficeTab(tab){
-  _moCurrentTab=tab;
-  var panels=document.querySelectorAll('#my-office-view .mo-panel');
-  for(var i=0;i<panels.length;i++)panels[i].classList.add('hidden');
-  var panel=document.getElementById('mo-'+tab);
-  if(panel)panel.classList.remove('hidden');
-  var tabs=document.querySelectorAll('.my-office-tabs button');
-  for(var j=0;j<tabs.length;j++)tabs[j].classList.remove('active');
-  var activeBtn=document.querySelector('.my-office-tabs button[data-motab="'+tab+'"]');
-  if(activeBtn)activeBtn.classList.add('active');
-  if(tab==='overview')renderMyOfficeOverview();
-  else if(tab==='todo')renderMyOfficeTodo('all');
-  else if(tab==='approvals')renderMyOfficeApprovals();
-  else if(tab==='messages'){loadMoMessages();loadMoAnnouncements();}
-  else if(tab==='docs')renderMyOfficeDocs('all');
-}
-
-async function renderMyOfficeOverview(){
+  // Legacy stub - tabs merged into collab-view
+  switchCollabTab(tab==='overview'?'mo-overview':tab==='docs'?'mo-docs':tab);
+}async function renderMyOfficeOverview(){
   var el=document.getElementById('mo-overview-content');
   if(!currentCompanyId){el.innerHTML='<div class="empty">请先选择公司</div>';return}
   var myName=currentUser&&currentUser.display_name?currentUser.display_name:(currentUser&&currentUser.email?currentUser.email:'同事');
@@ -13984,47 +13964,9 @@ async function renderMyOfficeOverview(){
 /* ===== Todo Panel ===== */
 var _moTaskFilter='all';
 async function renderMyOfficeTodo(filter){
-  _moTaskFilter=filter;
-  var el=document.getElementById('mo-todo-list');
-  if(!currentCompanyId){el.innerHTML='<div class="empty">请先选择公司</div>';return}
-  // Update filter button states
-  var fb=document.querySelectorAll('#mo-todo-filters button');
-  for(var i=0;i<fb.length;i++){fb[i].classList.remove('active');if(fb[i].getAttribute('data-filter')===filter)fb[i].classList.add('active')}
-  var q=sb.from('tasks').select('*').eq('company_id',currentCompanyId).eq('assigned_to',currentUser.id).order('due_date',{ascending:true,nullsFirst:false});
-  if(filter==='todo'||filter==='in_progress')q=q.eq('status',filter);
-  else if(filter==='all')q=q.in('status',['todo','in_progress','done']);
-  else if(filter==='today'){var ts=new Date().toISOString().slice(0,10);q=q.in('status',['todo','in_progress']).eq('due_date',ts)}
-  else if(filter==='week'){var ts=new Date();var dayOfWeek=ts.getDay();var startOfWeek=new Date(ts);startOfWeek.setDate(ts.getDate()-dayOfWeek+((dayOfWeek===0)?-6:1));var endOfWeek=new Date(ts);endOfWeek.setDate(ts.getDate()+(7-dayOfWeek+(dayOfWeek===0?0:0)));var s1=startOfWeek.toISOString().slice(0,10);var e1=endOfWeek.toISOString().slice(0,10);q=q.in('status',['todo','in_progress']).gte('due_date',s1).lte('due_date',e1)}
-  else if(filter==='overdue'){var ts=new Date().toISOString().slice(0,10);q=q.in('status',['todo','in_progress']).lt('due_date',ts)}
-  else {q=q.in('status',['todo','in_progress','done'])}
-  var {data}=await q;
-  if(!data||!data.length){el.innerHTML='<div class="empty" style="padding:20px">暂无任务</div>';return}
-  var todayStr=new Date().toISOString().slice(0,10);
-  var h='';
-  for(var i=0;i<data.length;i++){
-    var t=data[i];
-    var prio=t.priority||'normal';
-    var overdue=t.due_date&&t.due_date<todayStr&&t.status!=='done';
-    var statusLabel={todo:'待办',in_progress:'进行中',done:'已完成',cancelled:'已取消'}[t.status]||t.status;
-    h+='<div class="mo-task-item priority-'+prio+'">';
-    h+='<div style="display:flex;align-items:flex-start;gap:10px">';
-    h+='<input type="checkbox" onchange="toggleMoTaskDone(\''+t.id+'\',this)" '+(t.status==='done'?'checked':'')+' style="margin-top:4px;width:18px;height:18px;cursor:pointer;flex-shrink:0" title="切换完成状态">';
-    h+='<div style="flex:1">';
-    h+='<div class="mo-task-title" style="'+(t.status==='done'?'text-decoration:line-through;color:var(--text3)':'')+'">'+escHtml(t.title)+'</div>';
-    if(t.description)h+='<div style="font-size:12px;color:var(--text2);margin-bottom:2px">'+escHtml(t.description)+'</div>';
-    h+='<div class="mo-task-meta">';
-    if(t.due_date)h+='<span style="color:'+(overdue?'var(--danger)':'var(--text2)')+'">📅 '+t.due_date+(overdue?' ⚠️':'')+'</span>';
-    h+='<span class="status-badge status-'+t.status+'">'+statusLabel+'</span>';
-    h+='</div>';
-    h+='<div class="mo-task-actions">';
-    h+='<button class="btn-sm" style="font-size:11px;padding:2px 8px" onclick="openMoTaskForm(\''+t.id+'\')">编辑</button>';
-    h+='<button class="btn-sm" style="font-size:11px;padding:2px 8px;color:var(--danger)" onclick="deleteMoTask(\''+t.id+'\')">删除</button>';
-    h+='</div></div></div></div>';
-  }
-  el.innerHTML=h;
-}
-
-function openMoTaskForm(id){
+  // My todos now handled by collab task panel
+  switchCollabTab("task");
+}function openMoTaskForm(id){
   var t=id?allTasks.find(function(x){return x.id===id}):null;
   var h='<div class="modal-overlay" id="mo-task-modal"><div class="modal-sheet"><h3>'+(t?'编辑任务':'新建任务')+'</h3>';
   h+='<div class="form-group"><label>标题 *</label><input id="mo-ta-title" value="'+(t?escAttr(t.title):'')+'"></div>';
@@ -14074,38 +14016,10 @@ async function deleteMoTask(id){
 
 /* ===== Approvals Panel ===== */
 async function renderMyOfficeApprovals(){
-  if(!currentCompanyId)return;
-  // My initiated approvals
-  var {data:myReqs}=await sb.from('approval_requests').select('*').eq('company_id',currentCompanyId).eq('requestor_id',currentUser.id).order('created_at',{ascending:false}).limit(20);
-  var myEl=document.getElementById('mo-my-approvals');
-  var statusMap={pending:'待审批',approved:'已通过',rejected:'已驳回',cancelled:'已取消'};
-  if(!myReqs||!myReqs.length){myEl.innerHTML='<div style="color:var(--text3);font-size:13px;padding:8px 0">暂无发起的审批</div>'}
-  else{
-    var h='';
-    for(var i=0;i<myReqs.length;i++){
-      var a=myReqs[i];
-      h+='<div class="mo-task-item" style="margin-bottom:6px"><div class="mo-task-title">'+escHtml(a.title)+' <span class="status-badge status-'+(a.status==='pending'?'progress':a.status==='approved'?'done':a.status==='rejected'?'cancelled':'cancelled')+'">'+statusMap[a.status]+'</span></div><div style="font-size:12px;color:var(--text2)">类型: '+escHtml(a.type||'')+' · '+new Date(a.created_at).toLocaleDateString('zh-CN')+'</div></div>';
-    }
-    myEl.innerHTML=h;
-  }
-  
-  // Pending approvals (submitted by others, assigned to current user)
-  var {data:pending}=await sb.from('approval_requests').select('*').eq('company_id',currentCompanyId).eq('status','pending').neq('requestor_id',currentUser.id).order('created_at',{ascending:false}).limit(20);
-  var pendEl=document.getElementById('mo-pending-approvals');
-  if(!pending||!pending.length){pendEl.innerHTML='<div style="color:var(--text3);font-size:13px;padding:8px 0">暂无待审批项</div>'}
-  else{
-    var h2='';
-    for(var i=0;i<pending.length;i++){
-      var pa=pending[i];
-      var reqName='';
-      for(var u=0;u<allUsers.length;u++){if(allUsers[u].user_id===pa.requestor_id){reqName=allUsers[u].display_name||allUsers[u].email||'未知';break}}
-      h2+='<div class="mo-task-item" style="margin-bottom:6px"><div class="mo-task-title">'+escHtml(pa.title)+'</div><div style="font-size:12px;color:var(--text2);margin-bottom:6px">发起人: '+escHtml(reqName)+' · '+new Date(pa.created_at).toLocaleDateString('zh-CN')+' · '+escHtml(pa.type||'')+'</div><div style="display:flex;gap:6px"><button class="btn-sm" style="font-size:11px;padding:2px 8px;background:#10B981;color:#fff;border:none;border-radius:4px" onclick="moApproveRequest(\''+pa.id+'\',\'approved\')">通过</button><button class="btn-sm" style="font-size:11px;padding:2px 8px;background:#EF4444;color:#fff;border:none;border-radius:4px" onclick="moApproveRequest(\''+pa.id+'\',\'rejected\')">驳回</button></div></div>';
-    }
-    pendEl.innerHTML=h2;
-  }
-}
-
-function openMoApprovalForm(){
+  // My approvals now handled by collab approval panel
+  console.log("renderMyOfficeApprovals: redirecting to collab approval tab");
+  switchCollabTab("approval");
+}function openMoApprovalForm(){
   var types=['报价审批','合同审批','折扣审批','出差申请','报销申请','客户转移','投标材料审批','公章使用申请','项目立项审批','交付验收审批','自定义'];
   var h='<div class="modal-overlay" id="mo-approval-modal"><div class="modal-sheet"><h3>发起审批</h3>';
   h+='<div class="form-group"><label>审批类型</label><select id="mo-ap-type">';
@@ -14144,42 +14058,9 @@ async function moApproveRequest(id,action){
 
 /* ===== Messages Panel ===== */
 async function loadMoMessages(){
-  var el=document.getElementById('mo-msg-list');
-  if(!currentCompanyId){el.innerHTML='<div class="empty">请先选择公司</div>';return}
-  var deptFilter=document.getElementById('mo-msg-dept-filter').value;
-  // Load departments for filter
-  var sel=document.getElementById('mo-msg-dept-filter');
-  if(sel.options.length<=1){
-    var {data:depts}=await sb.from('departments').select('*').eq('company_id',currentCompanyId);
-    if(depts)for(var i=0;i<depts.length;i++){sel.innerHTML+='<option value="'+depts[i].id+'">'+escHtml(depts[i].name)+'</option>'}
-  }
-  var q=sb.from('dept_messages').select('*').eq('company_id',currentCompanyId).order('created_at',{ascending:false}).limit(30);
-  if(deptFilter)q=q.eq('dept_id',deptFilter);
-  var {data}=await q;
-  if(!data||!data.length){el.innerHTML='<div style="color:var(--text3);font-size:13px;padding:20px;text-align:center">暂无消息</div>';return}
-  data.reverse(); // Show oldest first like chat
-  var h='';
-  for(var i=0;i<data.length;i++){
-    var m=data[i];
-    var senderName='';
-    for(var u=0;u<allUsers.length;u++){if(allUsers[u].user_id===m.sender_id){senderName=allUsers[u].display_name||allUsers[u].email||'未知';break}}
-    var deptName='';
-    if(m.dept_id){
-      var sel2=document.getElementById('mo-msg-dept-filter');
-      for(var d=0;d<sel2.options.length;d++){if(sel2.options[d].value===m.dept_id){deptName=sel2.options[d].textContent;break}}
-    }
-    var isMe=m.sender_id===currentUser.id;
-    h+='<div class="mo-msg-item" style="'+(isMe?'':'')+'">';
-    h+='<div class="mo-msg-header"><span class="mo-msg-sender">'+(isMe?'我':escHtml(senderName))+'</span>'+(deptName?'<span class="mo-msg-dept">'+escHtml(deptName)+'</span>':'')+'<span class="mo-msg-time">'+new Date(m.created_at).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})+'</span></div>';
-    h+='<div class="mo-msg-content">'+escHtml(m.content||'')+'</div>';
-    h+='</div>';
-  }
-  // Auto-scroll to bottom
-  el.innerHTML=h;
-  el.scrollTop=el.scrollHeight;
-}
-
-async function sendMoMessage(){
+  // Messages now handled by collab msg panel
+  switchCollabTab("msg");
+}async function sendMoMessage(){
   var input=document.getElementById('mo-msg-input');
   var content=input.value.trim();
   if(!content){showToast('请输入消息');return}
