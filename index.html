@@ -1130,7 +1130,7 @@ input,select,textarea,button{font-family:inherit}
 
 </head>
 <body>
-<div id="fw-debug" style="position:fixed;top:60px;right:12px;background:rgba(0,0,0,0.85);color:#0f0;padding:8px 12px;border-radius:6px;font:11px monospace;z-index:9999;max-width:350px;max-height:400px;overflow-y:auto;display:none"></div>
+
 <div id="global-error-banner" style="display:none;background:#e74c3c;color:#fff;padding:10px 16px;font-size:13px;position:fixed;top:0;left:0;right:0;z-index:99999;text-align:center;white-space:pre-wrap;line-height:1.4"></div>
 <script>(function(){var el=document.getElementById('global-error-banner');window.onerror=function(m,u,l,c,e){el.style.display='block';el.innerHTML='🔴 JS ERROR: '+m+'<br><small>line '+l+':'+c+' | '+u.substr(u.lastIndexOf('/')+1)+'</small>';if(e&&e.stack)el.innerHTML+='<br><small>'+e.stack.split('\n').slice(0,3).join('<br>')+'</small>'};window.addEventListener('unhandledrejection',function(ev){el.style.display='block';el.innerHTML='🔴 PROMISE REJECTION: '+ev.reason});console.error=function(){el.style.display='block';el.innerHTML='🔴 console.error: '+Array.from(arguments).join(' ')}})();</script>
 
@@ -1177,7 +1177,7 @@ input,select,textarea,button{font-family:inherit}
 <button class="topbar-tab" id="tab-service" onclick="switchTab('service')">售后</button>
 <button class="topbar-tab" id="tab-projects" onclick="switchTab('projects')">项目</button>
    <button class="topbar-tab" id="tab-analytics" onclick="switchTab('analytics')">📊 经营</button>
-   <button class="topbar-tab" id="tab-myoffice" onclick="switchTab('myoffice')">📋 我的</button>
+   <button class="topbar-tab" id="tab-myoffice" onclick="switchTab('collab')" style="color:#FFD700">📋 我的</button>
    <button class="topbar-tab" id="tab-fieldwork" onclick="switchTab('fieldwork')">📍 外勤</button>
    <button class="notif-bell" id="notif-bell" onclick="toggleNotifPanel()" title="通知">🔔<span id="notif-badge" class="notif-badge hidden">0</span></button>
    <button class="topbar-tab hidden" id="tab-admin" onclick="switchTab('admin')">管理</button>
@@ -2298,6 +2298,11 @@ input,select,textarea,button{font-family:inherit}
    <button class="collab-subtab" data-ctab="comment" onclick="switchCollabTab('comment')">协作</button>
    <button class="collab-subtab" data-ctab="msg" onclick="switchCollabTab('msg')">消息</button>
   </div>
+   <button class="collab-subtab" data-ctab="mo-overview" onclick="switchCollabTab('mo-overview')">📊 概览</button>
+   <button class="collab-subtab" data-ctab="mo-todo" onclick="switchCollabTab('mo-todo')">✅ 待办</button>
+   <button class="collab-subtab" data-ctab="mo-docs" onclick="switchCollabTab('mo-docs')">📄 文档</button>
+   <button class="collab-subtab" data-ctab="mo-approvals" onclick="switchCollabTab('mo-approvals')">📋 审批</button>
+   <button class="collab-subtab" data-ctab="mo-msgs" onclick="switchCollabTab('mo-msgs')">💬 消息</button>
   <div id="collab-schedule-panel" class="collab-panel">
    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
     <h3 style="font-size:16px;font-weight:700;margin:0">日程安排</h3>
@@ -2364,8 +2369,8 @@ input,select,textarea,button{font-family:inherit}
   </div>
  </div>
 
-<!-- My Office View -->
-<div id="my-office-view" class="hidden">
+  <!-- My Office panels (integrated) -->
+  
  <div class="my-office-tabs">
   <button class="active" data-motab="overview" onclick="switchMyOfficeTab('overview')">📊 工作概览</button>
   <button data-motab="todo" onclick="switchMyOfficeTab('todo')">✅ 我的待办</button>
@@ -2434,7 +2439,11 @@ input,select,textarea,button{font-family:inherit}
   </div>
   <div id="mo-docs-list">加载中...</div>
  </div>
-</div>
+
+
+
+<!-- My Office View -->
+
 
 <!-- After-Sales Service View -->
 <div id="service-view" class="hidden">
@@ -5724,13 +5733,13 @@ function switchTab(tab){
   var hv_d=document.getElementById('home-view');var rv_r=document.getElementById('reports-view');
   var anv=document.getElementById('analytics-view');
   var lv=document.getElementById('leads-view');
-  var allViews=[hv_d,cv,ov,rv_r,av,sv,iv];if(spv)allViews.push(spv);if(pv)allViews.push(pv);if(lv)allViews.push(lv);var colv2=document.getElementById('collab-view');if(colv2)allViews.push(colv2);var sv2=document.getElementById('service-view');if(sv2)allViews.push(sv2);if(purchv)allViews.push(purchv);var pjv=document.getElementById('projects-view');if(pjv)allViews.push(pjv);var mov=document.getElementById('my-office-view');if(mov)allViews.push(mov);if(anv)allViews.push(anv);
+  var allViews=[hv_d,cv,ov,rv_r,av,sv,iv];if(spv)allViews.push(spv);if(pv)allViews.push(pv);if(lv)allViews.push(lv);var colv2=document.getElementById('collab-view');if(colv2)allViews.push(colv2);var sv2=document.getElementById('service-view');if(sv2)allViews.push(sv2);if(purchv)allViews.push(purchv);var pjv=document.getElementById('projects-view');if(pjv)allViews.push(pjv);if(anv)allViews.push(anv);
   var fwv=document.getElementById('fieldwork-view');if(fwv)allViews.push(fwv);
   for(var i=0;i<allViews.length;i++)if(allViews[i]){allViews[i].classList.add('hidden');allViews[i].style.display='';allViews[i].style.visibility='';}
   // Deactivate all tabs
   var tr=document.getElementById('tab-reports');var thm=document.getElementById('tab-home');
   var tan=document.getElementById('tab-analytics');
-  var allTabs=[thm,tc,to,document.getElementById('tab-service'),document.getElementById('tab-collab'),document.getElementById('tab-projects'),document.getElementById('tab-myoffice'),tr,ta,ti];if(tan)allTabs.push(tan);for(var j=0;j<allTabs.length;j++)if(allTabs[j])allTabs[j].classList.remove('active');
+  var allTabs=[thm,tc,to,document.getElementById('tab-service'),document.getElementById('tab-collab'),document.getElementById('tab-projects'),tr,ta,ti];if(tan)allTabs.push(tan);for(var j=0;j<allTabs.length;j++)if(allTabs[j])allTabs[j].classList.remove('active');
   var tfw=document.getElementById('tab-fieldwork');if(tfw)allTabs.push(tfw);
   fab.classList.add('hidden');
 
@@ -5825,15 +5834,7 @@ function switchTab(tab){
   console.log('[DEBUG switchTab] collab-view innerHTML length:',colv.innerHTML.length);
   console.log('[DEBUG switchTab] about to call switchCollabTab schedule');
   switchCollabTab('schedule');
-}else if(tab==='myoffice'){
-  var mov=document.getElementById('my-office-view');
-  mov.classList.remove('hidden');
-  document.getElementById('tab-myoffice').classList.add('active');
-  document.getElementById('topbar-title').textContent='我的办公室';
-  fab.classList.add('hidden');
-  switchMyOfficeTab('overview');
-}
-  if(tab==='fieldwork'){
+} else if(tab==='fieldwork'){
     var fwv=document.getElementById('fieldwork-view');
     fwv.classList.remove('hidden');
     document.getElementById('tab-fieldwork').classList.add('active');
@@ -10569,7 +10570,26 @@ async function sendMsg(){
 // ============== COLLAB OFFICE MODULE ==============
 var collabActiveTab='schedule';
 
-function switchCollabTab(tab){
+function switchCollabTab(tab){  // Hide all non-mo collab panels when showing mo panels
+  if(tab.startsWith("mo-")){
+    var regularPanels=document.querySelectorAll("#collab-view .collab-panel");
+    for(var rp=0;rp<regularPanels.length;rp++)regularPanels[rp].classList.add("hidden");
+  } else {
+    // Hide mo panels when showing regular panels
+    var moPs=document.querySelectorAll("#collab-view .mo-panel");
+    for(var mp2=0;mp2<moPs.length;mp2++)moPs[mp2].classList.add("hidden");
+  }
+
+  // [INTEGRATED] Handle my-office panels
+  var moPanels=document.querySelectorAll("#collab-view .mo-panel");
+  for(var mp=0;mp<moPanels.length;mp++)moPanels[mp].classList.toggle("hidden",moPanels[mp].id!=="mo-"+tab);
+  // Init on demand
+  if(tab==="mo-overview"&&typeof loadMyOfficeOverview==="function")loadMyOfficeOverview();
+  else if(tab==="mo-todo"&&typeof renderMyOfficeTodo==="function")renderMyOfficeTodo("all");
+  else if(tab==="mo-docs"&&typeof renderMyOfficeDocs==="function")renderMyOfficeDocs("all");
+  else if(tab==="mo-approvals"&&typeof loadMyOfficeApprovals==="function")loadMyOfficeApprovals();
+  else if(tab==="mo-msgs"&&typeof loadMoMessages==="function")loadMoMessages();
+
   console.log('[DEBUG switchCollabTab] called with tab:',tab);
   collabActiveTab=tab;
   var tabs=document.querySelectorAll('.collab-subtab');
