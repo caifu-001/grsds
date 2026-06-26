@@ -5616,7 +5616,7 @@ function switchTab(tab){
   // Hide all views first
     var anv=document.getElementById('analytics-view');
   var lv=document.getElementById('leads-view');
-  var allViews=[cv,ov,rv_r,av,sv,iv];if(spv)allViews.push(spv);if(pv)allViews.push(pv);if(lv)allViews.push(lv);var colv2=document.getElementById('collab-view');if(colv2)allViews.push(colv2);var sv2=document.getElementById('service-view');if(sv2)allViews.push(sv2);if(purchv)allViews.push(purchv);var pjv=document.getElementById('projects-view');if(pjv)allViews.push(pjv);if(anv)allViews.push(anv);
+  var allViews=[cv,ov,rv,av,sv,iv];if(spv)allViews.push(spv);if(pv)allViews.push(pv);if(lv)allViews.push(lv);var colv2=document.getElementById('collab-view');if(colv2)allViews.push(colv2);var sv2=document.getElementById('service-view');if(sv2)allViews.push(sv2);if(purchv)allViews.push(purchv);var pjv=document.getElementById('projects-view');if(pjv)allViews.push(pjv);if(anv)allViews.push(anv);
   var fwv=document.getElementById('fieldwork-view');if(fwv)allViews.push(fwv);
   for(var i=0;i<allViews.length;i++)if(allViews[i]){allViews[i].classList.add('hidden');allViews[i].style.display='';allViews[i].style.visibility='';}
   // Deactivate all tabs
@@ -5659,11 +5659,11 @@ function switchTab(tab){
     document.getElementById('topbar-title').textContent='资源管理';
     switchResTab('suppliers');
   }else if(tab==='reports'){
-    console.log('[DEBUG switchTab] reports branch, rv_r hidden:',rv_r.classList.contains('hidden'));
-    rv_r.classList.remove('hidden');tr.classList.add('active');
+    console.log('[DEBUG switchTab] reports branch, rv hidden:',rv.classList.contains('hidden'));
+    rv.classList.remove('hidden');tr.classList.add('active');
     fab.classList.add('hidden');
     document.getElementById('topbar-title').textContent='报表中心';
-    console.log('[DEBUG switchTab] reports-view display:',getComputedStyle(rv_r).display,'innerHTML len:',rv_r.innerHTML.length);
+    console.log('[DEBUG switchTab] reports-view display:',getComputedStyle(rv).display,'innerHTML len:',rv.innerHTML.length);
     loadReportSummary();switchReportsTab('sales');
   }else if(tab==='service'){
     var sv2=document.getElementById('service-view');
