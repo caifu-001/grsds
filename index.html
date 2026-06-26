@@ -10051,7 +10051,7 @@ function pollNotifications(){
   }
 }
 
-function writeOpLog(action,entityType,entityId,entityName,detail){
+async function writeOpLog(action,entityType,entityId,entityName,detail){
   try{
     var body={p_company_id:currentCompanyId,p_user_id:currentUser?currentUser.id:null,p_user_name:(currentUser&&currentUser.email)||'',p_action:action,p_entity_type:entityType,p_entity_id:String(entityId||''),p_entity_name:entityName||'',p_detail:detail?JSON.stringify(detail):null};
     await fetch(SUPABASE_URL+'/rest/v1/rpc/write_op_log',{method:'POST',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json'},body:JSON.stringify(body)});
