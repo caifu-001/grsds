@@ -1176,7 +1176,7 @@ input,select,textarea,button{font-family:inherit}
  <div class="topbar">
   <span id="topbar-title">客户管理</span>
   <div class="topbar-tabs">
-   <button class="topbar-tab active" id="tab-analytics" onclick="switchTab('analytics')">📊 总览</button>
+   <button class="topbar-tab" id="tab-home" onclick="switchTab('home')">🏠 总览</button>
    <button class="topbar-tab" id="tab-clients" onclick="switchTab('clients')">客户</button>
    <button class="topbar-tab" id="tab-orders" onclick="switchTab('orders')">订单</button>
    <button class="topbar-tab" id="tab-collab" onclick="switchTab('collab')">协同</button>
@@ -1208,6 +1208,176 @@ input,select,textarea,button{font-family:inherit}
    <button class="topbar-btn" id="btn-more" onclick="toggleMoreMenu()" title="更多">☰</button>
   </div>
  </div>
+ <div id="home-view">
+  <div class="dashboard-grid">
+   <div class="dash-card">
+    <div class="dash-card-icon" style="background:linear-gradient(135deg,#4F6EF7,#7B93FF)">👥</div>
+    <div class="dash-card-body">
+     <div class="dash-card-value" id="dash-client-count">-</div>
+     <div class="dash-card-label">客户总数</div>
+    </div>
+   </div>
+   <div class="dash-card">
+    <div class="dash-card-icon" style="background:linear-gradient(135deg,#10B981,#34D399)">📦</div>
+    <div class="dash-card-body">
+     <div class="dash-card-value" id="dash-order-count">-</div>
+     <div class="dash-card-label">本月订单</div>
+    </div>
+   </div>
+   <div class="dash-card">
+    <div class="dash-card-icon" style="background:linear-gradient(135deg,#F59E0B,#FBBF24)">💰</div>
+    <div class="dash-card-body">
+     <div class="dash-card-value" id="dash-revenue">-</div>
+     <div class="dash-card-label">本月销售额</div>
+    </div>
+   </div>
+   <div class="dash-card">
+    <div class="dash-card-icon" style="background:linear-gradient(135deg,#EF4444,#F87171)">🎯</div>
+    <div class="dash-card-body">
+     <div class="dash-card-value" id="dash-leads-count">-</div>
+     <div class="dash-card-label">活跃线索</div>
+    </div>
+   </div>
+  </div>
+  <!-- Charts Row -->
+  <div class="chart-row">
+   <div class="chart-card chart-card-wide">
+    <div class="chart-title">📈 近6月销售趋势</div>
+    <canvas id="chart-revenue-trend"></canvas>
+   </div>
+   <div class="chart-card">
+    <div class="chart-title">🎯 线索阶段分布</div>
+    <canvas id="chart-lead-funnel"></canvas>
+   </div>
+  </div>
+  <div class="chart-row">
+   <div class="chart-card">
+    <div class="chart-title">🏷️ 客户类型分布</div>
+    <canvas id="chart-client-types"></canvas>
+   </div>
+   <div class="chart-card">
+    <div class="chart-title">📊 本月业绩对比</div>
+    <canvas id="chart-perf-compare"></canvas>
+   </div>
+   <div class="chart-card">
+    <div class="chart-title">🔄 订单状态分布</div>
+    <canvas id="chart-order-status"></canvas>
+   </div>
+  </div>
+  <div class="dashboard-sections">
+   <div class="dash-section">
+    <div class="dash-section-header">📊 销售概览</div>
+    <div class="dash-section-body" id="dash-sales-overview">
+     <div class="empty-state">加载中...</div>
+    </div>
+   </div>
+   <div class="dash-section">
+    <div class="dash-section-header">⏰ 待处理提醒</div>
+    <div class="dash-section-body" id="dash-reminders">
+     <div class="empty-state">加载中...</div>
+    </div>
+   </div>
+   <div class="dash-section" id="birthday-section" style="display:none">
+    <div class="dash-section-header">🎂 生日提醒</div>
+    <div class="dash-section-body" id="birthday-reminders"></div>
+   </div>
+  </div>
+  <div class="dash-section" style="margin:12px 16px">
+   <div class="dash-section-header">⚡ 快捷操作</div>
+   <div class="dash-actions">
+    <button class="dash-action-btn" onclick="switchTab('clients');setTimeout(function(){openForm()},300)">➕ 新增客户</button>
+    <button class="dash-action-btn" onclick="switchTab('orders');setTimeout(function(){openOrderForm()},300)">📦 创建订单</button>
+    <button class="dash-action-btn" onclick="leadFormSource='sales';switchTab('sales');setTimeout(function(){openLeadForm()},300)">🎯 新建线索</button>
+    <button class="dash-action-btn" onclick="switchTab('inventory')">📋 库存管理</button>
+   </div>
+  </div>
+ </div>
+ 
+ <div id="home-view">
+  <div class="dashboard-grid">
+   <div class="dash-card">
+    <div class="dash-card-icon" style="background:linear-gradient(135deg,#4F6EF7,#7B93FF)">👥</div>
+    <div class="dash-card-body">
+     <div class="dash-card-value" id="dash-client-count">-</div>
+     <div class="dash-card-label">客户总数</div>
+    </div>
+   </div>
+   <div class="dash-card">
+    <div class="dash-card-icon" style="background:linear-gradient(135deg,#10B981,#34D399)">📦</div>
+    <div class="dash-card-body">
+     <div class="dash-card-value" id="dash-order-count">-</div>
+     <div class="dash-card-label">本月订单</div>
+    </div>
+   </div>
+   <div class="dash-card">
+    <div class="dash-card-icon" style="background:linear-gradient(135deg,#F59E0B,#FBBF24)">💰</div>
+    <div class="dash-card-body">
+     <div class="dash-card-value" id="dash-revenue">-</div>
+     <div class="dash-card-label">本月销售额</div>
+    </div>
+   </div>
+   <div class="dash-card">
+    <div class="dash-card-icon" style="background:linear-gradient(135deg,#EF4444,#F87171)">🎯</div>
+    <div class="dash-card-body">
+     <div class="dash-card-value" id="dash-leads-count">-</div>
+     <div class="dash-card-label">活跃线索</div>
+    </div>
+   </div>
+  </div>
+  <!-- Charts Row -->
+  <div class="chart-row">
+   <div class="chart-card chart-card-wide">
+    <div class="chart-title">📈 近6月销售趋势</div>
+    <canvas id="chart-revenue-trend"></canvas>
+   </div>
+   <div class="chart-card">
+    <div class="chart-title">🎯 线索阶段分布</div>
+    <canvas id="chart-lead-funnel"></canvas>
+   </div>
+  </div>
+  <div class="chart-row">
+   <div class="chart-card">
+    <div class="chart-title">🏷️ 客户类型分布</div>
+    <canvas id="chart-client-types"></canvas>
+   </div>
+   <div class="chart-card">
+    <div class="chart-title">📊 本月业绩对比</div>
+    <canvas id="chart-perf-compare"></canvas>
+   </div>
+   <div class="chart-card">
+    <div class="chart-title">🔄 订单状态分布</div>
+    <canvas id="chart-order-status"></canvas>
+   </div>
+  </div>
+  <div class="dashboard-sections">
+   <div class="dash-section">
+    <div class="dash-section-header">📊 销售概览</div>
+    <div class="dash-section-body" id="dash-sales-overview">
+     <div class="empty-state">加载中...</div>
+    </div>
+   </div>
+   <div class="dash-section">
+    <div class="dash-section-header">⏰ 待处理提醒</div>
+    <div class="dash-section-body" id="dash-reminders">
+     <div class="empty-state">加载中...</div>
+    </div>
+   </div>
+   <div class="dash-section" id="birthday-section" style="display:none">
+    <div class="dash-section-header">🎂 生日提醒</div>
+    <div class="dash-section-body" id="birthday-reminders"></div>
+   </div>
+  </div>
+  <div class="dash-section" style="margin:12px 16px">
+   <div class="dash-section-header">⚡ 快捷操作</div>
+   <div class="dash-actions">
+    <button class="dash-action-btn" onclick="switchTab('clients');setTimeout(function(){openForm()},300)">➕ 新增客户</button>
+    <button class="dash-action-btn" onclick="switchTab('orders');setTimeout(function(){openOrderForm()},300)">📦 创建订单</button>
+    <button class="dash-action-btn" onclick="leadFormSource='sales';switchTab('sales');setTimeout(function(){openLeadForm()},300)">🎯 新建线索</button>
+    <button class="dash-action-btn" onclick="switchTab('inventory')">📋 库存管理</button>
+   </div>
+  </div>
+ </div>
+ 
  <div id="client-view" class="hidden">
   <div class="toolbar">
    <select id="filter-select" onchange="onFilterChange()"><option value="all">全部类型</option></select>
@@ -3236,7 +3406,7 @@ async function onLoginSuccess(user){
   if(isSuperAdmin){document.getElementById('admin-tab-companies-manage').classList.remove('hidden');document.getElementById('admin-tab-companies').classList.remove('hidden');}
   pollNotifications();
   writeOpLog('login','auth',currentUser.id,currentUser.email,'用户登录');
-  switchTab('analytics');
+  switchTab('home');
 }
 async function doLogout(){await sb.auth.signOut();currentUser=null;allClients=[];allContacts=[];customTypes=[];document.getElementById('main-screen').classList.add('hidden');document.getElementById('login-screen').classList.remove('hidden')}
 
@@ -5617,16 +5787,20 @@ function switchTab(tab){
   // Hide all views first
     var anv=document.getElementById('analytics-view');
   var lv=document.getElementById('leads-view');
-  var allViews=[cv,ov,rv,av,sv,iv];if(spv)allViews.push(spv);if(pv)allViews.push(pv);if(lv)allViews.push(lv);var colv2=document.getElementById('collab-view');if(colv2)allViews.push(colv2);var sv2=document.getElementById('service-view');if(sv2)allViews.push(sv2);if(purchv)allViews.push(purchv);var pjv=document.getElementById('projects-view');if(pjv)allViews.push(pjv);if(anv)allViews.push(anv);
+  var allViews=[cv,ov,rv,av,sv,iv,hv,hv];if(spv)allViews.push(spv);if(pv)allViews.push(pv);if(lv)allViews.push(lv);var colv2=document.getElementById('collab-view');if(colv2)allViews.push(colv2);var sv2=document.getElementById('service-view');if(sv2)allViews.push(sv2);if(purchv)allViews.push(purchv);var pjv=document.getElementById('projects-view');if(pjv)allViews.push(pjv);if(anv)allViews.push(anv);
   var fwv=document.getElementById('fieldwork-view');if(fwv)allViews.push(fwv);
   for(var i=0;i<allViews.length;i++)if(allViews[i]){allViews[i].classList.add('hidden');allViews[i].style.display='';allViews[i].style.visibility='';}
   // Deactivate all tabs
   var tr=document.getElementById('tab-reports');var tan=document.getElementById('tab-analytics');
-  var allTabs=[tc,to,document.getElementById('tab-service'),document.getElementById('tab-collab'),document.getElementById('tab-projects'),tr,ta,ti];if(tan)allTabs.push(tan);for(var j=0;j<allTabs.length;j++)if(allTabs[j])allTabs[j].classList.remove('active');
+  var allTabs=[tc,to,document.getElementById('tab-service'),document.getElementById('tab-collab'),document.getElementById('tab-projects'),tr,ta,ti,thm,thm];if(tan)allTabs.push(tan);for(var j=0;j<allTabs.length;j++)if(allTabs[j])allTabs[j].classList.remove('active');
   var tfw=document.getElementById('tab-fieldwork');if(tfw)allTabs.push(tfw);
   fab.classList.add('hidden');
 
-      if(tab==='clients'){
+      var hv=document.getElementById('home-view');
+  var thm=document.getElementById('tab-home');
+  var hv=document.getElementById('home-view');
+  var thm=document.getElementById('tab-home');
+  if(tab==='clients'){
     cv.classList.remove('hidden');tc.classList.add('active');
     fab.classList.remove('hidden');fab.textContent='+';fab.onclick=function(){openForm()};
     document.getElementById('topbar-title').textContent='客户管理';
@@ -5671,6 +5845,24 @@ function switchTab(tab){
     console.log('[DEBUG switchTab] service branch, sv2 found:',!!sv2);
     if(sv2){sv2.classList.remove('hidden');console.log('[DEBUG switchTab] service-view display:',getComputedStyle(sv2).display,'innerHTML len:',sv2.innerHTML.length);}
     switchServiceTab('tickets');return}
+  if(tab==='home'){
+    hv.classList.remove('hidden');
+    document.getElementById('tab-home').classList.add('active');
+    document.getElementById('topbar-title').textContent='仪表盘';
+    document.getElementById('main-fab').classList.add('hidden');
+    loadHomeDashboard();
+    loadDashboard();
+  }else
+  else
+  if(tab==='home'){
+    hv.classList.remove('hidden');
+    document.getElementById('tab-home').classList.add('active');
+    document.getElementById('topbar-title').textContent='仪表盘';
+    document.getElementById('main-fab').classList.add('hidden');
+    loadHomeDashboard();
+    loadDashboard();
+  }else
+  else
   if(tab==='analytics'){
     console.log('[DEBUG switchTab] analytics branch');
     var anv=document.getElementById('analytics-view');
@@ -5993,7 +6185,7 @@ sb.auth.getSession().then(async function(res){
     if(!currentCompanyId){document.getElementById('login-screen').classList.remove('hidden');return}
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('main-screen').classList.remove('hidden');
-    switchTab('analytics');
+    switchTab('home');
     if(isSuperAdmin||currentUserRole==='admin')document.getElementById('tab-admin').classList.remove('hidden');
   if(isSuperAdmin){document.getElementById('admin-tab-companies-manage').classList.remove('hidden');document.getElementById('admin-tab-companies').classList.remove('hidden');}
     await loadCustomTypes();
@@ -6077,7 +6269,7 @@ async function checkPendingCompany(){
     document.getElementById('main-screen').classList.remove('hidden');
     if(isSuperAdmin||currentUserRole==='admin')document.getElementById('tab-admin').classList.remove('hidden');
   if(isSuperAdmin){document.getElementById('admin-tab-companies-manage').classList.remove('hidden');document.getElementById('admin-tab-companies').classList.remove('hidden');}
-    switchTab('analytics');
+    switchTab('home');
   }else if(data[0].status==='rejected'){
     showCompanyRegScreen();
   }
@@ -10836,7 +11028,7 @@ async function acceptMyInvitation(invId){
     if(isSuperAdmin){document.getElementById('admin-tab-companies-manage').classList.remove('hidden');document.getElementById('admin-tab-companies').classList.remove('hidden');document.getElementById('admin-tab-freeagents').classList.remove('hidden')}
     pollNotifications();
     writeOpLog('login','auth',currentUser.id,currentUser.email,'通过邀请入职');
-    switchTab('analytics');
+    switchTab('home');
   }catch(e){showToast('入职失败: '+e.message)}
 }
 async function rejectMyInvitation(invId){
@@ -10920,7 +11112,7 @@ async function acceptInvitation(){
     if(isSuperAdmin){document.getElementById('admin-tab-companies-manage').classList.remove('hidden');document.getElementById('admin-tab-companies').classList.remove('hidden');}
     pollNotifications();
     writeOpLog('login','auth',currentUser.id,currentUser.email,'通过邀请入职');
-    switchTab('analytics');
+    switchTab('home');
   }catch(e){document.getElementById('invitation-err').textContent='入职失败: '+e.message;document.getElementById('invitation-err').style.display='block'}
 }
 async function rejectInvitation(){
