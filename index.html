@@ -3077,6 +3077,7 @@ input,select,textarea,button{font-family:inherit}
   </div>
   <!-- ══════════ 外勤管理 ══════════ -->
   <div id="fieldwork-view" class="hidden">
+<div id="fw-debug" style="position:fixed;top:60px;right:12px;background:rgba(0,0,0,0.85);color:#0f0;padding:8px 12px;border-radius:6px;font:11px monospace;z-index:9999;max-width:350px;max-height:400px;overflow-y:auto;display:none"></div>
     <div class="fw-tabs">
       <button onclick="switchFWTab('overview')" id="fwt-overview">📊 外勤概览</button>
       <button onclick="switchFWTab('checkin')" id="fwt-checkin">📍 签到打卡</button>
@@ -5922,6 +5923,8 @@ function switchTab(tab){
     document.getElementById('tab-fieldwork').classList.add('active');
     document.getElementById('topbar-title').textContent='外勤管理';
     fab.classList.add('hidden');
+
+  var dbg=document.getElementById("fw-debug");if(dbg){dbg.style.display="block";dbg.innerHTML="FW init...";}
     switchFWTab('overview');
   }
 
@@ -14919,6 +14922,7 @@ let fwVisitEditId=null;
 let fwVisitClientId=null;
 
 function switchFWTab(tab){
+  var dbg=document.getElementById("fw-debug");if(dbg){dbg.style.display="block";dbg.innerHTML="▶ switchFWTab: "+tab;}
   var tabs=['overview','checkin','visits','track','stats'];
   for(var i=0;i<tabs.length;i++){
     var el=document.getElementById('fw-'+tabs[i]);
@@ -14934,13 +14938,24 @@ function switchFWTab(tab){
 }
 
 async function loadFWOverview(){
+  var dbg=document.getElementById("fw-debug");if(dbg)dbg.innerHTML+="<br>● loadFWOverview start";
+  if(typeof currentUser==="undefined"){if(dbg)dbg.innerHTML+="<br>⛔ currentUser undefined";return}
+  if(!currentUser||!currentUser.id){if(dbg)dbg.innerHTML+="<br>⛔ currentUser.id missing: "+JSON.stringify(currentUser);return}
+  if(typeof sb==="undefined"){if(dbg)dbg.innerHTML+="<br>⛔ sb undefined";return}
+  if(typeof currentCompanyId==="undefined"){if(dbg)dbg.innerHTML+="<br>⛔ currentCompanyId undefined";return}
+  if(dbg)dbg.innerHTML+="<br>✔ user="+currentUser.id.substring(0,8)+" company="+currentCompanyId;
+
   var kpi=document.getElementById('fw-ov-kpi');
   if(!kpi)return;
   var today=new Date().toISOString().substring(0,10);
   // Load today's checkins
   try{
+  if(dbg)dbg.innerHTML+="<br>▶ Querying field_checkins...";
+
     var {data:checks}=await sb.from('field_checkins').select('*').eq('user_id',currentUser.id).eq('company_id',currentCompanyId).gte('created_at',today).order('created_at',{ascending:true});
+  if(dbg)dbg.innerHTML+="<br>✔ checks: "+(checks?(checks.length+" rows"):"null");
     var {data:visits}=await sb.from('field_visits').select('*').eq('user_id',currentUser.id).eq('company_id',currentCompanyId).eq('visit_date',today);
+  if(dbg)dbg.innerHTML+="<br>✔ visits: "+(visits?(visits.length+" rows"):"null");
     var visitsToday=visits?visits.length:0;
     var hasIn=false,hasOut=false;
     if(checks){for(var i=0;i<checks.length;i++){if(checks[i].type==='in')hasIn=true;if(checks[i].type==='out')hasOut=true}}
@@ -14948,11 +14963,13 @@ async function loadFWOverview(){
     var weekAgo=new Date();weekAgo.setDate(weekAgo.getDate()-7);
     var waStr=weekAgo.toISOString().substring(0,10);
     var {data:weekVisits}=await sb.from('field_visits').select('id').eq('user_id',currentUser.id).eq('company_id',currentCompanyId).gte('visit_date',waStr);
+  if(dbg)dbg.innerHTML+="<br>✔ weekVisits: "+(weekVisits?(weekVisits.length+" rows"):"null");
     // Team today
     var {data:teamChecks}=await sb.from('field_checkins').select('user_id,type').eq('company_id',currentCompanyId).gte('created_at',today).order('created_at',{ascending:true});
+  if(dbg)dbg.innerHTML+="<br>✔ teamChecks: "+(teamChecks?(teamChecks.length+" rows"):"null");
     var teamMap={};if(teamChecks){for(var i=0;i<teamChecks.length;i++){var tc=teamChecks[i];if(!teamMap[tc.user_id])teamMap[tc.user_id]={in:false,out:false};teamMap[tc.user_id][tc.type]=true}}
     var teamIn=0,teamOut=0;for(var k in teamMap){if(teamMap[k].in)teamIn++;if(teamMap[k].out)teamOut++}
-    kpi.innerHTML='<div class="fw-kpi-card"><div class="kpi-label">📍 今日签到</div><div class="kpi-val">'+(hasIn?'✅':hasOut?'☀️':'—')+'</div></div>'
+    if(dbg)dbg.innerHTML+="<br>▶ Rendering KPI cards...";kpi.innerHTML='<div class="fw-kpi-card"><div class="kpi-label">📍 今日签到</div><div class="kpi-val">'+(hasIn?'✅':hasOut?'☀️':'—')+'</div></div>'
       +'<div class="fw-kpi-card"><div class="kpi-label">🏢 今日拜访</div><div class="kpi-val">'+visitsToday+'</div></div>'
       +'<div class="fw-kpi-card"><div class="kpi-label">📅 本周拜访</div><div class="kpi-val">'+(weekVisits?weekVisits.length:0)+'</div></div>'
       +'<div class="fw-kpi-card"><div class="kpi-label">🧑‍🤝‍🧑 团队已签到</div><div class="kpi-val">'+teamIn+'/'+(allUsers?allUsers.length:'?')+'</div></div>';
@@ -14969,7 +14986,10 @@ async function loadFWOverview(){
     var weekHtml='<div style="font-size:13px;color:var(--text2)">本周累计拜访 '+(weekVisits?weekVisits.length:0)+' 次</div>';
     document.getElementById('fw-ov-weekly').innerHTML=weekHtml;
     fwCheckinState=hasOut?'out':hasIn?'in':null;
-  }catch(e){console.error('loadFWOverview error:',e);if(kpi)kpi.innerHTML='<div style="color:var(--danger);font-size:13px">加载失败</div>'}
+  
+  if(dbg)dbg.innerHTML+="<br>✅ loadFWOverview done";
+}catch(e){
+  if(dbg)dbg.innerHTML+="<br>🔥 ERROR: "+(e.message||e)+"<br>"+(e.stack||"").substring(0,200);console.error('loadFWOverview error:',e);if(kpi)kpi.innerHTML='<div style="color:var(--danger);font-size:13px">加载失败</div>'}
 }
 
 async function loadFWCheckin(){
