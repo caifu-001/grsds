@@ -10473,7 +10473,7 @@ function openFollowupForm(){
   h+='<div class="form-group"><label>跟进内容 *</label><textarea id="fu-content" rows="3" placeholder="请输入跟进内容..."></textarea></div>';
   h+='<div class="form-group"><label>结果</label><input id="fu-outcome" placeholder="跟进结果（可选）"></div>';
   h+='<div class="form-row"><div class="form-group"><label>下一步计划</label><input id="fu-next-step" placeholder="下一步"></div><div class="form-group"><label>下次跟进日期</label><input type="date" id="fu-next-date"></div></div>';
-  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest(".modal-overlay").remove()">取消</button><button class="btn-save" onclick="saveFollowup()">保存</button></div></div></div>';
+  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">取消</button><button class="btn-save" onclick="saveFollowup()">保存</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend',h);
 }
 
@@ -10521,7 +10521,7 @@ function openMsgForm(){
   for(var i=0;i<allDepartments.length;i++)h+='<option value="'+allDepartments[i].id+'">'+escHtml(allDepartments[i].name)+'</option>';
   h+='</select></div>';
   h+='<div class="form-group"><label>消息内容 *</label><textarea id="msg-content" rows="3" placeholder="输入消息..."></textarea></div>';
-  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest(".modal-overlay").remove()">取消</button><button class="btn-save" onclick="sendMsg()">发送</button></div></div></div>';
+  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">取消</button><button class="btn-save" onclick="sendMsg()">发送</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend',h);
 }
 
@@ -10603,7 +10603,7 @@ function openScheduleForm(id){
   h+='<div class="form-row"><div class="form-group"><label><input type="checkbox" id="sch-allday" '+(s&&s.all_day?'checked':'')+'> 全天</label></div><div class="form-group"><label>颜色</label><input type="color" id="sch-color" value="'+(s?s.color||'#4F6EF7':'#4F6EF7')+'"></div></div>';
   h+='<div class="form-group"><label>地点</label><input id="sch-location" value="'+(s?escAttr(s.location||''):'')+'"></div>';
   h+='<div class="form-group"><label>描述</label><textarea id="sch-desc" rows="2">'+(s?escHtml(s.description||''):'')+'</textarea></div>';
-  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest(".modal-overlay").remove()">取消</button><button class="btn-save" onclick="saveSchedule(\''+(s?s.id:'')+'\')">保存</button></div></div></div>';
+  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">取消</button><button class="btn-save" onclick="saveSchedule(\''+(s?s.id:'')+'\')">保存</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend',h);
 }
 
@@ -10657,7 +10657,7 @@ function openTaskForm(id){
   h+='<div class="form-group"><label>描述</label><textarea id="ta-desc" rows="2">'+(t?escHtml(t.description||''):'')+'</textarea></div>';
   h+='<div class="form-row"><div class="form-group"><label>优先级</label><select id="ta-priority"><option value="urgent"'+(t&&t.priority==='urgent'?' selected':'')+'>紧急</option><option value="high"'+(t&&t.priority==='high'?' selected':'')+'>高</option><option value="normal"'+(t&&t.priority==='normal'?' selected':'')+'>普通</option><option value="low"'+(t&&t.priority==='low'?' selected':'')+'>低</option></select></div><div class="form-group"><label>截止日期</label><input type="date" id="ta-due" value="'+(t&&t.due_date?t.due_date:'')+'"></div></div>';
   h+='<div class="form-row"><div class="form-group"><label>状态</label><select id="ta-status"><option value="todo"'+(t&&t.status==='todo'?' selected':'')+'>待办</option><option value="in_progress"'+(t&&t.status==='in_progress'?' selected':'')+'>进行中</option><option value="done"'+(t&&t.status==='done'?' selected':'')+'>已完成</option></select></div><div class="form-group"><label>分配给</label><select id="ta-assigned">'+(function(){var o='<option value="">自己</option>';for(var k=0;k<allUsers.length;k++){var u=allUsers[k];o+='<option value="'+u.user_id+'"'+(t&&t.assigned_to===u.user_id?' selected':'')+'>'+(u.display_name||u.email||u.user_id)+'</option>'}return o})()+'</select></div></div>';
-  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest(".modal-overlay").remove()">取消</button><button class="btn-save" onclick="saveTask(\''+(t?t.id:'')+'\')">保存</button></div></div></div>';
+  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">取消</button><button class="btn-save" onclick="saveTask(\''+(t?t.id:'')+'\')">保存</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend',h);
 }
 
@@ -10767,7 +10767,7 @@ function openCommentForm(){
   for(var i=0;i<allClients.length;i++)h+='<option value="'+allClients[i].id+'">'+escHtml(allClients[i].name)+'</option>';
   h+='</select></div>';
   h+='<div class="form-group"><label>评论内容 *</label><textarea id="cm-content" rows="3" placeholder="输入评论..."></textarea></div>';
-  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest(".modal-overlay").remove()">取消</button><button class="btn-save" onclick="saveComment()">保存</button></div></div></div>';
+  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">取消</button><button class="btn-save" onclick="saveComment()">保存</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend',h);
 }
 
