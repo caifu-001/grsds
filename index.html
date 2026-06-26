@@ -6074,6 +6074,7 @@ function renderOrders(){
 }
 
 function formatMoney(v){
+  if(v==null||isNaN(v=parseFloat(v)))return '0';
   if(v>=10000)return (v/10000).toFixed(1)+'万';
   return v.toFixed(0);
 }
@@ -9790,7 +9791,7 @@ async function renderClient360Overview(c,orders){
   (async function(){
     var {data}=await sb.from('engagement_logs').select('created_at').eq('client_id',c.id).eq('company_id',currentCompanyId).order('created_at',{ascending:false}).limit(1);
     if(data&&data.length)lastEng=new Date(data[0].created_at).toLocaleDateString('zh-CN');
-    document.getElementById('c360-last-engage').textContent=lastEng;
+    var el=document.getElementById('c360-last-engage');if(el)el.textContent=lastEng;
   })();
   var html='<div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button class="btn-sm btn-sm-primary" onclick="closeClient360();openForm(\''+c.id+'\')">✏️ 编辑客户</button></div>';
   // ── 项目信息
