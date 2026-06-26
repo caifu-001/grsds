@@ -6305,7 +6305,7 @@ async function rejectCompany(id){
 }
 
 // escHtml defined below (regex-based)
-function selectCompany(c){document.getElementById('f-name').value=c.name;hideAC();fillCompanyInfo(c);}
+function selectCompany(c){document.getElementById('f-name').value=c.name;var d=document.getElementById('company-ac-drop');if(d)d.classList.remove('show');fillCompanyInfo(c);}
 setupCompanyAutocomplete();
 
 /* ── Admin: Department Management ── */
