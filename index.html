@@ -1127,16 +1127,15 @@ input,select,textarea,button{font-family:inherit}
 }
 
 
-/* Leaflet map styles */
+/* Baidu Map styles */
 .fw-track-map{height:320px;border-radius:12px;overflow:hidden;border:1px solid var(--border)}
-.leaflet-container{font-family:inherit}
+.BMap_mask,.BMap_noprint{font-family:inherit!important}
 .fw-visit-loc{display:inline-flex;align-items:center;gap:3px;font-size:11px;color:var(--primary);margin-top:4px}
 .fw-visit-loc.no-gps{color:var(--text3)}
 </style>
 
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://api.map.baidu.com/api?v=3.0&ak=你的百度地图AK"></script>
 </head>
 <body>
 
@@ -2308,10 +2307,7 @@ input,select,textarea,button{font-family:inherit}
    <button class="collab-subtab" data-ctab="msg" onclick="switchCollabTab('msg')">消息</button>
   </div>
    <button class="collab-subtab" data-ctab="mo-overview" onclick="switchCollabTab('mo-overview')">📊 概览</button>
-   <button class="collab-subtab" data-ctab="mo-todo" onclick="switchCollabTab('mo-todo')">✅ 待办</button>
    <button class="collab-subtab" data-ctab="mo-docs" onclick="switchCollabTab('mo-docs')">📄 文档</button>
-   <button class="collab-subtab" data-ctab="mo-approvals" onclick="switchCollabTab('mo-approvals')">📋 审批</button>
-   <button class="collab-subtab" data-ctab="mo-msgs" onclick="switchCollabTab('mo-msgs')">💬 消息</button>
   <div id="collab-schedule-panel" class="collab-panel">
    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
     <h3 style="font-size:16px;font-weight:700;margin:0">日程安排</h3>
@@ -2394,45 +2390,13 @@ input,select,textarea,button{font-family:inherit}
  </div>
 
  <!-- Todo Panel -->
- <div id="mo-todo" class="mo-panel hidden">
-  <div class="mo-filter-bar" id="mo-todo-filters">
-   <button class="active" data-filter="all" onclick="renderMyOfficeTodo('all')">全部</button>
-   <button data-filter="today" onclick="renderMyOfficeTodo('today')">今天</button>
-   <button data-filter="week" onclick="renderMyOfficeTodo('week')">本周</button>
-   <button data-filter="overdue" onclick="renderMyOfficeTodo('overdue')">已逾期</button>
-  </div>
-  <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
-   <button class="btn-sm btn-sm-primary" onclick="openMoTaskForm()">+ 新建任务</button>
-  </div>
-  <div id="mo-todo-list">加载中...</div>
- </div>
+ 
 
  <!-- Approvals Panel -->
- <div id="mo-approvals" class="mo-panel hidden">
-  <div class="mo-section-title">📤 我发起的审批</div>
-  <div id="mo-my-approvals">加载中...</div>
-  <div class="mo-section-title" style="margin-top:16px">📥 待我审批</div>
-  <div id="mo-pending-approvals">加载中...</div>
-  <div style="margin-top:12px;text-align:right">
-   <button class="btn-sm btn-sm-primary" onclick="openMoApprovalForm()">+ 发起审批</button>
-  </div>
- </div>
+ 
 
  <!-- Messages Panel -->
- <div id="mo-messages" class="mo-panel hidden">
-  <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
-   <select id="mo-msg-dept-filter" onchange="loadMoMessages()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px">
-    <option value="">全部部门</option>
-   </select>
-  </div>
-  <div id="mo-msg-list">加载中...</div>
-  <div class="mo-msg-input-wrap">
-   <textarea id="mo-msg-input" placeholder="输入消息..." rows="1"></textarea>
-   <button onclick="sendMoMessage()">发送</button>
-  </div>
-  <div class="mo-section-title" style="margin-top:20px">📢 公司公告</div>
-  <div id="mo-announcements-list">加载中...</div>
- </div>
+ 
 
  <!-- Docs Panel -->
  <div id="mo-docs" class="mo-panel hidden">
@@ -10589,15 +10553,12 @@ function switchCollabTab(tab){  // Hide all non-mo collab panels when showing mo
     for(var mp2=0;mp2<moPs.length;mp2++)moPs[mp2].classList.add("hidden");
   }
 
-  // [INTEGRATED] Handle my-office panels
+  // [INTEGRATED] Handle my-office panels (overview + docs only)
   var moPanels=document.querySelectorAll("#collab-view .mo-panel");
   for(var mp=0;mp<moPanels.length;mp++)moPanels[mp].classList.toggle("hidden",moPanels[mp].id!=="mo-"+tab);
   // Init on demand
   if(tab==="mo-overview"&&typeof loadMyOfficeOverview==="function")loadMyOfficeOverview();
-  else if(tab==="mo-todo"&&typeof renderMyOfficeTodo==="function")renderMyOfficeTodo("all");
   else if(tab==="mo-docs"&&typeof renderMyOfficeDocs==="function")renderMyOfficeDocs("all");
-  else if(tab==="mo-approvals"&&typeof loadMyOfficeApprovals==="function")loadMyOfficeApprovals();
-  else if(tab==="mo-msgs"&&typeof loadMoMessages==="function")loadMoMessages();
 
   console.log('[DEBUG switchCollabTab] called with tab:',tab);
   collabActiveTab=tab;
@@ -15113,7 +15074,7 @@ async function saveFVisit(){
 
 async function loadFWTrack(){
   // Clean up previous map instance
-  if(window._fwMap){window._fwMap.remove();window._fwMap=null;}
+  if(window._fwMap){window._fwMap.clearOverlays();window._fwMap=null;}
   var today=new Date().toISOString().substring(0,10);
   var kpi=document.getElementById('fw-tr-kpi');
   var list=document.getElementById('fw-track-list');
@@ -15129,31 +15090,49 @@ async function loadFWTrack(){
     var mcont=document.getElementById('fw-map-container');
   if(points===0){
     mcont.innerHTML='<div style="text-align:center;padding:40px"><div style="font-size:48px;margin-bottom:12px">🗺️</div><div style="font-size:14px;color:var(--text2)">暂无GPS定位数据<br><span style="font-size:12px;color:var(--text3)">请使用支持GPS的设备签到以生成轨迹</span></div></div>';
-    if(window._fwMap){window._fwMap.remove();window._fwMap=null}
+    if(window._fwMap){window._fwMap.clearOverlays();window._fwMap=null}
   } else {
     // Render real map with check-in points
-    mcont.innerHTML='<div id="fw-leaflet-map" style="width:100%;height:100%"></div>';
+    mcont.innerHTML='<div id="fw-baidu-map" style="width:100%;height:100%"></div>';
     setTimeout(function(){
-      if(!window.L){mcont.innerHTML='<div style="text-align:center;padding:40px"><div style="font-size:48px">🗺️</div><div>地图加载中...</div></div>';return}
-      if(window._fwMap)window._fwMap.remove();
-      var map=L.map('fw-leaflet-map',{attributionControl:false,zoomControl:true}).setView([39.9,116.4],12);
-      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18}).addTo(map);
+      if(!window.BMap||!window.BMap.Map){mcont.innerHTML='<div style="text-align:center;padding:40px"><div style="font-size:48px">🗺️</div><div>百度地图加载中...<br><span style="font-size:12px;color:var(--text3)">如持续显示，请检查百度地图AK是否正确</span></div></div>';return}
+      if(window._fwMap){window._fwMap.clearOverlays();window._fwMap=null;}
+      var map=new BMap.Map('fw-baidu-map',{enableMapClick:false});
+      map.addControl(new BMap.NavigationControl({anchor:BMAP_ANCHOR_TOP_LEFT,type:BMAP_NAVIGATION_CONTROL_SMALL}));
+      map.centerAndZoom(new BMap.Point(116.404,39.915),12);
+      map.enableScrollWheelZoom();
       window._fwMap=map;
-      // Add markers
-      var bounds=[];
+      // GPS→BD-09 coordinate converter
+      function toBaidu(lat,lng){
+        if(!window._gps2bd) window._gps2bd=new BMap.Convertor();
+        return new Promise(function(res){
+          window._gps2bd.translate([new BMap.Point(lng,lat)],1,5,function(data){res(data.points[0])})
+        });
+      }
+      // Collect all points
+      var allPts=[];
       if(checks){for(var i=0;i<checks.length;i++){var ck=checks[i];if(!ck.latitude)continue;
-        var marker=L.marker([ck.latitude,ck.longitude])
-          .bindPopup((ck.type==='in'?'📍 签到':'🏠 签退')+(ck.note?': '+ck.note:'')+'<br><small>'+new Date(ck.created_at).toLocaleTimeString('zh-CN')+'</small>')
-          .addTo(map);
-        bounds.push([ck.latitude,ck.longitude]);
+        allPts.push({lat:ck.latitude,lng:ck.longitude,label:(ck.type==='in'?'📍 签到':'🏠 签退'),note:ck.note,time:new Date(ck.created_at).toLocaleTimeString('zh-CN'),icon:'📍'});
       }}
       if(visits){for(var i=0;i<visits.length;i++){var vt=visits[i];if(!vt.latitude)continue;
-        var m2=L.marker([vt.latitude,vt.longitude],{icon:L.divIcon({html:'<div style="background:#10B981;color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3)">🏢</div>',iconSize:[24,24],iconAnchor:[12,12]})})
-          .bindPopup('🏢 拜访 '+h(vt.client_name||'未知')+(vt.purpose?'<br>🎯 '+h(vt.purpose):'')+'<br><small>'+vt.visit_date+'</small>')
-          .addTo(map);
-        bounds.push([vt.latitude,vt.longitude]);
+        allPts.push({lat:vt.latitude,lng:vt.longitude,label:'🏢 '+h(vt.client_name||'未知'),note:vt.purpose,time:vt.visit_date,icon:'🏢'});
       }}
-      if(bounds.length>0){map.fitBounds(bounds,{padding:[30,30]})}
+      if(!allPts.length) return;
+      // Convert and add markers
+      Promise.all(allPts.map(function(pt){
+        return toBaidu(pt.lat,pt.lng).then(function(baiduPt){
+          var mk=new BMap.Marker(baiduPt);
+          var info=new BMap.InfoWindow(pt.label+(pt.note?': '+pt.note:'')+'<br><small>'+pt.time+'</small>',{width:200});
+          mk.addEventListener('click',function(){map.openInfoWindow(info,baiduPt)});
+          map.addOverlay(mk);
+          return baiduPt;
+        });
+      })).then(function(results){
+        if(results.length>0){
+          var view=map.getViewport(results);
+          map.setViewport(results);
+        }
+      });
     },200);
   }
     // Track timeline
