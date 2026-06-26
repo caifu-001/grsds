@@ -14956,28 +14956,46 @@ async function doCheckIn(type){
   var note=document.getElementById('fw-checkin-note').value.trim();
   var btnIn=document.getElementById('fw-btn-in');
   var btnOut=document.getElementById('fw-btn-out');
-  if(type==='in'){btnIn.disabled=true;btnIn.textContent='签到中...'}
-  else{btnOut.disabled=true;btnOut.textContent='签退中...'}
-  try{
-    // Geolocation (high accuracy on mobile)
-    var lat=null,lng=null,addr='';
-    if(navigator.geolocation){
-      try{
-        var isMobile=/Mobi|Android|iPhone/i.test(navigator.userAgent)||('ontouchstart' in window);
-        var pos=await new Promise(function(res,rej){navigator.geolocation.getCurrentPosition(res,rej,{timeout:8000,enableHighAccuracy:isMobile})});
-        lat=pos.coords.latitude;lng=pos.coords.longitude;
-      }catch(g){console.log('GPS not available, check-in saved without location')}
+  var addr='';
+  if(type==='in'){btnIn.disabled=true;btnIn.textContent='获取定位中...'}
+  else{btnOut.disabled=true;btnOut.textContent='获取定位中...'}
+  var gotLocation=false;
+  if(navigator.geolocation){
+    try{
+      var isMobile=/Mobi|Android|iPhone/i.test(navigator.userAgent)||('ontouchstart' in window);
+      console.log('[GPS] doCheckIn requesting, mobile='+isMobile);
+      var pos=await new Promise(function(res,rej){navigator.geolocation.getCurrentPosition(res,rej,{timeout:10000,enableHighAccuracy:isMobile,maximumAge:60000})});
+      var lat=pos.coords.latitude,lng=pos.coords.longitude;
+      console.log('[GPS] doCheckIn got coords:',lat,lng);
+      gotLocation=true;
+      showLocationConfirm(lat,lng,type==='in'?'📍 上班签到 - 确认位置':'🏠 下班签退 - 确认位置',async function(clat,clng){
+        try{
+          var r=await sb.from('field_checkins').insert({user_id:currentUser.id,type:type,latitude:clat,longitude:clng,address:addr,note:note||null,company_id:currentCompanyId}).select();
+          if(r.error){showToast('签到失败: '+r.error.message);return}
+          showToast(type==='in'?'✅ 签到成功！':'🏠 签退成功，辛苦了！');
+          document.getElementById('fw-checkin-note').value='';
+          loadFWCheckin();loadFWOverview();
+        }catch(e){showToast('签到失败: '+(e.message||e));console.error(e)}
+        finally{if(type==='in'){btnIn.disabled=false;btnIn.textContent='📍 上班签到'} else{btnOut.disabled=false;btnOut.textContent='🏠 下班签退'}}
+      });
+    }catch(g){
+      console.warn('[GPS] doCheckIn failed:',g.message||g,'code:',g.code);
+      if(g.code===1)showToast('⚠️ 定位被拒绝，请在浏览器设置中允许定位权限');
+      else if(g.code===2)showToast('⚠️ 定位不可用，请检查GPS/WiFi');
+      else if(g.code===3)showToast('⚠️ 定位超时（10秒）');
     }
-    var r=await sb.from('field_checkins').insert({user_id:currentUser.id,type:type,latitude:lat,longitude:lng,address:addr,note:note||null,company_id:currentCompanyId}).select();
-    if(r.error){showToast('签到失败: '+r.error.message);return}
-    showToast(type==='in'?'✅ 签到成功！':'🏠 签退成功，辛苦了！');
-    document.getElementById('fw-checkin-note').value='';
-    loadFWCheckin();loadFWOverview();
-  }catch(e){showToast('签到失败: '+(e.message||e));console.error(e)}
-  finally{if(type==='in'){btnIn.disabled=false} else{btnOut.disabled=false}}
-}
-
-async function loadFWVisits(){
+  }
+  if(!gotLocation){
+    try{
+      var r=await sb.from('field_checkins').insert({user_id:currentUser.id,type:type,latitude:null,longitude:null,address:addr,note:note||null,company_id:currentCompanyId}).select();
+      if(r.error){showToast('签到失败: '+r.error.message);return}
+      showToast(type==='in'?'✅ 签到成功！（无定位）':'🏠 签退成功！（无定位）');
+      document.getElementById('fw-checkin-note').value='';
+      loadFWCheckin();loadFWOverview();
+    }catch(e){showToast('签到失败: '+(e.message||e));console.error(e)}
+    finally{if(type==='in'){btnIn.disabled=false;btnIn.textContent='📍 上班签到'} else{btnOut.disabled=false;btnOut.textContent='🏠 下班签退'}}
+  }
+}async function loadFWVisits(){
   var filter=document.getElementById('fw-visit-filter').value;
   var list=document.getElementById('fw-visit-list');
   if(!list)return;
@@ -15043,14 +15061,13 @@ function selectFWClient(id,name){
   document.getElementById('fw-vm-client-list').innerHTML='';
 }
 function closeVisitForm(){document.getElementById('fw-visit-modal').classList.add('hidden')}
+var fwLocationConfirmCallback=null;
+var fwPendingLat=null,fwPendingLng=null;
+
 async function saveFVisit(){
   var clientName=document.getElementById('fw-vm-client').value.trim();
   if(!clientName){showToast('请输入客户名称');return}
-  // Geolocation (high accuracy on mobile)
-  var lat=null,lng=null;
-  if(navigator.geolocation){
-    try{var isMobile=/Mobi|Android|iPhone/i.test(navigator.userAgent)||('ontouchstart' in window);var pos=await new Promise(function(res,rej){navigator.geolocation.getCurrentPosition(res,rej,{timeout:8000,enableHighAccuracy:isMobile})});lat=pos.coords.latitude;lng=pos.coords.longitude}catch(g){}
-  }
+  // Build data object (will fill lat/lng after confirm)
   var data={
     user_id:currentUser.id,
     client_id:fwVisitClientId||null,
@@ -15059,9 +15076,38 @@ async function saveFVisit(){
     notes:document.getElementById('fw-vm-notes').value.trim(),
     result:document.getElementById('fw-vm-result').value,
     visit_date:document.getElementById('fw-vm-date').value,
-    latitude:lat,longitude:lng,
     company_id:currentCompanyId
   };
+  // Step 1: Try GPS
+  var gotLocation=false;
+  if(navigator.geolocation){
+    try{
+      var isMobile=/Mobi|Android|iPhone/i.test(navigator.userAgent)||('ontouchstart' in window);
+      console.log('[GPS] saveFVisit requesting, mobile='+isMobile);
+      var pos=await new Promise(function(res,rej){
+        navigator.geolocation.getCurrentPosition(res,rej,{timeout:10000,enableHighAccuracy:isMobile,maximumAge:60000});
+      });
+      var lat=pos.coords.latitude,lng=pos.coords.longitude;
+      console.log('[GPS] saveFVisit got coords:',lat,lng,'accuracy:',pos.coords.accuracy);
+      gotLocation=true;
+      // Step 2: Show confirm modal
+      showLocationConfirm(lat,lng,'🏢 拜访记录 - 确认位置',async function(confirmedLat,confirmedLng){
+        data.latitude=confirmedLat;data.longitude=confirmedLng;
+        await doSaveFVisit(data);
+      });
+    }catch(g){
+      console.warn('[GPS] saveFVisit failed:',g.message||g);
+      if(g.code===1)showToast('⚠️ 定位被拒绝，请在浏览器设置中允许定位权限');
+      else if(g.code===2)showToast('⚠️ 定位不可用，请稍后重试');
+      else if(g.code===3)showToast('⚠️ 定位超时（10秒）');
+    }
+  }
+  if(!gotLocation){
+    data.latitude=null;data.longitude=null;
+    await doSaveFVisit(data);
+  }
+}
+async function doSaveFVisit(data){
   try{
     var r;
     if(fwVisitEditId){r=await sb.from('field_visits').update(data).eq('id',fwVisitEditId)}
@@ -15071,6 +15117,47 @@ async function saveFVisit(){
     closeVisitForm();loadFWVisits();loadFWOverview();
   }catch(e){showToast('保存失败: '+(e.message||e));console.error(e)}
 }
+
+// Location confirmation modal
+function closeLocationConfirm(){
+  document.getElementById('fw-location-confirm').classList.add('hidden');
+  fwPendingLat=null;fwPendingLng=null;fwLocationConfirmCallback=null;
+  if(window._fwLcMap){window._fwLcMap.clearOverlays();window._fwLcMap=null}
+}
+function confirmLocation(){
+  if(!fwLocationConfirmCallback) return;
+  var cb=fwLocationConfirmCallback;
+  closeLocationConfirm();
+  cb(fwPendingLat,fwPendingLng);
+}
+function showLocationConfirm(lat,lng,titleText,callback){
+  fwPendingLat=lat;fwPendingLng=lng;
+  fwLocationConfirmCallback=callback;
+  var modal=document.getElementById('fw-location-confirm');
+  document.getElementById('fw-lc-title').textContent=titleText||'📍 确认定位';
+  document.getElementById('fw-lc-info').innerHTML='<b>纬度:</b> '+lat.toFixed(6)+'&nbsp;&nbsp;<b>经度:</b> '+lng.toFixed(6);
+  modal.classList.remove('hidden');
+  var mcont=document.getElementById('fw-lc-map');
+  mcont.innerHTML='<div id="fw-lc-bmap" style="width:100%;height:100%"></div>';
+  setTimeout(function(){
+    if(!window.BMap||!window.BMap.Map){mcont.innerHTML='<div style="text-align:center;padding:60px 0;color:var(--text3)">地图加载失败</div>';return}
+    if(window._fwLcMap){window._fwLcMap.clearOverlays();window._fwLcMap=null}
+    var map=new BMap.Map('fw-lc-bmap',{enableMapClick:false});
+    map.addControl(new BMap.NavigationControl({anchor:BMAP_ANCHOR_TOP_LEFT,type:BMAP_NAVIGATION_CONTROL_SMALL}));
+    map.enableScrollWheelZoom();
+    window._fwLcMap=map;
+    if(!window._gps2bd)window._gps2bd=new BMap.Convertor();
+    window._gps2bd.translate([new BMap.Point(lng,lat)],1,5,function(r){
+      var pt=r.points[0];
+      map.centerAndZoom(pt,16);
+      map.addOverlay(new BMap.Marker(pt));
+      map.addOverlay(new BMap.Circle(pt,50,{strokeColor:'#3B82F6',strokeWeight:2,strokeOpacity:0.8,fillColor:'#3B82F6',fillOpacity:0.15}));
+    });
+  },200);
+}
+var fwLocationConfirmCallback=null; // callback when user confirms location
+var fwPendingLat=null,fwPendingLng=null; // pending GPS coords
+
 
 async function loadFWTrack(){
   // Clean up previous map instance
@@ -15292,6 +15379,22 @@ async function loadFWStats(){
           <button onclick="saveFVisit()" style="width:100%;padding:12px;border:none;border-radius:10px;background:var(--primary);color:#fff;font-size:15px;font-weight:600;cursor:pointer">💾 保存</button>
         </div>
       </div>
+
+    <!-- 定位确认弹窗 -->
+    <div id="fw-location-confirm" class="modal hidden">
+      <div class="modal-card" style="max-width:520px">
+        <div class="modal-hdr"><span id="fw-lc-title">📍 确认定位</span><button class="modal-x" onclick="closeLocationConfirm()">✕</button></div>
+        <div style="padding:12px">
+          <div id="fw-lc-map" class="fw-track-map" style="height:280px;margin-bottom:8px"><div style="text-align:center;padding:60px 0;color:var(--text3)">加载地图中...</div></div>
+          <div id="fw-lc-info" style="font-size:13px;color:var(--text2);margin-bottom:12px"></div>
+          <div style="display:flex;gap:8px">
+            <button onclick="closeLocationConfirm()" style="flex:1;padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);font-size:14px;cursor:pointer">取消</button>
+            <button onclick="confirmLocation()" id="fw-lc-confirm-btn" style="flex:1;padding:12px;border:none;border-radius:10px;background:var(--primary);color:#fff;font-size:14px;font-weight:600;cursor:pointer">📍 确认位置并提交</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     </div>
   
 
