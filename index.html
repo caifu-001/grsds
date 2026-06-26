@@ -3076,98 +3076,10 @@ input,select,textarea,button{font-family:inherit}
     <button onclick="switchAnalyticsTab('profit')">💰 盈利分析</button>
     <button onclick="switchAnalyticsTab('client-health')">🫀 客户健康</button>
   </div>
-  <!-- ══════════ 外勤管理 ══════════ -->
-  <div id="fieldwork-view" class="hidden" style="border:3px solid red;min-height:200px">
-
-    <div class="fw-tabs">
-      <button onclick="switchFWTab('overview')" id="fwt-overview">📊 外勤概览</button>
-      <button onclick="switchFWTab('checkin')" id="fwt-checkin">📍 签到打卡</button>
-      <button onclick="switchFWTab('visits')" id="fwt-visits">🏢 拜访记录</button>
-      <button onclick="switchFWTab('track')" id="fwt-track">🗺️ 今日轨迹</button>
-      <button onclick="switchFWTab('stats')" id="fwt-stats">📈 拜访统计</button>
-    </div>
-
-    <!-- 外勤概览 -->
-    <div id="fw-overview" class="fw-panel">
-      <div class="fw-kpi-row" id="fw-ov-kpi"></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div class="fw-stat-card"><h4 style="margin:0 0 10px;font-size:14px">📅 今日打卡</h4><div id="fw-ov-today-checks">加载中...</div></div>
-        <div class="fw-stat-card"><h4 style="margin:0 0 10px;font-size:14px">🏢 今日拜访</h4><div id="fw-ov-today-visits">加载中...</div></div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
-        <div class="fw-stat-card"><h4 style="margin:0 0 10px;font-size:14px">👥 团队外勤动态</h4><div id="fw-ov-team">加载中...</div></div>
-        <div class="fw-stat-card"><h4 style="margin:0 0 10px;font-size:14px">📊 本周统计</h4><div id="fw-ov-weekly">加载中...</div></div>
-      </div>
-    </div>
-
-    <!-- 签到打卡 -->
-    <div id="fw-checkin" class="fw-panel hidden">
-      <div id="fw-checkin-status" style="text-align:center;margin-bottom:16px"></div>
-      <button class="fw-checkin-btn in" id="fw-btn-in" onclick="doCheckIn('in')">📍 上班签到</button>
-      <button class="fw-checkin-btn out" id="fw-btn-out" onclick="doCheckIn('out')" style="margin-top:8px">🏠 下班签退</button>
-      <div style="margin-top:16px">
-        <label style="display:block;font-size:12px;font-weight:600;color:var(--text3);margin-bottom:4px">📝 备注</label>
-        <input id="fw-checkin-note" placeholder="工作内容简述..." style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg);color:var(--text)">
-      </div>
-      <div style="margin-top:20px">
-        <h4 style="margin:0 0 10px;font-size:14px;font-weight:600">📋 今日签到记录</h4>
-        <div id="fw-today-list">加载中...</div>
-      </div>
-    </div>
-
-    <!-- 拜访记录 -->
-    <div id="fw-visits" class="fw-panel hidden">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <select id="fw-visit-filter" onchange="loadFWVisits()" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text)">
-          <option value="today">今天</option>
-          <option value="week">本周</option>
-          <option value="month">本月</option>
-          <option value="all">全部</option>
-        </select>
-        <button onclick="openVisitForm()" style="padding:6px 16px;border:none;border-radius:8px;background:var(--primary);color:#fff;font-size:13px;font-weight:600;cursor:pointer">+ 新增拜访</button>
-      </div>
-      <div id="fw-visit-list">加载中...</div>
-    </div>
-
-    <!-- 今日轨迹 -->
-    <div id="fw-track" class="fw-panel hidden">
-      <div class="fw-kpi-row" id="fw-tr-kpi"></div>
-      <div class="fw-track-map" id="fw-map-container">
-        📍 今日外勤轨迹（需配合GPS签到数据展示）
-      </div>
-      <div style="margin-top:12px" id="fw-track-list"></div>
-    </div>
-
-    <!-- 拜访统计 -->
-    <div id="fw-stats" class="fw-panel hidden">
-      <div style="display:flex;gap:8px;margin-bottom:16px">
-        <select id="fw-stats-period" onchange="loadFWStats()" style="padding:6px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text)">
-          <option value="week">本周</option>
-          <option value="month" selected>本月</option>
-          <option value="quarter">本季</option>
-        </select>
-        <select id="fw-stats-user" onchange="loadFWStats()" style="padding:6px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text)">
-          <option value="all">全部员工</option>
-        </select>
-      </div>
-      <div id="fw-stats-content">加载中...</div>
-    </div>
-
-    <!-- 新增拜访弹窗 -->
-    <div id="fw-visit-modal" class="modal hidden">
-      <div class="modal-card" style="max-width:520px;max-height:85vh;overflow-y:auto">
-        <div class="modal-hdr"><span id="fw-vm-title">新增拜访记录</span><button class="modal-x" onclick="closeVisitForm()">✕</button></div>
-        <div class="fw-visit-form">
-          <div class="fw-field"><label>客户名称 *</label><input id="fw-vm-client" placeholder="搜索客户..." style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg);color:var(--text)"><div id="fw-vm-client-list" style="max-height:150px;overflow-y:auto"></div></div>
-          <div class="fw-field"><label>拜访目的</label><select id="fw-vm-purpose" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg);color:var(--text)"><option value="">请选择</option><option value="初次拜访">初次拜访</option><option value="需求沟通">需求沟通</option><option value="方案演示">方案演示</option><option value="商务谈判">商务谈判</option><option value="合同签署">合同签署</option><option value="售后服务">售后服务</option><option value="关系维护">关系维护</option><option value="催款">催款</option><option value="其他">其他</option></select></div>
-          <div class="fw-field"><label>拜访日期</label><input type="date" id="fw-vm-date" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg);color:var(--text)"></div>
-          <div class="fw-field"><label>拜访内容</label><textarea id="fw-vm-notes" rows="3" placeholder="沟通内容、客户反馈..." style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg);color:var(--text);resize:vertical"></textarea></div>
-          <div class="fw-field"><label>拜访结果</label><select id="fw-vm-result" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg);color:var(--text)"><option value="">请选择</option><option value="done">✅ 达成目标</option><option value="follow">🔄 需继续跟进</option><option value="pending">⏳ 待定</option></select></div>
-          <button onclick="saveFVisit()" style="width:100%;padding:12px;border:none;border-radius:10px;background:var(--primary);color:#fff;font-size:15px;font-weight:600;cursor:pointer">💾 保存</button>
-        </div>
-      </div>
-    </div>
-  </div>
+  
+  
+  
+  
 
 
   <!-- ── 经营总览 ── -->
@@ -15242,6 +15154,103 @@ async function loadFWStats(){
 
 <div id="leads-view" class="hidden">
  <div class="stats-bar" id="leads-stats-bar"></div>
+  <!-- ══════════ 外勤管理 ══════════ -->
+  <div id="fieldwork-view" class="hidden">
+
+    <div class="fw-tabs">
+      <button onclick="switchFWTab('overview')" id="fwt-overview">📊 外勤概览</button>
+      <button onclick="switchFWTab('checkin')" id="fwt-checkin">📍 签到打卡</button>
+      <button onclick="switchFWTab('visits')" id="fwt-visits">🏢 拜访记录</button>
+      <button onclick="switchFWTab('track')" id="fwt-track">🗺️ 今日轨迹</button>
+      <button onclick="switchFWTab('stats')" id="fwt-stats">📈 拜访统计</button>
+    </div>
+
+    <!-- 外勤概览 -->
+    <div id="fw-overview" class="fw-panel">
+      <div class="fw-kpi-row" id="fw-ov-kpi"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="fw-stat-card"><h4 style="margin:0 0 10px;font-size:14px">📅 今日打卡</h4><div id="fw-ov-today-checks">加载中...</div></div>
+        <div class="fw-stat-card"><h4 style="margin:0 0 10px;font-size:14px">🏢 今日拜访</h4><div id="fw-ov-today-visits">加载中...</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+        <div class="fw-stat-card"><h4 style="margin:0 0 10px;font-size:14px">👥 团队外勤动态</h4><div id="fw-ov-team">加载中...</div></div>
+        <div class="fw-stat-card"><h4 style="margin:0 0 10px;font-size:14px">📊 本周统计</h4><div id="fw-ov-weekly">加载中...</div></div>
+      </div>
+    </div>
+
+    <!-- 签到打卡 -->
+    <div id="fw-checkin" class="fw-panel hidden">
+      <div id="fw-checkin-status" style="text-align:center;margin-bottom:16px"></div>
+      <button class="fw-checkin-btn in" id="fw-btn-in" onclick="doCheckIn('in')">📍 上班签到</button>
+      <button class="fw-checkin-btn out" id="fw-btn-out" onclick="doCheckIn('out')" style="margin-top:8px">🏠 下班签退</button>
+      <div style="margin-top:16px">
+        <label style="display:block;font-size:12px;font-weight:600;color:var(--text3);margin-bottom:4px">📝 备注</label>
+        <input id="fw-checkin-note" placeholder="工作内容简述..." style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg);color:var(--text)">
+      </div>
+      <div style="margin-top:20px">
+        <h4 style="margin:0 0 10px;font-size:14px;font-weight:600">📋 今日签到记录</h4>
+        <div id="fw-today-list">加载中...</div>
+      </div>
+    </div>
+
+    <!-- 拜访记录 -->
+    <div id="fw-visits" class="fw-panel hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <select id="fw-visit-filter" onchange="loadFWVisits()" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text)">
+          <option value="today">今天</option>
+          <option value="week">本周</option>
+          <option value="month">本月</option>
+          <option value="all">全部</option>
+        </select>
+        <button onclick="openVisitForm()" style="padding:6px 16px;border:none;border-radius:8px;background:var(--primary);color:#fff;font-size:13px;font-weight:600;cursor:pointer">+ 新增拜访</button>
+      </div>
+      <div id="fw-visit-list">加载中...</div>
+    </div>
+
+    <!-- 今日轨迹 -->
+    <div id="fw-track" class="fw-panel hidden">
+      <div class="fw-kpi-row" id="fw-tr-kpi"></div>
+      <div class="fw-track-map" id="fw-map-container">
+        📍 今日外勤轨迹（需配合GPS签到数据展示）
+      </div>
+      <div style="margin-top:12px" id="fw-track-list"></div>
+    </div>
+
+    <!-- 拜访统计 -->
+    <div id="fw-stats" class="fw-panel hidden">
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <select id="fw-stats-period" onchange="loadFWStats()" style="padding:6px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text)">
+          <option value="week">本周</option>
+          <option value="month" selected>本月</option>
+          <option value="quarter">本季</option>
+        </select>
+        <select id="fw-stats-user" onchange="loadFWStats()" style="padding:6px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text)">
+          <option value="all">全部员工</option>
+        </select>
+      </div>
+      <div id="fw-stats-content">加载中...</div>
+    </div>
+
+    <!-- 新增拜访弹窗 -->
+    <div id="fw-visit-modal" class="modal hidden">
+      <div class="modal-card" style="max-width:520px;max-height:85vh;overflow-y:auto">
+        <div class="modal-hdr"><span id="fw-vm-title">新增拜访记录</span><button class="modal-x" onclick="closeVisitForm()">✕</button></div>
+        <div class="fw-visit-form">
+          <div class="fw-field"><label>客户名称 *</label><input id="fw-vm-client" placeholder="搜索客户..." style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg);color:var(--text)"><div id="fw-vm-client-list" style="max-height:150px;overflow-y:auto"></div></div>
+          <div class="fw-field"><label>拜访目的</label><select id="fw-vm-purpose" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg);color:var(--text)"><option value="">请选择</option><option value="初次拜访">初次拜访</option><option value="需求沟通">需求沟通</option><option value="方案演示">方案演示</option><option value="商务谈判">商务谈判</option><option value="合同签署">合同签署</option><option value="售后服务">售后服务</option><option value="关系维护">关系维护</option><option value="催款">催款</option><option value="其他">其他</option></select></div>
+          <div class="fw-field"><label>拜访日期</label><input type="date" id="fw-vm-date" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg);color:var(--text)"></div>
+          <div class="fw-field"><label>拜访内容</label><textarea id="fw-vm-notes" rows="3" placeholder="沟通内容、客户反馈..." style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg);color:var(--text);resize:vertical"></textarea></div>
+          <div class="fw-field"><label>拜访结果</label><select id="fw-vm-result" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg);color:var(--text)"><option value="">请选择</option><option value="done">✅ 达成目标</option><option value="follow">🔄 需继续跟进</option><option value="pending">⏳ 待定</option></select></div>
+          <button onclick="saveFVisit()" style="width:100%;padding:12px;border:none;border-radius:10px;background:var(--primary);color:#fff;font-size:15px;font-weight:600;cursor:pointer">💾 保存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  
+  
+  
+  
  <div class="toolbar" style="position:static">
   <select id="lead-pool-filter" onchange="renderPoolLeads()"><option value="all">全部状态</option><option value="new">新线索</option><option value="assigned">已分配</option><option value="contacted">已联系</option><option value="converted">已转化</option><option value="recycled">已回收</option><option value="junk">无效</option></select>
   <div class="search-wrap"><input id="lead-pool-search" placeholder="搜索线索..." oninput="renderPoolLeads()"></div>
@@ -15254,6 +15263,7 @@ async function loadFWStats(){
  <div class="client-grid" id="lead-grid"></div>
  <div class="empty hidden" id="lead-empty"><div class="empty-icon">🎯</div>暂无线索<br><span style="font-size:12px;color:var(--text3)">点击「+ 新线索」开始添加</span></div>
 </div>
+
 
 
 <!-- Transfer Form Modal -->
@@ -15720,6 +15730,8 @@ async function loadFWStats(){
 </div>
 
 </div>
+
+
 
 </body>
 </html>
