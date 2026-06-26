@@ -3077,7 +3077,7 @@ input,select,textarea,button{font-family:inherit}
     <button onclick="switchAnalyticsTab('client-health')">🫀 客户健康</button>
   </div>
   <!-- ══════════ 外勤管理 ══════════ -->
-  <div id="fieldwork-view" class="hidden">
+  <div id="fieldwork-view" class="hidden" style="border:3px solid red;min-height:200px">
 
     <div class="fw-tabs">
       <button onclick="switchFWTab('overview')" id="fwt-overview">📊 外勤概览</button>
@@ -5932,6 +5932,32 @@ function switchTab(tab){
 
   console.log("[FW] switchTab fieldwork triggered");
   var dbg2=document.getElementById("fw-debug");if(dbg2){dbg2.style.display="block";dbg2.innerHTML="FW init...<br>▶ switchTab fieldwork triggered";}
+  // DEBUG: force visibility
+  var fwv2=document.getElementById("fieldwork-view");
+  if(fwv2){
+    fwv2.style.display="block";
+    fwv2.style.visibility="visible";
+    fwv2.style.opacity="1";
+    fwv2.style.height="auto";
+    fwv2.style.overflow="visible";
+    console.log("[FW] fieldwork-view offsetWidth:",fwv2.offsetWidth,"offsetHeight:",fwv2.offsetHeight);
+    console.log("[FW] fieldwork-view computed display:",getComputedStyle(fwv2).display);
+    console.log("[FW] fieldwork-view computed visibility:",getComputedStyle(fwv2).visibility);
+  }
+  // Check fw-overview
+  var fwov=document.getElementById("fw-overview");
+  if(fwov){
+    console.log("[FW] fw-overview offsetWidth:",fwov.offsetWidth,"offsetHeight:",fwov.offsetHeight);
+    console.log("[FW] fw-overview classList:",fwov.className);
+  }
+  // Check fw-ov-kpi
+  var fwok=document.getElementById("fw-ov-kpi");
+  if(fwok){
+    console.log("[FW] fw-ov-kpi exists, offsetHeight:",fwok.offsetHeight);
+  }else{
+    console.log("[FW] ⛔ fw-ov-kpi NOT FOUND in DOM!");
+  }
+
     switchFWTab('overview');
   }
 
