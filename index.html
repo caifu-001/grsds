@@ -14002,7 +14002,7 @@ async function loadMoAnnouncements(){
 
 /* ===== Docs Panel ===== */
 var _moDocFilter='all';
-async function renderMyOfficeDocs(filter){
+async async function renderMyOfficeDocs(filter){
   console.log("[DEBUG mo-docs] START filter:"+filter+" currentCompanyId:"+currentCompanyId+" currentUser:"+(currentUser?currentUser.id:"null"));
   _moDocFilter=filter;
   var el=document.getElementById('mo-docs-list');
@@ -14028,7 +14028,7 @@ async function renderMyOfficeDocs(filter){
     if(tagsHtml)h+=tagsHtml;
     h+='</div>';
     h+='<div class="actions">';
-    if(d.file_url)h+='<a href="'+escAttr(d.file_url)+'" target="_blank" class="btn-sm" style="font-size:11px;padding:2px 8px;text-decoration:none;display:inline-block">📎 文件</a>';
+    if(d.file_url)h+='<a href="'+escAttr(d.file_url)+'" target="_blank" class="btn-sm" style="font-size:11px;padding:2px 8px;text-decoration:none;display:inline-block">📎 '+(escHtml(d.file_name||d.file_url.split('/').pop()||'文件'))+'</a>';
     h+='<button class="btn-sm" style="font-size:11px;padding:2px 8px" onclick="openMoDocForm(\''+d.id+'\')">编辑</button>';
     h+='<button class="btn-sm" style="font-size:11px;padding:2px 8px;color:var(--danger)" onclick="deleteMoDoc(\''+d.id+'\')">删除</button>';
     h+='</div></div>';
@@ -14041,23 +14041,38 @@ function openMoDocForm(id){
   var h='<div class="modal-overlay" id="mo-doc-modal"><div class="modal-sheet"><h3>'+(d?'编辑文档':'新建文档')+'</h3>';
   h+='<div class="form-group"><label>标题 *</label><input id="mo-doc-title" value="'+(d?escAttr(d.title):'')+'"></div>';
   h+='<div class="form-group"><label>内容</label><textarea id="mo-doc-content" rows="5" placeholder="文档内容...">'+(d?escHtml(d.content||''):'')+'</textarea></div>';
-  h+='<div class="form-row"><div class="form-group"><label>分类</label><select id="mo-doc-category"><option value="general"'+(d&&d.category==='general'?' selected':'')+'>通用</option><option value="work"'+(d&&d.category==='work'?' selected':'')+'>工作</option><option value="template"'+(d&&d.category==='template'?' selected':'')+'>模板</option><option value="personal"'+(d&&d.category==='personal'?' selected':'')+'>个人</option></select></div><div class="form-group"><label>文件链接</label><input id="mo-doc-file-url" value="'+(d?escAttr(d.file_url||''):'')+'" placeholder="可选的附件链接"></div></div>';
+  h+='<div class="form-row"><div class="form-group"><label>分类</label><select id="mo-doc-category"><option value="general"'+(d&&d.category==='general'?' selected':'')+'>通用</option><option value="work"'+(d&&d.category==='work'?' selected':'')+'>工作</option><option value="template"'+(d&&d.category==='template'?' selected':'')+'>模板</option><option value="personal"'+(d&&d.category==='personal'?' selected':'')+'>个人</option></select></div><div class="form-group"><label>附件</label><input type="file" id="mo-doc-file" style="padding:6px;display:block;width:100%;font-size:13px;border:1px solid var(--border);border-radius:6px">'+(d&&d.file_url?'<div style="font-size:11px;color:var(--text2);margin-top:4px">当前: '+escHtml(d.file_url.split('/').pop()||d.file_name||d.file_url)+'</div>':'')+'</div></div>';
   h+='<div class="form-group"><label>标签 (逗号分隔)</label><input id="mo-doc-tags" value="'+(d&&d.tags?d.tags.join(','):'')+'" placeholder="如: 合同, 模板"></div>';
   h+='<div class="form-group"><label><input type="checkbox" id="mo-doc-pinned" '+(d&&d.is_pinned?'checked':'')+'> 置顶</label></div>';
   h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest(\'.modal-overlay\').remove()">取消</button><button class="btn-save" onclick="saveMoDoc(\''+(d?d.id:'')+'\')">保存</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend',h);
 }
 
-async function saveMoDoc(id){
+async async function saveMoDoc(id){
   var title=document.getElementById('mo-doc-title').value.trim();
   if(!title){showToast('请输入标题');return}
   var content=document.getElementById('mo-doc-content').value.trim();
   var category=document.getElementById('mo-doc-category').value;
-  var fileUrl=document.getElementById('mo-doc-file-url').value.trim()||null;
   var tagsRaw=document.getElementById('mo-doc-tags').value.trim();
   var tags=tagsRaw?tagsRaw.split(',').map(function(s){return s.trim()}).filter(Boolean):[];
   var isPinned=document.getElementById('mo-doc-pinned').checked;
+  // File upload
+  var fileInput=document.getElementById('mo-doc-file');
+  var fileUrl=null;var fileName=null;
+  if(fileInput&&fileInput.files&&fileInput.files[0]){
+    var f=fileInput.files[0];
+    var bucket='mo-documents';
+    var filePath=currentUser.id+'/'+Date.now()+'_'+f.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+    try{
+      var upRes=await sb.storage.from(bucket).upload(filePath,f,{cacheControl:'3600',upsert:false});
+      if(upRes.error){showToast('文件上传失败: '+upRes.error.message);return}
+      var urlRes=sb.storage.from(bucket).getPublicUrl(filePath);
+      fileUrl=urlRes.data.publicUrl;
+      fileName=f.name;
+    }catch(e){showToast('文件上传异常: '+e.message);return}
+  }
   var obj={title:title,content:content||null,category:category,file_url:fileUrl,tags:tags.length?tags:null,is_pinned:isPinned,updated_at:new Date().toISOString()};
+  if(fileName)obj.file_name=fileName;
   var err;
   if(id){var r=await sb.from('my_documents').update(obj).eq('id',id);err=r.error}
   else{obj.user_id=currentUser.id;obj.company_id=currentCompanyId;var r2=await sb.from('my_documents').insert(obj);err=r2.error}
