@@ -1126,8 +1126,17 @@ input,select,textarea,button{font-family:inherit}
   .fw-checkin-btn{font-size:16px;padding:14px}
 }
 
+
+/* Leaflet map styles */
+.fw-track-map{height:320px;border-radius:12px;overflow:hidden;border:1px solid var(--border)}
+.leaflet-container{font-family:inherit}
+.fw-visit-loc{display:inline-flex;align-items:center;gap:3px;font-size:11px;color:var(--primary);margin-top:4px}
+.fw-visit-loc.no-gps{color:var(--text3)}
 </style>
 
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
 
@@ -15025,7 +15034,7 @@ async function loadFWVisits(){
         var v=data[i];
         var rClass=v.result==='done'?'done':v.result==='follow'?'follow':'pending';
         var rLabel=v.result==='done'?'达成':v.result==='follow'?'跟进':'待定';
-        html+='<div class="fw-visit-card"><div class="vw-header"><div class="vw-client">'+h(v.client_name||'未关联客户')+'</div><div class="vw-date">'+v.visit_date+'</div></div>'+(v.purpose?'<div class="vw-purpose">🎯 '+h(v.purpose)+'</div>':'')+(v.notes?'<div class="vw-notes">'+h(v.notes)+'</div>':'')+(v.result?('<div class="vw-result '+rClass+'">'+rLabel+'</div>'):'')+'</div>';
+        html+='<div class="fw-visit-card"><div class="vw-header"><div class="vw-client">'+h(v.client_name||'未关联客户')+'</div><div class="vw-date">'+v.visit_date+'</div></div>'+(v.purpose?'<div class="vw-purpose">🎯 '+h(v.purpose)+'</div>':'')+(v.notes?'<div class="vw-notes">'+h(v.notes)+'</div>':'')+(v.latitude?'<div class="fw-visit-loc">📍 '+v.latitude.toFixed(4)+', '+v.longitude.toFixed(4)+'</div>':'<div class="fw-visit-loc no-gps">⚠ 无定位</div>')+(v.result?('<div class="vw-result '+rClass+'">'+rLabel+'</div>'):'')+'</div>';
       }
     }else{html='<div style="text-align:center;color:var(--text3);padding:40px 0"><div style="font-size:40px;margin-bottom:8px">🏢</div><div>暂无拜访记录</div></div>'}
     list.innerHTML=html;
@@ -15103,6 +15112,8 @@ async function saveFVisit(){
 }
 
 async function loadFWTrack(){
+  // Clean up previous map instance
+  if(window._fwMap){window._fwMap.remove();window._fwMap=null;}
   var today=new Date().toISOString().substring(0,10);
   var kpi=document.getElementById('fw-tr-kpi');
   var list=document.getElementById('fw-track-list');
@@ -15115,7 +15126,36 @@ async function loadFWTrack(){
       +'<div class="fw-kpi-card"><div class="kpi-label">📅 签到次数</div><div class="kpi-val">'+(checks?checks.length:0)+'</div></div>'
       +'<div class="fw-kpi-card"><div class="kpi-label">🏢 拜访次数</div><div class="kpi-val">'+(visits?visits.length:0)+'</div></div>'
       +'<div class="fw-kpi-card"><div class="kpi-label">📏 覆盖客户</div><div class="kpi-val">'+(visits?new Set(visits.map(function(x){return x.client_id||x.client_name})).size:0)+'</div></div>';
-    if(points===0){document.getElementById('fw-map-container').innerHTML='<div style="text-align:center;padding:40px"><div style="font-size:48px;margin-bottom:12px">🗺️</div><div style="font-size:14px;color:var(--text2)">暂无GPS定位数据<br><span style="font-size:12px;color:var(--text3)">请使用支持GPS的设备签到以生成轨迹</span></div></div>'}
+    var mcont=document.getElementById('fw-map-container');
+  if(points===0){
+    mcont.innerHTML='<div style="text-align:center;padding:40px"><div style="font-size:48px;margin-bottom:12px">🗺️</div><div style="font-size:14px;color:var(--text2)">暂无GPS定位数据<br><span style="font-size:12px;color:var(--text3)">请使用支持GPS的设备签到以生成轨迹</span></div></div>';
+    if(window._fwMap){window._fwMap.remove();window._fwMap=null}
+  } else {
+    // Render real map with check-in points
+    mcont.innerHTML='<div id="fw-leaflet-map" style="width:100%;height:100%"></div>';
+    setTimeout(function(){
+      if(!window.L){mcont.innerHTML='<div style="text-align:center;padding:40px"><div style="font-size:48px">🗺️</div><div>地图加载中...</div></div>';return}
+      if(window._fwMap)window._fwMap.remove();
+      var map=L.map('fw-leaflet-map',{attributionControl:false,zoomControl:true}).setView([39.9,116.4],12);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18}).addTo(map);
+      window._fwMap=map;
+      // Add markers
+      var bounds=[];
+      if(checks){for(var i=0;i<checks.length;i++){var ck=checks[i];if(!ck.latitude)continue;
+        var marker=L.marker([ck.latitude,ck.longitude])
+          .bindPopup((ck.type==='in'?'📍 签到':'🏠 签退')+(ck.note?': '+ck.note:'')+'<br><small>'+new Date(ck.created_at).toLocaleTimeString('zh-CN')+'</small>')
+          .addTo(map);
+        bounds.push([ck.latitude,ck.longitude]);
+      }}
+      if(visits){for(var i=0;i<visits.length;i++){var vt=visits[i];if(!vt.latitude)continue;
+        var m2=L.marker([vt.latitude,vt.longitude],{icon:L.divIcon({html:'<div style="background:#10B981;color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3)">🏢</div>',iconSize:[24,24],iconAnchor:[12,12]})})
+          .bindPopup('🏢 拜访 '+h(vt.client_name||'未知')+(vt.purpose?'<br>🎯 '+h(vt.purpose):'')+'<br><small>'+vt.visit_date+'</small>')
+          .addTo(map);
+        bounds.push([vt.latitude,vt.longitude]);
+      }}
+      if(bounds.length>0){map.fitBounds(bounds,{padding:[30,30]})}
+    },200);
+  }
     // Track timeline
     var tlHtml='<h4 style="margin:0 0 10px;font-size:14px;font-weight:600">📋 今日时间线</h4>';
     var events=[];if(checks){for(var i=0;i<checks.length;i++){events.push({time:checks[i].created_at,text:(checks[i].type==='in'?'📍 签到':'🏠 签退')+(checks[i].note?': '+checks[i].note:''),type:checks[i].type})}}
