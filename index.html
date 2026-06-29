@@ -11639,6 +11639,8 @@ function wfSelectStep(idx){
   wfRenderAll();
   wfShowProps(idx);
 }
+function wfRefreshStaffDD(idx){var dd=document.getElementById('wf-staff-dd-'+idx);if(!dd)return;var st=wfEditorSteps[idx];var asg=st.assignee||{enabled:false,type:'dept',value:'',staffId:''};var deptId=asg.value||'';var staffId=asg.staffId||'';dd.innerHTML='<option value="">鏃?/option>';if(deptId&&allUsers){for(var ui=0;ui<allUsers.length;ui++){if(String(allUsers[ui].department_id)===String(deptId)){dd.innerHTML+='<option value="'+escHtml(allUsers[ui].user_id)+'"'+(staffId===allUsers[ui].user_id?' selected':'')+'>'+escHtml(allUsers[ui].display_name||allUsers[ui].email)+'</option>';}}}}
+
 function wfShowProps(idx){
   var panel=document.getElementById('wf-props-panel');
   if(!panel)return;
@@ -11691,6 +11693,10 @@ function wfShowProps(idx){
   h+='<label style="display:flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" '+(asg.enabled?'checked':'')+' onchange="wfSetAssignee('+idx+',\'enabled\',this.checked)"> 指定负责人</label>';
   h+='授权部门</label><select onchange="wfSetAssignee(2,\'value\',this.value)"><option value="">无</option>';
   for(var di=0;di<(allDepartments||[]).length;di++){h+='<option value="'+escHtml(allDepartments[di].id)+'"'+(asg.value===allDepartments[di].id?' selected':'')+'>'+escHtml(allDepartments[di].name)+'</option>';}
+  h+='</select>';
+  h+='<label>鎸囧畾鍛樺伐</label><select id=wf-staff-dd-'+idx+' onchange=wfSetAssignee('+idx+',staffId,this.value)><option value=>鏃?/option>';
+  var selDept=asg.value||'';var selStaff=asg.staffId||'';
+  if(selDept&&allUsers){for(var ui=0;ui<allUsers.length;ui++){if(String(allUsers[ui].department_id)===String(selDept)){h+='<option value='+escHtml(allUsers[ui].user_id)+''+(selStaff===allUsers[ui].user_id?' selected':'')+'>'+escHtml(allUsers[ui].display_name||allUsers[ui].email)+'</option>';}}}
   h+='</select>';
   h+='</div></div>';
   // 编辑权限设置 ──
