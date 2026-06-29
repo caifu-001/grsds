@@ -3098,8 +3098,8 @@ async function callAdmin(op,table,opts){
   try{
     var body=JSON.stringify({op:op,table:table,method:opts.method||'GET',payload:opts.payload||null,query:opts.query||'*',filters:opts.filters||null});
     var r=await fetch(SUPAFUNC_BASE,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+(await sb.auth.getSession()).data.session?.access_token||''},body:body});
-    if(!r.ok){var txt=await r.text();console.error('callAdmin failed:',r.status,txt);return{data:null,error:{message:'Admin API '+(opts.failMsg||'error')}}};
-    return await r.json();
+    if(r&&r.error){var txt=await r.text();console.error('callAdmin failed:',r.status,txt);return{data:null,error:{message:'Admin API '+(opts.failMsg||'error')}}};
+    return r.data;
   }catch(e){console.error('callAdmin error:',e);return{data:null,error:{message:e.message||'Network error'}};}
 }
 document.getElementById('script-loaded-check').style.display='none';
@@ -6111,7 +6111,7 @@ async function checkPendingCompany(){
 /* ── Admin Company Management ── */
 var allAdminCompanies=[];
 async function loadAdminCompanies(){
-  try{var r=await callAdmin('select','companies',{query:'*',filters:[{col:'',op:'order',val:'name.asc'}]});if(r.ok){allAdminCompanies=await r.json();}}catch(e){}
+  try{var r=await callAdmin('select','companies',{query:'*',filters:[{col:'',op:'order',val:'name.asc'}]});if(r&&r.data){allAdminCompanies=r.data;}else{console.warn('callAdmin companies no data:',r)}}catch(e){}
 }
 function renderAdminCompanies(){
   var el=document.getElementById('admin-companies-manage-list');
@@ -6142,10 +6142,10 @@ async function saveCompany(){
   try{
     if(_companyFormId){
       var r=await callAdmin('update','companies',{payload:payload,filters:[{col:'id',op:'eq',val:_companyFormId}],query:'*'});
-      if(!r.ok){var t=await r.text();alert('更新失败: '+t);return}
+      if(r&&r.error){var t=await r.text();alert('更新失败: '+t);return}
     }else{
       var r=await callAdmin('insert','companies',{payload:payload});
-      if(!r.ok){var t=await r.text();alert('创建失败: '+t);return}
+      if(r&&r.error){var t=await r.text();alert('创建失败: '+t);return}
     }
     closeCompanyFormModal();
     await loadAdminCompanies();renderAdminCompanies();
@@ -6157,7 +6157,7 @@ async function deleteCompany(id,name){
   if(!confirm('确定删除公司「'+name+'」？此操作不可恢复！'))return;
   try{
     var r=await callAdmin('delete','companies',{filters:[{col:'id',op:'eq',val:id}]});
-    if(!r.ok){var t=await r.text();alert('删除失败: '+t);return}
+    if(r&&r.error){var t=await r.text();alert('删除失败: '+t);return}
     await loadAdminCompanies();renderAdminCompanies();
     showToast('公司已删除');
   }catch(e){alert('删除失败: '+e.message);}
@@ -6658,7 +6658,7 @@ async function saveUserEdit(userId){
   if(newStatus==='leave'){data.company_id=null;data.department_id=null;}
   if(isSuperAdmin||currentUserRole==='admin'){
     var ur=await callAdmin('update','profiles',{payload:data,filters:[{col:'user_id',op:'eq',val:userId}],query:'*'});
-    if(!ur.ok){var j=await ur.json().catch(function(){});error={message:j&&j.message||ur.statusText}}
+    if(ur&&ur.error){error={message:ur.error.message||'Update failed'}}
   }else{
     var res=await sb.from('profiles').update(data).eq('user_id',userId);
     error=res.error;
@@ -6725,7 +6725,7 @@ async function deleteDept(id,name){
   var error=null;
   if(isSuperAdmin||currentUserRole==='admin'){
     try{var dr=await callAdmin('delete','departments',{filters:[{col:'id',op:'eq',val:id}],query:'*'});
-    if(!dr.ok){var dj=await dr.json().catch(function(){});error={message:dj&&dj.message||dr.statusText}}
+    if(dr&&dr.error){var dj=dr.data.catch(function(){});error={message:dj&&dj.message||dr.statusText}}
     }catch(e){error={message:e.message}}
   }else{
     var res=await sb.from('departments').delete().eq('id',id);error=res.error;
@@ -10783,13 +10783,13 @@ async function sendInvitationByEmail(){
   try{
     // Check if already invited
     var check=await callAdmin('select','invitations',{query:'*',filters:[{col:'to_email',op:'eq',val:email},{col:'from_company_id',op:'eq',val:currentCompanyId},{col:'status',op:'eq',val:'pending'}]});
-    if(check.ok){var existing=await check.json();if(existing&&existing.length>0){document.getElementById('invite-err').textContent='该邮箱已有待处理的邀请';document.getElementById('invite-err').style.display='block';return}}
+    if(check&&check.data){var existing=check.data;if(existing&&existing.length>0){document.getElementById('invite-err').textContent='该邮箱已有待处理的邀请';document.getElementById('invite-err').style.display='block';return}}
     // Check user exists
     var userCheck=await callAdmin('select','profiles',{query:'user_id,company_id',filters:[{col:'email',op:'eq',val:email}]});
-    var userData=null;if(userCheck.ok){var ua=await userCheck.json();if(ua&&ua.length>0)userData=ua[0]}
+    var userData=null;if(userCheck&&userCheck.data){var ua=userCheck.data;if(ua&&ua.length>0)userData=ua[0]}
     // Create invitation
     var r=await callAdmin('insert','invitations',{payload:{from_company_id:currentCompanyId,to_email:email}});
-    if(!r.ok){var j=await r.json().catch(function(){});document.getElementById('invite-err').textContent='发送失败: '+(j&&j.message||r.statusText);document.getElementById('invite-err').style.display='block';return}
+    if(r&&r.error){var j=r.error.catch(function(){});document.getElementById('invite-err').textContent='发送失败: '+(j&&j.message||r.statusText);document.getElementById('invite-err').style.display='block';return}
     closeInviteModal();
     var msg=userData&&userData.company_id?'该用户当前在职，但已发送邀请（需先离职才能接受）。':'邀请已发送，用户将在\'我的\'页面看到邀请。';
     if(!userData)msg='邀请已发送。该邮箱尚未注册，用户注册后将自动看到邀请。';
@@ -10803,7 +10803,7 @@ async function loadMyInvitations(){
   if(!currentUser||!currentUser.email)return;
   try{
     var r=await callAdmin('select','invitations',{query:'*',filters:[{col:'to_email',op:'eq',val:currentUser.email},{col:'status',op:'eq',val:'pending'},{col:'',op:'order',val:'created_at.desc'}]});
-    if(r.ok){myInvitations=await r.json()}else{myInvitations=[]}
+    if(r&&r.data){myInvitations=r.data}else{myInvitations=[]}
   }catch(e){myInvitations=[];console.error('loadMyInvitations',e)}
 }
 function renderMyInvitations(){
@@ -10830,10 +10830,10 @@ async function acceptMyInvitation(invId){
     if(!inv){showToast('邀请不存在');return}
     // Set company on profile
     var r=await callAdmin('update','profiles',{payload:{company_id:inv.from_company_id,role:'user',status:'active',department_id:null},filters:[{col:'user_id',op:'eq',val:currentUser.id}],query:'*'});
-    if(!r.ok){var j=await r.json().catch(function(){});showToast('入职失败: '+(j&&j.message||r.statusText));return}
+    if(r&&r.error){var j=r.error.catch(function(){});showToast('入职失败: '+(j&&j.message||r.statusText));return}
     // Mark invitation accepted
     await callAdmin('update','invitations',{payload:{status:'accepted',accepted_at:new Date().toISOString()},filters:[{col:'id',op:'eq',val:invId}],query:'*'});
-    var data=await r.json();
+    var data=r.data;
     if(data&&data.length>0){currentCompanyId=data[0].company_id;currentUserRole=data[0].role||'user';isSuperAdmin=data[0].role==='super_admin'}
     myInvitations=[];renderMyInvitations();
     document.getElementById('my-invitation-section').style.display='none';
@@ -10863,7 +10863,7 @@ var allFreeAgents=[];
 async function loadFreeAgents(){
   try{
     var r=await callAdmin('select','profiles',{query:'user_id,email,display_name,phone,status,invited_company_id,invited_at',filters:[{col:'status',op:'eq',val:'leave'},{col:'company_id',op:'is',val:null},{col:'',op:'order',val:'invited_at.asc.nullslast'}]});
-    if(r.ok)allFreeAgents=await r.json();
+    if(r&&r.data)allFreeAgents=r.data;
     else allFreeAgents=[];
   }catch(e){allFreeAgents=[];console.error('loadFreeAgents',e)}
 }
@@ -10893,7 +10893,7 @@ async function inviteFreeAgent(uid,email){
   if(!confirm('确认邀请 '+email+' 入职本公司？'))return;
   try{
     var r=await callAdmin('update','profiles',{payload:{invited_company_id:currentCompanyId,invited_at:new Date().toISOString()},filters:[{col:'user_id',op:'eq',val:uid}],query:'*'});
-    if(!r.ok){var j=await r.json().catch(function(){});showToast('邀请失败: '+(j&&j.message||r.statusText));return}
+    if(r&&r.error){var j=r.error.catch(function(){});showToast('邀请失败: '+(j&&j.message||r.statusText));return}
     showToast('邀请已发送');
     await loadFreeAgents();renderFreeAgents();
   }catch(e){showToast('邀请失败: '+e.message)}
@@ -10962,7 +10962,7 @@ async function submitResignation(){
   if(d<today){document.getElementById('resign-form-err').textContent='离职日期不能是过去';document.getElementById('resign-form-err').style.display='block';return}
   try{
     var r=await callAdmin('update','profiles',{payload:{resignation_status:'pending',resignation_date:dateVal,resignation_reason:reason||null,resignation_requested_at:new Date().toISOString()},filters:[{col:'user_id',op:'eq',val:currentUser.id}],query:'*'});
-    if(!r.ok){var j=await r.json().catch(function(){});document.getElementById('resign-form-err').textContent='提交失败: '+(j&&j.message||r.statusText);document.getElementById('resign-form-err').style.display='block';return}
+    if(r&&r.error){var j=r.error.catch(function(){});document.getElementById('resign-form-err').textContent='提交失败: '+(j&&j.message||r.statusText);document.getElementById('resign-form-err').style.display='block';return}
     closeResignForm();showToast('离职申请已提交，等待管理员审批');
     document.getElementById('my-resign-btn').style.display='none';
   }catch(e){document.getElementById('resign-form-err').textContent='提交失败: '+e.message;document.getElementById('resign-form-err').style.display='block'}
@@ -10971,7 +10971,7 @@ var allResignations=[];
 async function loadResignations(){
   try{
     var r=await callAdmin('select','profiles',{query:'user_id,email,display_name,phone,position,department_id,resignation_status,resignation_date,resignation_reason,resignation_requested_at',filters:[{col:'company_id',op:'eq',val:currentCompanyId},{col:'resignation_status',op:'not.is',val:null},{col:'',op:'order',val:'resignation_requested_at.desc'}]});
-    if(r.ok)allResignations=await r.json();
+    if(r&&r.data)allResignations=r.data;
     else allResignations=[];
   }catch(e){allResignations=[];console.error('loadResignations',e)}
 }
@@ -11000,7 +11000,7 @@ async function approveResignation(uid){
   if(!confirm('确认通过该离职申请？'))return;
   try{
     var r=await callAdmin('update','profiles',{payload:{resignation_status:'approved'},filters:[{col:'user_id',op:'eq',val:uid}],query:'*'});
-    if(!r.ok){var j=await r.json().catch(function(){});showToast('操作失败: '+(j&&j.message||r.statusText));return}
+    if(r&&r.error){var j=r.error.catch(function(){});showToast('操作失败: '+(j&&j.message||r.statusText));return}
     showToast('已通过离职申请，到期后将自动解除');
     await loadResignations();renderResignations();
   }catch(e){showToast('操作失败: '+e.message)}
@@ -11009,7 +11009,7 @@ async function rejectResignation(uid){
   if(!confirm('确认拒绝该离职申请？'))return;
   try{
     var r=await callAdmin('update','profiles',{payload:{resignation_status:'rejected'},filters:[{col:'user_id',op:'eq',val:uid}],query:'*'});
-    if(!r.ok){var j=await r.json().catch(function(){});showToast('操作失败: '+(j&&j.message||r.statusText));return}
+    if(r&&r.error){var j=r.error.catch(function(){});showToast('操作失败: '+(j&&j.message||r.statusText));return}
     showToast('已拒绝离职申请');
     await loadResignations();renderResignations();
   }catch(e){showToast('操作失败: '+e.message)}
@@ -11063,7 +11063,7 @@ async function saveEmployee(){
   var body={display_name:name,email:email,role:role,dept_id:deptId,status:status,data_scope:dataScope};
   if(empEditId){
     var resp=await callAdmin('update','profiles',{payload:body,filters:[{col:'user_id',op:'eq',val:empEditId}],query:'*'});
-    if(resp.ok){
+    if(resp&&resp.data){
       if(status==='inactive'){await callAdmin('rpc','reassign_clients_on_deactivate',{payload:{p_user_id:empEditId,p_company_id:currentCompanyId,p_reassign_to:reassignTo||null}});showToast('员工已更新，客户已交接');}
       else showToast('员工已更新');
       closeEmployeeForm();await loadAdminData();renderAdminEmployees();
@@ -11093,7 +11093,7 @@ var allOpLogs=[];var logsError=null;
 async function loadOperationLogs(){
   try{
     var resp=await callAdmin('select','operation_logs',{query:'*',filters:[{col:'company_id',op:'eq',val:currentCompanyId},{col:'',op:'order',val:'created_at.desc'},{col:'',op:'limit',val:500}]});
-    if(resp.ok){allOpLogs=await resp.json();logsError=null;}
+    if(resp&&resp.data){allOpLogs=resp.data;logsError=null;}
     else{allOpLogs=[];var t=await resp.text();logsError='HTTP '+resp.status+(' '+t.substring(0,120));console.error('loadOperationLogs:',resp.status,t.substring(0,200));}
   }catch(e){allOpLogs=[];logsError=e.message;console.error('loadOperationLogs:',e);}
 }
@@ -11161,7 +11161,7 @@ async function renderCustomFields(){
   var el=document.getElementById('cfg-field-list');if(!el)return;
   var et=document.getElementById('cfg-field-entity').value;
   var resp=await callAdmin('select','custom_field_defs',{query:'*',filters:[{col:'company_id',op:'eq',val:currentCompanyId},{col:'entity_type',op:'eq',val:et},{col:'',op:'order',val:'sort_order.asc'}]});
-  if(resp.ok)allCustomFields=await resp.json();else allCustomFields=[];
+  if(resp&&resp.data)allCustomFields=resp.data;else allCustomFields=[];
   var typeNames={text:'文本',number:'数字',date:'日期',select:'下拉',textarea:'多行文本'};
   var h='<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="border-bottom:2px solid var(--border)"><th style="padding:10px 8px;text-align:left">标识</th><th style="padding:10px 8px;text-align:left">显示名称</th><th style="padding:10px 8px;text-align:left">类型</th><th style="padding:10px 8px;text-align:left">必填</th><th style="padding:10px 8px;text-align:center">操作</th></tr></thead><tbody>';
   for(var i=0;i<allCustomFields.length;i++){
@@ -11212,13 +11212,13 @@ async function saveField(){
     body.sort_order=allCustomFields.length;body.created_at=new Date().toISOString();
     resp=await callAdmin('insert','custom_field_defs',{payload:body});
   }
-  if(resp.ok){showToast('字段已保存');closeFieldForm();renderCustomFields();await writeOpLog(fieldEditId?'update':'create','custom_field',fieldEditId||'',label);}
+  if(resp&&resp.data){showToast('字段已保存');closeFieldForm();renderCustomFields();await writeOpLog(fieldEditId?'update':'create','custom_field',fieldEditId||'',label);}
   else{showToast('保存失败')}
 }
 async function deleteField(id){
   if(!confirm('确认删除此字段？'))return;
   var resp=await callAdmin('delete','custom_field_defs',{filters:[{col:'id',op:'eq',val:id}]});
-  if(resp.ok){showToast('已删除');renderCustomFields();}else{showToast('删除失败')}
+  if(resp&&resp.data){showToast('已删除');renderCustomFields();}else{showToast('删除失败')}
 }
 
 /* Custom Forms */
@@ -11226,7 +11226,7 @@ var allCustomForms=[];
 async function renderCustomForms(){
   var el=document.getElementById('cfg-form-list');if(!el)return;
   var resp=await callAdmin('select','custom_forms',{query:'*',filters:[{col:'company_id',op:'eq',val:currentCompanyId},{col:'',op:'order',val:'created_at.desc'}]});
-  if(resp.ok)allCustomForms=await resp.json();else allCustomForms=[];
+  if(resp&&resp.data)allCustomForms=resp.data;else allCustomForms=[];
   var h='';
   for(var i=0;i<allCustomForms.length;i++){
     var f=allCustomForms[i];var fc=typeof f.fields==='string'?JSON.parse(f.fields):(f.fields||[]);
@@ -11248,7 +11248,7 @@ var allSalesStages=[],stageEditId=null;
 async function renderSalesStages(){
   var el=document.getElementById('cfg-stage-list');if(!el)return;
   var resp=await callAdmin('select','sales_stages_def',{query:'*',filters:[{col:'company_id',op:'eq',val:currentCompanyId},{col:'',op:'order',val:'sort_order.asc'}]});
-  if(resp.ok)allSalesStages=await resp.json();else allSalesStages=[];
+  if(resp&&resp.data)allSalesStages=resp.data;else allSalesStages=[];
   var h='';
   for(var i=0;i<allSalesStages.length;i++){
     var s=allSalesStages[i];
@@ -11284,7 +11284,7 @@ async function saveStage(){
     body.sort_order=allSalesStages.length+1;body.created_at=new Date().toISOString();
     resp=await callAdmin('insert','sales_stages_def',{payload:body});
   }
-  if(resp.ok){showToast('阶段已保存');closeStageForm();renderSalesStages();}else{showToast('保存失败')}
+  if(resp&&resp.data){showToast('阶段已保存');closeStageForm();renderSalesStages();}else{showToast('保存失败')}
 }
 async function deleteStage(id){if(!confirm('确认删除？'))return;await callAdmin('delete','sales_stages_def',{filters:[{col:'id',op:'eq',val:id}]});renderSalesStages();showToast('已删除');}
 
@@ -11293,7 +11293,7 @@ var allCustomTags=[],tagEditId=null;
 async function renderCustomTags(){
   var el=document.getElementById('cfg-tag-list');if(!el)return;
   var resp=await callAdmin('select','custom_tags',{query:'*',filters:[{col:'company_id',op:'eq',val:currentCompanyId},{col:'',op:'order',val:'sort_order.asc'}]});
-  if(resp.ok)allCustomTags=await resp.json();else allCustomTags=[];
+  if(resp&&resp.data)allCustomTags=resp.data;else allCustomTags=[];
   var h='';
   for(var i=0;i<allCustomTags.length;i++){
     var t=allCustomTags[i];
@@ -11325,7 +11325,7 @@ async function saveTag(){
     body.sort_order=allCustomTags.length;body.created_at=new Date().toISOString();
     resp=await callAdmin('insert','custom_tags',{payload:body});
   }
-  if(resp.ok){showToast('标签已保存');closeTagForm();renderCustomTags();}else{showToast('保存失败')}
+  if(resp&&resp.data){showToast('标签已保存');closeTagForm();renderCustomTags();}else{showToast('保存失败')}
 }
 async function deleteTag(id){if(!confirm('确认删除？'))return;await callAdmin('delete','custom_tags',{filters:[{col:'id',op:'eq',val:id}]});renderCustomTags();}
 
@@ -11334,7 +11334,7 @@ var allNumRules=[],numEditId=null;
 async function renderNumberingRules(){
   var el=document.getElementById('cfg-number-list');if(!el)return;
   var resp=await callAdmin('select','numbering_rules',{query:'*',filters:[{col:'company_id',op:'eq',val:currentCompanyId},{col:'',op:'order',val:'created_at.desc'}]});
-  if(resp.ok)allNumRules=await resp.json();else allNumRules=[];
+  if(resp&&resp.data)allNumRules=resp.data;else allNumRules=[];
   var entityNames={client:'客户',order:'订单',quotation:'报价',contract:'合同'};
   var h='';
   for(var i=0;i<allNumRules.length;i++){
@@ -11371,7 +11371,7 @@ async function saveNumberRule(){
     body.current_seq=1;body.created_at=new Date().toISOString();
     resp=await callAdmin('insert','numbering_rules',{payload:body});
   }
-  if(resp.ok){showToast('规则已保存');closeNumberForm();renderNumberingRules();}else{showToast('保存失败')}
+  if(resp&&resp.data){showToast('规则已保存');closeNumberForm();renderNumberingRules();}else{showToast('保存失败')}
 }
 async function deleteNumRule(id){if(!confirm('确认删除？'))return;await callAdmin('delete','numbering_rules',{filters:[{col:'id',op:'eq',val:id}]});renderNumberingRules();}
 
@@ -11399,7 +11399,7 @@ function toggleDataMasking(){
 }
 async function toggleRoleExport(roleName,roleId,checked){
   var resp=await callAdmin('update','roles',{payload:{func_perms:{allow_export:checked}},filters:[{col:'id',op:'eq',val:roleId}],query:'*'});
-  if(resp.ok)showToast('导出权限已更新');else showToast('更新失败');
+  if(resp&&resp.data)showToast('导出权限已更新');else showToast('更新失败');
 }
 async function doBackup(){
   var types=[];
@@ -11412,7 +11412,7 @@ async function doBackup(){
   for(var i=0;i<types.length;i++){
     var t=types[i];
     var resp=await callAdmin('select',(t==='products'?'products':t),{query:'*',filters:[{col:'company_id',op:'eq',val:currentCompanyId},{col:'',op:'limit',val:'10000'}]});
-    if(resp.ok){var data=await resp.json();allData[t]=data;totalCount+=data.length;}
+    if(resp&&resp.data){var data=resp.data;allData[t]=data;totalCount+=data.length;}
   }
   var json=JSON.stringify(allData,null,2);
   var blob=new Blob(['\uFEFF'+json],{type:'application/json;charset=utf-8'});
@@ -11427,8 +11427,8 @@ async function doBackup(){
 async function loadBackupHistory(){
   var el=document.getElementById('bk-history');if(!el)return;
   var resp=await callAdmin('select','backup_logs',{query:'*',filters:[{col:'company_id',op:'eq',val:currentCompanyId},{col:'',op:'order',val:'created_at.desc'},{col:'',op:'limit',val:20}]});
-  if(!resp.ok){el.innerHTML='加载失败';return}
-  var logs=await resp.json();
+  if(resp&&resp.error){el.innerHTML='加载失败';return}
+  var logs=resp.data;
   if(logs.length===0){el.innerHTML='暂无备份记录';return}
   var h='<table style="width:100%;font-size:12px;margin-top:8px"><thead><tr style="border-bottom:1px solid var(--border)"><th style="padding:6px;text-align:left">时间</th><th style="padding:6px;text-align:left">类型</th><th style="padding:6px;text-align:left">记录数</th></tr></thead><tbody>';
   for(var i=0;i<logs.length;i++){
@@ -11448,8 +11448,8 @@ async function renderWorkflowTemplates(){
     var url=SUPABASE_URL+'/rest/v1/workflow_templates?order=id';
     console.log('renderWorkflowTemplates: fetching',url);
     var r=await callAdmin('select','workflow_templates',{query:'*',filters:[{col:'',op:'order',val:'id'}]});
-    if(!r.ok){console.log('renderWorkflowTemplates: fetch failed',r.status);list.innerHTML='<p style="color:var(--text2)">加载失败 (HTTP '+r.status+')</p>';return}
-    var data=await r.json();console.log('renderWorkflowTemplates: got',data.length,'templates');
+    if(r&&r.error){console.log('renderWorkflowTemplates: fetch failed',r.status);list.innerHTML='<p style="color:var(--text2)">加载失败 (HTTP '+r.status+')</p>';return}
+    var data=r.data;console.log('renderWorkflowTemplates: got',data.length,'templates');
     allTemplates=data;
     var h='';
     if(!data||!data.length){h='<p style="color:var(--text2);text-align:center;padding:20px">暂无模板，点击上方按钮新建</p>'}
@@ -11867,7 +11867,7 @@ async function saveWtVisual(){
     var url=SUPABASE_URL+'/rest/v1/workflow_templates'+(wtEditId?'?id=eq.'+wtEditId:'');
     var method=wtEditId?'PATCH':'POST';
     if(wtEditId){var r=await callAdmin('update','workflow_templates',{payload:body,filters:[{col:'id',op:'eq',val:wtEditId}],query:'*'});}else{var r=await callAdmin('insert','workflow_templates',{payload:body});};
-    if(!r.ok){var t=await r.text();alert('保存失败: '+t);btn.disabled=false;btn.textContent='保存';return}
+    if(r&&r.error){var t=await r.text();alert('保存失败: '+t);btn.disabled=false;btn.textContent='保存';return}
     document.getElementById('wt-modal-overlay').remove();
     await renderWorkflowTemplates();
     showToast(wtEditId?'模板已更新':'模板已创建');
@@ -11883,7 +11883,7 @@ async function deleteWt(id){
   try{
     var url=SUPABASE_URL+'/rest/v1/workflow_templates?id=eq.'+id;
     var r=await callAdmin('delete','workflow_templates',{filters:[{col:'id',op:'eq',val:id}]});
-    if(!r.ok){var e=await r.text();alert('删除失败: '+e);return}
+    if(r&&r.error){var e=await r.text();alert('删除失败: '+e);return}
     await renderWorkflowTemplates();
     showToast('模板已删除');
   }catch(e){alert('删除异常: '+e.message)}
