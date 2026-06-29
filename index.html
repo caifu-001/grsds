@@ -15309,7 +15309,7 @@ async function saveProjectDetail(){
   });
   var r=await sb.from('projects').update(merged).eq('id',curDetailId);
   if(r.error){alert('保存失败: '+r.error.message);return}
-  toast('已保存','success');
+  showToast('已保存','success');
   renderProjectDetail(curDetailId);
 }
 
