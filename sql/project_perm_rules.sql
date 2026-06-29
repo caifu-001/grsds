@@ -1,7 +1,6 @@
 -- ============================================================
--- 项目流程权限规则 (v1)
+-- 项目流程权限规则 (v2 - 修正 projects.id UUID 类型)
 -- 实施日期: 2026-06-29
--- 说明: 大公司流程管理权限 = 项目所有者/部门分配/角色三层
 -- ============================================================
 
 -- 1. projects 表扩展
@@ -15,14 +14,14 @@ CREATE INDEX IF NOT EXISTS idx_projects_owner ON projects(owner_id);
 CREATE INDEX IF NOT EXISTS idx_projects_state ON projects(current_state);
 CREATE INDEX IF NOT EXISTS idx_projects_dept ON projects(department_id);
 
--- 2. project_assignments: 项目-人员-部门 绑定 (多对多)
+-- 2. project_assignments: 项目-人员-部门 绑定 (projects.id 为 UUID)
 CREATE TABLE IF NOT EXISTS project_assignments (
   id BIGSERIAL PRIMARY KEY,
-  project_id BIGINT REFERENCES projects(id) ON DELETE CASCADE,
+  project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
   user_id UUID REFERENCES auth.users(id),
-  user_email TEXT,                   -- 冗余便于查询
-  department TEXT,                   -- 技术部/实施部/销售部/财务部/法务部
-  project_role TEXT DEFAULT 'view'   -- view/edit/approve
+  user_email TEXT,
+  department TEXT,
+  project_role TEXT DEFAULT 'view'
     CHECK (project_role IN ('view','edit','approve')),
   created_at TIMESTAMPTZ DEFAULT now(),
   UNIQUE(project_id, user_id)
@@ -32,12 +31,12 @@ CREATE INDEX IF NOT EXISTS idx_pa_project ON project_assignments(project_id);
 CREATE INDEX IF NOT EXISTS idx_pa_user ON project_assignments(user_id);
 CREATE INDEX IF NOT EXISTS idx_pa_dept ON project_assignments(department);
 
--- 3. project_block_state: 区块完成状态 (待办/已完成)
+-- 3. project_block_state: 区块完成状态
 CREATE TABLE IF NOT EXISTS project_block_state (
   id BIGSERIAL PRIMARY KEY,
-  project_id BIGINT REFERENCES projects(id) ON DELETE CASCADE,
-  block_key TEXT,                    -- 区块唯一标识 (template step key)
-  status TEXT DEFAULT 'pending'      -- pending/in_progress/done/skipped
+  project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+  block_key TEXT,
+  status TEXT DEFAULT 'pending'
     CHECK (status IN ('pending','in_progress','done','skipped')),
   completed_by UUID REFERENCES auth.users(id),
   completed_at TIMESTAMPTZ,
@@ -53,7 +52,6 @@ CREATE INDEX IF NOT EXISTS idx_pbs_status ON project_block_state(status);
 ALTER TABLE project_assignments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE project_block_state ENABLE ROW LEVEL SECURITY;
 
--- project_assignments: 同公司用户可见，自己始终可见
 DROP POLICY IF EXISTS pa_select ON project_assignments;
 CREATE POLICY pa_select ON project_assignments FOR SELECT USING (
   EXISTS (SELECT 1 FROM projects p WHERE p.id = project_assignments.project_id
@@ -68,7 +66,6 @@ CREATE POLICY pa_modify ON project_assignments FOR ALL USING (
                OR EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin','super_admin'))))
 );
 
--- project_block_state: 同项目人员可见
 DROP POLICY IF EXISTS pbs_select ON project_block_state;
 CREATE POLICY pbs_select ON project_block_state FOR SELECT USING (
   EXISTS (SELECT 1 FROM projects p WHERE p.id = project_block_state.project_id
@@ -83,11 +80,8 @@ CREATE POLICY pbs_modify ON project_block_state FOR ALL USING (
           AND pa.project_role IN ('edit','approve'))
 );
 
--- 5. 默认权限继承函数
--- 销售(owner) → 全部看 + 全部编辑
--- 部门成员(assignment) → 仅看分配部门的区块
--- 其他人 → 仅看 owner_id == self 的项目
-CREATE OR REPLACE FUNCTION get_user_project_role(pid BIGINT)
+-- 5. 权限继承函数 (UUID 参数)
+CREATE OR REPLACE FUNCTION get_user_project_role(pid UUID)
 RETURNS TEXT LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
   v_uid UUID := auth.uid();
@@ -113,4 +107,4 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION get_user_project_role(BIGINT) TO authenticated;
+GRANT EXECUTE ON FUNCTION get_user_project_role(UUID) TO authenticated;

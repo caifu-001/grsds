@@ -13185,7 +13185,7 @@ function renderProjects(){
     var wfDone=0,wfTotal=46;
     try{var wf=JSON.parse(p.workflow||'{}');for(var k in wf){if(wf[k]&&wf[k].done)wfDone++}}catch(e){}
     var wfPct=wfTotal>0?Math.round(wfDone/wfTotal*100):0;
-    s+='<div class="project-card" onclick="openProjectWorkbench(\''+p.id+'\',\''+h(p.name)+'\')">';
+    s+='<div class="project-card" onclick="renderProjectDetail(\''+p.id+'\')">';
     s+='<div class="project-card-header"><span class="project-card-name">'+h(p.name)+'</span><span class="project-card-status status-'+p.status+'">'+(statusMap[p.status]||p.status)+'</span></div>';
     s+='<div class="project-card-meta"><span>&#127970; '+h(cn)+'</span><span>&#128176; '+(p.budget?formatMoney(p.budget):'-')+'</span>';
     if(p.start_date)s+='<span>&#128197; '+p.start_date+'</span>';
