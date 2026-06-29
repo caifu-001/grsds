@@ -11694,7 +11694,7 @@ function wfShowProps(idx){
   h+='授权部门</label><select onchange="wfSetAssignee(2,\'value\',this.value)"><option value="">无</option>';
   for(var di=0;di<(allDepartments||[]).length;di++){h+='<option value="'+escHtml(allDepartments[di].id)+'"'+(asg.value===allDepartments[di].id?' selected':'')+'>'+escHtml(allDepartments[di].name)+'</option>';}
   h+='</select>';
-  h+='<label>鎸囧畾鍛樺伐</label><select id="wf-staff-dd-'" + idx + "'" onchange="wfSetAssignee('+idx+','staffId',this.value)"><option value="">鏃?/option>';
+  h+='<label>鎸囧畾鍛樺伐</label><select id="wf-staff-dd-'+idx+'" onchange="wfSetAssignee('+idx+','staffId',this.value)"><option value="">鏃?/option>';
   var selDept=asg.value||'';var selStaff=asg.staffId||'';
   if(selDept&&allUsers){for(var ui=0;ui<allUsers.length;ui++){if(String(allUsers[ui].department_id)===String(selDept)){h+='<option value='+escHtml(allUsers[ui].user_id)+''+(selStaff===allUsers[ui].user_id?' selected':'')+'>'+escHtml(allUsers[ui].display_name||allUsers[ui].email)+'</option>';}}}
   h+='</select>';
