@@ -11686,16 +11686,16 @@ function wfShowProps(idx){
   h+='<label>驳回行为</label><select onchange="wfSetApproval('+idx+',\'onReject\',this.value)"><option value="stay"'+(appr.onReject==='stay'?' selected':'')+'>停留在当前步骤</option></select>';
   h+='</div></div>';
   // ── 负责人设置 ──
-  var asg=s.assignee||{enabled:false,type:'role',value:''};
+  var asg=s.assignee||{enabled:false,type:'dept',value:''};
   h+='<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">';
   h+='<div onclick="var n=this.nextElementSibling;n.style.display=n.style.display===\'none\'?\'block\':\'none\'" style="cursor:pointer;font-weight:600;font-size:12px;padding:4px 0;display:flex;align-items:center;gap:4px">👤 负责人设置 <span style="font-size:10px;color:var(--text3)">'+(asg.enabled?'已启用':'未启用')+'</span></div>';
   h+='<div style="padding:6px 0;display:none">';
   h+='<label style="display:flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" '+(asg.enabled?'checked':'')+' onchange="wfSetAssignee('+idx+',\'enabled\',this.checked)"> 指定负责人</label>';
-  h+='<label>负责人角色</label><select onchange="wfSetAssignee('+idx+',\'value\',this.value)"><option value="">无</option>';
-  for(var ri2=0;ri2<(allRoles||[]).length;ri2++){h+='<option value="'+escHtml(allRoles[ri2].name)+'"'+(asg.value===allRoles[ri2].name?' selected':'')+'>'+escHtml(allRoles[ri2].name)+'</option>';}
+  h+='授权部门</label><select onchange="wfSetAssignee(2,\'value\',this.value)"><option value="">无</option>';
+  for(var di=0;di<(allDepartments||[]).length;di++){h+='<option value="'+escHtml(allDepartments[di].id)+'"'+(asg.value===allDepartments[di].id?' selected':'')+'>'+escHtml(allDepartments[di].name)+'</option>';}
   h+='</select>';
   h+='</div></div>';
-  // ── 编辑权限设置 ──
+  // 编辑权限设置 ──
   var perm=s.permissions||{editFields:[],editableBy:['admin']};
   h+='<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">';
   h+='<div onclick="var n=this.nextElementSibling;n.style.display=n.style.display===\'none\'?\'block\':\'none\'" style="cursor:pointer;font-weight:600;font-size:12px;padding:4px 0">✏️ 编辑权限</div>';
@@ -11718,7 +11718,7 @@ function wfSetApproval(idx,key,val){
 }
 function wfSetAssignee(idx,key,val){
   if(idx<0||idx>=wfEditorSteps.length)return;
-  if(!wfEditorSteps[idx].assignee)wfEditorSteps[idx].assignee={enabled:false,type:'role',value:''};
+  if(!wfEditorSteps[idx].assignee)wfEditorSteps[idx].assignee={enabled:false,type:'dept',value:''};
   wfEditorSteps[idx].assignee[key]=val;
   wfShowProps(idx);
 }
@@ -12293,7 +12293,7 @@ function wfActivateStep(seq){
   var step=WFLookup[seq];
   if(step&&step.assignee&&step.assignee.enabled&&step.assignee.value){
     // Find a user with that role
-    var assignee=wfFindUserByRole(step.assignee.value);
+    var assignee=wfFindUserByDept(step.assignee.value);
     if(assignee){
       curWorkflowState[seq].assignedTo=assignee.user_id;
       console.log('[wfActivateStep] assigned step',seq,'to',assignee.display_name,'(role:',step.assignee.value,')');
@@ -12321,17 +12321,11 @@ function wfCanEditStep(seq){
   if(editableBy.indexOf('approver')>=0&&isApprover)return true;
   return false;
 }
-function wfFindUserByRole(roleName){
-  if(!allUsers||!allUsers.length)return null;
+function wfFindUserByDept(deptId){
+  if(!allUsers||!allUsers.length||!deptId)return null;
   for(var i=0;i<allUsers.length;i++){
     var u=allUsers[i];
-    if(u.role===roleName)return u;
-    // Also check role_id mapped name
-    if(u.role_id&&allRoles){
-      for(var k=0;k<allRoles.length;k++){
-        if(allRoles[k].id===u.role_id&&allRoles[k].name===roleName)return u;
-      }
-    }
+    if(u.department_id===deptId)return u;
   }
   return null;
 }
