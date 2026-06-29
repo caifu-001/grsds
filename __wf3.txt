@@ -1,0 +1,37 @@
+﻿
+'閫氳繃鐜鍙橀噺娉ㄥ叆锛?' 不是内部或外部命令，也不是可运行的程序
+或批处理文件。
+或批处理文件。
+或批处理文件。
+</option></select>';
+  h+='</div></div>';
+  // 鈹€鈹€ 璐熻矗浜鸿缃?鈹€鈹€
+  var asg=s.assignee||{enabled:false,type:'role',value:''};
+  h+='<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">';
+  h+='<div onclick="var n=this.nextElementSibling;n.style.display=n.style.display===\'none\'?\'block\':\'none\'" style=
+"cursor:pointer;font-weight:600;font-size:12px;padding:4px 0;display:flex;align-items:center;gap:4px">馃懁 璐熻矗浜鸿缃?<span 
+style="font-size:10px;color:var(--text3)">'+(asg.enabled?'宸插惎鐢?:'鏈惎鐢?)+'</span></div>';
+  h+='<div style="padding:6px 0;display:none">';
+  h+='<label style="display:flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" '+(asg.enabled?'chec
+ked':'')+' onchange="wfSetAssignee('+idx+',\'enabled\',this.checked)"> 鎸囧畾璐熻矗浜?/label>';
+  h+='<label>璐熻矗浜鸿鑹?/label><select onchange="wfSetAssignee('+idx+',\'value\',this.value)"><option value="">鏃?/option>'
+;
+  for(var ri2=0;ri2<(allRoles||[]).length;ri2++){h+='<option value="'+escHtml(allRoles[ri2].name)+'"'+(asg.value===allR
+oles[ri2].name?' selected':'')+'>'+escHtml(allRoles[ri2].name)+'</option>';}
+  h+='</select>';
+  h+='</div></div>';
+  // 鈹€鈹€ 缂栬緫鏉冮檺璁剧疆 鈹€鈹€
+  var perm=s.permissions||{editFields:[],editableBy:['admin']};
+  h+='<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">';
+  h+='<div onclick="var n=this.nextElementSibling;n.style.display=n.style.display===\'none\'?\'block\':\'none\'" style=
+"cursor:pointer;font-weight:600;font-size:12px;padding:4px 0">鉁忥笍 缂栬緫鏉冮檺</div>';
+  h+='<div style="padding:6px 0;display:none">';
+  h+='<label>鍙紪杈戝瓧娈碉紙閫楀彿鍒嗛殧锛?/label><input value="'+escHtml((perm.editFields||[]).join(','))+'" onchange="wfSetPermFie
+ld('+idx+',\'editFields\',this.value)" placeholder="绌?鍏ㄩ儴鍙紪杈?>';
+  var ebRoles=['assignee','approver','admin'];
+  h+='<label>璋佸彲缂栬緫</label><div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">';
+  for(var ebi=0;ebi<ebRoles.length;ebi++){
+    var er=ebRoles[ebi];var checked=(perm.editableBy||[]).indexOf(er)>=0;
+    h+='<label style="font-size:11px;display:flex;align-items
+
+

@@ -1,0 +1,51 @@
+﻿
+'閫氳繃鐜鍙橀噺娉ㄥ叆锛?' 不是内部或外部命令，也不是可运行的程序
+或批处理文件。
+或批处理文件。
+或批处理文件。
+async function doCheckIn(type){
+  var note=document.getElementById('fw-checkin-note').value.trim();
+  var btnIn=document.getElementById('fw-btn-in');
+  var btnOut=document.getElementById('fw-btn-out');
+  var addr='';
+  if(type==='in'){btnIn.disabled=true;btnIn.textContent='鑾峰彇瀹氫綅涓?..'}
+  else{btnOut.disabled=true;btnOut.textContent='鑾峰彇瀹氫綅涓?..'}
+  var gotLocation=false;
+  if(navigator.geolocation){
+    try{
+      var isMobile=/Mobi|Android|iPhone/i.test(navigator.userAgent)||('ontouchstart' in window);
+      var pos=await new Promise(function(res,rej){
+        var timer=setTimeout(function(){rej(new Error('timeout'));},10000);
+        var opts={timeout:10000,enableHighAccuracy:isMobile,maximumAge:30000};
+        navigator.geolocation.getCurrentPosition(function(p){clearTimeout(timer);res(p)},function(e){clearTimeout(timer
+);rej(e)},opts)
+      });
+      var lat=pos.coords.latitude,lng=pos.coords.longitude;
+      if(isNaN(lat)||isNaN(lng)){throw new Error('invalid_coords')}
+      gotLocation=true;
+      window._fwPendingType=type;
+      showLocationConfirm(lat,lng,type==='in'?'馃搷 涓婄彮绛惧埌 - 纭浣嶇疆':'馃彔 涓嬬彮绛鹃€€ - 纭浣嶇疆',async function(clat,clng){
+        window._fwPendingType=null;
+        try{
+          var r=await sb.from('field_checkins').insert({user_id:currentUser.id,type:type,latitude:clat,longitude:clng,a
+ddress:addr,note:note||null,company_id:currentCompanyId}).select();
+          if(r.error){showToast('绛惧埌澶辫触: '+r.error.message);return}
+          showToast(type==='in'?'鉁?绛惧埌鎴愬姛锛?:'馃彔 绛鹃€€鎴愬姛锛岃緵鑻︿簡锛?);
+          document.getElementById('fw-checkin-note').value='';
+          loadFWCheckin();loadFWOverview();
+        }catch(e){showToast('绛惧埌澶辫触: '+(e.message||e));console.error(e)}
+        finally{fwResetBtn(type)}
+      });
+    }catch(g){
+      console.warn('[GPS] doCheckIn failed:',g.message||g,'code:',g.code);
+      if(g.code===1)showToast('鈿狅笍 瀹氫綅琚嫆缁濓紝璇峰厑璁稿畾浣嶆潈闄愬悗閲嶈瘯');
+      else if(g.code===2)showToast('鈿狅笍 GPS涓嶅彲鐢紝璇峰埌瀹ゅ寮€闃斿閲嶈瘯');
+      else if(g.code===3||(g.message==='timeout'))showToast('鈿狅笍 瀹氫綅瓒呮椂锛?0绉掞級锛岃纭繚GPS宸叉墦寮€');
+      else showToast('鈿狅笍 瀹氫綅澶辫触锛岃妫€鏌ユ墜鏈篏PS鏄惁鎵撳紑');
+      fwResetBtn(type);
+    }
+  }else{
+    showToast('鈿狅笍 娴忚鍣ㄤ笉鏀寔瀹氫綅');fwResetBtn(type);
+  }
+
+

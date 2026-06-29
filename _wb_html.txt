@@ -1,0 +1,82 @@
+project-workbench" class="hidden" style="display:none;flex-direction:column;height:calc(100vh - 60px)">
+  <!-- Top Bar -->
+  <div id="wb-topbar" style="display:flex;align-items:center;gap:10px;padding:8px 16px;border-bottom:1px solid var(--border);background:var(--card-bg);flex-shrink:0;flex-wrap:wrap">
+   <button class="btn-sm" onclick="closeProjectWorkbench()" style="flex-shrink:0">← 返回列表</button>
+   <h3 style="font-size:15px;font-weight:700;margin:0;flex:1;min-width:120px" id="wb-project-name">-</h3>
+   <span style="font-size:11px;color:var(--text2);flex-shrink:0" id="wb-step-label">当前步骤：-</span>
+   <div style="width:80px;height:4px;background:var(--border);border-radius:2px;flex-shrink:0">
+    <div id="wb-progress-bar" style="height:100%;background:var(--primary);border-radius:2px;transition:width .3s;width:0%"></div>
+   </div>
+   <span style="font-size:11px;color:var(--text2);min-width:32px;flex-shrink:0" id="wb-progress-text">0/46</span>
+  </div>
+
+  <!-- Split Layout -->
+  <div style="display:flex;flex:1;overflow:hidden">
+   <!-- Left: Workflow Nav -->
+   <div id="wb-left" style="width:250px;border-right:1px solid var(--border);overflow-y:auto;overflow-x:hidden;flex-shrink:0;background:var(--bg2)">
+    <div id="wb-workflow-nav" style="padding:4px 0 120px"></div>
+   </div>
+
+   <!-- Right: Content Area -->
+   <div id="wb-right" style="flex:1;overflow-y:auto;padding:16px;background:var(--bg)">
+    <div id="wb-content-default" style="text-align:center;padding:60px 20px;color:var(--text3);font-size:14px">👈 点击左侧流程步骤查看详情</div>
+
+    <!-- Step-specific panels (hidden by default, shown based on active step) -->
+    <div id="wb-panel-basic" class="hidden" style="max-width:640px">
+     <h3 style="margin:0 0 12px">📋 项目基本信息</h3>
+     <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:10px;padding:16px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+       <div><label style="font-size:11px;color:var(--text3)">项目名称</label><div style="font-weight:600" id="wb-info-name">-</div></div>
+       <div><label style="font-size:11px;color:var(--text3)">关联客户</label><div id="wb-info-client">-</div></div>
+       <div><label style="font-size:11px;color:var(--text3)">预算</label><div id="wb-info-budget">-</div></div>
+       <div><label style="font-size:11px;color:var(--text3)">状态</label><div id="wb-info-status">-</div></div>
+       <div><label style="font-size:11px;color:var(--text3)">开始日期</label><div id="wb-info-start">-</div></div>
+       <div><label style="font-size:11px;color:var(--text3)">结束日期</label><div id="wb-info-end">-</div></div>
+      </div>
+     </div>
+    </div>
+
+    <div id="wb-panel-editor" class="hidden" style="max-width:640px">
+     <h3 style="margin:0 0 4px" id="wb-editor-title">📝 步骤详情</h3>
+     <div style="font-size:12px;color:var(--text3);margin-bottom:12px" id="wb-editor-desc"></div>
+     <textarea id="wb-editor-note" rows="6" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;resize:vertical;background:var(--card-bg);color:var(--text)" placeholder="记录备注..."></textarea>
+     <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap" id="wb-action-buttons">
+      <button class="btn-save" onclick="saveStepNote()">💾 保存备注</button>
+      <button class="btn-sm btn-sm-primary" onclick="markStepDone()">✓ 标记完成</button>
+      <span style="font-size:11px;color:var(--text3)" id="wb-save-status"></span>
+     </div>
+    </div>
+
+        <!-- Step 6: Training -->
+    <div id="wb-panel-training" class="hidden" style="max-width:700px">
+     <h3 style="margin:0 0 4px">🎓 学习培训</h3>
+     <p style="font-size:12px;color:var(--text3);margin:0 0 12px">完成培训后点击"完成培训"自动跳转步骤7</p>
+     <div style="display:flex;gap:8px;margin-bottom:4px;position:relative">
+      <input id="wb-training-org" placeholder="培训机构名称（搜索客户库）..." autocomplete="off" oninput="onTrainingOrgInput()" onkeydown="onTrainingOrgKey(event)" style="flex:1;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;background:var(--card-bg);color:var(--text)">
+      <div class="name-suggestions hidden" id="wb-training-suggestions" style="position:absolute;top:42px;left:0;right:0;z-index:50"></div>
+     </div>
+     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+      <div>
+       <label style="font-size:11px;color:var(--text3)">培训导师</label>
+       <input id="wb-training-tutor" placeholder="可选" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);font-size:14px;background:var(--card-bg);color:var(--text)">
+      </div>
+      <div>
+       <label style="font-size:11px;color:var(--text3)">导师电话</label>
+       <input id="wb-training-tutor-phone" placeholder="可选" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);font-size:14px;background:var(--card-bg);color:var(--text)">
+      </div>
+     </div>
+     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+      <div>
+       <label style="font-size:11px;color:var(--text3)">产品培训内容</label>
+       <input id="wb-training-product" placeholder="可选" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);font-size:14px;background:var(--card-bg);color:var(--text)">
+      </div>
+      <div>
+       <label style="font-size:11px;color:var(--text3)">方案培训内容</label>
+       <input id="wb-training-solution" placeholder="可选" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);font-size:14px;background:var(--card-bg);color:var(--text)">
+      </div>
+     </div>
+     <div style="margin-bottom:12px">
+      <label style="font-size:11px;color:var(--text3)">参与培训人员</label>
+      <input id="wb-training-participants" placeholder="可选，多人用逗号分隔" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);font-size:14px;background:var(--card-bg);color:var(--text)">
+     </div>
+     <div st

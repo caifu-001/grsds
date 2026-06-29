@@ -1,0 +1,43 @@
+﻿9540d7c fix: renderProjectDetail try/catch灏戦棴鍚堝嚱鏁颁綋};甯races宸?瀵艰嚧Unexpected end of input
+948db57 fix: renderProjectDetail鍔爐ry/catch闃叉寮傚父鐧藉睆
+2fbe2a6 fix: 绗簩澶刲oadTemplates鍙岄噸async
+23dc016 fix: loadTemplates+searchCompanies缂篴sync澹版槑锛屽弻閲峚sync淇
+eb67397 fix: renderProjectDetail鍙岄噸async澹版槑
+53b45b2 fix: saveProject鍙岄噸async澹版槑瀵艰嚧鐧诲綍SyntaxError
+fb8c86a fix: saveProject缂篴sync鈫抋wait鎶ラ敊瀵艰嚧绾跨储杞」鐩悗lead_pool.update(status=converted)鏈墽琛?d6bbd77 fix: renderProjectDetail缂篴sync瀵艰嚧await鎶ラ敊鐧藉睆
+8a3d837 fix: loadTemplates涓璼bAdmin鏈畾涔夆啋鏀圭敤sb(鍏ㄥ眬宸叉湁), 鍘绘帀澶氫綑鐨刬sSuperAdmin鍒嗘敮
+35da49b fix: renderProjectDetail鍘绘帀涓嶅瓨鍦ㄧ殑supabaseClient()璋冪敤(鏀圭敤鍏ㄥ眬sb); saveProject宸叉湁lead姹犺浆鎹㈤€昏緫(oppLeadId鈫抍onverted)
+63ecd6d fix: projects.id UUID绫诲瀷淇 + 鍗＄墖鐐瑰嚮鏀逛负renderProjectDetail
+0894639 feat: 椤圭洰璇︽儏椤电嫭绔嬭鍥?澶氬尯鍧梩ab+閮ㄩ棬鏉冮檺闅旂)
+37971ca dedup: 浠?4e3907鍩虹嚎浠呭垹闄ら噸澶嶇殑'馃搳 缁忚惀'鎸夐挳锛屽叾浠栭浂鏀瑰姩
+5e6d4c7 restore: 鍥炲埌94e3907鍘熷鐗堟湰(鐢ㄦ埛瑕佹眰)
+c046249 fix: 鍒犻櫎94e3907閬楃暀鐨?3KB loadHomeDashboard瀛ゅ効浠ｇ爜鍧?瀵艰嚧4441琛孲yntaxError)
+b9806c7 dedup: 鍒犻櫎閲嶅tab-analytics(馃搳缁忚惀)鎸夐挳锛屾竻鐞嗘畫鐣檒oadHomeDashboard/loadDashboard姝诲嚱鏁?cd4fee8 restore: 鍥為€€鍒?4e3907绋冲畾鍩虹嚎(鍛婂埆绱Н鐨勫悎骞舵崯浼?
+a19d5c5 fix: writeOpLog缂篴sync瀵艰嚧10057琛孲yntaxError
+d25ae9d fix: 鎭㈠6涓€氱煡绯荤粺鍑芥暟(toggleNotifPanel/switchNotifTab/loadNotifs/loadActivity/pollNotifications/formatTimeAgo)锛屼慨澶峢andleLogin宕╂簝
+ac41d05 fix: 娓呴櫎loadDashboard娈嬮瀛ゅ効浠ｇ爜鍧?async renderDashboard瑁歌皟鐢ㄥ鑷?728琛孲yntaxError)
+1e2c007 fix: 鍒犻櫎loadHomeDashboard娈嬬暀鍑芥暟浣?63KB瀛ゅ効浠ｇ爜鍧楋紝瀵艰嚧4443琛孲yntaxError)
+2c87b8a merge: 鍚堝苟浠〃鐩樹笌缁忚惀鍒嗘瀽鈫掔粺涓€鎬昏椤?鈥?鍒犻櫎home-view鍜宺edundant tab-home锛宎nalytics鎴愪负鍞竴棣栭〉(馃搳鎬昏)
+aba9120 restore: 鎭㈠浠〃鐩橀椤?home-view)锛屼笌缁忚惀鍒嗘瀽鍏卞瓨 鈥?tab-home=鎬昏, tab-analytics=缁忚惀, 榛樿棣栭〉=home
+94e3907 fix: switchTab缂簐ar rv澹版槑瀵艰嚧鎶ヨ〃鐐瑰嚮鏃舵姤rv is not defined
+0d6ea27 fix: 淇rv_r鈫抮v鍙橀噺鍚嶉敊璇?merge鑴氭湰璇浛鎹㈠鑷磆andleLogin宕╂簝)
+35da2d3 fix: 淇renderMyOfficeDocs鍜宻aveMoDoc鍙岄噸async璇硶閿欒
+c8737d6 feat: 鏂囨。闈㈡澘鏀寔妯℃澘闄勪欢涓婁紶(Supabase Storage),鏂囦欢閾炬帴鏀逛负input type=file;淇renderMyOfficeDocs缂篴sync
+41f03b0 鏁村悎: 绉婚櫎浠〃鐩?home)椤甸潰,缁忚惀鍒嗘瀽(analytics)鎴愪负榛樿棣栭〉;鍒犻櫎home-view HTML鍜宻witchTab home鍒嗘敮
+d0b40a2 fix: 5澶勫脊绐楀彇娑堟寜閽畂nclick鍐呭崟寮曞彿鐮村潖JS瀛楃涓诧紝鏀圭敤&鈥媞uot;瀹炰綋
+d5a9684 fix: 鏃ョ▼/瀹℃壒/娑堟伅/璺熻繘/浠诲姟寮圭獥鍙栨秷鎸夐挳onclick鍙屽紩鍙峰祵濂楄娉曢敊璇?8947f00 fix: switchCollabTab涓璵o-panel ID鍙岄噸mo-鍓嶇紑瀵艰嚧姒傝/鏂囨。闈㈡澘hidden
+8272823 fix: selectCompany涓環ideAC璺ㄤ綔鐢ㄥ煙undefined锛屾敼涓虹洿鎺ユ搷浣淒OM
+2104e65 debug: mo-overview/mo-docs绌虹櫧椤垫敞鍏ヨ皟璇曟棩蹇楀畾浣嶆牴鍥?b99d5bc fix: collab-view div杩囨棭闂悎瀵艰嚧mo-overview/mo-docs闈㈡澘瀛ゅ効
+d72aeb0 fix: 鍗忓悓姒傝tab(mo-overview)鍔犺浇鍑芥暟鍚嶄慨姝?8776694 fix: 澶栧嫟瀵艰埅鎸夐挳闃叉閲嶅彔 + 鍗忓悓椤甸潰褰诲簳鍘婚噸(鍒犻櫎鏃y-office-tabs/閲嶅闈㈡澘/鍐椾綑鍑芥暟)
+26a1d6d feat: 鎵撳崱/鎷滆鍓嶅脊鍑虹櫨搴﹀湴鍥惧畾浣嶇‘璁ゅ脊绐楋紝鐢ㄦ埛纭鍚庢墠鎻愪氦
+0f6de19 chore: 濉叆鐧惧害鍦板浘AK
+4ba4213 refactor: 鍗忓悓椤甸潰鍘婚噸(浠呬繚鐣欐瑙?鏂囨。) + 澶栧嫟鍦板浘鍒囨崲涓虹櫨搴﹀湴鍥?9b7d37e feat: 澶栧嫟鎷滆璁板綍鎺ュ叆Leaflet鐪熷湴鍥?+ GPS瀹氫綅閿欒鎻愮ず + 鎷滆鍗＄墖瀹氫綅鐘舵€?584f18a remove tab-myoffice button from topbar
+a954858 merge: 鎴戠殑鍔炲叕瀹ゆ暣鍚堝埌鍗忓悓鍔炲叕瑙嗗浘锛屽垹闄w-debug妯箙锛宼opbar閲嶅畾鍚戣嚦collab
+e94d969 WIP on main: ad4d79d fix: formatMoney绫诲瀷鏍￠獙 + c360-last-engage鍒ょ┖ + saveFVisit琛sync
+1732a59 index on main: ad4d79d fix: formatMoney绫诲瀷鏍￠獙 + c360-last-engage鍒ょ┖ + saveFVisit琛sync
+ad4d79d fix: formatMoney绫诲瀷鏍￠獙 + c360-last-engage鍒ょ┖ + saveFVisit琛sync
+30bdd0d feat: 鎵嬫満绔疓PS楂樼簿搴︼紝妗岄潰绔綆绮惧害鑷€傚簲
+162cb35 feat: 鎷滆璁板綍淇濆瓨鏃惰嚜鍔ㄨ幏鍙朑PS瀹氫綅
+a30d77f fix: GPS鏀圭敤浣庣簿搴︽ā寮忓吋瀹规闈㈡祻瑙堝櫒
+384f756 fix: fieldwork RLS鏀圭敤profiles EXISTS妯″紡鍖归厤鐜版湁绛栫暐
+d49bb0d fix: fieldwork琛ㄨˉ鍏匯LS绛栫暐

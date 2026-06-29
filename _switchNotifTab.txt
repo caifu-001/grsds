@@ -1,0 +1,6 @@
+function switchNotifTab(sub){
+  var tabs=document.querySelectorAll('#notif-panel .biz-subtab');
+  for(var i=0;i<tabs.length;i++)tabs[i].classList.remove('active');
+  document.getElementById('notif-list').classList.add('hidden');
+  document.getElementById('activity-list').classList.add('hidden');
+  if(sub==='notifications'){tabs[0].classList.add('active');loadNotifs();document.getElementById('notif-list').classList.remove('hidden')}

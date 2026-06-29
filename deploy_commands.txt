@@ -1,0 +1,4 @@
+cd D:\1kaifa\grsds
+git add supabase/functions/admin-proxy/index.ts
+git commit -m "fix: admin-proxy CORS - add standalone OPTIONS handler before any logic"
+git push

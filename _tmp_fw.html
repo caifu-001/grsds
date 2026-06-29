@@ -1081,8 +1081,8 @@ input,select,textarea,button{font-family:inherit}
 
 
 /* Fieldwork */
-.fw-tabs{display:flex;gap:4px;padding:8px 12px;border-bottom:1px solid var(--border);background:var(--card-bg);overflow-x:auto;flex-wrap:wrap}
-.fw-tabs button{padding:5px 10px;border-radius:14px;font-size:12px;font-weight:600;cursor:pointer;border:none;background:var(--bg2);color:var(--text2);white-space:nowrap;flex-shrink:0}
+.fw-tabs{display:flex;gap:4px;padding:8px 16px;border-bottom:1px solid var(--border);background:var(--card-bg);overflow-x:auto}
+.fw-tabs button{padding:6px 14px;border-radius:16px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:var(--bg2);color:var(--text2);white-space:nowrap}
 .fw-tabs button.active{background:var(--primary);color:#fff}
 .fw-panel{padding:16px}
 .fw-kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
@@ -1126,21 +1126,13 @@ input,select,textarea,button{font-family:inherit}
   .fw-checkin-btn{font-size:16px;padding:14px}
 }
 
-
-/* Baidu Map styles */
-.fw-track-map{height:320px;border-radius:12px;overflow:hidden;border:1px solid var(--border)}
-.BMap_mask,.BMap_noprint{font-family:inherit!important}
-.fw-visit-loc{display:inline-flex;align-items:center;gap:3px;font-size:11px;color:var(--primary);margin-top:4px}
-.fw-visit-loc.no-gps{color:var(--text3)}
 </style>
 
-
-<script src="https://api.map.baidu.com/api?v=3.0&ak=We6WBochlQEAiMK0DuQGyaN9Qz7yB4SU"></script>
 </head>
 <body>
-
+<div id="fw-debug" style="position:fixed;top:60px;right:12px;background:rgba(0,0,0,0.85);color:#0f0;padding:8px 12px;border-radius:6px;font:11px monospace;z-index:9999;max-width:350px;max-height:400px;overflow-y:auto;display:none"></div>
 <div id="global-error-banner" style="display:none;background:#e74c3c;color:#fff;padding:10px 16px;font-size:13px;position:fixed;top:0;left:0;right:0;z-index:99999;text-align:center;white-space:pre-wrap;line-height:1.4"></div>
-<script>(function(){var el=document.getElementById('global-error-banner');window.onerror=function(m,u,l,c,e){el.style.display='block';el.innerHTML='🔴 JS ERROR: '+h(m)+'<br><small>line '+l+':'+c+' | '+h(u.substr(u.lastIndexOf('/')+1))+'</small>';if(e&&e.stack)el.innerHTML+='<br><small>'+h(e.stack.split('\n').slice(0,3).join('<br>'))+'</small>'};window.addEventListener('unhandledrejection',function(ev){el.style.display='block';el.innerHTML='🔴 PROMISE REJECTION: '+h(ev.reason)});console.error=function(){el.style.display='block';el.innerHTML='🔴 console.error: '+h(Array.from(arguments).join(' '))}})();</script>
+<script>(function(){var el=document.getElementById('global-error-banner');window.onerror=function(m,u,l,c,e){el.style.display='block';el.innerHTML='🔴 JS ERROR: '+m+'<br><small>line '+l+':'+c+' | '+u.substr(u.lastIndexOf('/')+1)+'</small>';if(e&&e.stack)el.innerHTML+='<br><small>'+e.stack.split('\n').slice(0,3).join('<br>')+'</small>'};window.addEventListener('unhandledrejection',function(ev){el.style.display='block';el.innerHTML='🔴 PROMISE REJECTION: '+ev.reason});console.error=function(){el.style.display='block';el.innerHTML='🔴 console.error: '+Array.from(arguments).join(' ')}})();</script>
 
 <!-- Login -->
 <!-- 更多下拉菜单 -->
@@ -1176,7 +1168,7 @@ input,select,textarea,button{font-family:inherit}
  <div class="topbar">
   <span id="topbar-title">客户管理</span>
   <div class="topbar-tabs">
-   <button class="topbar-tab active" id="tab-analytics" onclick="switchTab('analytics')">📊 总览</button>
+   <button class="topbar-tab active" id="tab-home" onclick="switchTab('home')">🏠</button>
    <button class="topbar-tab" id="tab-clients" onclick="switchTab('clients')">客户</button>
    <button class="topbar-tab" id="tab-orders" onclick="switchTab('orders')">订单</button>
    <button class="topbar-tab" id="tab-collab" onclick="switchTab('collab')">协同</button>
@@ -1184,8 +1176,8 @@ input,select,textarea,button{font-family:inherit}
    <button class="topbar-tab" id="tab-inventory" onclick="switchTab('inventory')">库存</button>
 <button class="topbar-tab" id="tab-service" onclick="switchTab('service')">售后</button>
 <button class="topbar-tab" id="tab-projects" onclick="switchTab('projects')">项目</button>
-   
-   
+   <button class="topbar-tab" id="tab-analytics" onclick="switchTab('analytics')">📊 经营</button>
+   <button class="topbar-tab" id="tab-myoffice" onclick="switchTab('myoffice')">📋 我的</button>
    <button class="topbar-tab" id="tab-fieldwork" onclick="switchTab('fieldwork')">📍 外勤</button>
    <button class="notif-bell" id="notif-bell" onclick="toggleNotifPanel()" title="通知">🔔<span id="notif-badge" class="notif-badge hidden">0</span></button>
    <button class="topbar-tab hidden" id="tab-admin" onclick="switchTab('admin')">管理</button>
@@ -1206,6 +1198,90 @@ input,select,textarea,button{font-family:inherit}
   <div class="topbar-btns">
    <button class="topbar-btn" onclick="openMy()" title="我的">👤</button>
    <button class="topbar-btn" id="btn-more" onclick="toggleMoreMenu()" title="更多">☰</button>
+  </div>
+ </div>
+ <div id="home-view">
+  <div class="dashboard-grid">
+   <div class="dash-card">
+    <div class="dash-card-icon" style="background:linear-gradient(135deg,#4F6EF7,#7B93FF)">👥</div>
+    <div class="dash-card-body">
+     <div class="dash-card-value" id="dash-client-count">-</div>
+     <div class="dash-card-label">客户总数</div>
+    </div>
+   </div>
+   <div class="dash-card">
+    <div class="dash-card-icon" style="background:linear-gradient(135deg,#10B981,#34D399)">📦</div>
+    <div class="dash-card-body">
+     <div class="dash-card-value" id="dash-order-count">-</div>
+     <div class="dash-card-label">本月订单</div>
+    </div>
+   </div>
+   <div class="dash-card">
+    <div class="dash-card-icon" style="background:linear-gradient(135deg,#F59E0B,#FBBF24)">💰</div>
+    <div class="dash-card-body">
+     <div class="dash-card-value" id="dash-revenue">-</div>
+     <div class="dash-card-label">本月销售额</div>
+    </div>
+   </div>
+   <div class="dash-card">
+    <div class="dash-card-icon" style="background:linear-gradient(135deg,#EF4444,#F87171)">🎯</div>
+    <div class="dash-card-body">
+     <div class="dash-card-value" id="dash-leads-count">-</div>
+     <div class="dash-card-label">活跃线索</div>
+    </div>
+   </div>
+  </div>
+  <!-- Charts Row -->
+  <div class="chart-row">
+   <div class="chart-card chart-card-wide">
+    <div class="chart-title">📈 近6月销售趋势</div>
+    <canvas id="chart-revenue-trend"></canvas>
+   </div>
+   <div class="chart-card">
+    <div class="chart-title">🎯 线索阶段分布</div>
+    <canvas id="chart-lead-funnel"></canvas>
+   </div>
+  </div>
+  <div class="chart-row">
+   <div class="chart-card">
+    <div class="chart-title">🏷️ 客户类型分布</div>
+    <canvas id="chart-client-types"></canvas>
+   </div>
+   <div class="chart-card">
+    <div class="chart-title">📊 本月业绩对比</div>
+    <canvas id="chart-perf-compare"></canvas>
+   </div>
+   <div class="chart-card">
+    <div class="chart-title">🔄 订单状态分布</div>
+    <canvas id="chart-order-status"></canvas>
+   </div>
+  </div>
+  <div class="dashboard-sections">
+   <div class="dash-section">
+    <div class="dash-section-header">📊 销售概览</div>
+    <div class="dash-section-body" id="dash-sales-overview">
+     <div class="empty-state">加载中...</div>
+    </div>
+   </div>
+   <div class="dash-section">
+    <div class="dash-section-header">⏰ 待处理提醒</div>
+    <div class="dash-section-body" id="dash-reminders">
+     <div class="empty-state">加载中...</div>
+    </div>
+   </div>
+   <div class="dash-section" id="birthday-section" style="display:none">
+    <div class="dash-section-header">🎂 生日提醒</div>
+    <div class="dash-section-body" id="birthday-reminders"></div>
+   </div>
+  </div>
+  <div class="dash-section" style="margin:12px 16px">
+   <div class="dash-section-header">⚡ 快捷操作</div>
+   <div class="dash-actions">
+    <button class="dash-action-btn" onclick="switchTab('clients');setTimeout(function(){openForm()},300)">➕ 新增客户</button>
+    <button class="dash-action-btn" onclick="switchTab('orders');setTimeout(function(){openOrderForm()},300)">📦 创建订单</button>
+    <button class="dash-action-btn" onclick="leadFormSource='sales';switchTab('sales');setTimeout(function(){openLeadForm()},300)">🎯 新建线索</button>
+    <button class="dash-action-btn" onclick="switchTab('inventory')">📋 库存管理</button>
+   </div>
   </div>
  </div>
  <div id="client-view" class="hidden">
@@ -1696,9 +1772,6 @@ input,select,textarea,button{font-family:inherit}
  <div style="padding:12px 16px;font-size:14px;font-weight:600;color:var(--text2);margin-top:8px">版本</div>
  <div style="padding:0 16px 40px"><div class="settings-item"><span class="lbl">客户管理系统 v3</span></div></div>
 </div>
-<!-- ===== 项目详情页 (独立视图) ===== -->
-
-
 
 <!-- My Profile Screen -->
 <div id="my-screen" style="display:none;min-height:100vh;background:var(--bg)">
@@ -2224,8 +2297,7 @@ input,select,textarea,button{font-family:inherit}
    <button class="collab-subtab" data-ctab="followup" onclick="switchCollabTab('followup')">跟进</button>
    <button class="collab-subtab" data-ctab="comment" onclick="switchCollabTab('comment')">协作</button>
    <button class="collab-subtab" data-ctab="msg" onclick="switchCollabTab('msg')">消息</button>
-     <button class="collab-subtab" data-ctab="mo-overview" onclick="switchCollabTab('mo-overview')">📊 概览</button>
-   <button class="collab-subtab" data-ctab="mo-docs" onclick="switchCollabTab('mo-docs')">📄 文档</button>
+  </div>
   <div id="collab-schedule-panel" class="collab-panel">
    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
     <h3 style="font-size:16px;font-weight:700;margin:0">日程安排</h3>
@@ -2292,15 +2364,64 @@ input,select,textarea,button{font-family:inherit}
   </div>
  </div>
 
-  <!-- My Office panels (integrated) -->
-  
- 
+<!-- My Office View -->
+<div id="my-office-view" class="hidden">
+ <div class="my-office-tabs">
+  <button class="active" data-motab="overview" onclick="switchMyOfficeTab('overview')">📊 工作概览</button>
+  <button data-motab="todo" onclick="switchMyOfficeTab('todo')">✅ 我的待办</button>
+  <button data-motab="approvals" onclick="switchMyOfficeTab('approvals')">📋 我的审批</button>
+  <button data-motab="messages" onclick="switchMyOfficeTab('messages')">💬 消息</button>
+  <button data-motab="docs" onclick="switchMyOfficeTab('docs')">📄 文档</button>
+ </div>
 
  <!-- Overview Panel -->
  <div id="mo-overview" class="mo-panel">
   <div id="mo-overview-content">加载中...</div>
  </div>
-<div id="mo-docs" class="mo-panel hidden">
+
+ <!-- Todo Panel -->
+ <div id="mo-todo" class="mo-panel hidden">
+  <div class="mo-filter-bar" id="mo-todo-filters">
+   <button class="active" data-filter="all" onclick="renderMyOfficeTodo('all')">全部</button>
+   <button data-filter="today" onclick="renderMyOfficeTodo('today')">今天</button>
+   <button data-filter="week" onclick="renderMyOfficeTodo('week')">本周</button>
+   <button data-filter="overdue" onclick="renderMyOfficeTodo('overdue')">已逾期</button>
+  </div>
+  <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+   <button class="btn-sm btn-sm-primary" onclick="openMoTaskForm()">+ 新建任务</button>
+  </div>
+  <div id="mo-todo-list">加载中...</div>
+ </div>
+
+ <!-- Approvals Panel -->
+ <div id="mo-approvals" class="mo-panel hidden">
+  <div class="mo-section-title">📤 我发起的审批</div>
+  <div id="mo-my-approvals">加载中...</div>
+  <div class="mo-section-title" style="margin-top:16px">📥 待我审批</div>
+  <div id="mo-pending-approvals">加载中...</div>
+  <div style="margin-top:12px;text-align:right">
+   <button class="btn-sm btn-sm-primary" onclick="openMoApprovalForm()">+ 发起审批</button>
+  </div>
+ </div>
+
+ <!-- Messages Panel -->
+ <div id="mo-messages" class="mo-panel hidden">
+  <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
+   <select id="mo-msg-dept-filter" onchange="loadMoMessages()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px">
+    <option value="">全部部门</option>
+   </select>
+  </div>
+  <div id="mo-msg-list">加载中...</div>
+  <div class="mo-msg-input-wrap">
+   <textarea id="mo-msg-input" placeholder="输入消息..." rows="1"></textarea>
+   <button onclick="sendMoMessage()">发送</button>
+  </div>
+  <div class="mo-section-title" style="margin-top:20px">📢 公司公告</div>
+  <div id="mo-announcements-list">加载中...</div>
+ </div>
+
+ <!-- Docs Panel -->
+ <div id="mo-docs" class="mo-panel hidden">
   <div class="mo-doc-filter" id="mo-doc-filters">
    <button class="active" data-cat="all" onclick="renderMyOfficeDocs('all')">全部</button>
    <button data-cat="work" onclick="renderMyOfficeDocs('work')">工作</button>
@@ -2314,23 +2435,6 @@ input,select,textarea,button{font-family:inherit}
   <div id="mo-docs-list">加载中...</div>
  </div>
 </div>
-
- <!-- Todo Panel -->
- 
-
- <!-- Approvals Panel -->
- 
-
- <!-- Messages Panel -->
- 
-
- <!-- Docs Panel -->
- 
-
-
-
-<!-- My Office View -->
-
 
 <!-- After-Sales Service View -->
 <div id="service-view" class="hidden">
@@ -3086,22 +3190,8 @@ input,select,textarea,button{font-family:inherit}
 // Supabase
 const SUPABASE_URL='https://jyefbatmmbelrhhzsgva.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp5ZWZiYXRtbWJlbHJoaHpzZ3ZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5NDIyMDUsImV4cCI6MjA5NTUxODIwNX0.m8pVc7yA9AycSTkexoH76SNo_P40KVRA4pmKECJQea4';
-// SUPABASE_SERVICE_KEY 已移除（安全修复 P0-2）— 所有管理员操作走 Supabase Edge Function admin-proxy
-// 部署 admin-proxy 后取消下面注释并填入 Edge Function URL:
- const SUPAFUNC_BASE='https://jyefbatmmbelrhhzsgva.supabase.co/functions/v1/admin-proxy';
+SUPABASE_SERVICE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp5ZWZiYXRtbWJlbHJoaHpzZ3ZhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTk0MjIwNSwiZXhwIjoyMDk1NTE4MjA1fQ.0bF9vVcZWfBNt3t89VGEvAnu5mDGeqZm8UViY-cKuaU'; // 从 Supabase Dashboard > Settings > API 获取 service_role key（超管重置密码用）
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
-
-// === 安全管理 API 代理 (P0-2 修复) ===
-// 所有需 service_role 的操作统一走 Supabase Edge Function
-async function callAdmin(op,table,opts){
-  opts=opts||{};
-  try{
-    var body=JSON.stringify({op:op,table:table,method:opts.method||'GET',payload:opts.payload||null,query:opts.query||'*',filters:opts.filters||null});
-    var r=await fetch(SUPAFUNC_BASE,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+(await sb.auth.getSession()).data.session?.access_token||''},body:body});
-    if(!r.ok){var txt=await r.text();console.error('callAdmin failed:',r.status,txt);return{data:null,error:{message:'Admin API '+(opts.failMsg||'error')}}};
-    return await r.json();
-  }catch(e){console.error('callAdmin error:',e);return{data:null,error:{message:e.message||'Network error'}};}
-}
 document.getElementById('script-loaded-check').style.display='none';
 
 const BUILTIN_TYPES=['甲方','集成商','设计院','运营商','国央企','党政','厂家','制造业','军队','司法','教育','医疗','供应商'];
@@ -3115,7 +3205,7 @@ let moveContactIdx=-1,moveContactObj=null;
 let clientTags=[],clientAttachments=[],leadEditId=null,leadAssignId=null,allLeads=[],leadFormSource='pool';
 let c360ClientId=null,c360ActiveTab='overview',c360Orders=[];
 
-function h(s){if(s===null||s===undefined)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+function h(s){return s?s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'):''}
 // showToast defined below (with type/color support)
 function tColor(label){
   var i=BUILTIN_TYPES.indexOf(label);
@@ -3125,7 +3215,6 @@ function tColor(label){
 }
 
 // === Auth ===
-var loginFailCount=0,loginLockUntil=null;
 function switchMode(){
   loginMode=loginMode==='login'?'register':'login';
   document.getElementById('login-btn').textContent=loginMode==='register'?'注册':'登录';
@@ -3135,12 +3224,9 @@ function switchMode(){
   b.classList.toggle('hidden',loginMode!=='register');h.classList.toggle('hidden',loginMode!=='register');
 }
 function checkPwStrength(pw){
-  if(!pw||pw.length<8)return{ok:false,level:0,msg:'密码至少8位'};
-  var hasLetter=/[a-zA-Z]/.test(pw),hasDigit=/[0-9]/.test(pw),hasSpecial=/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pw);
-  if(!hasLetter)return{ok:false,level:1,msg:'需包含字母'};
-  if(!hasDigit)return{ok:false,level:1,msg:'需包含数字'};
-  if(!hasSpecial)return{ok:false,level:2,msg:'需包含特殊字符（如!@#$%等）'};
-  if(pw.length>=12)return{ok:true,level:3,msg:'密码强度：强'};
+  if(pw.length<6)return{ok:false,level:0,msg:'密码至少6位'};
+  if(!/[a-zA-Z]/.test(pw)||!/[0-9]/.test(pw))return{ok:false,level:1,msg:'需包含字母和数字'};
+  if(pw.length>=8&&/[!@#$%^&*]/.test(pw))return{ok:true,level:3,msg:'密码强度：强'};
   return{ok:true,level:2,msg:'密码强度：中'};
 }
 document.getElementById('login-pass').addEventListener('input',function(){
@@ -3174,12 +3260,8 @@ function refreshCaptcha(){
   for(var i=0;i<captchaCode.length;i++){ctx.font='bold '+(22+Math.random()*8)+'px "Segoe UI","Microsoft YaHei",Arial';ctx.fillStyle='rgb('+Math.floor(Math.random()*140)+','+Math.floor(Math.random()*90)+','+Math.floor(Math.random()*200)+')';var x=8+i*30+Math.random()*8;var y=30+Math.random()*8;ctx.save();ctx.translate(x,y);ctx.rotate((Math.random()-0.5)*0.45);ctx.fillText(captchaCode[i],0,0);ctx.restore()}
 }
 async function handleLogin(){
-  var er=document.getElementById('login-err'),btn=document.getElementById('login-btn');
-  // 登录频率限制 (P2-10 修复)
-  if(loginLockUntil&&Date.now()<loginLockUntil){var sec=Math.ceil((loginLockUntil-Date.now())/1000);er.textContent='登录过于频繁，请'+sec+'秒后重试';return}
-  if(loginFailCount>=5){loginLockUntil=Date.now()+60000;loginFailCount=0;er.textContent='密码错误次数过多，请1分钟后重试';return}
   var captchaInput=document.getElementById('login-captcha').value.trim().toUpperCase();
-  er.textContent='';
+  var er=document.getElementById('login-err'),btn=document.getElementById('login-btn');er.textContent='';
   if(captchaInput!==captchaCode){er.textContent='验证码错误，请重新输入';refreshCaptcha();document.getElementById('login-captcha').value='';document.getElementById('login-captcha').focus();return}
   var un=document.getElementById('login-user').value.trim(),pw=document.getElementById('login-pass').value.trim();
   if(!un||!pw){er.textContent='请输入邮箱和密码';return}
@@ -3187,14 +3269,14 @@ async function handleLogin(){
   try{
     if(loginMode==='login'){
       var r=await sb.auth.signInWithPassword({email:un,password:pw});
-      if(r.error){loginFailCount++;er.textContent=trErr(r.error.message);return}
-      loginFailCount=0;await onLoginSuccess(r.data.user);
+      if(r.error){er.textContent=trErr(r.error.message);return}
+      await onLoginSuccess(r.data.user);
     }else{
       var s=checkPwStrength(pw);if(!s.ok){er.textContent=s.msg;return}
       var r=await sb.auth.signUp({email:un,password:pw});
       if(r.error){er.textContent=trErr(r.error.message);return}
       if(r.data.user&&!r.data.session){er.textContent='请联系管理员关闭邮件确认';return}
-      loginFailCount=0;await onLoginSuccess(r.data.user);
+      await onLoginSuccess(r.data.user);
     }
   }catch(e){er.textContent='登录失败: '+(e.message||e.toString());console.error('handleLogin error:',e)}
   finally{btn.disabled=false;btn.textContent=loginMode==='register'?'注册':'登录'}
@@ -3210,7 +3292,7 @@ async function onLoginSuccess(user){
     if(currentCompanyId&&profile.resignation_status==='approved'&&profile.resignation_date){
       var resignDate=new Date(profile.resignation_date);var today=new Date();today.setHours(0,0,0,0);
       if(resignDate<=today){
-        await callAdmin('update','profiles',{payload:{company_id:null,department_id:null,status:'leave',resignation_status:'approved'},filters:[{col:'user_id',op:'eq',val:currentUser.id}],query:'*'});
+        await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(currentUser.id),{method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json'},body:JSON.stringify({company_id:null,department_id:null,status:'leave',resignation_status:'approved'})});
         currentCompanyId=null;currentUserRole='user';isSuperAdmin=false;
         document.getElementById('login-user').value='';document.getElementById('login-pass').value='';
         document.getElementById('login-screen').classList.add('hidden');
@@ -3218,7 +3300,7 @@ async function onLoginSuccess(user){
         showCompanyRegScreen();return;
       }
     }
-  }if(!currentCompanyId&&profile&&profile.department_id){try{var deptFetch=await callAdmin('select','departments',{query:'company_id',filters:[{col:'id',op:'eq',val:profile.department_id}]});if(deptFetch.ok){var deptData=await deptFetch.json();if(deptData&&deptData.length>0&&deptData[0].company_id){currentCompanyId=deptData[0].company_id;profile.company_id=currentCompanyId;await sb.from('profiles').update({company_id:currentCompanyId}).eq('user_id',user.id);if(!currentUserRole||currentUserRole==='user'){currentUserRole='admin';await sb.from('profiles').update({role:'admin'}).eq('user_id',user.id)}}}}catch(fb){console.error('resolve company via dept failed:',fb)}}
+  }if(!currentCompanyId&&profile&&profile.department_id){try{var deptFetch=await fetch(SUPABASE_URL+'/rest/v1/departments?id=eq.'+profile.department_id+'&select=company_id',{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_ANON_KEY}});if(deptFetch.ok){var deptData=await deptFetch.json();if(deptData&&deptData.length>0&&deptData[0].company_id){currentCompanyId=deptData[0].company_id;profile.company_id=currentCompanyId;await sb.from('profiles').update({company_id:currentCompanyId}).eq('user_id',user.id);if(!currentUserRole||currentUserRole==='user'){currentUserRole='admin';await sb.from('profiles').update({role:'admin'}).eq('user_id',user.id)}}}}catch(fb){console.error('resolve company via dept failed:',fb)}}
 
   document.getElementById('login-user').value='';
   document.getElementById('login-pass').value='';
@@ -3261,7 +3343,7 @@ async function onLoginSuccess(user){
   if(isSuperAdmin){document.getElementById('admin-tab-companies-manage').classList.remove('hidden');document.getElementById('admin-tab-companies').classList.remove('hidden');}
   pollNotifications();
   writeOpLog('login','auth',currentUser.id,currentUser.email,'用户登录');
-  switchTab('analytics');
+  switchTab('home');
 }
 async function doLogout(){await sb.auth.signOut();currentUser=null;allClients=[];allContacts=[];customTypes=[];document.getElementById('main-screen').classList.add('hidden');document.getElementById('login-screen').classList.remove('hidden')}
 
@@ -5623,7 +5705,6 @@ function showProjectsDirect(){
 function switchTab(tab){
   var cv=document.getElementById('client-view');
   var ov=document.getElementById('order-view');
-  var rv=document.getElementById('reports-view');
   var av=document.getElementById('admin-view');
   var sv=document.getElementById('sales-view');
   var iv=document.getElementById('inventory-view');
@@ -5640,18 +5721,29 @@ function switchTab(tab){
   document.getElementById('settings-screen').style.display='none';
   document.getElementById('my-screen').style.display='none';
   // Hide all views first
-    var anv=document.getElementById('analytics-view');
+  var hv_d=document.getElementById('home-view');var rv_r=document.getElementById('reports-view');
+  var anv=document.getElementById('analytics-view');
   var lv=document.getElementById('leads-view');
-  var allViews=[cv,ov,rv,av,sv,iv];if(spv)allViews.push(spv);if(pv)allViews.push(pv);if(lv)allViews.push(lv);var colv2=document.getElementById('collab-view');if(colv2)allViews.push(colv2);var sv2=document.getElementById('service-view');if(sv2)allViews.push(sv2);if(purchv)allViews.push(purchv);var pjv=document.getElementById('projects-view');if(pjv)allViews.push(pjv);if(anv)allViews.push(anv);
+  var allViews=[hv_d,cv,ov,rv_r,av,sv,iv];if(spv)allViews.push(spv);if(pv)allViews.push(pv);if(lv)allViews.push(lv);var colv2=document.getElementById('collab-view');if(colv2)allViews.push(colv2);var sv2=document.getElementById('service-view');if(sv2)allViews.push(sv2);if(purchv)allViews.push(purchv);var pjv=document.getElementById('projects-view');if(pjv)allViews.push(pjv);var mov=document.getElementById('my-office-view');if(mov)allViews.push(mov);if(anv)allViews.push(anv);
   var fwv=document.getElementById('fieldwork-view');if(fwv)allViews.push(fwv);
   for(var i=0;i<allViews.length;i++)if(allViews[i]){allViews[i].classList.add('hidden');allViews[i].style.display='';allViews[i].style.visibility='';}
   // Deactivate all tabs
-  var tr=document.getElementById('tab-reports');var tan=document.getElementById('tab-analytics');
-  var allTabs=[tc,to,document.getElementById('tab-service'),document.getElementById('tab-collab'),document.getElementById('tab-projects'),tr,ta,ti];if(tan)allTabs.push(tan);for(var j=0;j<allTabs.length;j++)if(allTabs[j])allTabs[j].classList.remove('active');
+  var tr=document.getElementById('tab-reports');var thm=document.getElementById('tab-home');
+  var tan=document.getElementById('tab-analytics');
+  var allTabs=[thm,tc,to,document.getElementById('tab-service'),document.getElementById('tab-collab'),document.getElementById('tab-projects'),document.getElementById('tab-myoffice'),tr,ta,ti];if(tan)allTabs.push(tan);for(var j=0;j<allTabs.length;j++)if(allTabs[j])allTabs[j].classList.remove('active');
   var tfw=document.getElementById('tab-fieldwork');if(tfw)allTabs.push(tfw);
   fab.classList.add('hidden');
 
-      if(tab==='clients'){
+    var hv=document.getElementById('home-view');
+  if(tab==='home'){
+    hv.classList.remove('hidden');
+    document.getElementById('tab-home').classList.add('active');
+    document.getElementById('topbar-title').textContent='仪表盘';
+    document.getElementById('main-fab').classList.add('hidden');
+    loadHomeDashboard();
+    loadDashboard();
+  }else 
+  if(tab==='clients'){
     cv.classList.remove('hidden');tc.classList.add('active');
     fab.classList.remove('hidden');fab.textContent='+';fab.onclick=function(){openForm()};
     document.getElementById('topbar-title').textContent='客户管理';
@@ -5685,11 +5777,11 @@ function switchTab(tab){
     document.getElementById('topbar-title').textContent='资源管理';
     switchResTab('suppliers');
   }else if(tab==='reports'){
-    console.log('[DEBUG switchTab] reports branch, rv hidden:',rv.classList.contains('hidden'));
-    rv.classList.remove('hidden');tr.classList.add('active');
+    console.log('[DEBUG switchTab] reports branch, rv_r hidden:',rv_r.classList.contains('hidden'));
+    rv_r.classList.remove('hidden');tr.classList.add('active');
     fab.classList.add('hidden');
     document.getElementById('topbar-title').textContent='报表中心';
-    console.log('[DEBUG switchTab] reports-view display:',getComputedStyle(rv).display,'innerHTML len:',rv.innerHTML.length);
+    console.log('[DEBUG switchTab] reports-view display:',getComputedStyle(rv_r).display,'innerHTML len:',rv_r.innerHTML.length);
     loadReportSummary();switchReportsTab('sales');
   }else if(tab==='service'){
     var sv2=document.getElementById('service-view');
@@ -5733,7 +5825,15 @@ function switchTab(tab){
   console.log('[DEBUG switchTab] collab-view innerHTML length:',colv.innerHTML.length);
   console.log('[DEBUG switchTab] about to call switchCollabTab schedule');
   switchCollabTab('schedule');
-} else if(tab==='fieldwork'){
+}else if(tab==='myoffice'){
+  var mov=document.getElementById('my-office-view');
+  mov.classList.remove('hidden');
+  document.getElementById('tab-myoffice').classList.add('active');
+  document.getElementById('topbar-title').textContent='我的办公室';
+  fab.classList.add('hidden');
+  switchMyOfficeTab('overview');
+}
+  if(tab==='fieldwork'){
     var fwv=document.getElementById('fieldwork-view');
     fwv.classList.remove('hidden');
     document.getElementById('tab-fieldwork').classList.add('active');
@@ -5974,7 +6074,6 @@ function renderOrders(){
 }
 
 function formatMoney(v){
-  if(v==null||isNaN(v=parseFloat(v)))return '0';
   if(v>=10000)return (v/10000).toFixed(1)+'万';
   return v.toFixed(0);
 }
@@ -6018,7 +6117,7 @@ sb.auth.getSession().then(async function(res){
     if(!currentCompanyId){document.getElementById('login-screen').classList.remove('hidden');return}
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('main-screen').classList.remove('hidden');
-    switchTab('analytics');
+    switchTab('home');
     if(isSuperAdmin||currentUserRole==='admin')document.getElementById('tab-admin').classList.remove('hidden');
   if(isSuperAdmin){document.getElementById('admin-tab-companies-manage').classList.remove('hidden');document.getElementById('admin-tab-companies').classList.remove('hidden');}
     await loadCustomTypes();
@@ -6102,7 +6201,7 @@ async function checkPendingCompany(){
     document.getElementById('main-screen').classList.remove('hidden');
     if(isSuperAdmin||currentUserRole==='admin')document.getElementById('tab-admin').classList.remove('hidden');
   if(isSuperAdmin){document.getElementById('admin-tab-companies-manage').classList.remove('hidden');document.getElementById('admin-tab-companies').classList.remove('hidden');}
-    switchTab('analytics');
+    switchTab('home');
   }else if(data[0].status==='rejected'){
     showCompanyRegScreen();
   }
@@ -6111,7 +6210,7 @@ async function checkPendingCompany(){
 /* ── Admin Company Management ── */
 var allAdminCompanies=[];
 async function loadAdminCompanies(){
-  try{var r=await callAdmin('select','companies',{query:'*',filters:[{col:'',op:'order',val:'name.asc'}]});if(r.ok){allAdminCompanies=await r.json();}}catch(e){}
+  try{var r=await fetch(SUPABASE_URL+'/rest/v1/companies?select=*&order=name',{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}});if(r.ok){allAdminCompanies=await r.json();}}catch(e){}
 }
 function renderAdminCompanies(){
   var el=document.getElementById('admin-companies-manage-list');
@@ -6141,10 +6240,10 @@ async function saveCompany(){
   var payload={name:name,tax_id:tax||null,status:'approved'};
   try{
     if(_companyFormId){
-      var r=await callAdmin('update','companies',{payload:payload,filters:[{col:'id',op:'eq',val:_companyFormId}],query:'*'});
+      var r=await fetch(SUPABASE_URL+'/rest/v1/companies?id=eq.'+_companyFormId,{method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify(payload)});
       if(!r.ok){var t=await r.text();alert('更新失败: '+t);return}
     }else{
-      var r=await callAdmin('insert','companies',{payload:payload});
+      var r=await fetch(SUPABASE_URL+'/rest/v1/companies',{method:'POST',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify(payload)});
       if(!r.ok){var t=await r.text();alert('创建失败: '+t);return}
     }
     closeCompanyFormModal();
@@ -6156,7 +6255,7 @@ function delCompanyById(id){var co=allAdminCompanies.find(function(c){return c.i
 async function deleteCompany(id,name){
   if(!confirm('确定删除公司「'+name+'」？此操作不可恢复！'))return;
   try{
-    var r=await callAdmin('delete','companies',{filters:[{col:'id',op:'eq',val:id}]});
+    var r=await fetch(SUPABASE_URL+'/rest/v1/companies?id=eq.'+id,{method:'DELETE',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}});
     if(!r.ok){var t=await r.text();alert('删除失败: '+t);return}
     await loadAdminCompanies();renderAdminCompanies();
     showToast('公司已删除');
@@ -6236,7 +6335,7 @@ async function rejectCompany(id){
 }
 
 // escHtml defined below (regex-based)
-function selectCompany(c){document.getElementById('f-name').value=c.name;var d=document.getElementById('company-ac-drop');if(d)d.classList.remove('show');fillCompanyInfo(c);}
+function selectCompany(c){document.getElementById('f-name').value=c.name;hideAC();fillCompanyInfo(c);}
 setupCompanyAutocomplete();
 
 /* ── Admin: Department Management ── */
@@ -6256,9 +6355,11 @@ async function loadAdminData(){
   if(currentUserRole==='admin'||currentUserRole==='super_admin'){await loadAdminCompanies();}
   if(currentUserRole==='admin'||currentUserRole==='super_admin'){
     if(currentUserRole==='super_admin'){
-      try{var ur=await callAdmin('select','profiles',{query:'*'});if(ur&&ur.data){adminUserList=ur.data;allUsers=adminUserList;populatePerfSelects();}else{console.warn('callAdmin returned no data:',ur)}}catch(e){}
+      try{var ur=await fetch(SUPABASE_URL+'/rest/v1/profiles?select=*',{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}});if(ur.ok){adminUserList=await ur.json();allUsers=adminUserList;populatePerfSelects();}}catch(e){}
     }else{
-      try{var ur=await callAdmin('select','profiles',{query:'*',filters:[{col:'company_id',op:'eq',val:currentCompanyId}]});if(ur&&ur.data){adminUserList=ur.data;allUsers=adminUserList.slice();populatePerfSelects();}else{console.warn('loadAdminData profiles:',ur)}}catch(e){console.error('loadAdminData users:',e)}
+      var {data:pr}=await sb.from('profiles').select('*').eq('company_id',currentCompanyId);
+      adminUserList=(pr||[]).filter(function(u){return u.company_id===currentCompanyId;});
+      allUsers=adminUserList.slice();populatePerfSelects();
     }
   }
 }
@@ -6533,7 +6634,7 @@ async function switchAdminTab(tab){
   else if(tab==='logs'){var lp=document.getElementById('admin-logs');lp.classList.remove('hidden');subs[9].classList.add('active');await loadOperationLogs();renderOperationLogs();}
   else if(tab==='config'){var cp=document.getElementById('admin-config');cp.classList.remove('hidden');subs[10].classList.add('active');switchConfigTab('fields');}
   else if(tab==='security'){var sp=document.getElementById('admin-security');sp.classList.remove('hidden');subs[11].classList.add('active');renderSecurityPanel();}
-  else if(tab==='workflows'){(async function(){var wf=document.getElementById('admin-workflows');wf.classList.remove('hidden');subs[12].classList.add('active');if(!allRoles||!allRoles.length||!allDepartments||!allDepartments.length)await loadAdminData();renderWorkflowTemplates();})();}
+  else if(tab==='workflows'){var wf=document.getElementById('admin-workflows');wf.classList.remove('hidden');subs[12].classList.add('active');renderWorkflowTemplates();}
 }
 
 /* ── Users ── */
@@ -6584,7 +6685,10 @@ async function deleteUser(userId){
   if(!confirm('确定要删除该员工账号吗？此操作不可撤销，将同时清除其所有关联数据。'))return;
   // 1. Delete from Auth (admin API)
   try{
-    // FIXME: Auth admin API requires service_key - cannot use callAdmin\n  // var ar=await fetch('https://jyefbatmmbelrhhzsgva.supabase.co/auth/v1/admin/users/'+userId,{\n  //   method:'DELETE',\n  //   headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}\n  // });\n  // TODO: migrate to admin-proxy Edge Function with deleteUser endpoint\n  var ar={ok:false}; console.warn('Auth delete disabled - needs admin-proxy migration'); throw new Error('Auth delete not available');;
+    var ar=await fetch('https://jyefbatmmbelrhhzsgva.supabase.co/auth/v1/admin/users/'+userId,{
+      method:'DELETE',
+      headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}
+    });
     if(!ar.ok)throw new Error('Auth delete failed: '+(await ar.text()));
   }catch(e){
     // Auth delete may fail if user doesn't exist in auth system; proceed to clean profiles anyway
@@ -6657,7 +6761,10 @@ async function saveUserEdit(userId){
   }
   if(newStatus==='leave'){data.company_id=null;data.department_id=null;}
   if(isSuperAdmin||currentUserRole==='admin'){
-    var ur=await callAdmin('update','profiles',{payload:data,filters:[{col:'user_id',op:'eq',val:userId}],query:'*'});
+    var ur=await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(userId),{
+      method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},
+      body:JSON.stringify(data)
+    });
     if(!ur.ok){var j=await ur.json().catch(function(){});error={message:j&&j.message||ur.statusText}}
   }else{
     var res=await sb.from('profiles').update(data).eq('user_id',userId);
@@ -6707,8 +6814,10 @@ async function saveDept(){
   var selCid=isSuperAdmin?document.getElementById('dept-company'):null;
   var payload={name:name,parent_id:parentId,company_id:selCid&&selCid.value?parseInt(selCid.value):currentCompanyId};
   if(isSuperAdmin||currentUserRole==='admin'){
-    try{var dr;if(deptFormId){dr=await callAdmin('update','departments',{payload:payload,filters:[{col:'id',op:'eq',val:deptFormId}],query:'*'});}else{dr=await callAdmin('insert','departments',{payload:payload});}
-    if(dr.error){alert('保存失败: '+dr.error.message);return}}
+    var prefix=deptFormId?'PATCH':'POST';
+    var url=deptFormId?SUPABASE_URL+'/rest/v1/departments?id=eq.'+deptFormId:SUPABASE_URL+'/rest/v1/departments';
+    try{var dr=await fetch(url,{method:prefix,headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(payload)});
+    if(!dr.ok){var dj=await dr.json().catch(function(){});alert('保存失败: '+(dj&&dj.message||dr.statusText));return}}
     catch(e){alert('网络错误: '+e.message);return}
   }else{
     if(deptFormId){var{error}=await sb.from('departments').update(payload).eq('id',deptFormId);if(error){alert('保存失败: '+error.message);return}}
@@ -6724,7 +6833,7 @@ async function deleteDept(id,name){
   await sb.from('profiles').update({department_id:null}).eq('department_id',id);
   var error=null;
   if(isSuperAdmin||currentUserRole==='admin'){
-    try{var dr=await callAdmin('delete','departments',{filters:[{col:'id',op:'eq',val:id}],query:'*'});
+    try{var dr=await fetch(SUPABASE_URL+'/rest/v1/departments?id=eq.'+id,{method:'DELETE',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Prefer':'return=representation'}});
     if(!dr.ok){var dj=await dr.json().catch(function(){});error={message:dj&&dj.message||dr.statusText}}
     }catch(e){error={message:e.message}}
   }else{
@@ -6832,7 +6941,7 @@ async function saveNewUser(){
   // Step 5: Write profile via raw fetch (adminToken from step 1 — independent of sb client state)
   var selCompanyId=null;if(isSuperAdmin){var cname=document.getElementById('add-user-company').value.trim();if(cname){var found=null;var cab=typeof allAdminCompanies!=='undefined'?allAdminCompanies:allCompanies||[];for(var i=0;i<cab.length;i++){if(cab[i].name===cname){found=cab[i];break}}if(found){selCompanyId=found.id}else{showToast('未找到公司: '+cname);return}}}
   var body={user_id:newUserId,email:email,role:role||'user',role_id:roleId,company_id:selCompanyId||currentCompanyId,display_name:name,position:position,phone:phone,department_id:deptId?parseInt(deptId):null};
-  var res=await callAdmin('upsert','profiles',{payload:body,query:'*'});
+  var res=await fetch(SUPABASE_URL+'/rest/v1/profiles',{method:'POST',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},body:JSON.stringify(body)});
   if(!res.ok){var txt=await res.text();console.error('Profile write failed:',res.status,txt);showToast('Profile write failed: HTTP '+res.status);return}
   closeAddUserForm();
   showToast('用户创建成功');
@@ -6855,9 +6964,14 @@ function closeResetPwdForm(){
 async function doResetPassword(){
   var pwd=document.getElementById('reset-pwd-input').value.trim();
   if(!pwd||pwd.length<6){showToast('密码至少6位');return}
-  // SUPABASE_SERVICE_KEY removed - password reset migrated to admin-proxy
-  // FIXME: callAdmin does not support auth API; needs admin-proxy Edge Function with password reset endpoint
-  showToast('Password reset migrated to admin-proxy; contact Super Admin');
+  var sk=SUPABASE_SERVICE_KEY;
+  if(!sk){showToast('请先配置 SUPABASE_SERVICE_KEY（Supabase Dashboard > Settings > API）');return}
+  try{
+    var res=await fetch(SUPABASE_URL+'/auth/v1/admin/users/'+_resetPwdUserId,{method:'PUT',headers:{'Authorization':'Bearer '+sk,'apikey':sk,'Content-Type':'application/json'},body:JSON.stringify({password:pwd})});
+    if(!res.ok){var txt=await res.text();showToast('重置失败 HTTP '+res.status+': '+txt);return}
+    closeResetPwdForm();
+    showToast('密码已重置');
+  }catch(e){showToast('网络错误: '+e.message)}
 }
 
 
@@ -7194,7 +7308,7 @@ async function saveContract(){
     var fl=fileEl.files[0];
     var ext=fl.name.split('.').pop();
     var fpath='contract_files/'+currentCompanyId+'/'+Date.now()+'.'+ext;
-    try{var fresp=await sb.storage.from('contract_files').upload(fpath.replace('contract_files/',''),fl,{cacheControl:'3600',upsert:true});
+    try{var fresp=await fetch(SUPABASE_URL+'/storage/v1/object/'+fpath,{method:'POST',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY},body:fl});
     if(fresp.ok){fileUrl=SUPABASE_URL+'/storage/v1/object/public/'+fpath;fileName=fl.name}else{showToast('文件上传失败');return}}
     catch(e){showToast('文件上传失败: '+e.message);return}
   }else{
@@ -7357,7 +7471,7 @@ function switchServiceTab(sub){
 async function loadTickets(){
   var grid=document.getElementById('ticket-grid');grid.innerHTML='<div class="loading"><span class="spinner"></span>加载中...</div>';
   var{data,error}=await sb.from('service_tickets').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
-  if(error){grid.innerHTML='<div class="empty">加载失败: '+h(error.message)+'</div>';return}
+  if(error){grid.innerHTML='<div class="empty">加载失败: '+error.message+'</div>';return}
   allTickets=data||[];renderTickets();
 }
 function renderTickets(){
@@ -7457,7 +7571,7 @@ function renderVisits(){
   }
   grid.innerHTML=h;
 }
-function openFWVisitForm(id){
+function openVisitForm(id){
   svEditId=id||null;
   var v=id?allVisits.find(function(x){return x.id===id}):null;
   document.getElementById('visit-form-title').textContent=id?'编辑回访':'新建回访';
@@ -7471,7 +7585,7 @@ function openFWVisitForm(id){
   if(allClients)for(var i=0;i<allClients.length;i++){var cc=allClients[i];cs.innerHTML+='<option value="'+cc.id+'"'+(v&&v.client_id===cc.id?' selected':'')+'>'+h(cc.name)+'</option>'}
   document.getElementById('visit-modal').classList.remove('hidden');
 }
-function closeFVisit(){document.getElementById('visit-modal').classList.add('hidden');svEditId=null}
+function closeVisitForm(){document.getElementById('visit-modal').classList.add('hidden');svEditId=null}
 async function saveVisit(){
   var title=document.getElementById('vf-title').value.trim();if(!title){showToast('请输入标题');return}
   var data={company_id:currentCompanyId,created_by:currentUser.id,title:title,
@@ -9676,7 +9790,7 @@ async function renderClient360Overview(c,orders){
   (async function(){
     var {data}=await sb.from('engagement_logs').select('created_at').eq('client_id',c.id).eq('company_id',currentCompanyId).order('created_at',{ascending:false}).limit(1);
     if(data&&data.length)lastEng=new Date(data[0].created_at).toLocaleDateString('zh-CN');
-    var el=document.getElementById('c360-last-engage');if(el)el.textContent=lastEng;
+    document.getElementById('c360-last-engage').textContent=lastEng;
   })();
   var html='<div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button class="btn-sm btn-sm-primary" onclick="closeClient360();openForm(\''+c.id+'\')">✏️ 编辑客户</button></div>';
   // ── 项目信息
@@ -10389,7 +10503,7 @@ function openFollowupForm(){
   h+='<div class="form-group"><label>跟进内容 *</label><textarea id="fu-content" rows="3" placeholder="请输入跟进内容..."></textarea></div>';
   h+='<div class="form-group"><label>结果</label><input id="fu-outcome" placeholder="跟进结果（可选）"></div>';
   h+='<div class="form-row"><div class="form-group"><label>下一步计划</label><input id="fu-next-step" placeholder="下一步"></div><div class="form-group"><label>下次跟进日期</label><input type="date" id="fu-next-date"></div></div>';
-  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest(&quot;.modal-overlay&quot;).remove()">取消</button><button class="btn-save" onclick="saveFollowup()">保存</button></div></div></div>';
+  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest(".modal-overlay").remove()">取消</button><button class="btn-save" onclick="saveFollowup()">保存</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend',h);
 }
 
@@ -10437,7 +10551,7 @@ function openMsgForm(){
   for(var i=0;i<allDepartments.length;i++)h+='<option value="'+allDepartments[i].id+'">'+escHtml(allDepartments[i].name)+'</option>';
   h+='</select></div>';
   h+='<div class="form-group"><label>消息内容 *</label><textarea id="msg-content" rows="3" placeholder="输入消息..."></textarea></div>';
-  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest(&quot;.modal-overlay&quot;).remove()">取消</button><button class="btn-save" onclick="sendMsg()">发送</button></div></div></div>';
+  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest(".modal-overlay").remove()">取消</button><button class="btn-save" onclick="sendMsg()">发送</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend',h);
 }
 
@@ -10454,35 +10568,19 @@ async function sendMsg(){
 // ============== COLLAB OFFICE MODULE ==============
 var collabActiveTab='schedule';
 
-function switchCollabTab(tab){  // Hide all non-mo collab panels when showing mo panels
-  if(tab.startsWith("mo-")){
-    var regularPanels=document.querySelectorAll("#collab-view .collab-panel");
-    for(var rp=0;rp<regularPanels.length;rp++)regularPanels[rp].classList.add("hidden");
-  } else {
-    // Hide mo panels when showing regular panels
-    var moPs=document.querySelectorAll("#collab-view .mo-panel");
-    for(var mp2=0;mp2<moPs.length;mp2++)moPs[mp2].classList.add("hidden");
-  }
-
-  // [INTEGRATED] Handle my-office panels (overview + docs only)
-  var moPanels=document.querySelectorAll("#collab-view .mo-panel");
-  for(var mp=0;mp<moPanels.length;mp++)moPanels[mp].classList.toggle("hidden",moPanels[mp].id!==tab);
-  // Init on demand
-  if(tab==="mo-overview"&&typeof renderMyOfficeOverview==="function")renderMyOfficeOverview();
-  else if(tab==="mo-docs"&&typeof renderMyOfficeDocs==="function")renderMyOfficeDocs("all");
-
-
+function switchCollabTab(tab){
+  console.log('[DEBUG switchCollabTab] called with tab:',tab);
   collabActiveTab=tab;
   var tabs=document.querySelectorAll('.collab-subtab');
-
+  console.log('[DEBUG switchCollabTab] sub-tabs found:',tabs.length);
   for(var i=0;i<tabs.length;i++)tabs[i].classList.toggle('active',tabs[i].getAttribute('data-ctab')===tab);
   var panels={schedule:'collab-schedule-panel',task:'collab-task-panel',approval:'collab-approval-panel',comment:'collab-comment-panel',followup:'collab-followup-panel',msg:'collab-msg-panel'};
   for(var k in panels){
     var el=document.getElementById(panels[k]);
-
+    console.log('[DEBUG switchCollabTab] panel',panels[k],'found:',!!el);
     if(el)el.classList.toggle('hidden',tab!==k)
   }
-
+  console.log('[DEBUG switchCollabTab] about to loadSchedules, tab==schedule:',tab==='schedule');
   if(tab==='schedule')loadSchedules();
   else if(tab==='task')loadTasks();
   else if(tab==='approval')loadApprovals();
@@ -10519,7 +10617,7 @@ function openScheduleForm(id){
   h+='<div class="form-row"><div class="form-group"><label><input type="checkbox" id="sch-allday" '+(s&&s.all_day?'checked':'')+'> 全天</label></div><div class="form-group"><label>颜色</label><input type="color" id="sch-color" value="'+(s?s.color||'#4F6EF7':'#4F6EF7')+'"></div></div>';
   h+='<div class="form-group"><label>地点</label><input id="sch-location" value="'+(s?escAttr(s.location||''):'')+'"></div>';
   h+='<div class="form-group"><label>描述</label><textarea id="sch-desc" rows="2">'+(s?escHtml(s.description||''):'')+'</textarea></div>';
-  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest(&quot;.modal-overlay&quot;).remove()">取消</button><button class="btn-save" onclick="saveSchedule(\''+(s?s.id:'')+'\')">保存</button></div></div></div>';
+  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest(".modal-overlay").remove()">取消</button><button class="btn-save" onclick="saveSchedule(\''+(s?s.id:'')+'\')">保存</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend',h);
 }
 
@@ -10573,7 +10671,7 @@ function openTaskForm(id){
   h+='<div class="form-group"><label>描述</label><textarea id="ta-desc" rows="2">'+(t?escHtml(t.description||''):'')+'</textarea></div>';
   h+='<div class="form-row"><div class="form-group"><label>优先级</label><select id="ta-priority"><option value="urgent"'+(t&&t.priority==='urgent'?' selected':'')+'>紧急</option><option value="high"'+(t&&t.priority==='high'?' selected':'')+'>高</option><option value="normal"'+(t&&t.priority==='normal'?' selected':'')+'>普通</option><option value="low"'+(t&&t.priority==='low'?' selected':'')+'>低</option></select></div><div class="form-group"><label>截止日期</label><input type="date" id="ta-due" value="'+(t&&t.due_date?t.due_date:'')+'"></div></div>';
   h+='<div class="form-row"><div class="form-group"><label>状态</label><select id="ta-status"><option value="todo"'+(t&&t.status==='todo'?' selected':'')+'>待办</option><option value="in_progress"'+(t&&t.status==='in_progress'?' selected':'')+'>进行中</option><option value="done"'+(t&&t.status==='done'?' selected':'')+'>已完成</option></select></div><div class="form-group"><label>分配给</label><select id="ta-assigned">'+(function(){var o='<option value="">自己</option>';for(var k=0;k<allUsers.length;k++){var u=allUsers[k];o+='<option value="'+u.user_id+'"'+(t&&t.assigned_to===u.user_id?' selected':'')+'>'+(u.display_name||u.email||u.user_id)+'</option>'}return o})()+'</select></div></div>';
-  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest(&quot;.modal-overlay&quot;).remove()">取消</button><button class="btn-save" onclick="saveTask(\''+(t?t.id:'')+'\')">保存</button></div></div></div>';
+  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest(".modal-overlay").remove()">取消</button><button class="btn-save" onclick="saveTask(\''+(t?t.id:'')+'\')">保存</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend',h);
 }
 
@@ -10683,7 +10781,7 @@ function openCommentForm(){
   for(var i=0;i<allClients.length;i++)h+='<option value="'+allClients[i].id+'">'+escHtml(allClients[i].name)+'</option>';
   h+='</select></div>';
   h+='<div class="form-group"><label>评论内容 *</label><textarea id="cm-content" rows="3" placeholder="输入评论..."></textarea></div>';
-  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest(&quot;.modal-overlay&quot;).remove()">取消</button><button class="btn-save" onclick="saveComment()">保存</button></div></div></div>';
+  h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest(".modal-overlay").remove()">取消</button><button class="btn-save" onclick="saveComment()">保存</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend',h);
 }
 
@@ -10782,13 +10880,13 @@ async function sendInvitationByEmail(){
   if(!/^[^@]+@[^@]+$/.test(email)){document.getElementById('invite-err').textContent='邮箱格式不正确';document.getElementById('invite-err').style.display='block';return}
   try{
     // Check if already invited
-    var check=await callAdmin('select','invitations',{query:'*',filters:[{col:'to_email',op:'eq',val:email},{col:'from_company_id',op:'eq',val:currentCompanyId},{col:'status',op:'eq',val:'pending'}]});
+    var check=await fetch(SUPABASE_URL+'/rest/v1/invitations?to_email=eq.'+encodeURIComponent(email)+'&from_company_id=eq.'+currentCompanyId+'&status=eq.pending',{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}});
     if(check.ok){var existing=await check.json();if(existing&&existing.length>0){document.getElementById('invite-err').textContent='该邮箱已有待处理的邀请';document.getElementById('invite-err').style.display='block';return}}
     // Check user exists
-    var userCheck=await callAdmin('select','profiles',{query:'user_id,company_id',filters:[{col:'email',op:'eq',val:email}]});
+    var userCheck=await fetch(SUPABASE_URL+'/rest/v1/profiles?email=eq.'+encodeURIComponent(email)+'&select=user_id,company_id',{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}});
     var userData=null;if(userCheck.ok){var ua=await userCheck.json();if(ua&&ua.length>0)userData=ua[0]}
     // Create invitation
-    var r=await callAdmin('insert','invitations',{payload:{from_company_id:currentCompanyId,to_email:email}});
+    var r=await fetch(SUPABASE_URL+'/rest/v1/invitations',{method:'POST',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({from_company_id:currentCompanyId,to_email:email})});
     if(!r.ok){var j=await r.json().catch(function(){});document.getElementById('invite-err').textContent='发送失败: '+(j&&j.message||r.statusText);document.getElementById('invite-err').style.display='block';return}
     closeInviteModal();
     var msg=userData&&userData.company_id?'该用户当前在职，但已发送邀请（需先离职才能接受）。':'邀请已发送，用户将在\'我的\'页面看到邀请。';
@@ -10802,7 +10900,7 @@ var myInvitations=[];
 async function loadMyInvitations(){
   if(!currentUser||!currentUser.email)return;
   try{
-    var r=await callAdmin('select','invitations',{query:'*',filters:[{col:'to_email',op:'eq',val:currentUser.email},{col:'status',op:'eq',val:'pending'},{col:'',op:'order',val:'created_at.desc'}]});
+    var r=await fetch(SUPABASE_URL+'/rest/v1/invitations?to_email=eq.'+encodeURIComponent(currentUser.email)+'&status=eq.pending&order=created_at.desc',{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}});
     if(r.ok){myInvitations=await r.json()}else{myInvitations=[]}
   }catch(e){myInvitations=[];console.error('loadMyInvitations',e)}
 }
@@ -10829,10 +10927,10 @@ async function acceptMyInvitation(invId){
     var inv=null;for(var i=0;i<myInvitations.length;i++){if(myInvitations[i].id===invId){inv=myInvitations[i];break}}
     if(!inv){showToast('邀请不存在');return}
     // Set company on profile
-    var r=await callAdmin('update','profiles',{payload:{company_id:inv.from_company_id,role:'user',status:'active',department_id:null},filters:[{col:'user_id',op:'eq',val:currentUser.id}],query:'*'});
+    var r=await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(currentUser.id),{method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({company_id:inv.from_company_id,role:'user',status:'active',department_id:null})});
     if(!r.ok){var j=await r.json().catch(function(){});showToast('入职失败: '+(j&&j.message||r.statusText));return}
     // Mark invitation accepted
-    await callAdmin('update','invitations',{payload:{status:'accepted',accepted_at:new Date().toISOString()},filters:[{col:'id',op:'eq',val:invId}],query:'*'});
+    await fetch(SUPABASE_URL+'/rest/v1/invitations?id=eq.'+invId,{method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json'},body:JSON.stringify({status:'accepted',accepted_at:new Date().toISOString()})});
     var data=await r.json();
     if(data&&data.length>0){currentCompanyId=data[0].company_id;currentUserRole=data[0].role||'user';isSuperAdmin=data[0].role==='super_admin'}
     myInvitations=[];renderMyInvitations();
@@ -10846,13 +10944,13 @@ async function acceptMyInvitation(invId){
     if(isSuperAdmin){document.getElementById('admin-tab-companies-manage').classList.remove('hidden');document.getElementById('admin-tab-companies').classList.remove('hidden');document.getElementById('admin-tab-freeagents').classList.remove('hidden')}
     pollNotifications();
     writeOpLog('login','auth',currentUser.id,currentUser.email,'通过邀请入职');
-    switchTab('analytics');
+    switchTab('home');
   }catch(e){showToast('入职失败: '+e.message)}
 }
 async function rejectMyInvitation(invId){
   if(!confirm('确认拒绝该邀请？'))return;
   try{
-    await callAdmin('update','invitations',{payload:{status:'rejected',rejected_at:new Date().toISOString()},filters:[{col:'id',op:'eq',val:invId}],query:'*'});
+    await fetch(SUPABASE_URL+'/rest/v1/invitations?id=eq.'+invId,{method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json'},body:JSON.stringify({status:'rejected',rejected_at:new Date().toISOString()})});
     myInvitations=myInvitations.filter(function(inv){return inv.id!==invId});
     renderMyInvitations();
   }catch(e){showToast('操作失败: '+e.message)}
@@ -10862,7 +10960,7 @@ async function rejectMyInvitation(invId){
 var allFreeAgents=[];
 async function loadFreeAgents(){
   try{
-    var r=await callAdmin('select','profiles',{query:'user_id,email,display_name,phone,status,invited_company_id,invited_at',filters:[{col:'status',op:'eq',val:'leave'},{col:'company_id',op:'is',val:null},{col:'',op:'order',val:'invited_at.asc.nullslast'}]});
+    var r=await fetch(SUPABASE_URL+'/rest/v1/profiles?select=user_id,email,display_name,phone,status,invited_company_id,invited_at&status=eq.leave&company_id=is.null&order=invited_at.asc.nullslast',{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}});
     if(r.ok)allFreeAgents=await r.json();
     else allFreeAgents=[];
   }catch(e){allFreeAgents=[];console.error('loadFreeAgents',e)}
@@ -10892,7 +10990,7 @@ function renderFreeAgents(){
 async function inviteFreeAgent(uid,email){
   if(!confirm('确认邀请 '+email+' 入职本公司？'))return;
   try{
-    var r=await callAdmin('update','profiles',{payload:{invited_company_id:currentCompanyId,invited_at:new Date().toISOString()},filters:[{col:'user_id',op:'eq',val:uid}],query:'*'});
+    var r=await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(uid),{method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({invited_company_id:currentCompanyId,invited_at:new Date().toISOString()})});
     if(!r.ok){var j=await r.json().catch(function(){});showToast('邀请失败: '+(j&&j.message||r.statusText));return}
     showToast('邀请已发送');
     await loadFreeAgents();renderFreeAgents();
@@ -10909,7 +11007,7 @@ function showInvitationDialog(companyId){
   document.getElementById('pending-screen').classList.add('hidden');
   document.getElementById('invitation-screen').classList.remove('hidden');
   // Load company name
-  callAdmin('select','companies',{query:'name',filters:[{col:'id',op:'eq',val:companyId}]}).then(function(d){
+  fetch(SUPABASE_URL+'/rest/v1/companies?id=eq.'+companyId+'&select=name',{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}}).then(function(r){return r.json()}).then(function(d){
     if(d&&d.length>0)document.getElementById('invitation-company-name').textContent='公司: '+d[0].name;
     else document.getElementById('invitation-company-name').textContent='公司ID: '+companyId;
   }).catch(function(){});
@@ -10917,9 +11015,9 @@ function showInvitationDialog(companyId){
 async function acceptInvitation(){
   if(!pendingInvitation||!currentUser)return;
   try{
-    var r=await callAdmin('update','profiles',{payload:{company_id:pendingInvitation,role:'user',status:'active',invited_company_id:null,invited_at:null},filters:[{col:'user_id',op:'eq',val:currentUser.id}],query:'*'});
-    if(r.error){document.getElementById('invitation-err').textContent='入职失败: '+r.error.message;document.getElementById('invitation-err').style.display='block';return}
-    var data=r.data;
+    var r=await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(currentUser.id),{method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({company_id:pendingInvitation,role:'user',status:'active',invited_company_id:null,invited_at:null})});
+    if(!r.ok){var j=await r.json().catch(function(){});document.getElementById('invitation-err').textContent='入职失败: '+(j&&j.message||r.statusText);document.getElementById('invitation-err').style.display='block';return}
+    var data=await r.json();
     if(data&&data.length>0){currentCompanyId=data[0].company_id;currentUserRole=data[0].role||'user';isSuperAdmin=data[0].role==='super_admin'}
     document.getElementById('invitation-screen').classList.add('hidden');
     await loadCustomTypes();
@@ -10930,13 +11028,13 @@ async function acceptInvitation(){
     if(isSuperAdmin){document.getElementById('admin-tab-companies-manage').classList.remove('hidden');document.getElementById('admin-tab-companies').classList.remove('hidden');}
     pollNotifications();
     writeOpLog('login','auth',currentUser.id,currentUser.email,'通过邀请入职');
-    switchTab('analytics');
+    switchTab('home');
   }catch(e){document.getElementById('invitation-err').textContent='入职失败: '+e.message;document.getElementById('invitation-err').style.display='block'}
 }
 async function rejectInvitation(){
   if(!currentUser)return;
   try{
-    await callAdmin('update','profiles',{payload:{invited_company_id:null,invited_at:null},filters:[{col:'user_id',op:'eq',val:currentUser.id}],query:'*'});
+    await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(currentUser.id),{method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json'},body:JSON.stringify({invited_company_id:null,invited_at:null})});
   }catch(e){}
   pendingInvitation=null;
   document.getElementById('invitation-screen').classList.add('hidden');
@@ -10961,7 +11059,7 @@ async function submitResignation(){
   var d=new Date(dateVal);var today=new Date();today.setHours(0,0,0,0);
   if(d<today){document.getElementById('resign-form-err').textContent='离职日期不能是过去';document.getElementById('resign-form-err').style.display='block';return}
   try{
-    var r=await callAdmin('update','profiles',{payload:{resignation_status:'pending',resignation_date:dateVal,resignation_reason:reason||null,resignation_requested_at:new Date().toISOString()},filters:[{col:'user_id',op:'eq',val:currentUser.id}],query:'*'});
+    var r=await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(currentUser.id),{method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({resignation_status:'pending',resignation_date:dateVal,resignation_reason:reason||null,resignation_requested_at:new Date().toISOString()})});
     if(!r.ok){var j=await r.json().catch(function(){});document.getElementById('resign-form-err').textContent='提交失败: '+(j&&j.message||r.statusText);document.getElementById('resign-form-err').style.display='block';return}
     closeResignForm();showToast('离职申请已提交，等待管理员审批');
     document.getElementById('my-resign-btn').style.display='none';
@@ -10970,7 +11068,7 @@ async function submitResignation(){
 var allResignations=[];
 async function loadResignations(){
   try{
-    var r=await callAdmin('select','profiles',{query:'user_id,email,display_name,phone,position,department_id,resignation_status,resignation_date,resignation_reason,resignation_requested_at',filters:[{col:'company_id',op:'eq',val:currentCompanyId},{col:'resignation_status',op:'not.is',val:null},{col:'',op:'order',val:'resignation_requested_at.desc'}]});
+    var r=await fetch(SUPABASE_URL+'/rest/v1/profiles?select=user_id,email,display_name,phone,position,department_id,resignation_status,resignation_date,resignation_reason,resignation_requested_at&company_id=eq.'+currentCompanyId+'&resignation_status=not.is.null&order=resignation_requested_at.desc',{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}});
     if(r.ok)allResignations=await r.json();
     else allResignations=[];
   }catch(e){allResignations=[];console.error('loadResignations',e)}
@@ -10999,7 +11097,7 @@ function renderResignations(){
 async function approveResignation(uid){
   if(!confirm('确认通过该离职申请？'))return;
   try{
-    var r=await callAdmin('update','profiles',{payload:{resignation_status:'approved'},filters:[{col:'user_id',op:'eq',val:uid}],query:'*'});
+    var r=await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(uid),{method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json'},body:JSON.stringify({resignation_status:'approved'})});
     if(!r.ok){var j=await r.json().catch(function(){});showToast('操作失败: '+(j&&j.message||r.statusText));return}
     showToast('已通过离职申请，到期后将自动解除');
     await loadResignations();renderResignations();
@@ -11008,7 +11106,7 @@ async function approveResignation(uid){
 async function rejectResignation(uid){
   if(!confirm('确认拒绝该离职申请？'))return;
   try{
-    var r=await callAdmin('update','profiles',{payload:{resignation_status:'rejected'},filters:[{col:'user_id',op:'eq',val:uid}],query:'*'});
+    var r=await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(uid),{method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json'},body:JSON.stringify({resignation_status:'rejected'})});
     if(!r.ok){var j=await r.json().catch(function(){});showToast('操作失败: '+(j&&j.message||r.statusText));return}
     showToast('已拒绝离职申请');
     await loadResignations();renderResignations();
@@ -11062,9 +11160,9 @@ async function saveEmployee(){
   // Update via SERVICE_KEY
   var body={display_name:name,email:email,role:role,dept_id:deptId,status:status,data_scope:dataScope};
   if(empEditId){
-    var resp=await callAdmin('update','profiles',{payload:body,filters:[{col:'user_id',op:'eq',val:empEditId}],query:'*'});
+    var resp=await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(empEditId),{method:'PATCH',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(body)});
     if(resp.ok){
-      if(status==='inactive'){await callAdmin('rpc','reassign_clients_on_deactivate',{payload:{p_user_id:empEditId,p_company_id:currentCompanyId,p_reassign_to:reassignTo||null}});showToast('员工已更新，客户已交接');}
+      if(status==='inactive'){await fetch(SUPABASE_URL+'/rest/v1/rpc/reassign_clients_on_deactivate',{method:'POST',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json'},body:JSON.stringify({p_user_id:empEditId,p_company_id:currentCompanyId,p_reassign_to:reassignTo||null})});showToast('员工已更新，客户已交接');}
       else showToast('员工已更新');
       closeEmployeeForm();await loadAdminData();renderAdminEmployees();
     }else{showToast('更新失败')}
@@ -11077,12 +11175,12 @@ async function toggleEmpStatus(uid,newStatus){
   if(newStatus==='inactive'){
     var reassign=prompt('输入交接员工ID（留空回收公共池）:','');
     var body2={status:newStatus,data_scope:'own',company_id:null,department_id:null};
-    await callAdmin('update','profiles',{payload:body2,filters:[{col:'user_id',op:'eq',val:uid}],query:'*'});
-    if(reassign)await callAdmin('rpc','reassign_clients_on_deactivate',{payload:{p_user_id:empEditId,p_company_id:currentCompanyId,p_reassign_to:reassignTo||null}});
-    else await callAdmin('rpc','reassign_clients_on_deactivate',{payload:{p_user_id:empEditId,p_company_id:currentCompanyId,p_reassign_to:reassignTo||null}});
+    await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(uid),{method:'PATCH',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(body2)});
+    if(reassign)await fetch(SUPABASE_URL+'/rest/v1/rpc/reassign_clients_on_deactivate',{method:'POST',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json'},body:JSON.stringify({p_user_id:uid,p_company_id:currentCompanyId,p_reassign_to:reassign})});
+    else await fetch(SUPABASE_URL+'/rest/v1/rpc/reassign_clients_on_deactivate',{method:'POST',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json'},body:JSON.stringify({p_user_id:uid,p_company_id:currentCompanyId,p_reassign_to:null})});
     showToast('员工已设为离职，客户已回收');
   }else{
-    await callAdmin('update','profiles',{payload:{status:newStatus},filters:[{col:'user_id',op:'eq',val:uid}],query:'*'});
+    await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(uid),{method:'PATCH',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({status:newStatus})});
     showToast('员工已设为在职');
   }
   await loadAdminData();renderAdminEmployees();
@@ -11092,7 +11190,7 @@ async function toggleEmpStatus(uid,newStatus){
 var allOpLogs=[];var logsError=null;
 async function loadOperationLogs(){
   try{
-    var resp=await callAdmin('select','operation_logs',{query:'*',filters:[{col:'company_id',op:'eq',val:currentCompanyId},{col:'',op:'order',val:'created_at.desc'},{col:'',op:'limit',val:500}]});
+    var resp=await fetch(SUPABASE_URL+'/rest/v1/operation_logs?company_id=eq.'+currentCompanyId+'&order=created_at.desc&limit=500',{headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY}});
     if(resp.ok){allOpLogs=await resp.json();logsError=null;}
     else{allOpLogs=[];var t=await resp.text();logsError='HTTP '+resp.status+(' '+t.substring(0,120));console.error('loadOperationLogs:',resp.status,t.substring(0,200));}
   }catch(e){allOpLogs=[];logsError=e.message;console.error('loadOperationLogs:',e);}
@@ -11136,7 +11234,7 @@ async function exportOperationLogs(){
 async function writeOpLog(action,entityType,entityId,entityName,detail){
   try{
     var body={p_company_id:currentCompanyId,p_user_id:currentUser?currentUser.id:null,p_user_name:(currentUser&&currentUser.email)||'',p_action:action,p_entity_type:entityType,p_entity_id:String(entityId||''),p_entity_name:entityName||'',p_detail:detail?JSON.stringify(detail):null};
-    await callAdmin('rpc','write_op_log',{payload:body});
+    await fetch(SUPABASE_URL+'/rest/v1/rpc/write_op_log',{method:'POST',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json'},body:JSON.stringify(body)});
   }catch(e){}
 }
 
@@ -11160,7 +11258,7 @@ var allCustomFields=[],fieldEditId=null;
 async function renderCustomFields(){
   var el=document.getElementById('cfg-field-list');if(!el)return;
   var et=document.getElementById('cfg-field-entity').value;
-  var resp=await callAdmin('select','custom_field_defs',{query:'*',filters:[{col:'company_id',op:'eq',val:currentCompanyId},{col:'entity_type',op:'eq',val:et},{col:'',op:'order',val:'sort_order.asc'}]});
+  var resp=await fetch(SUPABASE_URL+'/rest/v1/custom_field_defs?company_id=eq.'+currentCompanyId+'&entity_type=eq.'+et+'&order=sort_order.asc',{headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY}});
   if(resp.ok)allCustomFields=await resp.json();else allCustomFields=[];
   var typeNames={text:'文本',number:'数字',date:'日期',select:'下拉',textarea:'多行文本'};
   var h='<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="border-bottom:2px solid var(--border)"><th style="padding:10px 8px;text-align:left">标识</th><th style="padding:10px 8px;text-align:left">显示名称</th><th style="padding:10px 8px;text-align:left">类型</th><th style="padding:10px 8px;text-align:left">必填</th><th style="padding:10px 8px;text-align:center">操作</th></tr></thead><tbody>';
@@ -11207,17 +11305,17 @@ async function saveField(){
   var body={company_id:currentCompanyId,entity_type:entity,field_name:name,field_label:label,field_type:type,options:opts,required:required,updated_at:new Date().toISOString()};
   var resp;
   if(fieldEditId){
-    resp=await callAdmin('update','custom_field_defs',{payload:body,filters:[{col:'id',op:'eq',val:fieldEditId}],query:'*'});
+    resp=await fetch(SUPABASE_URL+'/rest/v1/custom_field_defs?id=eq.'+fieldEditId,{method:'PATCH',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(body)});
   }else{
     body.sort_order=allCustomFields.length;body.created_at=new Date().toISOString();
-    resp=await callAdmin('insert','custom_field_defs',{payload:body});
+    resp=await fetch(SUPABASE_URL+'/rest/v1/custom_field_defs',{method:'POST',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(body)});
   }
   if(resp.ok){showToast('字段已保存');closeFieldForm();renderCustomFields();await writeOpLog(fieldEditId?'update':'create','custom_field',fieldEditId||'',label);}
   else{showToast('保存失败')}
 }
 async function deleteField(id){
   if(!confirm('确认删除此字段？'))return;
-  var resp=await callAdmin('delete','custom_field_defs',{filters:[{col:'id',op:'eq',val:id}]});
+  var resp=await fetch(SUPABASE_URL+'/rest/v1/custom_field_defs?id=eq.'+id,{method:'DELETE',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY}});
   if(resp.ok){showToast('已删除');renderCustomFields();}else{showToast('删除失败')}
 }
 
@@ -11225,7 +11323,7 @@ async function deleteField(id){
 var allCustomForms=[];
 async function renderCustomForms(){
   var el=document.getElementById('cfg-form-list');if(!el)return;
-  var resp=await callAdmin('select','custom_forms',{query:'*',filters:[{col:'company_id',op:'eq',val:currentCompanyId},{col:'',op:'order',val:'created_at.desc'}]});
+  var resp=await fetch(SUPABASE_URL+'/rest/v1/custom_forms?company_id=eq.'+currentCompanyId+'&order=created_at.desc',{headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY}});
   if(resp.ok)allCustomForms=await resp.json();else allCustomForms=[];
   var h='';
   for(var i=0;i<allCustomForms.length;i++){
@@ -11239,15 +11337,15 @@ function openFormBuilder(){
   var name=prompt('请输入表单名称:');if(!name)return;
   var et=prompt('实体类型(client/order/lead):','client');if(!et)return;
   // Simple: create with empty fields
-  callAdmin('insert','custom_forms',{payload:{company_id:currentCompanyId,form_name:name,entity_type:et,fields:[],created_at:new Date().toISOString()}}).then(function(r){if(r.data){showToast('Form created');renderCustomForms();}}).catch(function(){showToast('Create failed');});
+  fetch(SUPABASE_URL+'/rest/v1/custom_forms',{method:'POST',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({company_id:currentCompanyId,form_name:name,entity_type:et,fields:[],created_at:new Date().toISOString()})}).then(function(r){if(r.ok){showToast('表单已创建');renderCustomForms();}}).catch(function(){showToast('创建失败')});
 }
-async function deleteForm(id){if(!confirm('确认删除？'))return;await callAdmin('delete','custom_forms',{filters:[{col:'id',op:'eq',val:id}]});renderCustomForms();showToast('已删除');}
+async function deleteForm(id){if(!confirm('确认删除？'))return;await fetch(SUPABASE_URL+'/rest/v1/custom_forms?id=eq.'+id,{method:'DELETE',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY}});renderCustomForms();showToast('已删除');}
 
 /* Sales Stages */
 var allSalesStages=[],stageEditId=null;
 async function renderSalesStages(){
   var el=document.getElementById('cfg-stage-list');if(!el)return;
-  var resp=await callAdmin('select','sales_stages_def',{query:'*',filters:[{col:'company_id',op:'eq',val:currentCompanyId},{col:'',op:'order',val:'sort_order.asc'}]});
+  var resp=await fetch(SUPABASE_URL+'/rest/v1/sales_stages_def?company_id=eq.'+currentCompanyId+'&order=sort_order.asc',{headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY}});
   if(resp.ok)allSalesStages=await resp.json();else allSalesStages=[];
   var h='';
   for(var i=0;i<allSalesStages.length;i++){
@@ -11279,20 +11377,20 @@ async function saveStage(){
   var body={company_id:currentCompanyId,stage_name:name,stage_key:key,color:color,probability:prob,updated_at:new Date().toISOString()};
   var resp;
   if(stageEditId){
-    resp=await callAdmin('update','sales_stages_def',{payload:body,filters:[{col:'id',op:'eq',val:stageEditId}],query:'*'});
+    resp=await fetch(SUPABASE_URL+'/rest/v1/sales_stages_def?id=eq.'+stageEditId,{method:'PATCH',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(body)});
   }else{
     body.sort_order=allSalesStages.length+1;body.created_at=new Date().toISOString();
-    resp=await callAdmin('insert','sales_stages_def',{payload:body});
+    resp=await fetch(SUPABASE_URL+'/rest/v1/sales_stages_def',{method:'POST',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(body)});
   }
   if(resp.ok){showToast('阶段已保存');closeStageForm();renderSalesStages();}else{showToast('保存失败')}
 }
-async function deleteStage(id){if(!confirm('确认删除？'))return;await callAdmin('delete','sales_stages_def',{filters:[{col:'id',op:'eq',val:id}]});renderSalesStages();showToast('已删除');}
+async function deleteStage(id){if(!confirm('确认删除？'))return;await fetch(SUPABASE_URL+'/rest/v1/sales_stages_def?id=eq.'+id,{method:'DELETE',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY}});renderSalesStages();showToast('已删除');}
 
 /* Custom Tags */
 var allCustomTags=[],tagEditId=null;
 async function renderCustomTags(){
   var el=document.getElementById('cfg-tag-list');if(!el)return;
-  var resp=await callAdmin('select','custom_tags',{query:'*',filters:[{col:'company_id',op:'eq',val:currentCompanyId},{col:'',op:'order',val:'sort_order.asc'}]});
+  var resp=await fetch(SUPABASE_URL+'/rest/v1/custom_tags?company_id=eq.'+currentCompanyId+'&order=sort_order.asc',{headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY}});
   if(resp.ok)allCustomTags=await resp.json();else allCustomTags=[];
   var h='';
   for(var i=0;i<allCustomTags.length;i++){
@@ -11320,20 +11418,20 @@ async function saveTag(){
   var body={company_id:currentCompanyId,tag_name:name,tag_color:color,entity_type:'client',updated_at:new Date().toISOString()};
   var resp;
   if(tagEditId){
-    resp=await callAdmin('update','custom_tags',{payload:body,filters:[{col:'id',op:'eq',val:tagEditId}],query:'*'});
+    resp=await fetch(SUPABASE_URL+'/rest/v1/custom_tags?id=eq.'+tagEditId,{method:'PATCH',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(body)});
   }else{
     body.sort_order=allCustomTags.length;body.created_at=new Date().toISOString();
-    resp=await callAdmin('insert','custom_tags',{payload:body});
+    resp=await fetch(SUPABASE_URL+'/rest/v1/custom_tags',{method:'POST',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(body)});
   }
   if(resp.ok){showToast('标签已保存');closeTagForm();renderCustomTags();}else{showToast('保存失败')}
 }
-async function deleteTag(id){if(!confirm('确认删除？'))return;await callAdmin('delete','custom_tags',{filters:[{col:'id',op:'eq',val:id}]});renderCustomTags();}
+async function deleteTag(id){if(!confirm('确认删除？'))return;await fetch(SUPABASE_URL+'/rest/v1/custom_tags?id=eq.'+id,{method:'DELETE',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY}});renderCustomTags();}
 
 /* Numbering Rules */
 var allNumRules=[],numEditId=null;
 async function renderNumberingRules(){
   var el=document.getElementById('cfg-number-list');if(!el)return;
-  var resp=await callAdmin('select','numbering_rules',{query:'*',filters:[{col:'company_id',op:'eq',val:currentCompanyId},{col:'',op:'order',val:'created_at.desc'}]});
+  var resp=await fetch(SUPABASE_URL+'/rest/v1/numbering_rules?company_id=eq.'+currentCompanyId+'&order=created_at.desc',{headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY}});
   if(resp.ok)allNumRules=await resp.json();else allNumRules=[];
   var entityNames={client:'客户',order:'订单',quotation:'报价',contract:'合同'};
   var h='';
@@ -11366,14 +11464,14 @@ async function saveNumberRule(){
   var body={company_id:currentCompanyId,entity_type:entity,prefix:prefix,date_format:datefmt,seq_length:seqlength,updated_at:new Date().toISOString()};
   var resp;
   if(numEditId){
-    resp=await callAdmin('update','numbering_rules',{payload:body,filters:[{col:'id',op:'eq',val:numEditId}],query:'*'});
+    resp=await fetch(SUPABASE_URL+'/rest/v1/numbering_rules?id=eq.'+numEditId,{method:'PATCH',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(body)});
   }else{
     body.current_seq=1;body.created_at=new Date().toISOString();
-    resp=await callAdmin('insert','numbering_rules',{payload:body});
+    resp=await fetch(SUPABASE_URL+'/rest/v1/numbering_rules',{method:'POST',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(body)});
   }
   if(resp.ok){showToast('规则已保存');closeNumberForm();renderNumberingRules();}else{showToast('保存失败')}
 }
-async function deleteNumRule(id){if(!confirm('确认删除？'))return;await callAdmin('delete','numbering_rules',{filters:[{col:'id',op:'eq',val:id}]});renderNumberingRules();}
+async function deleteNumRule(id){if(!confirm('确认删除？'))return;await fetch(SUPABASE_URL+'/rest/v1/numbering_rules?id=eq.'+id,{method:'DELETE',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY}});renderNumberingRules();}
 
 /* ===== DATA SECURITY ===== */
 async function renderSecurityPanel(){
@@ -11398,7 +11496,7 @@ function toggleDataMasking(){
   showToast('脱敏设置已保存');
 }
 async function toggleRoleExport(roleName,roleId,checked){
-  var resp=await callAdmin('update','roles',{payload:{func_perms:{allow_export:checked}},filters:[{col:'id',op:'eq',val:roleId}],query:'*'});
+  var resp=await fetch(SUPABASE_URL+'/rest/v1/roles?id=eq.'+roleId,{method:'PATCH',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({func_perms:{allow_export:checked}})});
   if(resp.ok)showToast('导出权限已更新');else showToast('更新失败');
 }
 async function doBackup(){
@@ -11411,7 +11509,7 @@ async function doBackup(){
   var allData={};var totalCount=0;
   for(var i=0;i<types.length;i++){
     var t=types[i];
-    var resp=await callAdmin('select',(t==='products'?'products':t),{query:'*',filters:[{col:'company_id',op:'eq',val:currentCompanyId},{col:'',op:'limit',val:'10000'}]});
+    var resp=await fetch(SUPABASE_URL+'/rest/v1/'+(t==='products'?'products':t)+'?company_id=eq.'+currentCompanyId+'&limit=10000',{headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY}});
     if(resp.ok){var data=await resp.json();allData[t]=data;totalCount+=data.length;}
   }
   var json=JSON.stringify(allData,null,2);
@@ -11419,14 +11517,14 @@ async function doBackup(){
   var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='backup_'+currentCompanyId+'_'+new Date().toISOString().slice(0,10)+'.json';a.click();
   // Log backup
   try{
-    await callAdmin('insert','backup_logs',{payload:{company_id:currentCompanyId,user_id:currentUser?currentUser.id:null,backup_type:'manual',entity_types:types,record_count:totalCount,file_name:'backup_'+currentCompanyId+'.json',file_size:json.length,created_at:new Date().toISOString()}});
+    await fetch(SUPABASE_URL+'/rest/v1/backup_logs',{method:'POST',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json'},body:JSON.stringify({company_id:currentCompanyId,user_id:currentUser?currentUser.id:null,backup_type:'manual',entity_types:types,record_count:totalCount,file_name:'backup_'+currentCompanyId+'.json',file_size:json.length,created_at:new Date().toISOString()})});
   }catch(e){}
   showToast('备份完成！共'+totalCount+'条记录');
   await writeOpLog('export','backup','','数据备份',{types:types,count:totalCount});
 }
 async function loadBackupHistory(){
   var el=document.getElementById('bk-history');if(!el)return;
-  var resp=await callAdmin('select','backup_logs',{query:'*',filters:[{col:'company_id',op:'eq',val:currentCompanyId},{col:'',op:'order',val:'created_at.desc'},{col:'',op:'limit',val:20}]});
+  var resp=await fetch(SUPABASE_URL+'/rest/v1/backup_logs?company_id=eq.'+currentCompanyId+'&order=created_at.desc&limit=20',{headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY}});
   if(!resp.ok){el.innerHTML='加载失败';return}
   var logs=await resp.json();
   if(logs.length===0){el.innerHTML='暂无备份记录';return}
@@ -11447,7 +11545,7 @@ async function renderWorkflowTemplates(){
   try{
     var url=SUPABASE_URL+'/rest/v1/workflow_templates?order=id';
     console.log('renderWorkflowTemplates: fetching',url);
-    var r=await callAdmin('select','workflow_templates',{query:'*',filters:[{col:'',op:'order',val:'id'}]});
+    var r=await fetch(url,{headers:{apikey:SUPABASE_SERVICE_KEY,Authorization:'Bearer '+SUPABASE_SERVICE_KEY}});
     if(!r.ok){console.log('renderWorkflowTemplates: fetch failed',r.status);list.innerHTML='<p style="color:var(--text2)">加载失败 (HTTP '+r.status+')</p>';return}
     var data=await r.json();console.log('renderWorkflowTemplates: got',data.length,'templates');
     allTemplates=data;
@@ -11648,19 +11746,9 @@ function wfSelectStep(idx){
   wfRenderAll();
   wfShowProps(idx);
 }
-function wfRefreshStaffDD(idx){var dd=document.getElementById('wf-staff-dd-'+idx);if(!dd)return;var st=wfEditorSteps[idx];var asg=st.assignee||{enabled:false,type:'dept',value:'',staffId:''};var deptId=asg.value||'';var staffId=asg.staffId||'';dd.innerHTML='<option value="">鏃?/option>';if(deptId&&allUsers){for(var ui=0;ui<allUsers.length;ui++){if(String(allUsers[ui].department_id)===String(deptId)){dd.innerHTML+='<option value="'+escHtml(allUsers[ui].user_id)+'"'+(staffId===allUsers[ui].user_id?' selected':'')+'>'+escHtml(allUsers[ui].display_name||allUsers[ui].email)+'</option>';}}}}
-
 function wfShowProps(idx){
   var panel=document.getElementById('wf-props-panel');
   if(!panel)return;
-  // 后台加载部门/角色（fire-and-forget），加载完自动重渲染
-  if(!allDepartments||!allDepartments.length){
-    sb.from('departments').select('*').eq('company_id',currentCompanyId).order('name').then(function(d){if(!d.error){allDepartments=d.data||[];wfShowProps(idx);}});
-  }
-  if(!allRoles||!allRoles.length){
-    sb.from('roles').select('*').eq('company_id',currentCompanyId).order('name').then(function(d){if(!d.error){allRoles=d.data||[];wfShowProps(idx);}});
-  }
-
   if(idx<0||idx>=wfEditorSteps.length){
     panel.innerHTML='<h4>节点属性</h4><p style="font-size:12px;color:var(--text2)">点击画布中的节点进行编辑</p>';
     return;
@@ -11703,20 +11791,16 @@ function wfShowProps(idx){
   h+='<label>驳回行为</label><select onchange="wfSetApproval('+idx+',\'onReject\',this.value)"><option value="stay"'+(appr.onReject==='stay'?' selected':'')+'>停留在当前步骤</option></select>';
   h+='</div></div>';
   // ── 负责人设置 ──
-  var asg=s.assignee||{enabled:false,type:'dept',value:''};
+  var asg=s.assignee||{enabled:false,type:'role',value:''};
   h+='<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">';
   h+='<div onclick="var n=this.nextElementSibling;n.style.display=n.style.display===\'none\'?\'block\':\'none\'" style="cursor:pointer;font-weight:600;font-size:12px;padding:4px 0;display:flex;align-items:center;gap:4px">👤 负责人设置 <span style="font-size:10px;color:var(--text3)">'+(asg.enabled?'已启用':'未启用')+'</span></div>';
   h+='<div style="padding:6px 0;display:none">';
   h+='<label style="display:flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" '+(asg.enabled?'checked':'')+' onchange="wfSetAssignee('+idx+',\'enabled\',this.checked)"> 指定负责人</label>';
-  h+='<label>授权部门</label><select onchange="wfSetAssignee('+idx+',\'value\',this.value)"><option value="">无</option>';
-  for(var di=0;di<(allDepartments||[]).length;di++){h+='<option value="'+escHtml(allDepartments[di].id)+'"'+(asg.value===allDepartments[di].id?' selected':'')+'>'+escHtml(allDepartments[di].name)+'</option>';}
-  h+='</select>';
-  h+='<label>鎸囧畾鍛樺伐</label><select id="wf-staff-dd-'+idx+'" onchange="wfSetAssignee('+idx+',\'staffId\',this.value)"><option value="">--</option>';
-  var selDept=asg.value||'';var selStaff=asg.staffId||'';
-  if(selDept&&allUsers){for(var ui=0;ui<allUsers.length;ui++){if(String(allUsers[ui].department_id)===String(selDept)){h+='<option value="'+escHtml(allUsers[ui].user_id)+''+(selStaff===allUsers[ui].user_id?' selected':'')+'>'+escHtml(allUsers[ui].display_name||allUsers[ui].email)+'</option>';}}}
+  h+='<label>负责人角色</label><select onchange="wfSetAssignee('+idx+',\'value\',this.value)"><option value="">无</option>';
+  for(var ri2=0;ri2<(allRoles||[]).length;ri2++){h+='<option value="'+escHtml(allRoles[ri2].name)+'"'+(asg.value===allRoles[ri2].name?' selected':'')+'>'+escHtml(allRoles[ri2].name)+'</option>';}
   h+='</select>';
   h+='</div></div>';
-  // 编辑权限设置 ──
+  // ── 编辑权限设置 ──
   var perm=s.permissions||{editFields:[],editableBy:['admin']};
   h+='<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">';
   h+='<div onclick="var n=this.nextElementSibling;n.style.display=n.style.display===\'none\'?\'block\':\'none\'" style="cursor:pointer;font-weight:600;font-size:12px;padding:4px 0">✏️ 编辑权限</div>';
@@ -11739,7 +11823,7 @@ function wfSetApproval(idx,key,val){
 }
 function wfSetAssignee(idx,key,val){
   if(idx<0||idx>=wfEditorSteps.length)return;
-  if(!wfEditorSteps[idx].assignee)wfEditorSteps[idx].assignee={enabled:false,type:'dept',value:''};
+  if(!wfEditorSteps[idx].assignee)wfEditorSteps[idx].assignee={enabled:false,type:'role',value:''};
   wfEditorSteps[idx].assignee[key]=val;
   wfShowProps(idx);
 }
@@ -11866,7 +11950,11 @@ async function saveWtVisual(){
     }
     var url=SUPABASE_URL+'/rest/v1/workflow_templates'+(wtEditId?'?id=eq.'+wtEditId:'');
     var method=wtEditId?'PATCH':'POST';
-    if(wtEditId){var r=await callAdmin('update','workflow_templates',{payload:body,filters:[{col:'id',op:'eq',val:wtEditId}],query:'*'});}else{var r=await callAdmin('insert','workflow_templates',{payload:body});};
+    var r=await fetch(url,{
+      method:method,
+      headers:{apikey:SUPABASE_SERVICE_KEY,Authorization:'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},
+      body:JSON.stringify(body)
+    });
     if(!r.ok){var t=await r.text();alert('保存失败: '+t);btn.disabled=false;btn.textContent='保存';return}
     document.getElementById('wt-modal-overlay').remove();
     await renderWorkflowTemplates();
@@ -11882,7 +11970,7 @@ async function deleteWt(id){
   if(!confirm('确定删除模板 "'+t.name+'"？'))return;
   try{
     var url=SUPABASE_URL+'/rest/v1/workflow_templates?id=eq.'+id;
-    var r=await callAdmin('delete','workflow_templates',{filters:[{col:'id',op:'eq',val:id}]});
+    var r=await fetch(url,{method:'DELETE',headers:{apikey:SUPABASE_SERVICE_KEY,Authorization:'Bearer '+SUPABASE_SERVICE_KEY}});
     if(!r.ok){var e=await r.text();alert('删除失败: '+e);return}
     await renderWorkflowTemplates();
     showToast('模板已删除');
@@ -11990,7 +12078,7 @@ function initWorkflow(templateId){
 initWorkflow();
 
 async function loadTemplates(){
-  try{var {data}=await sb.from('workflow_templates').select('*');if(data)allTemplates=data;}
+  try{if(isSuperAdmin){var {data}=await sbAdmin.from('workflow_templates').select('*');if(data)allTemplates=data;}else{var {data}=await sb.from('workflow_templates').select('*');if(data)allTemplates=data;}}
   catch(e){console.error('loadTemplates',e)}
 }
 function getTemplateSteps(templateId){
@@ -12310,7 +12398,7 @@ function wfActivateStep(seq){
   var step=WFLookup[seq];
   if(step&&step.assignee&&step.assignee.enabled&&step.assignee.value){
     // Find a user with that role
-    var assignee=wfFindUserByDept(step.assignee.value);
+    var assignee=wfFindUserByRole(step.assignee.value);
     if(assignee){
       curWorkflowState[seq].assignedTo=assignee.user_id;
       console.log('[wfActivateStep] assigned step',seq,'to',assignee.display_name,'(role:',step.assignee.value,')');
@@ -12338,11 +12426,17 @@ function wfCanEditStep(seq){
   if(editableBy.indexOf('approver')>=0&&isApprover)return true;
   return false;
 }
-function wfFindUserByDept(deptId){
-  if(!allUsers||!allUsers.length||!deptId)return null;
+function wfFindUserByRole(roleName){
+  if(!allUsers||!allUsers.length)return null;
   for(var i=0;i<allUsers.length;i++){
     var u=allUsers[i];
-    if(u.department_id===deptId)return u;
+    if(u.role===roleName)return u;
+    // Also check role_id mapped name
+    if(u.role_id&&allRoles){
+      for(var k=0;k<allRoles.length;k++){
+        if(allRoles[k].id===u.role_id&&allRoles[k].name===roleName)return u;
+      }
+    }
   }
   return null;
 }
@@ -13122,11 +13216,11 @@ async function loadProjects(){
   try {
     list.innerHTML='<div style="text-align:center;padding:40px;color:var(--text2)">查询中...</div>';
     var {data,error}=await sb.from('projects').select('*').eq('company_id',currentCompanyId).order('created_at',{ascending:false});
-    if(error){list.innerHTML='<div style="text-align:center;padding:40px;color:#e74c3c">加载失败: '+h(error.message)+'。请确认 projects 表是否已在 Supabase 中创建（执行 project_management.sql）</div>';return}
+    if(error){list.innerHTML='<div style="text-align:center;padding:40px;color:#e74c3c">加载失败: '+error.message+'。请确认 projects 表是否已在 Supabase 中创建（执行 project_management.sql）</div>';return}
     allProjects=data||[];
     renderProjects();
   } catch(e) {
-    list.innerHTML='<div style="text-align:center;padding:40px;color:#e74c3c">加载异常: '+h(e.message)+'</div>';
+    list.innerHTML='<div style="text-align:center;padding:40px;color:#e74c3c">加载异常: '+e.message+'</div>';
     console.error(e);
   }
 }
@@ -13146,7 +13240,7 @@ function renderProjects(){
     var wfDone=0,wfTotal=46;
     try{var wf=JSON.parse(p.workflow||'{}');for(var k in wf){if(wf[k]&&wf[k].done)wfDone++}}catch(e){}
     var wfPct=wfTotal>0?Math.round(wfDone/wfTotal*100):0;
-    s+='<div class="project-card" onclick="renderProjectDetail(\''+p.id+'\')">';
+    s+='<div class="project-card" onclick="openProjectWorkbench(\''+p.id+'\',\''+h(p.name)+'\')">';
     s+='<div class="project-card-header"><span class="project-card-name">'+h(p.name)+'</span><span class="project-card-status status-'+p.status+'">'+(statusMap[p.status]||p.status)+'</span></div>';
     s+='<div class="project-card-meta"><span>&#127970; '+h(cn)+'</span><span>&#128176; '+(p.budget?formatMoney(p.budget):'-')+'</span>';
     if(p.start_date)s+='<span>&#128197; '+p.start_date+'</span>';
@@ -13167,7 +13261,7 @@ async function loadStages(){
   if(!list)return;
   try{
     var {data,error}=await sb.from('project_stages').select('*').eq('project_id',curProjectId).order('sort',{ascending:true});
-    if(error){list.innerHTML='<div style="padding:20px;color:#e74c3c">'+h(error.message)+'</div>';return}
+    if(error){list.innerHTML='<div style="padding:20px;color:#e74c3c">'+error.message+'</div>';return}
     allStages=data||[];
     renderStages(list);
   }catch(e){console.error(e)}
@@ -13191,7 +13285,7 @@ async function loadBiddings(){
   if(!list)return;
   try{
     var {data,error}=await sb.from('project_biddings').select('*').eq('project_id',curProjectId).order('created_at',{ascending:false});
-    if(error){list.innerHTML='<div style="padding:20px;color:#e74c3c">'+h(error.message)+'</div>';return}
+    if(error){list.innerHTML='<div style="padding:20px;color:#e74c3c">'+error.message+'</div>';return}
     allBiddings=data||[];
     renderBiddingListTo('wb-bidding-list');
     if(list)renderBiddingListTo('bidding-list');
@@ -13204,7 +13298,7 @@ async function loadProjectContracts(){
   if(!list)return;
   try{
     var {data,error}=await sb.from('project_biddings').select('*').eq('project_id',curProjectId).not('contract_title','is',null).order('created_at',{ascending:false});
-    if(error){list.innerHTML='<div style="padding:20px;color:#e74c3c">'+h(error.message)+'</div>';return}
+    if(error){list.innerHTML='<div style="padding:20px;color:#e74c3c">'+error.message+'</div>';return}
     // Store contracts in allBiddings for now (shared table)
     allBiddings=data||[];
     renderContractListTo('wb-contract-list');
@@ -13218,7 +13312,7 @@ async function loadDeliveries(){
   if(!list)return;
   try{
     var {data,error}=await sb.from('project_deliveries').select('*').eq('project_id',curProjectId).order('created_at',{ascending:false});
-    if(error){list.innerHTML='<div style="padding:20px;color:#e74c3c">'+h(error.message)+'</div>';return}
+    if(error){list.innerHTML='<div style="padding:20px;color:#e74c3c">'+error.message+'</div>';return}
     allDeliveries=data||[];
     renderDeliveryListTo('wb-delivery-list');
     if(list)renderDeliveryListTo('delivery-list');
@@ -13231,7 +13325,7 @@ async function loadPayments(){
   if(!list)return;
   try{
     var {data,error}=await sb.from('project_payments').select('*').eq('project_id',curProjectId).order('created_at',{ascending:false});
-    if(error){list.innerHTML='<div style="padding:20px;color:#e74c3c">'+h(error.message)+'</div>';return}
+    if(error){list.innerHTML='<div style="padding:20px;color:#e74c3c">'+error.message+'</div>';return}
     allPayments=data||[];
     renderPaymentListTo('wb-payment-list');
     if(list)renderPaymentListTo('payment-list');
@@ -13705,12 +13799,11 @@ async function saveProject(){
     var {error}=await sb.from('projects').update(proj).eq('id',oppEditId);
     if(error){showToast('更新失败: '+error.message);return}
   }
-  var _leadId = oppLeadId;
   closeOppForm();
   await loadProjects();
   // If created from lead, mark lead as converted
-  if(_leadId&&!oppEditId){
-    try{await sb.from('lead_pool').update({opportunity_id:proj.bus_id,status:'converted'}).eq('id',_leadId);console.log('[saveProject] lead',_leadId,'converted')}catch(e){console.error('[saveProject] lead convert error',e)}
+  if(oppLeadId&&!oppEditId){
+    try{await sb.from('lead_pool').update({opportunity_id:proj.bus_id,status:'converted'}).eq('id',oppLeadId);console.log('[saveProject] lead',oppLeadId,'converted')}catch(e){console.error('[saveProject] lead convert error',e)}
   }
   await loadLeads();
   showToast(oppEditId?'已更新':'已创建商机');
@@ -13761,10 +13854,23 @@ async function deletePayment(id){if(confirm('确定删除？')){var {error}=awai
 // ===== My Office =====
 var _moCurrentTab='overview';
 function switchMyOfficeTab(tab){
-  // Legacy stub - tabs merged into collab-view
-  switchCollabTab(tab==='overview'?'mo-overview':tab==='docs'?'mo-docs':tab);
-}async function renderMyOfficeOverview(){
-  console.log("[DEBUG mo-overview] START currentCompanyId:"+currentCompanyId+" currentUser:"+(currentUser?currentUser.id:"null"));
+  _moCurrentTab=tab;
+  var panels=document.querySelectorAll('#my-office-view .mo-panel');
+  for(var i=0;i<panels.length;i++)panels[i].classList.add('hidden');
+  var panel=document.getElementById('mo-'+tab);
+  if(panel)panel.classList.remove('hidden');
+  var tabs=document.querySelectorAll('.my-office-tabs button');
+  for(var j=0;j<tabs.length;j++)tabs[j].classList.remove('active');
+  var activeBtn=document.querySelector('.my-office-tabs button[data-motab="'+tab+'"]');
+  if(activeBtn)activeBtn.classList.add('active');
+  if(tab==='overview')renderMyOfficeOverview();
+  else if(tab==='todo')renderMyOfficeTodo('all');
+  else if(tab==='approvals')renderMyOfficeApprovals();
+  else if(tab==='messages'){loadMoMessages();loadMoAnnouncements();}
+  else if(tab==='docs')renderMyOfficeDocs('all');
+}
+
+async function renderMyOfficeOverview(){
   var el=document.getElementById('mo-overview-content');
   if(!currentCompanyId){el.innerHTML='<div class="empty">请先选择公司</div>';return}
   var myName=currentUser&&currentUser.display_name?currentUser.display_name:(currentUser&&currentUser.email?currentUser.email:'同事');
@@ -13808,9 +13914,7 @@ function switchMyOfficeTab(tab){
   
   // Load data
   if(typeof loadTasks!=='undefined'){
-    console.log('[DEBUG mo-overview] querying tasks...');
     var {data:tasks}=await sb.from('tasks').select('*').eq('company_id',currentCompanyId).in('status',['todo','in_progress']).order('due_date',{ascending:true,nullsFirst:false});
-    console.log('[DEBUG mo-overview] querying approvals...');
     var {data:approvals}=await sb.from('approval_requests').select('*').eq('company_id',currentCompanyId).eq('status','pending').order('created_at',{ascending:false});
     var pendingCount=0;
     if(approvals)for(var a=0;a<approvals.length;a++){if(approvals[a].requestor_id!==currentUser.id)pendingCount++;}
@@ -13851,7 +13955,6 @@ function switchMyOfficeTab(tab){
     var todayISO=today.toISOString().slice(0,10);
     var tomorrow=new Date(today);tomorrow.setDate(today.getDate()+1);
     var tomorrowISO=tomorrow.toISOString().slice(0,10);
-    console.log('[DEBUG mo-overview] querying schedules...');
     var {data:schedules}=await sb.from('schedules').select('*').eq('company_id',currentCompanyId).gte('start_time',todayISO).lte('start_time',tomorrowISO+'T23:59:59Z').order('start_time');
     var schHtml='';
     if(schedules&&schedules.length){
@@ -13871,7 +13974,6 @@ function switchMyOfficeTab(tab){
   
   // Load announcements
   try{
-    console.log('[DEBUG mo-overview] querying announcements...');
     var {data:anns}=await sb.from('announcements').select('*').eq('company_id',currentCompanyId).order('created_at',{ascending:false}).limit(3);
     var annHtml='';
     if(anns&&anns.length){
@@ -13891,9 +13993,47 @@ function switchMyOfficeTab(tab){
 /* ===== Todo Panel ===== */
 var _moTaskFilter='all';
 async function renderMyOfficeTodo(filter){
-  // My todos now handled by collab task panel
-  switchCollabTab("task");
-}function openMoTaskForm(id){
+  _moTaskFilter=filter;
+  var el=document.getElementById('mo-todo-list');
+  if(!currentCompanyId){el.innerHTML='<div class="empty">请先选择公司</div>';return}
+  // Update filter button states
+  var fb=document.querySelectorAll('#mo-todo-filters button');
+  for(var i=0;i<fb.length;i++){fb[i].classList.remove('active');if(fb[i].getAttribute('data-filter')===filter)fb[i].classList.add('active')}
+  var q=sb.from('tasks').select('*').eq('company_id',currentCompanyId).eq('assigned_to',currentUser.id).order('due_date',{ascending:true,nullsFirst:false});
+  if(filter==='todo'||filter==='in_progress')q=q.eq('status',filter);
+  else if(filter==='all')q=q.in('status',['todo','in_progress','done']);
+  else if(filter==='today'){var ts=new Date().toISOString().slice(0,10);q=q.in('status',['todo','in_progress']).eq('due_date',ts)}
+  else if(filter==='week'){var ts=new Date();var dayOfWeek=ts.getDay();var startOfWeek=new Date(ts);startOfWeek.setDate(ts.getDate()-dayOfWeek+((dayOfWeek===0)?-6:1));var endOfWeek=new Date(ts);endOfWeek.setDate(ts.getDate()+(7-dayOfWeek+(dayOfWeek===0?0:0)));var s1=startOfWeek.toISOString().slice(0,10);var e1=endOfWeek.toISOString().slice(0,10);q=q.in('status',['todo','in_progress']).gte('due_date',s1).lte('due_date',e1)}
+  else if(filter==='overdue'){var ts=new Date().toISOString().slice(0,10);q=q.in('status',['todo','in_progress']).lt('due_date',ts)}
+  else {q=q.in('status',['todo','in_progress','done'])}
+  var {data}=await q;
+  if(!data||!data.length){el.innerHTML='<div class="empty" style="padding:20px">暂无任务</div>';return}
+  var todayStr=new Date().toISOString().slice(0,10);
+  var h='';
+  for(var i=0;i<data.length;i++){
+    var t=data[i];
+    var prio=t.priority||'normal';
+    var overdue=t.due_date&&t.due_date<todayStr&&t.status!=='done';
+    var statusLabel={todo:'待办',in_progress:'进行中',done:'已完成',cancelled:'已取消'}[t.status]||t.status;
+    h+='<div class="mo-task-item priority-'+prio+'">';
+    h+='<div style="display:flex;align-items:flex-start;gap:10px">';
+    h+='<input type="checkbox" onchange="toggleMoTaskDone(\''+t.id+'\',this)" '+(t.status==='done'?'checked':'')+' style="margin-top:4px;width:18px;height:18px;cursor:pointer;flex-shrink:0" title="切换完成状态">';
+    h+='<div style="flex:1">';
+    h+='<div class="mo-task-title" style="'+(t.status==='done'?'text-decoration:line-through;color:var(--text3)':'')+'">'+escHtml(t.title)+'</div>';
+    if(t.description)h+='<div style="font-size:12px;color:var(--text2);margin-bottom:2px">'+escHtml(t.description)+'</div>';
+    h+='<div class="mo-task-meta">';
+    if(t.due_date)h+='<span style="color:'+(overdue?'var(--danger)':'var(--text2)')+'">📅 '+t.due_date+(overdue?' ⚠️':'')+'</span>';
+    h+='<span class="status-badge status-'+t.status+'">'+statusLabel+'</span>';
+    h+='</div>';
+    h+='<div class="mo-task-actions">';
+    h+='<button class="btn-sm" style="font-size:11px;padding:2px 8px" onclick="openMoTaskForm(\''+t.id+'\')">编辑</button>';
+    h+='<button class="btn-sm" style="font-size:11px;padding:2px 8px;color:var(--danger)" onclick="deleteMoTask(\''+t.id+'\')">删除</button>';
+    h+='</div></div></div></div>';
+  }
+  el.innerHTML=h;
+}
+
+function openMoTaskForm(id){
   var t=id?allTasks.find(function(x){return x.id===id}):null;
   var h='<div class="modal-overlay" id="mo-task-modal"><div class="modal-sheet"><h3>'+(t?'编辑任务':'新建任务')+'</h3>';
   h+='<div class="form-group"><label>标题 *</label><input id="mo-ta-title" value="'+(t?escAttr(t.title):'')+'"></div>';
@@ -13943,10 +14083,38 @@ async function deleteMoTask(id){
 
 /* ===== Approvals Panel ===== */
 async function renderMyOfficeApprovals(){
-  // My approvals now handled by collab approval panel
-  console.log("renderMyOfficeApprovals: redirecting to collab approval tab");
-  switchCollabTab("approval");
-}function openMoApprovalForm(){
+  if(!currentCompanyId)return;
+  // My initiated approvals
+  var {data:myReqs}=await sb.from('approval_requests').select('*').eq('company_id',currentCompanyId).eq('requestor_id',currentUser.id).order('created_at',{ascending:false}).limit(20);
+  var myEl=document.getElementById('mo-my-approvals');
+  var statusMap={pending:'待审批',approved:'已通过',rejected:'已驳回',cancelled:'已取消'};
+  if(!myReqs||!myReqs.length){myEl.innerHTML='<div style="color:var(--text3);font-size:13px;padding:8px 0">暂无发起的审批</div>'}
+  else{
+    var h='';
+    for(var i=0;i<myReqs.length;i++){
+      var a=myReqs[i];
+      h+='<div class="mo-task-item" style="margin-bottom:6px"><div class="mo-task-title">'+escHtml(a.title)+' <span class="status-badge status-'+(a.status==='pending'?'progress':a.status==='approved'?'done':a.status==='rejected'?'cancelled':'cancelled')+'">'+statusMap[a.status]+'</span></div><div style="font-size:12px;color:var(--text2)">类型: '+escHtml(a.type||'')+' · '+new Date(a.created_at).toLocaleDateString('zh-CN')+'</div></div>';
+    }
+    myEl.innerHTML=h;
+  }
+  
+  // Pending approvals (submitted by others, assigned to current user)
+  var {data:pending}=await sb.from('approval_requests').select('*').eq('company_id',currentCompanyId).eq('status','pending').neq('requestor_id',currentUser.id).order('created_at',{ascending:false}).limit(20);
+  var pendEl=document.getElementById('mo-pending-approvals');
+  if(!pending||!pending.length){pendEl.innerHTML='<div style="color:var(--text3);font-size:13px;padding:8px 0">暂无待审批项</div>'}
+  else{
+    var h2='';
+    for(var i=0;i<pending.length;i++){
+      var pa=pending[i];
+      var reqName='';
+      for(var u=0;u<allUsers.length;u++){if(allUsers[u].user_id===pa.requestor_id){reqName=allUsers[u].display_name||allUsers[u].email||'未知';break}}
+      h2+='<div class="mo-task-item" style="margin-bottom:6px"><div class="mo-task-title">'+escHtml(pa.title)+'</div><div style="font-size:12px;color:var(--text2);margin-bottom:6px">发起人: '+escHtml(reqName)+' · '+new Date(pa.created_at).toLocaleDateString('zh-CN')+' · '+escHtml(pa.type||'')+'</div><div style="display:flex;gap:6px"><button class="btn-sm" style="font-size:11px;padding:2px 8px;background:#10B981;color:#fff;border:none;border-radius:4px" onclick="moApproveRequest(\''+pa.id+'\',\'approved\')">通过</button><button class="btn-sm" style="font-size:11px;padding:2px 8px;background:#EF4444;color:#fff;border:none;border-radius:4px" onclick="moApproveRequest(\''+pa.id+'\',\'rejected\')">驳回</button></div></div>';
+    }
+    pendEl.innerHTML=h2;
+  }
+}
+
+function openMoApprovalForm(){
   var types=['报价审批','合同审批','折扣审批','出差申请','报销申请','客户转移','投标材料审批','公章使用申请','项目立项审批','交付验收审批','自定义'];
   var h='<div class="modal-overlay" id="mo-approval-modal"><div class="modal-sheet"><h3>发起审批</h3>';
   h+='<div class="form-group"><label>审批类型</label><select id="mo-ap-type">';
@@ -13985,9 +14153,42 @@ async function moApproveRequest(id,action){
 
 /* ===== Messages Panel ===== */
 async function loadMoMessages(){
-  // Messages now handled by collab msg panel
-  switchCollabTab("msg");
-}async function sendMoMessage(){
+  var el=document.getElementById('mo-msg-list');
+  if(!currentCompanyId){el.innerHTML='<div class="empty">请先选择公司</div>';return}
+  var deptFilter=document.getElementById('mo-msg-dept-filter').value;
+  // Load departments for filter
+  var sel=document.getElementById('mo-msg-dept-filter');
+  if(sel.options.length<=1){
+    var {data:depts}=await sb.from('departments').select('*').eq('company_id',currentCompanyId);
+    if(depts)for(var i=0;i<depts.length;i++){sel.innerHTML+='<option value="'+depts[i].id+'">'+escHtml(depts[i].name)+'</option>'}
+  }
+  var q=sb.from('dept_messages').select('*').eq('company_id',currentCompanyId).order('created_at',{ascending:false}).limit(30);
+  if(deptFilter)q=q.eq('dept_id',deptFilter);
+  var {data}=await q;
+  if(!data||!data.length){el.innerHTML='<div style="color:var(--text3);font-size:13px;padding:20px;text-align:center">暂无消息</div>';return}
+  data.reverse(); // Show oldest first like chat
+  var h='';
+  for(var i=0;i<data.length;i++){
+    var m=data[i];
+    var senderName='';
+    for(var u=0;u<allUsers.length;u++){if(allUsers[u].user_id===m.sender_id){senderName=allUsers[u].display_name||allUsers[u].email||'未知';break}}
+    var deptName='';
+    if(m.dept_id){
+      var sel2=document.getElementById('mo-msg-dept-filter');
+      for(var d=0;d<sel2.options.length;d++){if(sel2.options[d].value===m.dept_id){deptName=sel2.options[d].textContent;break}}
+    }
+    var isMe=m.sender_id===currentUser.id;
+    h+='<div class="mo-msg-item" style="'+(isMe?'':'')+'">';
+    h+='<div class="mo-msg-header"><span class="mo-msg-sender">'+(isMe?'我':escHtml(senderName))+'</span>'+(deptName?'<span class="mo-msg-dept">'+escHtml(deptName)+'</span>':'')+'<span class="mo-msg-time">'+new Date(m.created_at).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})+'</span></div>';
+    h+='<div class="mo-msg-content">'+escHtml(m.content||'')+'</div>';
+    h+='</div>';
+  }
+  // Auto-scroll to bottom
+  el.innerHTML=h;
+  el.scrollTop=el.scrollHeight;
+}
+
+async function sendMoMessage(){
   var input=document.getElementById('mo-msg-input');
   var content=input.value.trim();
   if(!content){showToast('请输入消息');return}
@@ -14019,13 +14220,11 @@ async function loadMoAnnouncements(){
 /* ===== Docs Panel ===== */
 var _moDocFilter='all';
 async function renderMyOfficeDocs(filter){
-  console.log("[DEBUG mo-docs] START filter:"+filter+" currentCompanyId:"+currentCompanyId+" currentUser:"+(currentUser?currentUser.id:"null"));
   _moDocFilter=filter;
   var el=document.getElementById('mo-docs-list');
   if(!currentCompanyId){el.innerHTML='<div class="empty">请先选择公司</div>';return}
   var fb=document.querySelectorAll('#mo-doc-filters button');
   for(var i=0;i<fb.length;i++){fb[i].classList.remove('active');if(fb[i].getAttribute('data-cat')===filter)fb[i].classList.add('active')}
-  console.log('[DEBUG mo-docs] querying my_documents...');
   var q=sb.from('my_documents').select('*').eq('user_id',currentUser.id).order('is_pinned',{ascending:false}).order('updated_at',{ascending:false});
   if(filter!=='all')q=q.eq('category',filter);
   var {data}=await q;
@@ -14044,7 +14243,7 @@ async function renderMyOfficeDocs(filter){
     if(tagsHtml)h+=tagsHtml;
     h+='</div>';
     h+='<div class="actions">';
-    if(d.file_url)h+='<a href="'+escAttr(d.file_url)+'" target="_blank" class="btn-sm" style="font-size:11px;padding:2px 8px;text-decoration:none;display:inline-block">📎 '+(escHtml(d.file_name||d.file_url.split('/').pop()||'文件'))+'</a>';
+    if(d.file_url)h+='<a href="'+escAttr(d.file_url)+'" target="_blank" class="btn-sm" style="font-size:11px;padding:2px 8px;text-decoration:none;display:inline-block">📎 文件</a>';
     h+='<button class="btn-sm" style="font-size:11px;padding:2px 8px" onclick="openMoDocForm(\''+d.id+'\')">编辑</button>';
     h+='<button class="btn-sm" style="font-size:11px;padding:2px 8px;color:var(--danger)" onclick="deleteMoDoc(\''+d.id+'\')">删除</button>';
     h+='</div></div>';
@@ -14057,7 +14256,7 @@ function openMoDocForm(id){
   var h='<div class="modal-overlay" id="mo-doc-modal"><div class="modal-sheet"><h3>'+(d?'编辑文档':'新建文档')+'</h3>';
   h+='<div class="form-group"><label>标题 *</label><input id="mo-doc-title" value="'+(d?escAttr(d.title):'')+'"></div>';
   h+='<div class="form-group"><label>内容</label><textarea id="mo-doc-content" rows="5" placeholder="文档内容...">'+(d?escHtml(d.content||''):'')+'</textarea></div>';
-  h+='<div class="form-row"><div class="form-group"><label>分类</label><select id="mo-doc-category"><option value="general"'+(d&&d.category==='general'?' selected':'')+'>通用</option><option value="work"'+(d&&d.category==='work'?' selected':'')+'>工作</option><option value="template"'+(d&&d.category==='template'?' selected':'')+'>模板</option><option value="personal"'+(d&&d.category==='personal'?' selected':'')+'>个人</option></select></div><div class="form-group"><label>附件</label><input type="file" id="mo-doc-file" style="padding:6px;display:block;width:100%;font-size:13px;border:1px solid var(--border);border-radius:6px">'+(d&&d.file_url?'<div style="font-size:11px;color:var(--text2);margin-top:4px">当前: '+escHtml(d.file_url.split('/').pop()||d.file_name||d.file_url)+'</div>':'')+'</div></div>';
+  h+='<div class="form-row"><div class="form-group"><label>分类</label><select id="mo-doc-category"><option value="general"'+(d&&d.category==='general'?' selected':'')+'>通用</option><option value="work"'+(d&&d.category==='work'?' selected':'')+'>工作</option><option value="template"'+(d&&d.category==='template'?' selected':'')+'>模板</option><option value="personal"'+(d&&d.category==='personal'?' selected':'')+'>个人</option></select></div><div class="form-group"><label>文件链接</label><input id="mo-doc-file-url" value="'+(d?escAttr(d.file_url||''):'')+'" placeholder="可选的附件链接"></div></div>';
   h+='<div class="form-group"><label>标签 (逗号分隔)</label><input id="mo-doc-tags" value="'+(d&&d.tags?d.tags.join(','):'')+'" placeholder="如: 合同, 模板"></div>';
   h+='<div class="form-group"><label><input type="checkbox" id="mo-doc-pinned" '+(d&&d.is_pinned?'checked':'')+'> 置顶</label></div>';
   h+='<div class="modal-actions"><button class="btn-cancel" onclick="this.closest(\'.modal-overlay\').remove()">取消</button><button class="btn-save" onclick="saveMoDoc(\''+(d?d.id:'')+'\')">保存</button></div></div></div>';
@@ -14069,26 +14268,11 @@ async function saveMoDoc(id){
   if(!title){showToast('请输入标题');return}
   var content=document.getElementById('mo-doc-content').value.trim();
   var category=document.getElementById('mo-doc-category').value;
+  var fileUrl=document.getElementById('mo-doc-file-url').value.trim()||null;
   var tagsRaw=document.getElementById('mo-doc-tags').value.trim();
   var tags=tagsRaw?tagsRaw.split(',').map(function(s){return s.trim()}).filter(Boolean):[];
   var isPinned=document.getElementById('mo-doc-pinned').checked;
-  // File upload
-  var fileInput=document.getElementById('mo-doc-file');
-  var fileUrl=null;var fileName=null;
-  if(fileInput&&fileInput.files&&fileInput.files[0]){
-    var f=fileInput.files[0];
-    var bucket='mo-documents';
-    var filePath=currentUser.id+'/'+Date.now()+'_'+f.name.replace(/[^a-zA-Z0-9._-]/g,'_');
-    try{
-      var upRes=await sb.storage.from(bucket).upload(filePath,f,{cacheControl:'3600',upsert:false});
-      if(upRes.error){showToast('文件上传失败: '+upRes.error.message);return}
-      var urlRes=sb.storage.from(bucket).getPublicUrl(filePath);
-      fileUrl=urlRes.data.publicUrl;
-      fileName=f.name;
-    }catch(e){showToast('文件上传异常: '+e.message);return}
-  }
   var obj={title:title,content:content||null,category:category,file_url:fileUrl,tags:tags.length?tags:null,is_pinned:isPinned,updated_at:new Date().toISOString()};
-  if(fileName)obj.file_name=fileName;
   var err;
   if(id){var r=await sb.from('my_documents').update(obj).eq('id',id);err=r.error}
   else{obj.user_id=currentUser.id;obj.company_id=currentCompanyId;var r2=await sb.from('my_documents').insert(obj);err=r2.error}
@@ -14683,7 +14867,7 @@ let fwVisitEditId=null;
 let fwVisitClientId=null;
 
 function switchFWTab(tab){
-  var dbg=document.getElementById("fw-debug");if(dbg){dbg.style.display="block";dbg.innerHTML="▶ switchFWTab: "+h(tab);}
+  var dbg=document.getElementById("fw-debug");if(dbg){dbg.style.display="block";dbg.innerHTML="▶ switchFWTab: "+tab;}
   var tabs=['overview','checkin','visits','track','stats'];
   for(var i=0;i<tabs.length;i++){
     var el=document.getElementById('fw-'+tabs[i]);
@@ -14750,7 +14934,7 @@ async function loadFWOverview(){
   
   if(dbg)dbg.innerHTML+="<br>✅ loadFWOverview done";
 }catch(e){
-  if(dbg)dbg.innerHTML+="<br>🔥 ERROR: "+h(e.message||e)+"<br>"+(e.stack||"").substring(0,200);console.error('loadFWOverview error:',e);if(kpi)kpi.innerHTML='<div style="color:var(--danger);font-size:13px">加载失败</div>'}
+  if(dbg)dbg.innerHTML+="<br>🔥 ERROR: "+(e.message||e)+"<br>"+(e.stack||"").substring(0,200);console.error('loadFWOverview error:',e);if(kpi)kpi.innerHTML='<div style="color:var(--danger);font-size:13px">加载失败</div>'}
 }
 
 async function loadFWCheckin(){
@@ -14777,35 +14961,56 @@ async function loadFWCheckin(){
   }catch(e){console.error('loadFWCheckin error:',e)}
 }
 
-function fwResetBtn(type){var btnIn=document.getElementById('fw-btn-in');var btnOut=document.getElementById('fw-btn-out');if(type==='in'){btnIn.disabled=false;btnIn.textContent='📍 上班签到'}else{btnOut.disabled=false;btnOut.textContent='🏠 下班签退'}}
 async function doCheckIn(type){
   var note=document.getElementById('fw-checkin-note').value.trim();
-  var addr='';var label=type==='in'?'上班签到':'下班签退';
-  var btnEl=type==='in'?document.getElementById('fw-btn-in'):document.getElementById('fw-btn-out');
-  btnEl.disabled=true;btnEl.textContent='获取定位中...';
-  var settled=false;
-  function resetBtn(){if(settled)return;settled=true;btnEl.disabled=false;btnEl.textContent=type==='in'?'\u{1F4CD} 上班签到':'\u{1F3E0} 下班签退'}
-  var t=setTimeout(function(){if(!settled){resetBtn();showToast('\u26A0\uFE0F 定位超时(8秒)，无定位签到...');doSaveCheckIn(null,null,type,note,addr);}},8000);
-  if(!navigator||!navigator.geolocation){clearTimeout(t);resetBtn();showToast('\u26A0\uFE0F 浏览器不支持定位');return;}
-  navigator.geolocation.getCurrentPosition(function(p){if(settled)return;var lat=p.coords.latitude,lng=p.coords.longitude;if(isNaN(lat)||isNaN(lng)){clearTimeout(t);resetBtn();showToast('\u26A0\uFE0F 坐标无效，无定位签到...');doSaveCheckIn(null,null,type,note,addr);return;}clearTimeout(t);resetBtn();showLocationConfirm(lat,lng,type==='in'?'\u{1F4CD} 上班签到 - 确认位置':'\u{1F3E0} 下班签退 - 确认位置',function(clat,clng){doSaveCheckIn(clat,clng,type,note,addr);});},function(err){if(settled)return;clearTimeout(t);resetBtn();showToast(err.code===1?'\u26A0\uFE0F 定位被拒绝，无定位签到...':'\u26A0\uFE0F GPS不可用，无定位签到...');doSaveCheckIn(null,null,type,note,addr);},{timeout:7000,enableHighAccuracy:true,maximumAge:60000});
-}
-
-async function doSaveCheckIn(lat,lng,type,note,addr){
-  var label=type==='in'?'上班签到':'下班签退';
-  var btnEl=type==='in'?document.getElementById('fw-btn-in'):document.getElementById('fw-btn-out');
-  btnEl.disabled=true;btnEl.textContent='保存中...';
+  var btnIn=document.getElementById('fw-btn-in');
+  var btnOut=document.getElementById('fw-btn-out');
+  if(type==='in'){btnIn.disabled=true;btnIn.textContent='签到中...'}
+  else{btnOut.disabled=true;btnOut.textContent='签退中...'}
   try{
-    var b={user_id:currentUser.id,type:type,latitude:lat,longitude:lng,address:addr,note:note||null,company_id:currentCompanyId};
-    var r=await sb.from('field_checkins').insert(b).select();
-    btnEl.disabled=false;btnEl.textContent=type==='in'?'\u{1F4CD} 上班签到':'\u{1F3E0} 下班签退';
-    if(r.error){showToast(label+'失败: '+r.error.message);return}
-    showToast(type==='in'?'\u2705 签到成功！':(lat!=null?'\u{1F3E0} 签退成功！':'\u{1F3E0} 签退成功！（无定位）'));
+    // Try to get geolocation
+    var lat=null,lng=null,addr='';
+    if(navigator.geolocation){
+      try{
+        var pos=await new Promise(function(res,rej){navigator.geolocation.getCurrentPosition(res,rej,{timeout:5000,enableHighAccuracy:true})});
+        lat=pos.coords.latitude;lng=pos.coords.longitude;
+      }catch(g){console.log('Geolocation failed:',g)}
+    }
+    var r=await sb.from('field_checkins').insert({user_id:currentUser.id,type:type,latitude:lat,longitude:lng,address:addr,note:note||null,company_id:currentCompanyId}).select();
+    if(r.error){showToast('签到失败: '+r.error.message);return}
+    showToast(type==='in'?'✅ 签到成功！':'🏠 签退成功，辛苦了！');
     document.getElementById('fw-checkin-note').value='';
     loadFWCheckin();loadFWOverview();
-  }catch(e){btnEl.disabled=false;btnEl.textContent=type==='in'?'\u{1F4CD} 上班签到':'\u{1F3E0} 下班签退';console.error(e)}
+  }catch(e){showToast('签到失败: '+(e.message||e));console.error(e)}
+  finally{if(type==='in'){btnIn.disabled=false} else{btnOut.disabled=false}}
 }
 
-function openFWVisitForm(id){
+async function loadFWVisits(){
+  var filter=document.getElementById('fw-visit-filter').value;
+  var list=document.getElementById('fw-visit-list');
+  if(!list)return;
+  list.innerHTML='<div style="color:var(--text3);font-size:13px">加载中...</div>';
+  var query=sb.from('field_visits').select('*').eq('user_id',currentUser.id).eq('company_id',currentCompanyId).order('visit_date',{ascending:false}).order('created_at',{ascending:false});
+  var today=new Date().toISOString().substring(0,10);
+  if(filter==='today')query=query.eq('visit_date',today);
+  else if(filter==='week'){var w=new Date();w.setDate(w.getDate()-7);query=query.gte('visit_date',w.toISOString().substring(0,10))}
+  else if(filter==='month'){query=query.gte('visit_date',new Date().toISOString().substring(0,7)+'-01')}
+  try{
+    var {data}=await query;
+    var html='';
+    if(data&&data.length){
+      for(var i=0;i<data.length;i++){
+        var v=data[i];
+        var rClass=v.result==='done'?'done':v.result==='follow'?'follow':'pending';
+        var rLabel=v.result==='done'?'达成':v.result==='follow'?'跟进':'待定';
+        html+='<div class="fw-visit-card"><div class="vw-header"><div class="vw-client">'+h(v.client_name||'未关联客户')+'</div><div class="vw-date">'+v.visit_date+'</div></div>'+(v.purpose?'<div class="vw-purpose">🎯 '+h(v.purpose)+'</div>':'')+(v.notes?'<div class="vw-notes">'+h(v.notes)+'</div>':'')+(v.result?('<div class="vw-result '+rClass+'">'+rLabel+'</div>'):'')+'</div>';
+      }
+    }else{html='<div style="text-align:center;color:var(--text3);padding:40px 0"><div style="font-size:40px;margin-bottom:8px">🏢</div><div>暂无拜访记录</div></div>'}
+    list.innerHTML=html;
+  }catch(e){console.error(e);list.innerHTML='<div style="color:var(--danger)">加载失败</div>'}
+}
+
+function openVisitForm(id){
   fwVisitEditId=id||null;fwVisitClientId=null;
   document.getElementById('fw-vm-title').textContent=id?'编辑拜访记录':'新增拜访记录';
   var today=new Date().toISOString().substring(0,10);
@@ -14845,14 +15050,10 @@ function selectFWClient(id,name){
   fwVisitClientId=id;
   document.getElementById('fw-vm-client-list').innerHTML='';
 }
-function closeFVisit(){document.getElementById('fw-visit-modal').classList.add('hidden')}
-var fwLocationConfirmCallback=null;
-var fwPendingLat=null,fwPendingLng=null;
-
+function closeVisitForm(){document.getElementById('fw-visit-modal').classList.add('hidden')}
 async function saveFVisit(){
   var clientName=document.getElementById('fw-vm-client').value.trim();
   if(!clientName){showToast('请输入客户名称');return}
-  // Build data object (will fill lat/lng after confirm)
   var data={
     user_id:currentUser.id,
     client_id:fwVisitClientId||null,
@@ -14863,36 +15064,6 @@ async function saveFVisit(){
     visit_date:document.getElementById('fw-vm-date').value,
     company_id:currentCompanyId
   };
-  // Step 1: Try GPS
-  var gotLocation=false;
-  if(navigator.geolocation){
-    try{
-      var isMobile=/Mobi|Android|iPhone/i.test(navigator.userAgent)||('ontouchstart' in window);
-      console.log('[GPS] saveFVisit requesting, mobile='+isMobile);
-      var pos=await new Promise(function(res,rej){
-        navigator.geolocation.getCurrentPosition(res,rej,{timeout:10000,enableHighAccuracy:isMobile,maximumAge:60000});
-      });
-      var lat=pos.coords.latitude,lng=pos.coords.longitude;
-      console.log('[GPS] saveFVisit got coords:',lat,lng,'accuracy:',pos.coords.accuracy);
-      gotLocation=true;
-      // Step 2: Show confirm modal
-      showLocationConfirm(lat,lng,'🏢 拜访记录 - 确认位置',async function(confirmedLat,confirmedLng){
-        data.latitude=confirmedLat;data.longitude=confirmedLng;
-        await doSaveFVisit(data);
-      });
-    }catch(g){
-      console.warn('[GPS] saveFVisit failed:',g.message||g);
-      if(g.code===1)showToast('⚠️ 定位被拒绝，请在浏览器设置中允许定位权限');
-      else if(g.code===2)showToast('⚠️ 定位不可用，请稍后重试');
-      else if(g.code===3)showToast('⚠️ 定位超时（10秒）');
-    }
-  }
-  if(!gotLocation){
-    data.latitude=null;data.longitude=null;
-    await doSaveFVisit(data);
-  }
-}
-async function doSaveFVisit(data){
   try{
     var r;
     if(fwVisitEditId){r=await sb.from('field_visits').update(data).eq('id',fwVisitEditId)}
@@ -14903,138 +15074,7 @@ async function doSaveFVisit(data){
   }catch(e){showToast('保存失败: '+(e.message||e));console.error(e)}
 }
 
-// Location confirmation modal
-function closeLocationConfirm(){
-  document.getElementById('fw-location-confirm').classList.add('hidden');
-  document.getElementById('fw-location-confirm').style.display='';
-  fwPendingLat=null;fwPendingLng=null;fwLocationConfirmCallback=null;
-  if(window._fwPendingType)fwResetBtn(window._fwPendingType);
-  window._fwPendingType=null;
-  if(window._fwLcMap){window._fwLcMap.clearOverlays();window._fwLcMap=null}
-}
-function confirmLocation(){
-  if(!fwLocationConfirmCallback) return;
-  var cb=fwLocationConfirmCallback;
-  var lat=fwPendingLat,lng=fwPendingLng;
-  window._fwPendingType=null;
-  closeLocationConfirm();
-  cb(lat,lng);
-}
-function showLocationConfirm(lat,lng,titleText,callback){
-  fwPendingLat=lat;fwPendingLng=lng;
-  fwLocationConfirmCallback=callback;
-  var modal=document.getElementById('fw-location-confirm');
-  document.getElementById('fw-lc-title').textContent=titleText||'📍 确认定位';
-  document.getElementById('fw-lc-info').innerHTML='<b>纬度:</b> '+lat.toFixed(6)+'&nbsp;&nbsp;<b>经度:</b> '+lng.toFixed(6);
-  modal.classList.remove('hidden');
-  modal.style.display='flex';modal.style.position='fixed';modal.style.top='0';modal.style.left='0';modal.style.width='100vw';modal.style.height='100vh';modal.style.background='rgba(0,0,0,.5)';modal.style.zIndex='9999';modal.style.alignItems='center';modal.style.justifyContent='center';
-  var mcont=document.getElementById('fw-lc-map');
-  mcont.innerHTML='<div id="fw-lc-bmap" style="width:100%;height:100%"></div>';
-  setTimeout(function(){
-    if(!window.BMap||!window.BMap.Map){mcont.innerHTML='<div style="text-align:center;padding:60px 0;color:var(--text3)">地图加载失败</div>';return}
-    if(window._fwLcMap){window._fwLcMap.clearOverlays();window._fwLcMap=null}
-    var map=new BMap.Map('fw-lc-bmap',{enableMapClick:false});
-    map.addControl(new BMap.NavigationControl({anchor:BMAP_ANCHOR_TOP_LEFT,type:BMAP_NAVIGATION_CONTROL_SMALL}));
-    map.enableScrollWheelZoom();
-    window._fwLcMap=map;
-    if(!window._gps2bd)window._gps2bd=new BMap.Convertor();
-    window._gps2bd.translate([new BMap.Point(lng,lat)],1,5,function(r){
-      var pt=r.points[0];
-      map.centerAndZoom(pt,16);
-      map.addOverlay(new BMap.Marker(pt));
-      map.addOverlay(new BMap.Circle(pt,50,{strokeColor:'#3B82F6',strokeWeight:2,strokeOpacity:0.8,fillColor:'#3B82F6',fillOpacity:0.15}));
-    });
-  },200);
-}
-async function loadFWVisits(){
-  var list=document.getElementById('fw-visit-list');
-  if(!list)return;
-  list.innerHTML='<div style="color:var(--text3);font-size:13px">加载中...</div>';
-  try{
-    var filter=(document.getElementById('fw-visit-filter')||{}).value||'today';
-    var q=sb.from('field_visits').select('*').eq('user_id',currentUser.id).eq('company_id',currentCompanyId);
-    if(filter==='today'){
-      var today=new Date().toISOString().substring(0,10);
-      q=q.eq('visit_date',today);
-    }else if(filter==='week'){
-      var wa=new Date();wa.setDate(wa.getDate()-7);q=q.gte('visit_date',wa.toISOString().substring(0,10));
-    }else if(filter==='month'){
-      var ma=new Date();ma.setMonth(ma.getMonth()-1);q=q.gte('visit_date',ma.toISOString().substring(0,10));
-    }
-    var {data:visits,error}=await q.order('visit_date',{ascending:false}).order('start_time',{ascending:false});
-    if(error){list.innerHTML='<div style="color:var(--danger);font-size:13px">加载失败: '+h(error.message)+'</div>';return}
-    if(!visits||!visits.length){list.innerHTML='<div style="color:var(--text3);font-size:13px;text-align:center;padding:20px">暂无拜访记录</div>';return}
-    var html='';
-    for(var i=0;i<visits.length;i++){
-      var v=visits[i];
-      html+='<div class="fw-visit-card" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px">';
-      html+='<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">';
-      html+='<div style="font-weight:600;font-size:14px">'+escHtml(v.client_name||'未命名客户')+'</div>';
-      html+='<div style="display:flex;gap:6px">';
-      html+='<button onclick="openVisitForm('+v.id+')" style="padding:3px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:12px;cursor:pointer">编辑</button>';
-      html+='<button onclick="deleteVisit('+v.id+')" style="padding:3px 10px;border:1px solid #ef4444;border-radius:6px;background:#fef2f2;color:#ef4444;font-size:12px;cursor:pointer">删除</button>';
-      html+='</div></div>';
-      html+='<div style="font-size:12px;color:var(--text2);margin-bottom:4px">📅 '+escHtml(v.visit_date||'')+(v.start_time?' '+escHtml(v.start_time):'')+'</div>';
-      if(v.purpose)html+='<div style="font-size:13px;margin-bottom:2px"><b>目的:</b> '+escHtml(v.purpose)+'</div>';
-      if(v.result)html+='<div style="font-size:13px;margin-bottom:2px"><b>结果:</b> '+escHtml(v.result)+'</div>';
-      if(v.notes)html+='<div style="font-size:13px;margin-bottom:2px"><b>备注:</b> '+escHtml(v.notes)+'</div>';
-      if(v.latitude&&v.longitude)html+='<div style="font-size:11px;color:var(--text3);margin-top:4px">📍 '+v.latitude.toFixed(6)+', '+v.longitude.toFixed(6)+'</div>';
-      html+='</div>';
-    }
-    list.innerHTML=html;
-  }catch(e){list.innerHTML='<div style="color:var(--danger);font-size:13px">加载失败: '+h(e.message||e)+'</div>';console.error('loadFWVisits:',e)}
-}
-
-function openFVisit(id){
-  fwVisitEditId=id||null;
-  fwVisitClientId=null;
-  var modal=document.getElementById('fw-visit-modal');
-  if(!modal){showToast('表单未找到');return}
-  if(id){
-    sb.from('field_visits').select('*').eq('id',id).single().then(function(r){
-      if(r.error||!r.data){showToast('记录不存在');return}
-      var v=r.data;
-      document.getElementById('fw-vm-client').value=v.client_name||'';
-      document.getElementById('fw-vm-purpose').value=v.purpose||'';
-      document.getElementById('fw-vm-notes').value=v.notes||'';
-      document.getElementById('fw-vm-result').value=v.result||'';
-      document.getElementById('fw-vm-date').value=v.visit_date||new Date().toISOString().substring(0,10);
-      fwVisitClientId=v.client_id||null;
-      modal.classList.remove('hidden');
-    });
-  }else{
-    document.getElementById('fw-vm-client').value='';
-    document.getElementById('fw-vm-purpose').value='';
-    document.getElementById('fw-vm-notes').value='';
-    document.getElementById('fw-vm-result').value='';
-    document.getElementById('fw-vm-date').value=new Date().toISOString().substring(0,10);
-    modal.classList.remove('hidden');
-  }
-}
-
-function closeFVisit(){
-  fwVisitEditId=null;fwVisitClientId=null;
-  var modal=document.getElementById('fw-visit-modal');
-  if(modal)modal.classList.add('hidden');
-}
-
-async function deleteVisit(id){
-  if(!confirm('确定删除该拜访记录？'))return;
-  try{
-    var r=await sb.from('field_visits').delete().eq('id',id);
-    if(r.error){showToast('删除失败: '+r.error.message);return}
-    showToast('已删除');
-    loadFWVisits();loadFWOverview();
-  }catch(e){showToast('删除失败: '+(e.message||e))}
-}
-
-var fwLocationConfirmCallback=null; // callback when user confirms location
-var fwPendingLat=null,fwPendingLng=null; // pending GPS coords
-
-
 async function loadFWTrack(){
-  // Clean up previous map instance
-  if(window._fwMap){window._fwMap.clearOverlays();window._fwMap=null;}
   var today=new Date().toISOString().substring(0,10);
   var kpi=document.getElementById('fw-tr-kpi');
   var list=document.getElementById('fw-track-list');
@@ -15047,54 +15087,7 @@ async function loadFWTrack(){
       +'<div class="fw-kpi-card"><div class="kpi-label">📅 签到次数</div><div class="kpi-val">'+(checks?checks.length:0)+'</div></div>'
       +'<div class="fw-kpi-card"><div class="kpi-label">🏢 拜访次数</div><div class="kpi-val">'+(visits?visits.length:0)+'</div></div>'
       +'<div class="fw-kpi-card"><div class="kpi-label">📏 覆盖客户</div><div class="kpi-val">'+(visits?new Set(visits.map(function(x){return x.client_id||x.client_name})).size:0)+'</div></div>';
-    var mcont=document.getElementById('fw-map-container');
-  if(points===0){
-    mcont.innerHTML='<div style="text-align:center;padding:40px"><div style="font-size:48px;margin-bottom:12px">🗺️</div><div style="font-size:14px;color:var(--text2)">暂无GPS定位数据<br><span style="font-size:12px;color:var(--text3)">请使用支持GPS的设备签到以生成轨迹</span></div></div>';
-    if(window._fwMap){window._fwMap.clearOverlays();window._fwMap=null}
-  } else {
-    // Render real map with check-in points
-    mcont.innerHTML='<div id="fw-baidu-map" style="width:100%;height:100%"></div>';
-    setTimeout(function(){
-      if(!window.BMap||!window.BMap.Map){mcont.innerHTML='<div style="text-align:center;padding:40px"><div style="font-size:48px">🗺️</div><div>百度地图加载中...<br><span style="font-size:12px;color:var(--text3)">如持续显示，请检查百度地图AK是否正确</span></div></div>';return}
-      if(window._fwMap){window._fwMap.clearOverlays();window._fwMap=null;}
-      var map=new BMap.Map('fw-baidu-map',{enableMapClick:false});
-      map.addControl(new BMap.NavigationControl({anchor:BMAP_ANCHOR_TOP_LEFT,type:BMAP_NAVIGATION_CONTROL_SMALL}));
-      map.centerAndZoom(new BMap.Point(116.404,39.915),12);
-      map.enableScrollWheelZoom();
-      window._fwMap=map;
-      // GPS→BD-09 coordinate converter
-      function toBaidu(lat,lng){
-        if(!window._gps2bd) window._gps2bd=new BMap.Convertor();
-        return new Promise(function(res){
-          window._gps2bd.translate([new BMap.Point(lng,lat)],1,5,function(data){res(data.points[0])})
-        });
-      }
-      // Collect all points
-      var allPts=[];
-      if(checks){for(var i=0;i<checks.length;i++){var ck=checks[i];if(!ck.latitude)continue;
-        allPts.push({lat:ck.latitude,lng:ck.longitude,label:(ck.type==='in'?'📍 签到':'🏠 签退'),note:ck.note,time:new Date(ck.created_at).toLocaleTimeString('zh-CN'),icon:'📍'});
-      }}
-      if(visits){for(var i=0;i<visits.length;i++){var vt=visits[i];if(!vt.latitude)continue;
-        allPts.push({lat:vt.latitude,lng:vt.longitude,label:'🏢 '+h(vt.client_name||'未知'),note:vt.purpose,time:vt.visit_date,icon:'🏢'});
-      }}
-      if(!allPts.length) return;
-      // Convert and add markers
-      Promise.all(allPts.map(function(pt){
-        return toBaidu(pt.lat,pt.lng).then(function(baiduPt){
-          var mk=new BMap.Marker(baiduPt);
-          var info=new BMap.InfoWindow(pt.label+(pt.note?': '+pt.note:'')+'<br><small>'+pt.time+'</small>',{width:200});
-          mk.addEventListener('click',function(){map.openInfoWindow(info,baiduPt)});
-          map.addOverlay(mk);
-          return baiduPt;
-        });
-      })).then(function(results){
-        if(results.length>0){
-          var view=map.getViewport(results);
-          map.setViewport(results);
-        }
-      });
-    },200);
-  }
+    if(points===0){document.getElementById('fw-map-container').innerHTML='<div style="text-align:center;padding:40px"><div style="font-size:48px;margin-bottom:12px">🗺️</div><div style="font-size:14px;color:var(--text2)">暂无GPS定位数据<br><span style="font-size:12px;color:var(--text3)">请使用支持GPS的设备签到以生成轨迹</span></div></div>'}
     // Track timeline
     var tlHtml='<h4 style="margin:0 0 10px;font-size:14px;font-weight:600">📋 今日时间线</h4>';
     var events=[];if(checks){for(var i=0;i<checks.length;i++){events.push({time:checks[i].created_at,text:(checks[i].type==='in'?'📍 签到':'🏠 签退')+(checks[i].note?': '+checks[i].note:''),type:checks[i].type})}}
@@ -15152,249 +15145,6 @@ async function loadFWStats(){
     sel.value=selUser;
   }catch(e){console.error(e);content.innerHTML='<div style="color:var(--danger)">加载失败</div>'}
 }
-
-// ============= 项目详情页 (独立视图) =============
-var curDetailId=null;
-var curDetailState='todo';
-var curDetailBlocks=[];
-var curDetailAssignments=[];
-var curDetailProject=null;
-
-async function renderProjectDetail(pid){
-  try{
-  curDetailId=pid;
-  curDetailState='todo';
-
-  var v=document.getElementById('project-detail-view');
-  v.classList.remove('hidden');
-  v.style.display='flex';
-
-  var main=document.getElementById('main-screen');
-  if(main)main.style.display='none';
-
-  var r=await sb.from('projects').select('*').eq('id',pid).single();
-  if(r.error||!r.data){alert('项目不存在');closeProjectDetail();return}
-  curDetailProject=r.data;
-  document.getElementById('pd-pid-badge').textContent='#'+pid;
-  document.getElementById('pd-title').textContent=r.data.name||'未命名项目';
-  document.getElementById('pd-owner-info').textContent='负责人: '+(r.data.owner_email||'未指派');
-
-  var ra=await sb.from('project_assignments').select('*').eq('project_id',pid);
-  curDetailAssignments=ra.data||[];
-
-  var perm='none';
-  if(typeof isSuperAdmin!=='undefined'&&isSuperAdmin)perm='admin';
-  else if(typeof currentUserRole!=='undefined'&&currentUserRole==='admin')perm='admin';
-  else if(curDetailProject.owner_id===currentUser.id)perm='owner';
-  else{
-    var my=curDetailAssignments.find(function(a){return a.user_id===currentUser.id});
-    if(my)perm=my.project_role;
-  }
-  var permMap={admin:'全部(管理员)',owner:'全部(项目所有者)',edit:'编辑权限',view:'只读',approve:'审批权限',none:'无权限'};
-  document.getElementById('pd-perm-info').textContent='权限: '+(permMap[perm]||perm);
-
-  if(typeof loadTemplates==='function')await loadTemplates();
-  var tpl=null;
-  if(curDetailProject.template_id&&typeof allTemplates!=='undefined'){
-    tpl=allTemplates.find(function(t){return t.id==curDetailProject.template_id});
-  }
-  if(!tpl&&typeof allTemplates!=='undefined'&&allTemplates.length>0)tpl=allTemplates[0];
-
-  curDetailBlocks=[];
-  if(tpl&&tpl.steps){
-    var steps=Array.isArray(tpl.steps)?tpl.steps:[];
-    steps.forEach(function(st,i){
-      curDetailBlocks.push({
-        key:st.key||('step_'+i),
-        label:st.label||st.name||('步骤 '+(i+1)),
-        data:curDetailProject['step_'+i]||{},
-        visible_to:st.block_visible_to||[],
-        editable_to:st.block_editable_to||[],
-        department:st.department||''
-      });
-    });
-  }
-  if(curDetailBlocks.length===0){
-    curDetailBlocks=[{key:'basic',label:'基本信息',data:curDetailProject,visible_to:[],editable_to:[]}];
-  }
-
-  var rs=await sb.from('project_block_state').select('*').eq('project_id',pid);
-  var blockStates=rs.data||[];
-  curDetailBlocks.forEach(function(b){
-    var st=blockStates.find(function(x){return x.block_key===b.key});
-    b.state=st?st.status:'pending';
-  });
-
-  if(curDetailProject.current_state){
-    var stateMap={todo:'待办',doing:'在办',done:'办结',archived:'归档'};
-    document.getElementById('pd-owner-info').textContent='负责人: '+(curDetailProject.owner_email||'-')+' | 状态: '+(stateMap[curDetailProject.current_state]||curDetailProject.current_state);
-  }
-
-  switchDetailTab('todo');
-  }catch(e){
-    console.error('renderProjectDetail error:',e);
-    showToast('加载项目详情失败: '+(e.message||e));
-    closeProjectDetail();
-  }
-}
-
-function closeProjectDetail(){
-  var v=document.getElementById('project-detail-view');
-  v.classList.add('hidden');
-  v.style.display='none';
-  var main=document.getElementById('main-screen');
-  if(main)main.style.display='';
-  curDetailId=null;
-}
-
-function switchDetailTab(status){
-  curDetailState=status;
-  document.querySelectorAll('.pd-status-tab').forEach(function(el){
-    el.classList.toggle('active',el.dataset.status===status);
-  });
-  renderDetailBlocks();
-}
-
-function renderDetailBlocks(){
-  var c=document.getElementById('pd-blocks-container');
-  var perm=getCurrentPerm();
-
-  var visible=curDetailBlocks.filter(function(b){
-    if(curDetailState==='todo')return b.state==='pending'||b.state==='in_progress';
-    if(curDetailState==='doing')return b.state==='in_progress';
-    if(curDetailState==='done')return b.state==='done'||b.state==='skipped';
-    return true;
-  });
-
-  if(visible.length===0){
-    c.innerHTML='<div class="pd-no-access">该状态下没有可见的区块</div>';
-    return;
-  }
-
-  var html='';
-  visible.forEach(function(b){
-    if(!canViewBlock(b,perm))return;
-    var canEdit=canEditBlock(b,perm);
-    var collapsed=b.state==='done'?'collapsed':'';
-    var statusLabel={pending:'待办',in_progress:'进行中',done:'已完成',skipped:'已跳过'}[b.state]||b.state;
-
-    html+='<div class="pd-block '+collapsed+'" data-key="'+b.key+'">';
-    html+='<div class="pd-block-header" onclick="this.parentElement.classList.toggle(\'collapsed\')">';
-    html+='<div class="pd-block-title">'+escHtml(b.label);
-    if(b.department)html+=' <span class="pd-dept-tag">'+escHtml(b.department)+'</span>';
-    html+='</div>';
-    html+='<div style="display:flex;align-items:center;gap:8px">';
-    html+='<span class="pd-block-status '+b.state+'">'+statusLabel+'</span>';
-    html+='<span class="pd-block-toggle">▼</span>';
-    html+='</div></div>';
-
-    html+='<div class="pd-block-body">';
-    if(b.data&&typeof b.data==='object'&&!Array.isArray(b.data)){
-      Object.keys(b.data).forEach(function(k){
-        if(k.startsWith('_'))return;
-        var v=b.data[k];
-        html+='<div class="pd-block-row">';
-        html+='<div class="pd-block-label">'+escHtml(k)+'</div>';
-        if(canEdit){
-          html+='<input class="pd-block-input" data-block="'+b.key+'" data-field="'+escHtml(k)+'" value="'+escHtml(String(v==null?'':v))+'">';
-        }else{
-          html+='<div class="pd-block-value">'+escHtml(String(v==null?'-':v))+'</div>';
-        }
-        html+='</div>';
-      });
-    }else{
-      html+='<div class="pd-block-value">'+escHtml(String(b.data||'-'))+'</div>';
-    }
-
-    if(b.visible_to&&b.visible_to.length>0){
-      html+='<div class="pd-block-views">可见: ';
-      b.visible_to.forEach(function(d){html+='<span class="pd-dept-tag">'+escHtml(d)+'</span>'});
-      html+='</div>';
-    }
-    html+='</div></div>';
-  });
-
-  if(!html){
-    c.innerHTML='<div class="pd-no-access">当前权限下无可查看的区块</div>';
-    return;
-  }
-  c.innerHTML=html;
-}
-
-function getCurrentPerm(){
-  if(!curDetailProject)return 'none';
-  if(typeof isSuperAdmin!=='undefined'&&isSuperAdmin)return 'admin';
-  if(typeof currentUserRole!=='undefined'&&currentUserRole==='admin')return 'admin';
-  if(curDetailProject.owner_id===currentUser.id)return 'owner';
-  var my=curDetailAssignments.find(function(a){return a.user_id===currentUser.id});
-  return my?my.project_role:'none';
-}
-
-function canViewBlock(b,perm){
-  if(perm==='admin'||perm==='owner')return true;
-  if(perm==='none')return false;
-  if(!b.visible_to||b.visible_to.length===0)return perm!=='none';
-  var myDept=currentUser&&currentUser.department;
-  return b.visible_to.some(function(d){
-    return d==='all'||d===myDept||d===perm;
-  });
-}
-
-function canEditBlock(b,perm){
-  if(perm==='admin'||perm==='owner')return true;
-  if(perm==='edit'||perm==='approve'){
-    if(!b.editable_to||b.editable_to.length===0)return true;
-    var myDept=currentUser&&currentUser.department;
-    return b.editable_to.some(function(d){return d==='all'||d===myDept||d===perm});
-  }
-  return false;
-}
-
-async function saveProjectDetail(){
-  if(!curDetailId)return;
-  var inputs=document.querySelectorAll('.pd-block-input');
-  var updates={};
-  inputs.forEach(function(inp){
-    var b=inp.dataset.block;
-    var f=inp.dataset.field;
-    if(!updates[b])updates[b]={};
-    updates[b][f]=inp.value;
-  });
-  var merged={};
-  curDetailBlocks.forEach(function(b){
-    if(updates[b.key]){
-      var idx=curDetailBlocks.indexOf(b);
-      merged['step_'+idx]=Object.assign({},b.data||{},updates[b.key]);
-    }
-  });
-  var r=await sb.from('projects').update(merged).eq('id',curDetailId);
-  if(r.error){alert('保存失败: '+r.error.message);return}
-  showToast('已保存','success');
-  renderProjectDetail(curDetailId);
-}
-
-async function pdAction(action){
-  if(!curDetailId)return;
-  if(action==='return'){
-    if(!confirm('确认退回？'))return;
-    await sb.from('projects').update({current_state:'todo'}).eq('id',curDetailId);
-    showToast('已退回待办','info');
-  }else if(action==='complete'){
-    if(!confirm('确认办理完毕？此操作将项目状态置为办结'))return;
-    await sb.from('projects').update({current_state:'done'}).eq('id',curDetailId);
-    showToast('已办结','success');
-  }else if(action==='read'){
-    var myEmail=currentUser?currentUser.email:'';
-    var r=await sb.from('project_block_state').select('*').eq('project_id',curDetailId);
-    var alreadyRead=(r.data||[]).some(function(x){return x.notes&&x.notes.indexOf(myEmail)>=0});
-    if(!alreadyRead){
-      await sb.from('project_block_state').insert({project_id:curDetailId,block_key:'_read_'+Date.now(),status:'done',notes:'已阅 by '+myEmail,completed_at:new Date().toISOString()});
-    }
-    showToast(alreadyRead?'已记录阅件':'已标记为已阅','success');
-  }
-  renderProjectDetail(curDetailId);
-}
-
 </script>
 
 </div>
@@ -15404,8 +15154,7 @@ async function pdAction(action){
 
 <div id="leads-view" class="hidden">
  <div class="stats-bar" id="leads-stats-bar"></div>
-  </div>
-<!-- ══════════ 外勤管理 ══════════ -->
+  <!-- ══════════ 外勤管理 ══════════ -->
   <div id="fieldwork-view" class="hidden">
 
     <div class="fw-tabs">
@@ -15453,7 +15202,7 @@ async function pdAction(action){
           <option value="month">本月</option>
           <option value="all">全部</option>
         </select>
-        <button onclick="openFVisit()" style="padding:6px 16px;border:none;border-radius:8px;background:var(--primary);color:#fff;font-size:13px;font-weight:600;cursor:pointer">+ 新增拜访</button>
+        <button onclick="openVisitForm()" style="padding:6px 16px;border:none;border-radius:8px;background:var(--primary);color:#fff;font-size:13px;font-weight:600;cursor:pointer">+ 新增拜访</button>
       </div>
       <div id="fw-visit-list">加载中...</div>
     </div>
@@ -15495,24 +15244,8 @@ async function pdAction(action){
           <button onclick="saveFVisit()" style="width:100%;padding:12px;border:none;border-radius:10px;background:var(--primary);color:#fff;font-size:15px;font-weight:600;cursor:pointer">💾 保存</button>
         </div>
       </div>
-
-    <!-- 定位确认弹窗 -->
-    <div id="fw-location-confirm" class="modal hidden">
-      <div class="modal-card" style="max-width:520px">
-        <div class="modal-hdr"><span id="fw-lc-title">📍 确认定位</span><button class="modal-x" onclick="closeLocationConfirm()">✕</button></div>
-        <div style="padding:12px">
-          <div id="fw-lc-map" class="fw-track-map" style="height:280px;margin-bottom:8px"><div style="text-align:center;padding:60px 0;color:var(--text3)">加载地图中...</div></div>
-          <div id="fw-lc-info" style="font-size:13px;color:var(--text2);margin-bottom:12px"></div>
-          <div style="display:flex;gap:8px">
-            <button onclick="closeLocationConfirm()" style="flex:1;padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);font-size:14px;cursor:pointer">取消</button>
-            <button onclick="confirmLocation()" id="fw-lc-confirm-btn" style="flex:1;padding:12px;border:none;border-radius:10px;background:var(--primary);color:#fff;font-size:14px;font-weight:600;cursor:pointer">📍 确认位置并提交</button>
-          </div>
-        </div>
-      </div>
     </div>
-
-    </div>
-  
+  </div>
 
   
   
@@ -16000,57 +15733,5 @@ async function pdAction(action){
 
 
 
-
-<div id="project-detail-view" class="hidden" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:var(--bg);z-index:900;display:none;flex-direction:column;overflow:hidden">
-  <div style="background:var(--card);border-bottom:1px solid var(--border);padding:10px 16px;display:flex;align-items:center;gap:12px;flex-shrink:0">
-    <button onclick="closeProjectDetail()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text2);padding:4px 8px">←</button>
-    <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
-      <span id="pd-pid-badge" style="font-size:11px;color:var(--text2);background:var(--bg);padding:2px 6px;border-radius:3px;white-space:nowrap"></span>
-      <h2 id="pd-title" style="font-size:15px;font-weight:600;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></h2>
-    </div>
-    <div class="pd-status-tabs" style="display:flex;gap:2px;background:var(--bg);border-radius:6px;padding:2px">
-      <button class="pd-status-tab active" data-status="todo" onclick="switchDetailTab('todo')">待办</button>
-      <button class="pd-status-tab" data-status="doing" onclick="switchDetailTab('doing')">在办</button>
-      <button class="pd-status-tab" data-status="done" onclick="switchDetailTab('done')">办结</button>
-    </div>
-  </div>
-  <div style="background:var(--card);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;gap:6px;justify-content:flex-end;flex-shrink:0">
-    <button onclick="saveProjectDetail()" style="background:#10B981;color:white;border:none;padding:6px 12px;border-radius:4px;cursor:pointer">💾 保存</button>
-    <button onclick="pdAction('read')" style="background:#3B82F6;color:white;border:none;padding:6px 12px;border-radius:4px;cursor:pointer">📥 阅件</button>
-    <button onclick="pdAction('return')" style="background:#F59E0B;color:white;border:none;padding:6px 12px;border-radius:4px;cursor:pointer">↩ 退回</button>
-    <button onclick="pdAction('complete')" style="background:#8B5CF6;color:white;border:none;padding:6px 12px;border-radius:4px;cursor:pointer">✅ 办理完毕</button>
-  </div>
-  <div id="pd-blocks-container" style="flex:1;overflow-y:auto;padding:12px 16px;background:var(--bg)">
-    <div style="text-align:center;padding:40px;color:var(--text2)">加载中...</div>
-  </div>
-  <div style="background:var(--card);border-top:1px solid var(--border);padding:6px 16px;font-size:11px;color:var(--text2);display:flex;justify-content:space-between;flex-shrink:0">
-    <span id="pd-owner-info">负责人: -</span>
-    <span id="pd-perm-info">权限: -</span>
-  </div>
-</div>
-<style>
-.pd-status-tab{background:transparent;border:none;padding:4px 10px;font-size:12px;color:var(--text2);cursor:pointer;border-radius:4px;font-weight:500}
-.pd-status-tab.active{background:var(--card);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,0.1)}
-.pd-block{background:var(--card);border:1px solid var(--border);border-radius:6px;margin-bottom:10px;overflow:hidden}
-.pd-block-header{padding:10px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
-.pd-block-header:hover{background:var(--bg2)}
-.pd-block-title{font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px}
-.pd-block-status{font-size:10px;padding:2px 6px;border-radius:3px;font-weight:500}
-.pd-block-status.pending{background:#FEF3C7;color:#92400E}
-.pd-block-status.in_progress{background:#DBEAFE;color:#1E40AF}
-.pd-block-status.done{background:#D1FAE5;color:#065F46}
-.pd-block-status.skipped{background:#F3F4F6;color:#6B7280}
-.pd-block-toggle{font-size:12px;color:var(--text2);transition:transform 0.2s;display:inline-block}
-.pd-block.collapsed .pd-block-toggle{transform:rotate(-90deg)}
-.pd-block.collapsed .pd-block-body{display:none}
-.pd-block-body{padding:12px 14px;border-top:1px solid var(--border);font-size:12px}
-.pd-block-row{display:flex;gap:8px;margin-bottom:6px;line-height:1.5;align-items:center}
-.pd-block-label{color:var(--text2);min-width:80px;flex-shrink:0;font-size:11px}
-.pd-block-value{flex:1;color:var(--text);font-size:12px}
-.pd-block-input{width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text);font-size:12px;box-sizing:border-box}
-.pd-block-views{font-size:10px;color:var(--text2);margin-top:8px;display:flex;gap:4px;flex-wrap:wrap;align-items:center}
-.pd-dept-tag{background:var(--bg);padding:1px 5px;border-radius:3px;font-size:9px}
-.pd-no-access{padding:20px;text-align:center;color:var(--text2);font-size:12px}
-</style>
 </body>
 </html>

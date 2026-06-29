@@ -1,0 +1,3 @@
+function pollNotifications(){
+  if(!currentUser||!currentCompanyId)return;
+  var {count}

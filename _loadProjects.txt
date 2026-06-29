@@ -1,0 +1,17 @@
+﻿node : '閫氳繃鐜鍙橀噺娉ㄥ叆锛?' 不是内部或外部命令，也不是可运行的程序
+所在位置 行:1 字符: 21
++ ... aifa\grsds; node -e "var s=require('fs').readFileSync('index.html','u ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ('閫氳繃鐜鍙橀噺娉ㄥ叆锛?' 不是内部或外部命令，也不是可运行的程序:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+或批处理文件。
+'NARY:' 不是内部或外部命令，也不是可运行的程序
+或批处理文件。
+'TASK_NODE_ENABLED:' 不是内部或外部命令，也不是可运行的程序
+或批处理文件。
+loadProjects: function loadProjects(){
+  var diagBanner=document.querySelector('#project-list-panel > div[style]');
+  if(diagBanner&&diagBanner.textContent.indexOf('DIAG')>=0)diagBanner.remove();
+  var list=document.getElementById('pm-project-list');
+  if(!list){console.error('pm-project-list not found');return}

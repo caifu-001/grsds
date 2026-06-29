@@ -1,0 +1,4 @@
+function toggleNotifPanel(){
+  var p=document.getElementById('notif-panel');
+  p.classList.toggle('hidden');
+  if(!p.classList.contains('hidden')){switchNotifTab('notifications')}

@@ -259,9 +259,9 @@ policy = "oneshot"
 inspector_port = 8083
 
 # Use these configurations to customize your Edge Function.
-# [functions.MY_FUNCTION_NAME]
-# enabled = true
-# verify_jwt = true
+[functions.admin-proxy]
+enabled = true
+verify_jwt = false
 # import_map = "./functions/MY_FUNCTION_NAME/deno.json"
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
