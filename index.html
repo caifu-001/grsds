@@ -15221,10 +15221,11 @@ async function renderProjectDetail(pid){
   }
 
   switchDetailTab('todo');
-}catch(e){
-  console.error('renderProjectDetail error:',e);
-  showToast('加载项目详情失败: '+(e.message||e));
-  closeProjectDetail();
+  }catch(e){
+    console.error('renderProjectDetail error:',e);
+    showToast('加载项目详情失败: '+(e.message||e));
+    closeProjectDetail();
+  }
 }
 
 function closeProjectDetail(){
