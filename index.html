@@ -13690,7 +13690,7 @@ function openProjectContractForm(id){if(curProjectId)showToast('合同表单')}
 function openDeliveryForm(id){if(curProjectId)showToast('交付表单')}
 function openPaymentForm(id){if(curProjectId)showToast('收款表单')}
 function deleteStage(id){if(confirm('确定删除？')){sb.from('project_stages').delete().eq('id',id).then(function(r){if(!r.error){loadStages();showToast('已删除')}else showToast(r.error.message)})}}
-async function saveProject(){
+async async function saveProject(){
   var name=document.getElementById('pf-name').value.trim();
   if(!name){showToast('请输入商机名称');return}
   var conList=[];
