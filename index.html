@@ -13694,11 +13694,12 @@ async function saveProject(){
     var {error}=await sb.from('projects').update(proj).eq('id',oppEditId);
     if(error){showToast('更新失败: '+error.message);return}
   }
+  var _leadId = oppLeadId;
   closeOppForm();
   await loadProjects();
   // If created from lead, mark lead as converted
-  if(oppLeadId&&!oppEditId){
-    try{await sb.from('lead_pool').update({opportunity_id:proj.bus_id,status:'converted'}).eq('id',oppLeadId);console.log('[saveProject] lead',oppLeadId,'converted')}catch(e){console.error('[saveProject] lead convert error',e)}
+  if(_leadId&&!oppEditId){
+    try{await sb.from('lead_pool').update({opportunity_id:proj.bus_id,status:'converted'}).eq('id',_leadId);console.log('[saveProject] lead',_leadId,'converted')}catch(e){console.error('[saveProject] lead convert error',e)}
   }
   await loadLeads();
   showToast(oppEditId?'已更新':'已创建商机');
