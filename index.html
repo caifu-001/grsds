@@ -15161,7 +15161,6 @@ async function renderProjectDetail(pid){
   var main=document.getElementById('main-screen');
   if(main)main.style.display='none';
 
-  var sb=supabaseClient();
   var r=await sb.from('projects').select('*').eq('id',pid).single();
   if(r.error||!r.data){alert('项目不存在');closeProjectDetail();return}
   curDetailProject=r.data;
@@ -15352,7 +15351,6 @@ async function saveProjectDetail(){
       merged['step_'+idx]=Object.assign({},b.data||{},updates[b.key]);
     }
   });
-  var sb=supabaseClient();
   var r=await sb.from('projects').update(merged).eq('id',curDetailId);
   if(r.error){alert('保存失败: '+r.error.message);return}
   toast('已保存','success');
@@ -15361,7 +15359,6 @@ async function saveProjectDetail(){
 
 async function pdAction(action){
   if(!curDetailId)return;
-  var sb=supabaseClient();
   if(action==='return'){
     if(!confirm('确认退回？'))return;
     await sb.from('projects').update({current_state:'todo'}).eq('id',curDetailId);
