@@ -14929,6 +14929,7 @@ async function doSaveFVisit(data){
 // Location confirmation modal
 function closeLocationConfirm(){
   document.getElementById('fw-location-confirm').classList.add('hidden');
+  document.getElementById('fw-location-confirm').style.display='';
   fwPendingLat=null;fwPendingLng=null;fwLocationConfirmCallback=null;
   if(window._fwPendingType)fwResetBtn(window._fwPendingType);
   window._fwPendingType=null;
@@ -14949,6 +14950,7 @@ function showLocationConfirm(lat,lng,titleText,callback){
   document.getElementById('fw-lc-title').textContent=titleText||'📍 确认定位';
   document.getElementById('fw-lc-info').innerHTML='<b>纬度:</b> '+lat.toFixed(6)+'&nbsp;&nbsp;<b>经度:</b> '+lng.toFixed(6);
   modal.classList.remove('hidden');
+  modal.style.display='flex';modal.style.position='fixed';modal.style.top='0';modal.style.left='0';modal.style.width='100vw';modal.style.height='100vh';modal.style.background='rgba(0,0,0,.5)';modal.style.zIndex='9999';modal.style.alignItems='center';modal.style.justifyContent='center';
   var mcont=document.getElementById('fw-lc-map');
   mcont.innerHTML='<div id="fw-lc-bmap" style="width:100%;height:100%"></div>';
   setTimeout(function(){
