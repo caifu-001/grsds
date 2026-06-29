@@ -11644,22 +11644,12 @@ function wfRefreshStaffDD(idx){var dd=document.getElementById('wf-staff-dd-'+idx
 function wfShowProps(idx){
   var panel=document.getElementById('wf-props-panel');
   if(!panel)return;
-  if(!allDepartments||!allDepartments.length||!allRoles||!allRoles.length){
-    (async function(){
-      try{
-        var d=await sb.from('departments').select('*').eq('company_id',currentCompanyId).order('name');
-        if(!d.error)allDepartments=d.data||[];
-        var r=await sb.from('roles').select('*').eq('company_id',currentCompanyId).order('name');
-        if(!r.error)allRoles=r.data||[];
-        if(!allUsers||!allUsers.length){
-          var ur=await fetch(SUPABASE_URL+'/rest/v1/profiles?select=*&company_id=eq.'+encodeURIComponent(currentCompanyId),{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}});
-          if(ur.ok){var ud=await ur.json();allUsers=ud;}
-        }
-      }catch(e){console.error('wfShowProps preload:',e)}
-      wfShowProps(idx);
-    })();
-    panel.innerHTML='<p style="font-size:12px;color:var(--text2);padding:20px">加载中...</p>';
-    return;
+  // 后台加载部门/角色（fire-and-forget），加载完自动重渲染
+  if(!allDepartments||!allDepartments.length){
+    sb.from('departments').select('*').eq('company_id',currentCompanyId).order('name').then(function(d){if(!d.error){allDepartments=d.data||[];wfShowProps(idx);}});
+  }
+  if(!allRoles||!allRoles.length){
+    sb.from('roles').select('*').eq('company_id',currentCompanyId).order('name').then(function(d){if(!d.error){allRoles=d.data||[];wfShowProps(idx);}});
   }
 
   if(idx<0||idx>=wfEditorSteps.length){
