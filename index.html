@@ -14780,17 +14780,15 @@ async function doCheckIn(type){
       var lat=pos.coords.latitude,lng=pos.coords.longitude;
       console.log('[GPS] doCheckIn got coords:',lat,lng);
       gotLocation=true;
+      // 直接签到，跳过地图确认弹窗
       window._fwPendingType=type;
-      showLocationConfirm(lat,lng,type==='in'?'📍 上班签到 - 确认位置':'🏠 下班签退 - 确认位置',async function(clat,clng){
-        try{
-          var r=await sb.from('field_checkins').insert({user_id:currentUser.id,type:type,latitude:clat,longitude:clng,address:addr,note:note||null,company_id:currentCompanyId}).select();
-          if(r.error){showToast('签到失败: '+r.error.message);return}
-          showToast(type==='in'?'✅ 签到成功！':'🏠 签退成功，辛苦了！');
-          document.getElementById('fw-checkin-note').value='';
-          loadFWCheckin();loadFWOverview();
-        }catch(e){showToast('签到失败: '+(e.message||e));console.error(e)}
-        finally{window._fwPendingType=null;fwResetBtn(type)}
-      });
+      var r=await sb.from('field_checkins').insert({user_id:currentUser.id,type:type,latitude:lat,longitude:lng,address:addr,note:note||null,company_id:currentCompanyId}).select();
+      if(r.error){showToast('签到失败: '+r.error.message);fwResetBtn(type);return}
+      showToast(type==='in'?'✅ 签到成功！位置已记录':'🏠 签退成功，辛苦了！');
+      document.getElementById('fw-checkin-note').value='';
+      loadFWCheckin();loadFWOverview();
+      fwResetBtn(type);
+      return;
     }catch(g){
       console.warn('[GPS] doCheckIn failed:',g.message||g,'code:',g.code);
       if(g.code===1)showToast('⚠️ 定位被拒绝，请在浏览器设置中允许定位权限');
@@ -14801,6 +14799,7 @@ async function doCheckIn(type){
       return;
     }
   }
+  if(!gotLocation){
   if(!gotLocation){
     try{
       var r=await sb.from('field_checkins').insert({user_id:currentUser.id,type:type,latitude:null,longitude:null,address:addr,note:note||null,company_id:currentCompanyId}).select();
