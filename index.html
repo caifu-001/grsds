@@ -12023,7 +12023,7 @@ function initWorkflow(templateId){
 initWorkflow();
 
 async function loadTemplates(){
-  try{if(isSuperAdmin){var {data}=await sbAdmin.from('workflow_templates').select('*');if(data)allTemplates=data;}else{var {data}=await sb.from('workflow_templates').select('*');if(data)allTemplates=data;}}
+  try{var {data}=await sb.from('workflow_templates').select('*');if(data)allTemplates=data;}
   catch(e){console.error('loadTemplates',e)}
 }
 function getTemplateSteps(templateId){
