@@ -14760,6 +14760,7 @@ async function loadFWCheckin(){
   }catch(e){console.error('loadFWCheckin error:',e)}
 }
 
+function fwResetBtn(type){var btnIn=document.getElementById('fw-btn-in');var btnOut=document.getElementById('fw-btn-out');if(type==='in'){btnIn.disabled=false;btnIn.textContent='📍 上班签到'}else{btnOut.disabled=false;btnOut.textContent='🏠 下班签退'}}
 async function doCheckIn(type){
   var note=document.getElementById('fw-checkin-note').value.trim();
   var btnIn=document.getElementById('fw-btn-in');
@@ -14772,10 +14773,14 @@ async function doCheckIn(type){
     try{
       var isMobile=/Mobi|Android|iPhone/i.test(navigator.userAgent)||('ontouchstart' in window);
       console.log('[GPS] doCheckIn requesting, mobile='+isMobile);
-      var pos=await new Promise(function(res,rej){navigator.geolocation.getCurrentPosition(res,rej,{timeout:10000,enableHighAccuracy:isMobile,maximumAge:60000})});
+      var pos=await new Promise(function(res,rej){
+        var timer=setTimeout(function(){rej(new Error('timeout'));},8000);
+        navigator.geolocation.getCurrentPosition(function(p){clearTimeout(timer);res(p)},function(e){clearTimeout(timer);rej(e)},{timeout:8000,enableHighAccuracy:isMobile,maximumAge:0})
+      });
       var lat=pos.coords.latitude,lng=pos.coords.longitude;
       console.log('[GPS] doCheckIn got coords:',lat,lng);
       gotLocation=true;
+      window._fwPendingType=type;
       showLocationConfirm(lat,lng,type==='in'?'📍 上班签到 - 确认位置':'🏠 下班签退 - 确认位置',async function(clat,clng){
         try{
           var r=await sb.from('field_checkins').insert({user_id:currentUser.id,type:type,latitude:clat,longitude:clng,address:addr,note:note||null,company_id:currentCompanyId}).select();
@@ -14784,13 +14789,16 @@ async function doCheckIn(type){
           document.getElementById('fw-checkin-note').value='';
           loadFWCheckin();loadFWOverview();
         }catch(e){showToast('签到失败: '+(e.message||e));console.error(e)}
-        finally{if(type==='in'){btnIn.disabled=false;btnIn.textContent='📍 上班签到'} else{btnOut.disabled=false;btnOut.textContent='🏠 下班签退'}}
+        finally{window._fwPendingType=null;fwResetBtn(type)}
       });
     }catch(g){
       console.warn('[GPS] doCheckIn failed:',g.message||g,'code:',g.code);
       if(g.code===1)showToast('⚠️ 定位被拒绝，请在浏览器设置中允许定位权限');
       else if(g.code===2)showToast('⚠️ 定位不可用，请检查GPS/WiFi');
-      else if(g.code===3)showToast('⚠️ 定位超时（10秒）');
+      else if(g.code===3)showToast('⚠️ 定位超时（8秒）');
+      else showToast('⚠️ 定位失败: '+(g.message||'未知'));
+      fwResetBtn(type);
+      return;
     }
   }
   if(!gotLocation){
@@ -14930,6 +14938,8 @@ async function doSaveFVisit(data){
 function closeLocationConfirm(){
   document.getElementById('fw-location-confirm').classList.add('hidden');
   fwPendingLat=null;fwPendingLng=null;fwLocationConfirmCallback=null;
+  if(window._fwPendingType)fwResetBtn(window._fwPendingType);
+  window._fwPendingType=null;
   if(window._fwLcMap){window._fwLcMap.clearOverlays();window._fwLcMap=null}
 }
 function confirmLocation(){
