@@ -6511,7 +6511,7 @@ async function switchAdminTab(tab){
   else if(tab==='logs'){var lp=document.getElementById('admin-logs');lp.classList.remove('hidden');subs[9].classList.add('active');await loadOperationLogs();renderOperationLogs();}
   else if(tab==='config'){var cp=document.getElementById('admin-config');cp.classList.remove('hidden');subs[10].classList.add('active');switchConfigTab('fields');}
   else if(tab==='security'){var sp=document.getElementById('admin-security');sp.classList.remove('hidden');subs[11].classList.add('active');renderSecurityPanel();}
-  else if(tab==='workflows'){(async function(){var wf=document.getElementById('admin-workflows');wf.classList.remove('hidden');subs[12].classList.add('active');if(!allRoles||!allRoles.length)await loadAdminData();if(!allDepartments||!allDepartments.length)await loadAdminData();renderWorkflowTemplates();})();}
+  else if(tab==='workflows'){(async function(){var wf=document.getElementById('admin-workflows');wf.classList.remove('hidden');subs[12].classList.add('active');if(!allRoles||!allRoles.length||!allDepartments||!allDepartments.length)await loadAdminData();renderWorkflowTemplates();})();}
 }
 
 /* ── Users ── */
@@ -11694,7 +11694,7 @@ function wfShowProps(idx){
   h+='授权部门</label><select onchange="wfSetAssignee(2,\'value\',this.value)"><option value="">无</option>';
   for(var di=0;di<(allDepartments||[]).length;di++){h+='<option value="'+escHtml(allDepartments[di].id)+'"'+(asg.value===allDepartments[di].id?' selected':'')+'>'+escHtml(allDepartments[di].name)+'</option>';}
   h+='</select>';
-  h+='<label>鎸囧畾鍛樺伐</label><select id="wf-staff-dd-'+idx+'" onchange="wfSetAssignee('+idx+','staffId',this.value)"><option value="">鏃?/option>';
+  h+='<label>鎸囧畾鍛樺伐</label><select id=wf-staff-dd-'+idx+' onchange=wfSetAssignee('+idx+',"staffId",this.value)><option value=>鏃?/option>';
   var selDept=asg.value||'';var selStaff=asg.staffId||'';
   if(selDept&&allUsers){for(var ui=0;ui<allUsers.length;ui++){if(String(allUsers[ui].department_id)===String(selDept)){h+='<option value='+escHtml(allUsers[ui].user_id)+''+(selStaff===allUsers[ui].user_id?' selected':'')+'>'+escHtml(allUsers[ui].display_name||allUsers[ui].email)+'</option>';}}}
   h+='</select>';
@@ -14767,60 +14767,77 @@ async function loadFWCheckin(){
 function fwResetBtn(type){var btnIn=document.getElementById('fw-btn-in');var btnOut=document.getElementById('fw-btn-out');if(type==='in'){btnIn.disabled=false;btnIn.textContent='📍 上班签到'}else{btnOut.disabled=false;btnOut.textContent='🏠 下班签退'}}
 async function doCheckIn(type){
   var note=document.getElementById('fw-checkin-note').value.trim();
+  var btnIn=document.getElementById('fw-btn-in');
+  var btnOut=document.getElementById('fw-btn-out');
   var addr='';
   var label=type==='in'?'上班签到':'下班签退';
-  var btnEl=type==='in'?document.getElementById('fw-btn-in'):document.getElementById('fw-btn-out');
-  btnEl.disabled=true;btnEl.textContent='获取定位中...';
-  var settled=false;
-  var cleanup=function(){settled=true;btnEl.disabled=false;btnEl.textContent=type==='in'?'📍 上班签到':'🏠 下班签退'};
-  var hardTimer=setTimeout(function(){
-    if(!settled){cleanup();showToast('⚠️ 定位超时(8秒)，正在无定位签到...');doCheckInNoGPS(type,note,addr,label);}
-  },8000);
-  if(!navigator||!navigator.geolocation){
-    clearTimeout(hardTimer);cleanup();showToast('⚠️ 浏览器不支持定位');return;
-  }
-  navigator.geolocation.getCurrentPosition(
-    function(pos){
-      if(settled)return;
+  if(type==='in'){btnIn.disabled=true;btnIn.textContent='获取定位中(5秒)...'}
+  else{btnOut.disabled=true;btnOut.textContent='获取定位中(5秒)...'}
+  // Try GPS with strict 5s timeout - if hangs, fall through to no-GPS checkin
+  if(navigator&&navigator.geolocation){
+    try{
+      var isMobile=/Mobi|Android|iPhone/i.test(navigator.userAgent)||('ontouchstart' in window);
+      var pos=await Promise.race([
+        new Promise(function(res,rej){
+          navigator.geolocation.getCurrentPosition(res,rej,{timeout:5000,enableHighAccuracy:isMobile,maximumAge:60000})
+        }),
+        new Promise(function(_,rej){setTimeout(function(){rej(new Error('race_timeout'))},5500)})
+      ]);
       var lat=pos.coords.latitude,lng=pos.coords.longitude;
-      if(isNaN(lat)||isNaN(lng)){clearTimeout(hardTimer);cleanup();showToast('⚠️ 坐标无效，正在无定位签到...');doCheckInNoGPS(type,note,addr,label);return;}
-      clearTimeout(hardTimer);cleanup();
+      if(isNaN(lat)||isNaN(lng)){throw new Error('invalid_coords')}
       window._fwPendingType=type;
       showLocationConfirm(lat,lng,type==='in'?'📍 上班签到 - 确认位置':'🏠 下班签退 - 确认位置',async function(clat,clng){
         window._fwPendingType=null;
-        btnEl.disabled=true;btnEl.textContent='保存中...';
         try{
           var r=await sb.from('field_checkins').insert({user_id:currentUser.id,type:type,latitude:clat,longitude:clng,address:addr,note:note||null,company_id:currentCompanyId}).select();
-          btnEl.disabled=false;btnEl.textContent=type==='in'?'📍 上班签到':'🏠 下班签退';
           if(r.error){showToast(label+'失败: '+r.error.message);return}
           showToast(type==='in'?'✅ 签到成功！':'🏠 签退成功，辛苦了！');
           document.getElementById('fw-checkin-note').value='';
           loadFWCheckin();loadFWOverview();
-        }catch(e){btnEl.disabled=false;btnEl.textContent=type==='in'?'📍 上班签到':'🏠 下班签退';showToast(label+'失败: '+(e.message||e));console.error(e)}
+        }catch(e){showToast(label+'失败: '+(e.message||e));console.error(e)}
+        finally{fwResetBtn(type)}
       });
-    },
-    function(err){
-      if(settled)return;
-      clearTimeout(hardTimer);cleanup();
-      if(err.code===1)showToast('⚠️ 定位被拒绝，正在无定位签到...');
-      else showToast('⚠️ GPS不可用，正在无定位签到...');
-      doCheckInNoGPS(type,note,addr,label);
-    },
-    {timeout:7000,enableHighAccuracy:true,maximumAge:60000}
-  );
-}
-
-async function doCheckInNoGPS(type,note,addr,label){
-  var btnEl=type==='in'?document.getElementById('fw-btn-in'):document.getElementById('fw-btn-out');
+      return;
+    }catch(g){
+      console.warn('[GPS] doCheckIn failed:',g.message||g,'code:',g.code);
+      if(g.code===1)showToast('⚠️ 定位被拒绝，5秒后将无定位签到');
+      else showToast('⚠️ 定位超时，正在无定位签到...');
+    }
+  }
+  // Fallback: sign in without GPS
   try{
     var r=await sb.from('field_checkins').insert({user_id:currentUser.id,type:type,latitude:null,longitude:null,address:addr,note:note||null,company_id:currentCompanyId}).select();
-    btnEl.disabled=false;btnEl.textContent=type==='in'?'📍 上班签到':'🏠 下班签退';
-    if(r.error){showToast(label+'失败: '+r.error.message);return}
-    showToast(type==='in'?'✅ 签到成功！（无定位）':'🏠 签退成功！（无定位）');
+    if(r.error){showToast(label+'失败: '+r.error.message);fwResetBtn(type);return}
+    showToast(type==='in'?'✅ 签到成功！（未获取定位）':'🏠 签退成功！（未获取定位）');
     document.getElementById('fw-checkin-note').value='';
     loadFWCheckin();loadFWOverview();
-  }catch(e){btnEl.disabled=false;btnEl.textContent=type==='in'?'📍 上班签到':'🏠 下班签退';showToast(label+'失败: '+(e.message||e));console.error(e)}
+  }catch(e){showToast(label+'失败: '+(e.message||e));console.error(e)}
+  finally{fwResetBtn(type)}
+}async function loadFWVisits(){
+  var filter=document.getElementById('fw-visit-filter').value;
+  var list=document.getElementById('fw-visit-list');
+  if(!list)return;
+  list.innerHTML='<div style="color:var(--text3);font-size:13px">加载中...</div>';
+  var query=sb.from('field_visits').select('*').eq('user_id',currentUser.id).eq('company_id',currentCompanyId).order('visit_date',{ascending:false}).order('created_at',{ascending:false});
+  var today=new Date().toISOString().substring(0,10);
+  if(filter==='today')query=query.eq('visit_date',today);
+  else if(filter==='week'){var w=new Date();w.setDate(w.getDate()-7);query=query.gte('visit_date',w.toISOString().substring(0,10))}
+  else if(filter==='month'){query=query.gte('visit_date',new Date().toISOString().substring(0,7)+'-01')}
+  try{
+    var {data}=await query;
+    var html='';
+    if(data&&data.length){
+      for(var i=0;i<data.length;i++){
+        var v=data[i];
+        var rClass=v.result==='done'?'done':v.result==='follow'?'follow':'pending';
+        var rLabel=v.result==='done'?'达成':v.result==='follow'?'跟进':'待定';
+        html+='<div class="fw-visit-card"><div class="vw-header"><div class="vw-client">'+h(v.client_name||'未关联客户')+'</div><div class="vw-date">'+v.visit_date+'</div></div>'+(v.purpose?'<div class="vw-purpose">🎯 '+h(v.purpose)+'</div>':'')+(v.notes?'<div class="vw-notes">'+h(v.notes)+'</div>':'')+(v.latitude?'<div class="fw-visit-loc">📍 '+v.latitude.toFixed(4)+', '+v.longitude.toFixed(4)+'</div>':'<div class="fw-visit-loc no-gps">⚠ 无定位</div>')+(v.result?('<div class="vw-result '+rClass+'">'+rLabel+'</div>'):'')+'</div>';
+      }
+    }else{html='<div style="text-align:center;color:var(--text3);padding:40px 0"><div style="font-size:40px;margin-bottom:8px">🏢</div><div>暂无拜访记录</div></div>'}
+    list.innerHTML=html;
+  }catch(e){console.error(e);list.innerHTML='<div style="color:var(--danger)">加载失败</div>'}
 }
+
 function openVisitForm(id){
   fwVisitEditId=id||null;fwVisitClientId=null;
   document.getElementById('fw-vm-title').textContent=id?'编辑拜访记录':'新增拜访记录';
