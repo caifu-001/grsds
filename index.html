@@ -7448,7 +7448,7 @@ function renderVisits(){
   }
   grid.innerHTML=h;
 }
-function openVisitForm(id){
+function openFWVisitForm(id){
   svEditId=id||null;
   var v=id?allVisits.find(function(x){return x.id===id}):null;
   document.getElementById('visit-form-title').textContent=id?'编辑回访':'新建回访';
@@ -7462,7 +7462,7 @@ function openVisitForm(id){
   if(allClients)for(var i=0;i<allClients.length;i++){var cc=allClients[i];cs.innerHTML+='<option value="'+cc.id+'"'+(v&&v.client_id===cc.id?' selected':'')+'>'+h(cc.name)+'</option>'}
   document.getElementById('visit-modal').classList.remove('hidden');
 }
-function closeVisitForm(){document.getElementById('visit-modal').classList.add('hidden');svEditId=null}
+function closeFVisit(){document.getElementById('visit-modal').classList.add('hidden');svEditId=null}
 async function saveVisit(){
   var title=document.getElementById('vf-title').value.trim();if(!title){showToast('请输入标题');return}
   var data={company_id:currentCompanyId,created_by:currentUser.id,title:title,
@@ -14800,7 +14800,7 @@ async function doSaveCheckIn(lat,lng,type,note,addr){
   }catch(e){btnEl.disabled=false;btnEl.textContent=type==='in'?'\u{1F4CD} 上班签到':'\u{1F3E0} 下班签退';console.error(e)}
 }
 
-function openVisitForm(id){
+function openFWVisitForm(id){
   fwVisitEditId=id||null;fwVisitClientId=null;
   document.getElementById('fw-vm-title').textContent=id?'编辑拜访记录':'新增拜访记录';
   var today=new Date().toISOString().substring(0,10);
@@ -14840,7 +14840,7 @@ function selectFWClient(id,name){
   fwVisitClientId=id;
   document.getElementById('fw-vm-client-list').innerHTML='';
 }
-function closeVisitForm(){document.getElementById('fw-visit-modal').classList.add('hidden')}
+function closeFVisit(){document.getElementById('fw-visit-modal').classList.add('hidden')}
 var fwLocationConfirmCallback=null;
 var fwPendingLat=null,fwPendingLng=null;
 
@@ -14941,6 +14941,88 @@ function showLocationConfirm(lat,lng,titleText,callback){
     });
   },200);
 }
+async function loadFWVisits(){
+  var list=document.getElementById('fw-visit-list');
+  if(!list)return;
+  list.innerHTML='<div style="color:var(--text3);font-size:13px">加载中...</div>';
+  try{
+    var filter=(document.getElementById('fw-visit-filter')||{}).value||'today';
+    var q=sb.from('field_visits').select('*').eq('user_id',currentUser.id).eq('company_id',currentCompanyId);
+    if(filter==='today'){
+      var today=new Date().toISOString().substring(0,10);
+      q=q.eq('visit_date',today);
+    }else if(filter==='week'){
+      var wa=new Date();wa.setDate(wa.getDate()-7);q=q.gte('visit_date',wa.toISOString().substring(0,10));
+    }else if(filter==='month'){
+      var ma=new Date();ma.setMonth(ma.getMonth()-1);q=q.gte('visit_date',ma.toISOString().substring(0,10));
+    }
+    var {data:visits,error}=await q.order('visit_date',{ascending:false}).order('start_time',{ascending:false});
+    if(error){list.innerHTML='<div style="color:var(--danger);font-size:13px">加载失败: '+error.message+'</div>';return}
+    if(!visits||!visits.length){list.innerHTML='<div style="color:var(--text3);font-size:13px;text-align:center;padding:20px">暂无拜访记录</div>';return}
+    var html='';
+    for(var i=0;i<visits.length;i++){
+      var v=visits[i];
+      html+='<div class="fw-visit-card" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px">';
+      html+='<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">';
+      html+='<div style="font-weight:600;font-size:14px">'+escHtml(v.client_name||'未命名客户')+'</div>';
+      html+='<div style="display:flex;gap:6px">';
+      html+='<button onclick="openVisitForm('+v.id+')" style="padding:3px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:12px;cursor:pointer">编辑</button>';
+      html+='<button onclick="deleteVisit('+v.id+')" style="padding:3px 10px;border:1px solid #ef4444;border-radius:6px;background:#fef2f2;color:#ef4444;font-size:12px;cursor:pointer">删除</button>';
+      html+='</div></div>';
+      html+='<div style="font-size:12px;color:var(--text2);margin-bottom:4px">📅 '+escHtml(v.visit_date||'')+(v.start_time?' '+escHtml(v.start_time):'')+'</div>';
+      if(v.purpose)html+='<div style="font-size:13px;margin-bottom:2px"><b>目的:</b> '+escHtml(v.purpose)+'</div>';
+      if(v.result)html+='<div style="font-size:13px;margin-bottom:2px"><b>结果:</b> '+escHtml(v.result)+'</div>';
+      if(v.notes)html+='<div style="font-size:13px;margin-bottom:2px"><b>备注:</b> '+escHtml(v.notes)+'</div>';
+      if(v.latitude&&v.longitude)html+='<div style="font-size:11px;color:var(--text3);margin-top:4px">📍 '+v.latitude.toFixed(6)+', '+v.longitude.toFixed(6)+'</div>';
+      html+='</div>';
+    }
+    list.innerHTML=html;
+  }catch(e){list.innerHTML='<div style="color:var(--danger);font-size:13px">加载失败: '+(e.message||e)+'</div>';console.error('loadFWVisits:',e)}
+}
+
+function openFVisit(id){
+  fwVisitEditId=id||null;
+  fwVisitClientId=null;
+  var modal=document.getElementById('fw-visit-modal');
+  if(!modal){showToast('表单未找到');return}
+  if(id){
+    sb.from('field_visits').select('*').eq('id',id).single().then(function(r){
+      if(r.error||!r.data){showToast('记录不存在');return}
+      var v=r.data;
+      document.getElementById('fw-vm-client').value=v.client_name||'';
+      document.getElementById('fw-vm-purpose').value=v.purpose||'';
+      document.getElementById('fw-vm-notes').value=v.notes||'';
+      document.getElementById('fw-vm-result').value=v.result||'';
+      document.getElementById('fw-vm-date').value=v.visit_date||new Date().toISOString().substring(0,10);
+      fwVisitClientId=v.client_id||null;
+      modal.classList.remove('hidden');
+    });
+  }else{
+    document.getElementById('fw-vm-client').value='';
+    document.getElementById('fw-vm-purpose').value='';
+    document.getElementById('fw-vm-notes').value='';
+    document.getElementById('fw-vm-result').value='';
+    document.getElementById('fw-vm-date').value=new Date().toISOString().substring(0,10);
+    modal.classList.remove('hidden');
+  }
+}
+
+function closeFVisit(){
+  fwVisitEditId=null;fwVisitClientId=null;
+  var modal=document.getElementById('fw-visit-modal');
+  if(modal)modal.classList.add('hidden');
+}
+
+async function deleteVisit(id){
+  if(!confirm('确定删除该拜访记录？'))return;
+  try{
+    var r=await sb.from('field_visits').delete().eq('id',id);
+    if(r.error){showToast('删除失败: '+r.error.message);return}
+    showToast('已删除');
+    loadFWVisits();loadFWOverview();
+  }catch(e){showToast('删除失败: '+(e.message||e))}
+}
+
 var fwLocationConfirmCallback=null; // callback when user confirms location
 var fwPendingLat=null,fwPendingLng=null; // pending GPS coords
 
@@ -15366,7 +15448,7 @@ async function pdAction(action){
           <option value="month">本月</option>
           <option value="all">全部</option>
         </select>
-        <button onclick="openVisitForm()" style="padding:6px 16px;border:none;border-radius:8px;background:var(--primary);color:#fff;font-size:13px;font-weight:600;cursor:pointer">+ 新增拜访</button>
+        <button onclick="openFVisit()" style="padding:6px 16px;border:none;border-radius:8px;background:var(--primary);color:#fff;font-size:13px;font-weight:600;cursor:pointer">+ 新增拜访</button>
       </div>
       <div id="fw-visit-list">加载中...</div>
     </div>
