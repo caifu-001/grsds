@@ -1140,7 +1140,7 @@ input,select,textarea,button{font-family:inherit}
 <body>
 
 <div id="global-error-banner" style="display:none;background:#e74c3c;color:#fff;padding:10px 16px;font-size:13px;position:fixed;top:0;left:0;right:0;z-index:99999;text-align:center;white-space:pre-wrap;line-height:1.4"></div>
-<script>(function(){var el=document.getElementById('global-error-banner');window.onerror=function(m,u,l,c,e){el.style.display='block';el.innerHTML='🔴 JS ERROR: '+m+'<br><small>line '+l+':'+c+' | '+u.substr(u.lastIndexOf('/')+1)+'</small>';if(e&&e.stack)el.innerHTML+='<br><small>'+e.stack.split('\n').slice(0,3).join('<br>')+'</small>'};window.addEventListener('unhandledrejection',function(ev){el.style.display='block';el.innerHTML='🔴 PROMISE REJECTION: '+ev.reason});console.error=function(){el.style.display='block';el.innerHTML='🔴 console.error: '+Array.from(arguments).join(' ')}})();</script>
+<script>(function(){var el=document.getElementById('global-error-banner');window.onerror=function(m,u,l,c,e){el.style.display='block';el.innerHTML='🔴 JS ERROR: '+h(m)+'<br><small>line '+l+':'+c+' | '+h(u.substr(u.lastIndexOf('/')+1))+'</small>';if(e&&e.stack)el.innerHTML+='<br><small>'+h(e.stack.split('\n').slice(0,3).join('<br>'))+'</small>'};window.addEventListener('unhandledrejection',function(ev){el.style.display='block';el.innerHTML='🔴 PROMISE REJECTION: '+h(ev.reason)});console.error=function(){el.style.display='block';el.innerHTML='🔴 console.error: '+h(Array.from(arguments).join(' '))}})();</script>
 
 <!-- Login -->
 <!-- 更多下拉菜单 -->
@@ -3086,8 +3086,22 @@ input,select,textarea,button{font-family:inherit}
 // Supabase
 const SUPABASE_URL='https://jyefbatmmbelrhhzsgva.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp5ZWZiYXRtbWJlbHJoaHpzZ3ZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5NDIyMDUsImV4cCI6MjA5NTUxODIwNX0.m8pVc7yA9AycSTkexoH76SNo_P40KVRA4pmKECJQea4';
-SUPABASE_SERVICE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp5ZWZiYXRtbWJlbHJoaHpzZ3ZhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTk0MjIwNSwiZXhwIjoyMDk1NTE4MjA1fQ.0bF9vVcZWfBNt3t89VGEvAnu5mDGeqZm8UViY-cKuaU'; // 从 Supabase Dashboard > Settings > API 获取 service_role key（超管重置密码用）
+// SUPABASE_SERVICE_KEY 已移除（安全修复 P0-2）— 所有管理员操作走 Supabase Edge Function admin-proxy
+// 部署 admin-proxy 后取消下面注释并填入 Edge Function URL:
+ const SUPAFUNC_BASE='https://jyefbatmmbelrhhzsgva.supabase.co/functions/v1/admin-proxy';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+
+// === 安全管理 API 代理 (P0-2 修复) ===
+// 所有需 service_role 的操作统一走 Supabase Edge Function
+async function callAdmin(op,table,opts){
+  opts=opts||{};
+  try{
+    var body=JSON.stringify({op:op,table:table,method:opts.method||'GET',payload:opts.payload||null,query:opts.query||'*',filters:opts.filters||null});
+    var r=await fetch(SUPAFUNC_BASE,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+(await sb.auth.getSession()).data.session?.access_token||''},body:body});
+    if(!r.ok){var txt=await r.text();console.error('callAdmin failed:',r.status,txt);return{data:null,error:{message:'Admin API '+(opts.failMsg||'error')}}};
+    return await r.json();
+  }catch(e){console.error('callAdmin error:',e);return{data:null,error:{message:e.message||'Network error'}};}
+}
 document.getElementById('script-loaded-check').style.display='none';
 
 const BUILTIN_TYPES=['甲方','集成商','设计院','运营商','国央企','党政','厂家','制造业','军队','司法','教育','医疗','供应商'];
@@ -3101,7 +3115,7 @@ let moveContactIdx=-1,moveContactObj=null;
 let clientTags=[],clientAttachments=[],leadEditId=null,leadAssignId=null,allLeads=[],leadFormSource='pool';
 let c360ClientId=null,c360ActiveTab='overview',c360Orders=[];
 
-function h(s){return s?s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'):''}
+function h(s){if(s===null||s===undefined)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
 // showToast defined below (with type/color support)
 function tColor(label){
   var i=BUILTIN_TYPES.indexOf(label);
@@ -3111,6 +3125,7 @@ function tColor(label){
 }
 
 // === Auth ===
+var loginFailCount=0,loginLockUntil=null;
 function switchMode(){
   loginMode=loginMode==='login'?'register':'login';
   document.getElementById('login-btn').textContent=loginMode==='register'?'注册':'登录';
@@ -3120,9 +3135,12 @@ function switchMode(){
   b.classList.toggle('hidden',loginMode!=='register');h.classList.toggle('hidden',loginMode!=='register');
 }
 function checkPwStrength(pw){
-  if(pw.length<6)return{ok:false,level:0,msg:'密码至少6位'};
-  if(!/[a-zA-Z]/.test(pw)||!/[0-9]/.test(pw))return{ok:false,level:1,msg:'需包含字母和数字'};
-  if(pw.length>=8&&/[!@#$%^&*]/.test(pw))return{ok:true,level:3,msg:'密码强度：强'};
+  if(!pw||pw.length<8)return{ok:false,level:0,msg:'密码至少8位'};
+  var hasLetter=/[a-zA-Z]/.test(pw),hasDigit=/[0-9]/.test(pw),hasSpecial=/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pw);
+  if(!hasLetter)return{ok:false,level:1,msg:'需包含字母'};
+  if(!hasDigit)return{ok:false,level:1,msg:'需包含数字'};
+  if(!hasSpecial)return{ok:false,level:2,msg:'需包含特殊字符（如!@#$%等）'};
+  if(pw.length>=12)return{ok:true,level:3,msg:'密码强度：强'};
   return{ok:true,level:2,msg:'密码强度：中'};
 }
 document.getElementById('login-pass').addEventListener('input',function(){
@@ -3156,8 +3174,12 @@ function refreshCaptcha(){
   for(var i=0;i<captchaCode.length;i++){ctx.font='bold '+(22+Math.random()*8)+'px "Segoe UI","Microsoft YaHei",Arial';ctx.fillStyle='rgb('+Math.floor(Math.random()*140)+','+Math.floor(Math.random()*90)+','+Math.floor(Math.random()*200)+')';var x=8+i*30+Math.random()*8;var y=30+Math.random()*8;ctx.save();ctx.translate(x,y);ctx.rotate((Math.random()-0.5)*0.45);ctx.fillText(captchaCode[i],0,0);ctx.restore()}
 }
 async function handleLogin(){
+  var er=document.getElementById('login-err'),btn=document.getElementById('login-btn');
+  // 登录频率限制 (P2-10 修复)
+  if(loginLockUntil&&Date.now()<loginLockUntil){var sec=Math.ceil((loginLockUntil-Date.now())/1000);er.textContent='登录过于频繁，请'+sec+'秒后重试';return}
+  if(loginFailCount>=5){loginLockUntil=Date.now()+60000;loginFailCount=0;er.textContent='密码错误次数过多，请1分钟后重试';return}
   var captchaInput=document.getElementById('login-captcha').value.trim().toUpperCase();
-  var er=document.getElementById('login-err'),btn=document.getElementById('login-btn');er.textContent='';
+  er.textContent='';
   if(captchaInput!==captchaCode){er.textContent='验证码错误，请重新输入';refreshCaptcha();document.getElementById('login-captcha').value='';document.getElementById('login-captcha').focus();return}
   var un=document.getElementById('login-user').value.trim(),pw=document.getElementById('login-pass').value.trim();
   if(!un||!pw){er.textContent='请输入邮箱和密码';return}
@@ -3165,14 +3187,14 @@ async function handleLogin(){
   try{
     if(loginMode==='login'){
       var r=await sb.auth.signInWithPassword({email:un,password:pw});
-      if(r.error){er.textContent=trErr(r.error.message);return}
-      await onLoginSuccess(r.data.user);
+      if(r.error){loginFailCount++;er.textContent=trErr(r.error.message);return}
+      loginFailCount=0;await onLoginSuccess(r.data.user);
     }else{
       var s=checkPwStrength(pw);if(!s.ok){er.textContent=s.msg;return}
       var r=await sb.auth.signUp({email:un,password:pw});
       if(r.error){er.textContent=trErr(r.error.message);return}
       if(r.data.user&&!r.data.session){er.textContent='请联系管理员关闭邮件确认';return}
-      await onLoginSuccess(r.data.user);
+      loginFailCount=0;await onLoginSuccess(r.data.user);
     }
   }catch(e){er.textContent='登录失败: '+(e.message||e.toString());console.error('handleLogin error:',e)}
   finally{btn.disabled=false;btn.textContent=loginMode==='register'?'注册':'登录'}
@@ -3188,7 +3210,7 @@ async function onLoginSuccess(user){
     if(currentCompanyId&&profile.resignation_status==='approved'&&profile.resignation_date){
       var resignDate=new Date(profile.resignation_date);var today=new Date();today.setHours(0,0,0,0);
       if(resignDate<=today){
-        await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(currentUser.id),{method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json'},body:JSON.stringify({company_id:null,department_id:null,status:'leave',resignation_status:'approved'})});
+        await callAdmin('update','profiles',{payload:{company_id:null,department_id:null,status:'leave',resignation_status:'approved'},filters:[{col:'user_id',op:'eq',val:currentUser.id}],query:'*'});
         currentCompanyId=null;currentUserRole='user';isSuperAdmin=false;
         document.getElementById('login-user').value='';document.getElementById('login-pass').value='';
         document.getElementById('login-screen').classList.add('hidden');
@@ -3196,7 +3218,7 @@ async function onLoginSuccess(user){
         showCompanyRegScreen();return;
       }
     }
-  }if(!currentCompanyId&&profile&&profile.department_id){try{var deptFetch=await fetch(SUPABASE_URL+'/rest/v1/departments?id=eq.'+profile.department_id+'&select=company_id',{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_ANON_KEY}});if(deptFetch.ok){var deptData=await deptFetch.json();if(deptData&&deptData.length>0&&deptData[0].company_id){currentCompanyId=deptData[0].company_id;profile.company_id=currentCompanyId;await sb.from('profiles').update({company_id:currentCompanyId}).eq('user_id',user.id);if(!currentUserRole||currentUserRole==='user'){currentUserRole='admin';await sb.from('profiles').update({role:'admin'}).eq('user_id',user.id)}}}}catch(fb){console.error('resolve company via dept failed:',fb)}}
+  }if(!currentCompanyId&&profile&&profile.department_id){try{var deptFetch=await callAdmin('select','departments',{query:'company_id',filters:[{col:'id',op:'eq',val:profile.department_id}]});if(deptFetch.ok){var deptData=await deptFetch.json();if(deptData&&deptData.length>0&&deptData[0].company_id){currentCompanyId=deptData[0].company_id;profile.company_id=currentCompanyId;await sb.from('profiles').update({company_id:currentCompanyId}).eq('user_id',user.id);if(!currentUserRole||currentUserRole==='user'){currentUserRole='admin';await sb.from('profiles').update({role:'admin'}).eq('user_id',user.id)}}}}catch(fb){console.error('resolve company via dept failed:',fb)}}
 
   document.getElementById('login-user').value='';
   document.getElementById('login-pass').value='';
@@ -6089,7 +6111,7 @@ async function checkPendingCompany(){
 /* ── Admin Company Management ── */
 var allAdminCompanies=[];
 async function loadAdminCompanies(){
-  try{var r=await fetch(SUPABASE_URL+'/rest/v1/companies?select=*&order=name',{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}});if(r.ok){allAdminCompanies=await r.json();}}catch(e){}
+  try{var r=await callAdmin('select','companies',{query:'*',filters:[{col:'',op:'order',val:'name.asc'}]});if(r.ok){allAdminCompanies=await r.json();}}catch(e){}
 }
 function renderAdminCompanies(){
   var el=document.getElementById('admin-companies-manage-list');
@@ -6119,10 +6141,10 @@ async function saveCompany(){
   var payload={name:name,tax_id:tax||null,status:'approved'};
   try{
     if(_companyFormId){
-      var r=await fetch(SUPABASE_URL+'/rest/v1/companies?id=eq.'+_companyFormId,{method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify(payload)});
+      var r=await callAdmin('update','companies',{payload:payload,filters:[{col:'id',op:'eq',val:_companyFormId}],query:'*'});
       if(!r.ok){var t=await r.text();alert('更新失败: '+t);return}
     }else{
-      var r=await fetch(SUPABASE_URL+'/rest/v1/companies',{method:'POST',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify(payload)});
+      var r=await callAdmin('insert','companies',{payload:payload});
       if(!r.ok){var t=await r.text();alert('创建失败: '+t);return}
     }
     closeCompanyFormModal();
@@ -6134,7 +6156,7 @@ function delCompanyById(id){var co=allAdminCompanies.find(function(c){return c.i
 async function deleteCompany(id,name){
   if(!confirm('确定删除公司「'+name+'」？此操作不可恢复！'))return;
   try{
-    var r=await fetch(SUPABASE_URL+'/rest/v1/companies?id=eq.'+id,{method:'DELETE',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}});
+    var r=await callAdmin('delete','companies',{filters:[{col:'id',op:'eq',val:id}]});
     if(!r.ok){var t=await r.text();alert('删除失败: '+t);return}
     await loadAdminCompanies();renderAdminCompanies();
     showToast('公司已删除');
@@ -6234,9 +6256,9 @@ async function loadAdminData(){
   if(currentUserRole==='admin'||currentUserRole==='super_admin'){await loadAdminCompanies();}
   if(currentUserRole==='admin'||currentUserRole==='super_admin'){
     if(currentUserRole==='super_admin'){
-      try{var ur=await fetch(SUPABASE_URL+'/rest/v1/profiles?select=*',{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}});if(ur.ok){adminUserList=await ur.json();allUsers=adminUserList;populatePerfSelects();}}catch(e){}
+      try{var ur=await callAdmin('select','profiles',{query:'*'});if(ur.ok){adminUserList=await ur.json();allUsers=adminUserList;populatePerfSelects();}}catch(e){}
     }else{
-      try{var ur=await fetch(SUPABASE_URL+'/rest/v1/profiles?select=*&company_id=eq.'+encodeURIComponent(currentCompanyId),{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}});if(ur.ok){adminUserList=await ur.json();allUsers=adminUserList.slice();populatePerfSelects();}}catch(e){console.error('loadAdminData users:',e)}
+      try{var ur=await callAdmin('select','profiles',{query:'*',filters:[{col:'company_id',op:'eq',val:currentCompanyId}]});if(ur.ok){adminUserList=await ur.json();allUsers=adminUserList.slice();populatePerfSelects();}}catch(e){console.error('loadAdminData users:',e)}
     }
   }
 }
@@ -6562,10 +6584,7 @@ async function deleteUser(userId){
   if(!confirm('确定要删除该员工账号吗？此操作不可撤销，将同时清除其所有关联数据。'))return;
   // 1. Delete from Auth (admin API)
   try{
-    var ar=await fetch('https://jyefbatmmbelrhhzsgva.supabase.co/auth/v1/admin/users/'+userId,{
-      method:'DELETE',
-      headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}
-    });
+    // FIXME: Auth admin API requires service_key - cannot use callAdmin\n  // var ar=await fetch('https://jyefbatmmbelrhhzsgva.supabase.co/auth/v1/admin/users/'+userId,{\n  //   method:'DELETE',\n  //   headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}\n  // });\n  // TODO: migrate to admin-proxy Edge Function with deleteUser endpoint\n  var ar={ok:false}; console.warn('Auth delete disabled - needs admin-proxy migration'); throw new Error('Auth delete not available');;
     if(!ar.ok)throw new Error('Auth delete failed: '+(await ar.text()));
   }catch(e){
     // Auth delete may fail if user doesn't exist in auth system; proceed to clean profiles anyway
@@ -6638,10 +6657,7 @@ async function saveUserEdit(userId){
   }
   if(newStatus==='leave'){data.company_id=null;data.department_id=null;}
   if(isSuperAdmin||currentUserRole==='admin'){
-    var ur=await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(userId),{
-      method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},
-      body:JSON.stringify(data)
-    });
+    var ur=await callAdmin('update','profiles',{payload:data,filters:[{col:'user_id',op:'eq',val:userId}],query:'*'});
     if(!ur.ok){var j=await ur.json().catch(function(){});error={message:j&&j.message||ur.statusText}}
   }else{
     var res=await sb.from('profiles').update(data).eq('user_id',userId);
@@ -6691,10 +6707,8 @@ async function saveDept(){
   var selCid=isSuperAdmin?document.getElementById('dept-company'):null;
   var payload={name:name,parent_id:parentId,company_id:selCid&&selCid.value?parseInt(selCid.value):currentCompanyId};
   if(isSuperAdmin||currentUserRole==='admin'){
-    var prefix=deptFormId?'PATCH':'POST';
-    var url=deptFormId?SUPABASE_URL+'/rest/v1/departments?id=eq.'+deptFormId:SUPABASE_URL+'/rest/v1/departments';
-    try{var dr=await fetch(url,{method:prefix,headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(payload)});
-    if(!dr.ok){var dj=await dr.json().catch(function(){});alert('保存失败: '+(dj&&dj.message||dr.statusText));return}}
+    try{var dr;if(deptFormId){dr=await callAdmin('update','departments',{payload:payload,filters:[{col:'id',op:'eq',val:deptFormId}],query:'*'});}else{dr=await callAdmin('insert','departments',{payload:payload});}
+    if(dr.error){alert('保存失败: '+dr.error.message);return}}
     catch(e){alert('网络错误: '+e.message);return}
   }else{
     if(deptFormId){var{error}=await sb.from('departments').update(payload).eq('id',deptFormId);if(error){alert('保存失败: '+error.message);return}}
@@ -6710,7 +6724,7 @@ async function deleteDept(id,name){
   await sb.from('profiles').update({department_id:null}).eq('department_id',id);
   var error=null;
   if(isSuperAdmin||currentUserRole==='admin'){
-    try{var dr=await fetch(SUPABASE_URL+'/rest/v1/departments?id=eq.'+id,{method:'DELETE',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Prefer':'return=representation'}});
+    try{var dr=await callAdmin('delete','departments',{filters:[{col:'id',op:'eq',val:id}],query:'*'});
     if(!dr.ok){var dj=await dr.json().catch(function(){});error={message:dj&&dj.message||dr.statusText}}
     }catch(e){error={message:e.message}}
   }else{
@@ -6818,7 +6832,7 @@ async function saveNewUser(){
   // Step 5: Write profile via raw fetch (adminToken from step 1 — independent of sb client state)
   var selCompanyId=null;if(isSuperAdmin){var cname=document.getElementById('add-user-company').value.trim();if(cname){var found=null;var cab=typeof allAdminCompanies!=='undefined'?allAdminCompanies:allCompanies||[];for(var i=0;i<cab.length;i++){if(cab[i].name===cname){found=cab[i];break}}if(found){selCompanyId=found.id}else{showToast('未找到公司: '+cname);return}}}
   var body={user_id:newUserId,email:email,role:role||'user',role_id:roleId,company_id:selCompanyId||currentCompanyId,display_name:name,position:position,phone:phone,department_id:deptId?parseInt(deptId):null};
-  var res=await fetch(SUPABASE_URL+'/rest/v1/profiles',{method:'POST',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},body:JSON.stringify(body)});
+  var res=await callAdmin('upsert','profiles',{payload:body,query:'*'});
   if(!res.ok){var txt=await res.text();console.error('Profile write failed:',res.status,txt);showToast('Profile write failed: HTTP '+res.status);return}
   closeAddUserForm();
   showToast('用户创建成功');
@@ -6841,14 +6855,9 @@ function closeResetPwdForm(){
 async function doResetPassword(){
   var pwd=document.getElementById('reset-pwd-input').value.trim();
   if(!pwd||pwd.length<6){showToast('密码至少6位');return}
-  var sk=SUPABASE_SERVICE_KEY;
-  if(!sk){showToast('请先配置 SUPABASE_SERVICE_KEY（Supabase Dashboard > Settings > API）');return}
-  try{
-    var res=await fetch(SUPABASE_URL+'/auth/v1/admin/users/'+_resetPwdUserId,{method:'PUT',headers:{'Authorization':'Bearer '+sk,'apikey':sk,'Content-Type':'application/json'},body:JSON.stringify({password:pwd})});
-    if(!res.ok){var txt=await res.text();showToast('重置失败 HTTP '+res.status+': '+txt);return}
-    closeResetPwdForm();
-    showToast('密码已重置');
-  }catch(e){showToast('网络错误: '+e.message)}
+  // SUPABASE_SERVICE_KEY removed - password reset migrated to admin-proxy
+  // FIXME: callAdmin does not support auth API; needs admin-proxy Edge Function with password reset endpoint
+  showToast('Password reset migrated to admin-proxy; contact Super Admin');
 }
 
 
@@ -7185,7 +7194,7 @@ async function saveContract(){
     var fl=fileEl.files[0];
     var ext=fl.name.split('.').pop();
     var fpath='contract_files/'+currentCompanyId+'/'+Date.now()+'.'+ext;
-    try{var fresp=await fetch(SUPABASE_URL+'/storage/v1/object/'+fpath,{method:'POST',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY},body:fl});
+    try{var fresp=await sb.storage.from('contract_files').upload(fpath.replace('contract_files/',''),fl,{cacheControl:'3600',upsert:true});
     if(fresp.ok){fileUrl=SUPABASE_URL+'/storage/v1/object/public/'+fpath;fileName=fl.name}else{showToast('文件上传失败');return}}
     catch(e){showToast('文件上传失败: '+e.message);return}
   }else{
@@ -7348,7 +7357,7 @@ function switchServiceTab(sub){
 async function loadTickets(){
   var grid=document.getElementById('ticket-grid');grid.innerHTML='<div class="loading"><span class="spinner"></span>加载中...</div>';
   var{data,error}=await sb.from('service_tickets').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
-  if(error){grid.innerHTML='<div class="empty">加载失败: '+error.message+'</div>';return}
+  if(error){grid.innerHTML='<div class="empty">加载失败: '+h(error.message)+'</div>';return}
   allTickets=data||[];renderTickets();
 }
 function renderTickets(){
@@ -10773,13 +10782,13 @@ async function sendInvitationByEmail(){
   if(!/^[^@]+@[^@]+$/.test(email)){document.getElementById('invite-err').textContent='邮箱格式不正确';document.getElementById('invite-err').style.display='block';return}
   try{
     // Check if already invited
-    var check=await fetch(SUPABASE_URL+'/rest/v1/invitations?to_email=eq.'+encodeURIComponent(email)+'&from_company_id=eq.'+currentCompanyId+'&status=eq.pending',{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}});
+    var check=await callAdmin('select','invitations',{query:'*',filters:[{col:'to_email',op:'eq',val:email},{col:'from_company_id',op:'eq',val:currentCompanyId},{col:'status',op:'eq',val:'pending'}]});
     if(check.ok){var existing=await check.json();if(existing&&existing.length>0){document.getElementById('invite-err').textContent='该邮箱已有待处理的邀请';document.getElementById('invite-err').style.display='block';return}}
     // Check user exists
-    var userCheck=await fetch(SUPABASE_URL+'/rest/v1/profiles?email=eq.'+encodeURIComponent(email)+'&select=user_id,company_id',{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}});
+    var userCheck=await callAdmin('select','profiles',{query:'user_id,company_id',filters:[{col:'email',op:'eq',val:email}]});
     var userData=null;if(userCheck.ok){var ua=await userCheck.json();if(ua&&ua.length>0)userData=ua[0]}
     // Create invitation
-    var r=await fetch(SUPABASE_URL+'/rest/v1/invitations',{method:'POST',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({from_company_id:currentCompanyId,to_email:email})});
+    var r=await callAdmin('insert','invitations',{payload:{from_company_id:currentCompanyId,to_email:email}});
     if(!r.ok){var j=await r.json().catch(function(){});document.getElementById('invite-err').textContent='发送失败: '+(j&&j.message||r.statusText);document.getElementById('invite-err').style.display='block';return}
     closeInviteModal();
     var msg=userData&&userData.company_id?'该用户当前在职，但已发送邀请（需先离职才能接受）。':'邀请已发送，用户将在\'我的\'页面看到邀请。';
@@ -10793,7 +10802,7 @@ var myInvitations=[];
 async function loadMyInvitations(){
   if(!currentUser||!currentUser.email)return;
   try{
-    var r=await fetch(SUPABASE_URL+'/rest/v1/invitations?to_email=eq.'+encodeURIComponent(currentUser.email)+'&status=eq.pending&order=created_at.desc',{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}});
+    var r=await callAdmin('select','invitations',{query:'*',filters:[{col:'to_email',op:'eq',val:currentUser.email},{col:'status',op:'eq',val:'pending'},{col:'',op:'order',val:'created_at.desc'}]});
     if(r.ok){myInvitations=await r.json()}else{myInvitations=[]}
   }catch(e){myInvitations=[];console.error('loadMyInvitations',e)}
 }
@@ -10820,10 +10829,10 @@ async function acceptMyInvitation(invId){
     var inv=null;for(var i=0;i<myInvitations.length;i++){if(myInvitations[i].id===invId){inv=myInvitations[i];break}}
     if(!inv){showToast('邀请不存在');return}
     // Set company on profile
-    var r=await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(currentUser.id),{method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({company_id:inv.from_company_id,role:'user',status:'active',department_id:null})});
+    var r=await callAdmin('update','profiles',{payload:{company_id:inv.from_company_id,role:'user',status:'active',department_id:null},filters:[{col:'user_id',op:'eq',val:currentUser.id}],query:'*'});
     if(!r.ok){var j=await r.json().catch(function(){});showToast('入职失败: '+(j&&j.message||r.statusText));return}
     // Mark invitation accepted
-    await fetch(SUPABASE_URL+'/rest/v1/invitations?id=eq.'+invId,{method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json'},body:JSON.stringify({status:'accepted',accepted_at:new Date().toISOString()})});
+    await callAdmin('update','invitations',{payload:{status:'accepted',accepted_at:new Date().toISOString()},filters:[{col:'id',op:'eq',val:invId}],query:'*'});
     var data=await r.json();
     if(data&&data.length>0){currentCompanyId=data[0].company_id;currentUserRole=data[0].role||'user';isSuperAdmin=data[0].role==='super_admin'}
     myInvitations=[];renderMyInvitations();
@@ -10843,7 +10852,7 @@ async function acceptMyInvitation(invId){
 async function rejectMyInvitation(invId){
   if(!confirm('确认拒绝该邀请？'))return;
   try{
-    await fetch(SUPABASE_URL+'/rest/v1/invitations?id=eq.'+invId,{method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json'},body:JSON.stringify({status:'rejected',rejected_at:new Date().toISOString()})});
+    await callAdmin('update','invitations',{payload:{status:'rejected',rejected_at:new Date().toISOString()},filters:[{col:'id',op:'eq',val:invId}],query:'*'});
     myInvitations=myInvitations.filter(function(inv){return inv.id!==invId});
     renderMyInvitations();
   }catch(e){showToast('操作失败: '+e.message)}
@@ -10853,7 +10862,7 @@ async function rejectMyInvitation(invId){
 var allFreeAgents=[];
 async function loadFreeAgents(){
   try{
-    var r=await fetch(SUPABASE_URL+'/rest/v1/profiles?select=user_id,email,display_name,phone,status,invited_company_id,invited_at&status=eq.leave&company_id=is.null&order=invited_at.asc.nullslast',{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}});
+    var r=await callAdmin('select','profiles',{query:'user_id,email,display_name,phone,status,invited_company_id,invited_at',filters:[{col:'status',op:'eq',val:'leave'},{col:'company_id',op:'is',val:null},{col:'',op:'order',val:'invited_at.asc.nullslast'}]});
     if(r.ok)allFreeAgents=await r.json();
     else allFreeAgents=[];
   }catch(e){allFreeAgents=[];console.error('loadFreeAgents',e)}
@@ -10883,7 +10892,7 @@ function renderFreeAgents(){
 async function inviteFreeAgent(uid,email){
   if(!confirm('确认邀请 '+email+' 入职本公司？'))return;
   try{
-    var r=await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(uid),{method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({invited_company_id:currentCompanyId,invited_at:new Date().toISOString()})});
+    var r=await callAdmin('update','profiles',{payload:{invited_company_id:currentCompanyId,invited_at:new Date().toISOString()},filters:[{col:'user_id',op:'eq',val:uid}],query:'*'});
     if(!r.ok){var j=await r.json().catch(function(){});showToast('邀请失败: '+(j&&j.message||r.statusText));return}
     showToast('邀请已发送');
     await loadFreeAgents();renderFreeAgents();
@@ -10900,7 +10909,7 @@ function showInvitationDialog(companyId){
   document.getElementById('pending-screen').classList.add('hidden');
   document.getElementById('invitation-screen').classList.remove('hidden');
   // Load company name
-  fetch(SUPABASE_URL+'/rest/v1/companies?id=eq.'+companyId+'&select=name',{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}}).then(function(r){return r.json()}).then(function(d){
+  callAdmin('select','companies',{query:'name',filters:[{col:'id',op:'eq',val:companyId}]}).then(function(d){
     if(d&&d.length>0)document.getElementById('invitation-company-name').textContent='公司: '+d[0].name;
     else document.getElementById('invitation-company-name').textContent='公司ID: '+companyId;
   }).catch(function(){});
@@ -10908,9 +10917,9 @@ function showInvitationDialog(companyId){
 async function acceptInvitation(){
   if(!pendingInvitation||!currentUser)return;
   try{
-    var r=await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(currentUser.id),{method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({company_id:pendingInvitation,role:'user',status:'active',invited_company_id:null,invited_at:null})});
-    if(!r.ok){var j=await r.json().catch(function(){});document.getElementById('invitation-err').textContent='入职失败: '+(j&&j.message||r.statusText);document.getElementById('invitation-err').style.display='block';return}
-    var data=await r.json();
+    var r=await callAdmin('update','profiles',{payload:{company_id:pendingInvitation,role:'user',status:'active',invited_company_id:null,invited_at:null},filters:[{col:'user_id',op:'eq',val:currentUser.id}],query:'*'});
+    if(r.error){document.getElementById('invitation-err').textContent='入职失败: '+r.error.message;document.getElementById('invitation-err').style.display='block';return}
+    var data=r.data;
     if(data&&data.length>0){currentCompanyId=data[0].company_id;currentUserRole=data[0].role||'user';isSuperAdmin=data[0].role==='super_admin'}
     document.getElementById('invitation-screen').classList.add('hidden');
     await loadCustomTypes();
@@ -10927,7 +10936,7 @@ async function acceptInvitation(){
 async function rejectInvitation(){
   if(!currentUser)return;
   try{
-    await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(currentUser.id),{method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json'},body:JSON.stringify({invited_company_id:null,invited_at:null})});
+    await callAdmin('update','profiles',{payload:{invited_company_id:null,invited_at:null},filters:[{col:'user_id',op:'eq',val:currentUser.id}],query:'*'});
   }catch(e){}
   pendingInvitation=null;
   document.getElementById('invitation-screen').classList.add('hidden');
@@ -10952,7 +10961,7 @@ async function submitResignation(){
   var d=new Date(dateVal);var today=new Date();today.setHours(0,0,0,0);
   if(d<today){document.getElementById('resign-form-err').textContent='离职日期不能是过去';document.getElementById('resign-form-err').style.display='block';return}
   try{
-    var r=await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(currentUser.id),{method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({resignation_status:'pending',resignation_date:dateVal,resignation_reason:reason||null,resignation_requested_at:new Date().toISOString()})});
+    var r=await callAdmin('update','profiles',{payload:{resignation_status:'pending',resignation_date:dateVal,resignation_reason:reason||null,resignation_requested_at:new Date().toISOString()},filters:[{col:'user_id',op:'eq',val:currentUser.id}],query:'*'});
     if(!r.ok){var j=await r.json().catch(function(){});document.getElementById('resign-form-err').textContent='提交失败: '+(j&&j.message||r.statusText);document.getElementById('resign-form-err').style.display='block';return}
     closeResignForm();showToast('离职申请已提交，等待管理员审批');
     document.getElementById('my-resign-btn').style.display='none';
@@ -10961,7 +10970,7 @@ async function submitResignation(){
 var allResignations=[];
 async function loadResignations(){
   try{
-    var r=await fetch(SUPABASE_URL+'/rest/v1/profiles?select=user_id,email,display_name,phone,position,department_id,resignation_status,resignation_date,resignation_reason,resignation_requested_at&company_id=eq.'+currentCompanyId+'&resignation_status=not.is.null&order=resignation_requested_at.desc',{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}});
+    var r=await callAdmin('select','profiles',{query:'user_id,email,display_name,phone,position,department_id,resignation_status,resignation_date,resignation_reason,resignation_requested_at',filters:[{col:'company_id',op:'eq',val:currentCompanyId},{col:'resignation_status',op:'not.is',val:null},{col:'',op:'order',val:'resignation_requested_at.desc'}]});
     if(r.ok)allResignations=await r.json();
     else allResignations=[];
   }catch(e){allResignations=[];console.error('loadResignations',e)}
@@ -10990,7 +10999,7 @@ function renderResignations(){
 async function approveResignation(uid){
   if(!confirm('确认通过该离职申请？'))return;
   try{
-    var r=await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(uid),{method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json'},body:JSON.stringify({resignation_status:'approved'})});
+    var r=await callAdmin('update','profiles',{payload:{resignation_status:'approved'},filters:[{col:'user_id',op:'eq',val:uid}],query:'*'});
     if(!r.ok){var j=await r.json().catch(function(){});showToast('操作失败: '+(j&&j.message||r.statusText));return}
     showToast('已通过离职申请，到期后将自动解除');
     await loadResignations();renderResignations();
@@ -10999,7 +11008,7 @@ async function approveResignation(uid){
 async function rejectResignation(uid){
   if(!confirm('确认拒绝该离职申请？'))return;
   try{
-    var r=await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(uid),{method:'PATCH',headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY,'Content-Type':'application/json'},body:JSON.stringify({resignation_status:'rejected'})});
+    var r=await callAdmin('update','profiles',{payload:{resignation_status:'rejected'},filters:[{col:'user_id',op:'eq',val:uid}],query:'*'});
     if(!r.ok){var j=await r.json().catch(function(){});showToast('操作失败: '+(j&&j.message||r.statusText));return}
     showToast('已拒绝离职申请');
     await loadResignations();renderResignations();
@@ -11053,9 +11062,9 @@ async function saveEmployee(){
   // Update via SERVICE_KEY
   var body={display_name:name,email:email,role:role,dept_id:deptId,status:status,data_scope:dataScope};
   if(empEditId){
-    var resp=await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(empEditId),{method:'PATCH',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(body)});
+    var resp=await callAdmin('update','profiles',{payload:body,filters:[{col:'user_id',op:'eq',val:empEditId}],query:'*'});
     if(resp.ok){
-      if(status==='inactive'){await fetch(SUPABASE_URL+'/rest/v1/rpc/reassign_clients_on_deactivate',{method:'POST',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json'},body:JSON.stringify({p_user_id:empEditId,p_company_id:currentCompanyId,p_reassign_to:reassignTo||null})});showToast('员工已更新，客户已交接');}
+      if(status==='inactive'){await callAdmin('rpc','reassign_clients_on_deactivate',{payload:{p_user_id:empEditId,p_company_id:currentCompanyId,p_reassign_to:reassignTo||null}});showToast('员工已更新，客户已交接');}
       else showToast('员工已更新');
       closeEmployeeForm();await loadAdminData();renderAdminEmployees();
     }else{showToast('更新失败')}
@@ -11068,12 +11077,12 @@ async function toggleEmpStatus(uid,newStatus){
   if(newStatus==='inactive'){
     var reassign=prompt('输入交接员工ID（留空回收公共池）:','');
     var body2={status:newStatus,data_scope:'own',company_id:null,department_id:null};
-    await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(uid),{method:'PATCH',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(body2)});
-    if(reassign)await fetch(SUPABASE_URL+'/rest/v1/rpc/reassign_clients_on_deactivate',{method:'POST',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json'},body:JSON.stringify({p_user_id:uid,p_company_id:currentCompanyId,p_reassign_to:reassign})});
-    else await fetch(SUPABASE_URL+'/rest/v1/rpc/reassign_clients_on_deactivate',{method:'POST',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json'},body:JSON.stringify({p_user_id:uid,p_company_id:currentCompanyId,p_reassign_to:null})});
+    await callAdmin('update','profiles',{payload:body2,filters:[{col:'user_id',op:'eq',val:uid}],query:'*'});
+    if(reassign)await callAdmin('rpc','reassign_clients_on_deactivate',{payload:{p_user_id:empEditId,p_company_id:currentCompanyId,p_reassign_to:reassignTo||null}});
+    else await callAdmin('rpc','reassign_clients_on_deactivate',{payload:{p_user_id:empEditId,p_company_id:currentCompanyId,p_reassign_to:reassignTo||null}});
     showToast('员工已设为离职，客户已回收');
   }else{
-    await fetch(SUPABASE_URL+'/rest/v1/profiles?user_id=eq.'+encodeURIComponent(uid),{method:'PATCH',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({status:newStatus})});
+    await callAdmin('update','profiles',{payload:{status:newStatus},filters:[{col:'user_id',op:'eq',val:uid}],query:'*'});
     showToast('员工已设为在职');
   }
   await loadAdminData();renderAdminEmployees();
@@ -11083,7 +11092,7 @@ async function toggleEmpStatus(uid,newStatus){
 var allOpLogs=[];var logsError=null;
 async function loadOperationLogs(){
   try{
-    var resp=await fetch(SUPABASE_URL+'/rest/v1/operation_logs?company_id=eq.'+currentCompanyId+'&order=created_at.desc&limit=500',{headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY}});
+    var resp=await callAdmin('select','operation_logs',{query:'*',filters:[{col:'company_id',op:'eq',val:currentCompanyId},{col:'',op:'order',val:'created_at.desc'},{col:'',op:'limit',val:500}]});
     if(resp.ok){allOpLogs=await resp.json();logsError=null;}
     else{allOpLogs=[];var t=await resp.text();logsError='HTTP '+resp.status+(' '+t.substring(0,120));console.error('loadOperationLogs:',resp.status,t.substring(0,200));}
   }catch(e){allOpLogs=[];logsError=e.message;console.error('loadOperationLogs:',e);}
@@ -11127,7 +11136,7 @@ async function exportOperationLogs(){
 async function writeOpLog(action,entityType,entityId,entityName,detail){
   try{
     var body={p_company_id:currentCompanyId,p_user_id:currentUser?currentUser.id:null,p_user_name:(currentUser&&currentUser.email)||'',p_action:action,p_entity_type:entityType,p_entity_id:String(entityId||''),p_entity_name:entityName||'',p_detail:detail?JSON.stringify(detail):null};
-    await fetch(SUPABASE_URL+'/rest/v1/rpc/write_op_log',{method:'POST',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json'},body:JSON.stringify(body)});
+    await callAdmin('rpc','write_op_log',{payload:body});
   }catch(e){}
 }
 
@@ -11151,7 +11160,7 @@ var allCustomFields=[],fieldEditId=null;
 async function renderCustomFields(){
   var el=document.getElementById('cfg-field-list');if(!el)return;
   var et=document.getElementById('cfg-field-entity').value;
-  var resp=await fetch(SUPABASE_URL+'/rest/v1/custom_field_defs?company_id=eq.'+currentCompanyId+'&entity_type=eq.'+et+'&order=sort_order.asc',{headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY}});
+  var resp=await callAdmin('select','custom_field_defs',{query:'*',filters:[{col:'company_id',op:'eq',val:currentCompanyId},{col:'entity_type',op:'eq',val:et},{col:'',op:'order',val:'sort_order.asc'}]});
   if(resp.ok)allCustomFields=await resp.json();else allCustomFields=[];
   var typeNames={text:'文本',number:'数字',date:'日期',select:'下拉',textarea:'多行文本'};
   var h='<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="border-bottom:2px solid var(--border)"><th style="padding:10px 8px;text-align:left">标识</th><th style="padding:10px 8px;text-align:left">显示名称</th><th style="padding:10px 8px;text-align:left">类型</th><th style="padding:10px 8px;text-align:left">必填</th><th style="padding:10px 8px;text-align:center">操作</th></tr></thead><tbody>';
@@ -11198,17 +11207,17 @@ async function saveField(){
   var body={company_id:currentCompanyId,entity_type:entity,field_name:name,field_label:label,field_type:type,options:opts,required:required,updated_at:new Date().toISOString()};
   var resp;
   if(fieldEditId){
-    resp=await fetch(SUPABASE_URL+'/rest/v1/custom_field_defs?id=eq.'+fieldEditId,{method:'PATCH',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(body)});
+    resp=await callAdmin('update','custom_field_defs',{payload:body,filters:[{col:'id',op:'eq',val:fieldEditId}],query:'*'});
   }else{
     body.sort_order=allCustomFields.length;body.created_at=new Date().toISOString();
-    resp=await fetch(SUPABASE_URL+'/rest/v1/custom_field_defs',{method:'POST',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(body)});
+    resp=await callAdmin('insert','custom_field_defs',{payload:body});
   }
   if(resp.ok){showToast('字段已保存');closeFieldForm();renderCustomFields();await writeOpLog(fieldEditId?'update':'create','custom_field',fieldEditId||'',label);}
   else{showToast('保存失败')}
 }
 async function deleteField(id){
   if(!confirm('确认删除此字段？'))return;
-  var resp=await fetch(SUPABASE_URL+'/rest/v1/custom_field_defs?id=eq.'+id,{method:'DELETE',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY}});
+  var resp=await callAdmin('delete','custom_field_defs',{filters:[{col:'id',op:'eq',val:id}]});
   if(resp.ok){showToast('已删除');renderCustomFields();}else{showToast('删除失败')}
 }
 
@@ -11216,7 +11225,7 @@ async function deleteField(id){
 var allCustomForms=[];
 async function renderCustomForms(){
   var el=document.getElementById('cfg-form-list');if(!el)return;
-  var resp=await fetch(SUPABASE_URL+'/rest/v1/custom_forms?company_id=eq.'+currentCompanyId+'&order=created_at.desc',{headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY}});
+  var resp=await callAdmin('select','custom_forms',{query:'*',filters:[{col:'company_id',op:'eq',val:currentCompanyId},{col:'',op:'order',val:'created_at.desc'}]});
   if(resp.ok)allCustomForms=await resp.json();else allCustomForms=[];
   var h='';
   for(var i=0;i<allCustomForms.length;i++){
@@ -11230,15 +11239,15 @@ function openFormBuilder(){
   var name=prompt('请输入表单名称:');if(!name)return;
   var et=prompt('实体类型(client/order/lead):','client');if(!et)return;
   // Simple: create with empty fields
-  fetch(SUPABASE_URL+'/rest/v1/custom_forms',{method:'POST',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({company_id:currentCompanyId,form_name:name,entity_type:et,fields:[],created_at:new Date().toISOString()})}).then(function(r){if(r.ok){showToast('表单已创建');renderCustomForms();}}).catch(function(){showToast('创建失败')});
+  callAdmin('insert','custom_forms',{payload:{company_id:currentCompanyId,form_name:name,entity_type:et,fields:[],created_at:new Date().toISOString()}}).then(function(r){if(r.data){showToast('Form created');renderCustomForms();}}).catch(function(){showToast('Create failed');});
 }
-async function deleteForm(id){if(!confirm('确认删除？'))return;await fetch(SUPABASE_URL+'/rest/v1/custom_forms?id=eq.'+id,{method:'DELETE',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY}});renderCustomForms();showToast('已删除');}
+async function deleteForm(id){if(!confirm('确认删除？'))return;await callAdmin('delete','custom_forms',{filters:[{col:'id',op:'eq',val:id}]});renderCustomForms();showToast('已删除');}
 
 /* Sales Stages */
 var allSalesStages=[],stageEditId=null;
 async function renderSalesStages(){
   var el=document.getElementById('cfg-stage-list');if(!el)return;
-  var resp=await fetch(SUPABASE_URL+'/rest/v1/sales_stages_def?company_id=eq.'+currentCompanyId+'&order=sort_order.asc',{headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY}});
+  var resp=await callAdmin('select','sales_stages_def',{query:'*',filters:[{col:'company_id',op:'eq',val:currentCompanyId},{col:'',op:'order',val:'sort_order.asc'}]});
   if(resp.ok)allSalesStages=await resp.json();else allSalesStages=[];
   var h='';
   for(var i=0;i<allSalesStages.length;i++){
@@ -11270,20 +11279,20 @@ async function saveStage(){
   var body={company_id:currentCompanyId,stage_name:name,stage_key:key,color:color,probability:prob,updated_at:new Date().toISOString()};
   var resp;
   if(stageEditId){
-    resp=await fetch(SUPABASE_URL+'/rest/v1/sales_stages_def?id=eq.'+stageEditId,{method:'PATCH',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(body)});
+    resp=await callAdmin('update','sales_stages_def',{payload:body,filters:[{col:'id',op:'eq',val:stageEditId}],query:'*'});
   }else{
     body.sort_order=allSalesStages.length+1;body.created_at=new Date().toISOString();
-    resp=await fetch(SUPABASE_URL+'/rest/v1/sales_stages_def',{method:'POST',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(body)});
+    resp=await callAdmin('insert','sales_stages_def',{payload:body});
   }
   if(resp.ok){showToast('阶段已保存');closeStageForm();renderSalesStages();}else{showToast('保存失败')}
 }
-async function deleteStage(id){if(!confirm('确认删除？'))return;await fetch(SUPABASE_URL+'/rest/v1/sales_stages_def?id=eq.'+id,{method:'DELETE',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY}});renderSalesStages();showToast('已删除');}
+async function deleteStage(id){if(!confirm('确认删除？'))return;await callAdmin('delete','sales_stages_def',{filters:[{col:'id',op:'eq',val:id}]});renderSalesStages();showToast('已删除');}
 
 /* Custom Tags */
 var allCustomTags=[],tagEditId=null;
 async function renderCustomTags(){
   var el=document.getElementById('cfg-tag-list');if(!el)return;
-  var resp=await fetch(SUPABASE_URL+'/rest/v1/custom_tags?company_id=eq.'+currentCompanyId+'&order=sort_order.asc',{headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY}});
+  var resp=await callAdmin('select','custom_tags',{query:'*',filters:[{col:'company_id',op:'eq',val:currentCompanyId},{col:'',op:'order',val:'sort_order.asc'}]});
   if(resp.ok)allCustomTags=await resp.json();else allCustomTags=[];
   var h='';
   for(var i=0;i<allCustomTags.length;i++){
@@ -11311,20 +11320,20 @@ async function saveTag(){
   var body={company_id:currentCompanyId,tag_name:name,tag_color:color,entity_type:'client',updated_at:new Date().toISOString()};
   var resp;
   if(tagEditId){
-    resp=await fetch(SUPABASE_URL+'/rest/v1/custom_tags?id=eq.'+tagEditId,{method:'PATCH',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(body)});
+    resp=await callAdmin('update','custom_tags',{payload:body,filters:[{col:'id',op:'eq',val:tagEditId}],query:'*'});
   }else{
     body.sort_order=allCustomTags.length;body.created_at=new Date().toISOString();
-    resp=await fetch(SUPABASE_URL+'/rest/v1/custom_tags',{method:'POST',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(body)});
+    resp=await callAdmin('insert','custom_tags',{payload:body});
   }
   if(resp.ok){showToast('标签已保存');closeTagForm();renderCustomTags();}else{showToast('保存失败')}
 }
-async function deleteTag(id){if(!confirm('确认删除？'))return;await fetch(SUPABASE_URL+'/rest/v1/custom_tags?id=eq.'+id,{method:'DELETE',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY}});renderCustomTags();}
+async function deleteTag(id){if(!confirm('确认删除？'))return;await callAdmin('delete','custom_tags',{filters:[{col:'id',op:'eq',val:id}]});renderCustomTags();}
 
 /* Numbering Rules */
 var allNumRules=[],numEditId=null;
 async function renderNumberingRules(){
   var el=document.getElementById('cfg-number-list');if(!el)return;
-  var resp=await fetch(SUPABASE_URL+'/rest/v1/numbering_rules?company_id=eq.'+currentCompanyId+'&order=created_at.desc',{headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY}});
+  var resp=await callAdmin('select','numbering_rules',{query:'*',filters:[{col:'company_id',op:'eq',val:currentCompanyId},{col:'',op:'order',val:'created_at.desc'}]});
   if(resp.ok)allNumRules=await resp.json();else allNumRules=[];
   var entityNames={client:'客户',order:'订单',quotation:'报价',contract:'合同'};
   var h='';
@@ -11357,14 +11366,14 @@ async function saveNumberRule(){
   var body={company_id:currentCompanyId,entity_type:entity,prefix:prefix,date_format:datefmt,seq_length:seqlength,updated_at:new Date().toISOString()};
   var resp;
   if(numEditId){
-    resp=await fetch(SUPABASE_URL+'/rest/v1/numbering_rules?id=eq.'+numEditId,{method:'PATCH',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(body)});
+    resp=await callAdmin('update','numbering_rules',{payload:body,filters:[{col:'id',op:'eq',val:numEditId}],query:'*'});
   }else{
     body.current_seq=1;body.created_at=new Date().toISOString();
-    resp=await fetch(SUPABASE_URL+'/rest/v1/numbering_rules',{method:'POST',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(body)});
+    resp=await callAdmin('insert','numbering_rules',{payload:body});
   }
   if(resp.ok){showToast('规则已保存');closeNumberForm();renderNumberingRules();}else{showToast('保存失败')}
 }
-async function deleteNumRule(id){if(!confirm('确认删除？'))return;await fetch(SUPABASE_URL+'/rest/v1/numbering_rules?id=eq.'+id,{method:'DELETE',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY}});renderNumberingRules();}
+async function deleteNumRule(id){if(!confirm('确认删除？'))return;await callAdmin('delete','numbering_rules',{filters:[{col:'id',op:'eq',val:id}]});renderNumberingRules();}
 
 /* ===== DATA SECURITY ===== */
 async function renderSecurityPanel(){
@@ -11389,7 +11398,7 @@ function toggleDataMasking(){
   showToast('脱敏设置已保存');
 }
 async function toggleRoleExport(roleName,roleId,checked){
-  var resp=await fetch(SUPABASE_URL+'/rest/v1/roles?id=eq.'+roleId,{method:'PATCH',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({func_perms:{allow_export:checked}})});
+  var resp=await callAdmin('update','roles',{payload:{func_perms:{allow_export:checked}},filters:[{col:'id',op:'eq',val:roleId}],query:'*'});
   if(resp.ok)showToast('导出权限已更新');else showToast('更新失败');
 }
 async function doBackup(){
@@ -11402,7 +11411,7 @@ async function doBackup(){
   var allData={};var totalCount=0;
   for(var i=0;i<types.length;i++){
     var t=types[i];
-    var resp=await fetch(SUPABASE_URL+'/rest/v1/'+(t==='products'?'products':t)+'?company_id=eq.'+currentCompanyId+'&limit=10000',{headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY}});
+    var resp=await callAdmin('select',(t==='products'?'products':t),{query:'*',filters:[{col:'company_id',op:'eq',val:currentCompanyId},{col:'',op:'limit',val:'10000'}]});
     if(resp.ok){var data=await resp.json();allData[t]=data;totalCount+=data.length;}
   }
   var json=JSON.stringify(allData,null,2);
@@ -11410,14 +11419,14 @@ async function doBackup(){
   var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='backup_'+currentCompanyId+'_'+new Date().toISOString().slice(0,10)+'.json';a.click();
   // Log backup
   try{
-    await fetch(SUPABASE_URL+'/rest/v1/backup_logs',{method:'POST',headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json'},body:JSON.stringify({company_id:currentCompanyId,user_id:currentUser?currentUser.id:null,backup_type:'manual',entity_types:types,record_count:totalCount,file_name:'backup_'+currentCompanyId+'.json',file_size:json.length,created_at:new Date().toISOString()})});
+    await callAdmin('insert','backup_logs',{payload:{company_id:currentCompanyId,user_id:currentUser?currentUser.id:null,backup_type:'manual',entity_types:types,record_count:totalCount,file_name:'backup_'+currentCompanyId+'.json',file_size:json.length,created_at:new Date().toISOString()}});
   }catch(e){}
   showToast('备份完成！共'+totalCount+'条记录');
   await writeOpLog('export','backup','','数据备份',{types:types,count:totalCount});
 }
 async function loadBackupHistory(){
   var el=document.getElementById('bk-history');if(!el)return;
-  var resp=await fetch(SUPABASE_URL+'/rest/v1/backup_logs?company_id=eq.'+currentCompanyId+'&order=created_at.desc&limit=20',{headers:{'apikey':SUPABASE_SERVICE_KEY,'Authorization':'Bearer '+SUPABASE_SERVICE_KEY}});
+  var resp=await callAdmin('select','backup_logs',{query:'*',filters:[{col:'company_id',op:'eq',val:currentCompanyId},{col:'',op:'order',val:'created_at.desc'},{col:'',op:'limit',val:20}]});
   if(!resp.ok){el.innerHTML='加载失败';return}
   var logs=await resp.json();
   if(logs.length===0){el.innerHTML='暂无备份记录';return}
@@ -11438,7 +11447,7 @@ async function renderWorkflowTemplates(){
   try{
     var url=SUPABASE_URL+'/rest/v1/workflow_templates?order=id';
     console.log('renderWorkflowTemplates: fetching',url);
-    var r=await fetch(url,{headers:{apikey:SUPABASE_SERVICE_KEY,Authorization:'Bearer '+SUPABASE_SERVICE_KEY}});
+    var r=await callAdmin('select','workflow_templates',{query:'*',filters:[{col:'',op:'order',val:'id'}]});
     if(!r.ok){console.log('renderWorkflowTemplates: fetch failed',r.status);list.innerHTML='<p style="color:var(--text2)">加载失败 (HTTP '+r.status+')</p>';return}
     var data=await r.json();console.log('renderWorkflowTemplates: got',data.length,'templates');
     allTemplates=data;
@@ -11857,11 +11866,7 @@ async function saveWtVisual(){
     }
     var url=SUPABASE_URL+'/rest/v1/workflow_templates'+(wtEditId?'?id=eq.'+wtEditId:'');
     var method=wtEditId?'PATCH':'POST';
-    var r=await fetch(url,{
-      method:method,
-      headers:{apikey:SUPABASE_SERVICE_KEY,Authorization:'Bearer '+SUPABASE_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},
-      body:JSON.stringify(body)
-    });
+    if(wtEditId){var r=await callAdmin('update','workflow_templates',{payload:body,filters:[{col:'id',op:'eq',val:wtEditId}],query:'*'});}else{var r=await callAdmin('insert','workflow_templates',{payload:body});};
     if(!r.ok){var t=await r.text();alert('保存失败: '+t);btn.disabled=false;btn.textContent='保存';return}
     document.getElementById('wt-modal-overlay').remove();
     await renderWorkflowTemplates();
@@ -11877,7 +11882,7 @@ async function deleteWt(id){
   if(!confirm('确定删除模板 "'+t.name+'"？'))return;
   try{
     var url=SUPABASE_URL+'/rest/v1/workflow_templates?id=eq.'+id;
-    var r=await fetch(url,{method:'DELETE',headers:{apikey:SUPABASE_SERVICE_KEY,Authorization:'Bearer '+SUPABASE_SERVICE_KEY}});
+    var r=await callAdmin('delete','workflow_templates',{filters:[{col:'id',op:'eq',val:id}]});
     if(!r.ok){var e=await r.text();alert('删除失败: '+e);return}
     await renderWorkflowTemplates();
     showToast('模板已删除');
@@ -13117,11 +13122,11 @@ async function loadProjects(){
   try {
     list.innerHTML='<div style="text-align:center;padding:40px;color:var(--text2)">查询中...</div>';
     var {data,error}=await sb.from('projects').select('*').eq('company_id',currentCompanyId).order('created_at',{ascending:false});
-    if(error){list.innerHTML='<div style="text-align:center;padding:40px;color:#e74c3c">加载失败: '+error.message+'。请确认 projects 表是否已在 Supabase 中创建（执行 project_management.sql）</div>';return}
+    if(error){list.innerHTML='<div style="text-align:center;padding:40px;color:#e74c3c">加载失败: '+h(error.message)+'。请确认 projects 表是否已在 Supabase 中创建（执行 project_management.sql）</div>';return}
     allProjects=data||[];
     renderProjects();
   } catch(e) {
-    list.innerHTML='<div style="text-align:center;padding:40px;color:#e74c3c">加载异常: '+e.message+'</div>';
+    list.innerHTML='<div style="text-align:center;padding:40px;color:#e74c3c">加载异常: '+h(e.message)+'</div>';
     console.error(e);
   }
 }
@@ -13162,7 +13167,7 @@ async function loadStages(){
   if(!list)return;
   try{
     var {data,error}=await sb.from('project_stages').select('*').eq('project_id',curProjectId).order('sort',{ascending:true});
-    if(error){list.innerHTML='<div style="padding:20px;color:#e74c3c">'+error.message+'</div>';return}
+    if(error){list.innerHTML='<div style="padding:20px;color:#e74c3c">'+h(error.message)+'</div>';return}
     allStages=data||[];
     renderStages(list);
   }catch(e){console.error(e)}
@@ -13186,7 +13191,7 @@ async function loadBiddings(){
   if(!list)return;
   try{
     var {data,error}=await sb.from('project_biddings').select('*').eq('project_id',curProjectId).order('created_at',{ascending:false});
-    if(error){list.innerHTML='<div style="padding:20px;color:#e74c3c">'+error.message+'</div>';return}
+    if(error){list.innerHTML='<div style="padding:20px;color:#e74c3c">'+h(error.message)+'</div>';return}
     allBiddings=data||[];
     renderBiddingListTo('wb-bidding-list');
     if(list)renderBiddingListTo('bidding-list');
@@ -13199,7 +13204,7 @@ async function loadProjectContracts(){
   if(!list)return;
   try{
     var {data,error}=await sb.from('project_biddings').select('*').eq('project_id',curProjectId).not('contract_title','is',null).order('created_at',{ascending:false});
-    if(error){list.innerHTML='<div style="padding:20px;color:#e74c3c">'+error.message+'</div>';return}
+    if(error){list.innerHTML='<div style="padding:20px;color:#e74c3c">'+h(error.message)+'</div>';return}
     // Store contracts in allBiddings for now (shared table)
     allBiddings=data||[];
     renderContractListTo('wb-contract-list');
@@ -13213,7 +13218,7 @@ async function loadDeliveries(){
   if(!list)return;
   try{
     var {data,error}=await sb.from('project_deliveries').select('*').eq('project_id',curProjectId).order('created_at',{ascending:false});
-    if(error){list.innerHTML='<div style="padding:20px;color:#e74c3c">'+error.message+'</div>';return}
+    if(error){list.innerHTML='<div style="padding:20px;color:#e74c3c">'+h(error.message)+'</div>';return}
     allDeliveries=data||[];
     renderDeliveryListTo('wb-delivery-list');
     if(list)renderDeliveryListTo('delivery-list');
@@ -13226,7 +13231,7 @@ async function loadPayments(){
   if(!list)return;
   try{
     var {data,error}=await sb.from('project_payments').select('*').eq('project_id',curProjectId).order('created_at',{ascending:false});
-    if(error){list.innerHTML='<div style="padding:20px;color:#e74c3c">'+error.message+'</div>';return}
+    if(error){list.innerHTML='<div style="padding:20px;color:#e74c3c">'+h(error.message)+'</div>';return}
     allPayments=data||[];
     renderPaymentListTo('wb-payment-list');
     if(list)renderPaymentListTo('payment-list');
@@ -14678,7 +14683,7 @@ let fwVisitEditId=null;
 let fwVisitClientId=null;
 
 function switchFWTab(tab){
-  var dbg=document.getElementById("fw-debug");if(dbg){dbg.style.display="block";dbg.innerHTML="▶ switchFWTab: "+tab;}
+  var dbg=document.getElementById("fw-debug");if(dbg){dbg.style.display="block";dbg.innerHTML="▶ switchFWTab: "+h(tab);}
   var tabs=['overview','checkin','visits','track','stats'];
   for(var i=0;i<tabs.length;i++){
     var el=document.getElementById('fw-'+tabs[i]);
@@ -14745,7 +14750,7 @@ async function loadFWOverview(){
   
   if(dbg)dbg.innerHTML+="<br>✅ loadFWOverview done";
 }catch(e){
-  if(dbg)dbg.innerHTML+="<br>🔥 ERROR: "+(e.message||e)+"<br>"+(e.stack||"").substring(0,200);console.error('loadFWOverview error:',e);if(kpi)kpi.innerHTML='<div style="color:var(--danger);font-size:13px">加载失败</div>'}
+  if(dbg)dbg.innerHTML+="<br>🔥 ERROR: "+h(e.message||e)+"<br>"+(e.stack||"").substring(0,200);console.error('loadFWOverview error:',e);if(kpi)kpi.innerHTML='<div style="color:var(--danger);font-size:13px">加载失败</div>'}
 }
 
 async function loadFWCheckin(){
@@ -14957,7 +14962,7 @@ async function loadFWVisits(){
       var ma=new Date();ma.setMonth(ma.getMonth()-1);q=q.gte('visit_date',ma.toISOString().substring(0,10));
     }
     var {data:visits,error}=await q.order('visit_date',{ascending:false}).order('start_time',{ascending:false});
-    if(error){list.innerHTML='<div style="color:var(--danger);font-size:13px">加载失败: '+error.message+'</div>';return}
+    if(error){list.innerHTML='<div style="color:var(--danger);font-size:13px">加载失败: '+h(error.message)+'</div>';return}
     if(!visits||!visits.length){list.innerHTML='<div style="color:var(--text3);font-size:13px;text-align:center;padding:20px">暂无拜访记录</div>';return}
     var html='';
     for(var i=0;i<visits.length;i++){
@@ -14977,7 +14982,7 @@ async function loadFWVisits(){
       html+='</div>';
     }
     list.innerHTML=html;
-  }catch(e){list.innerHTML='<div style="color:var(--danger);font-size:13px">加载失败: '+(e.message||e)+'</div>';console.error('loadFWVisits:',e)}
+  }catch(e){list.innerHTML='<div style="color:var(--danger);font-size:13px">加载失败: '+h(e.message||e)+'</div>';console.error('loadFWVisits:',e)}
 }
 
 function openFVisit(id){
