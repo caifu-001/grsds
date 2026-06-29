@@ -12022,7 +12022,7 @@ function initWorkflow(templateId){
 }
 initWorkflow();
 
-async function loadTemplates(){
+async async function loadTemplates(){
   try{var {data}=await sb.from('workflow_templates').select('*');if(data)allTemplates=data;}
   catch(e){console.error('loadTemplates',e)}
 }
