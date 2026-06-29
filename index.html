@@ -14800,7 +14800,6 @@ async function doCheckIn(type){
     }
   }
   if(!gotLocation){
-  if(!gotLocation){
     try{
       var r=await sb.from('field_checkins').insert({user_id:currentUser.id,type:type,latitude:null,longitude:null,address:addr,note:note||null,company_id:currentCompanyId}).select();
       if(r.error){showToast('签到失败: '+r.error.message);return}
@@ -14808,7 +14807,7 @@ async function doCheckIn(type){
       document.getElementById('fw-checkin-note').value='';
       loadFWCheckin();loadFWOverview();
     }catch(e){showToast('签到失败: '+(e.message||e));console.error(e)}
-    finally{if(type==='in'){btnIn.disabled=false;btnIn.textContent='📍 上班签到'} else{btnOut.disabled=false;btnOut.textContent='🏠 下班签退'}}
+    finally{fwResetBtn(type)}
   }
 }async function loadFWVisits(){
   var filter=document.getElementById('fw-visit-filter').value;
