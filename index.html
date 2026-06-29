@@ -6236,9 +6236,7 @@ async function loadAdminData(){
     if(currentUserRole==='super_admin'){
       try{var ur=await fetch(SUPABASE_URL+'/rest/v1/profiles?select=*',{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}});if(ur.ok){adminUserList=await ur.json();allUsers=adminUserList;populatePerfSelects();}}catch(e){}
     }else{
-      var {data:pr}=await sb.from('profiles').select('*').eq('company_id',currentCompanyId);
-      adminUserList=(pr||[]).filter(function(u){return u.company_id===currentCompanyId;});
-      allUsers=adminUserList.slice();populatePerfSelects();
+      try{var ur=await fetch(SUPABASE_URL+'/rest/v1/profiles?select=*&company_id=eq.'+encodeURIComponent(currentCompanyId),{headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}});if(ur.ok){adminUserList=await ur.json();allUsers=adminUserList.slice();populatePerfSelects();}}catch(e){console.error('loadAdminData users:',e)}
     }
   }
 }
