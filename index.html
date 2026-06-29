@@ -1696,6 +1696,59 @@ input,select,textarea,button{font-family:inherit}
  <div style="padding:12px 16px;font-size:14px;font-weight:600;color:var(--text2);margin-top:8px">版本</div>
  <div style="padding:0 16px 40px"><div class="settings-item"><span class="lbl">客户管理系统 v3</span></div></div>
 </div>
+<!-- ===== 项目详情页 (独立视图) ===== -->
+<div id="project-detail-view" class="hidden" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:var(--bg);z-index:900;display:none;flex-direction:column;overflow:hidden">
+  <div style="background:var(--card);border-bottom:1px solid var(--border);padding:10px 16px;display:flex;align-items:center;gap:12px;flex-shrink:0">
+    <button onclick="closeProjectDetail()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text2);padding:4px 8px">←</button>
+    <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
+      <span id="pd-pid-badge" style="font-size:11px;color:var(--text2);background:var(--bg);padding:2px 6px;border-radius:3px;white-space:nowrap"></span>
+      <h2 id="pd-title" style="font-size:15px;font-weight:600;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></h2>
+    </div>
+    <div class="pd-status-tabs" style="display:flex;gap:2px;background:var(--bg);border-radius:6px;padding:2px">
+      <button class="pd-status-tab active" data-status="todo" onclick="switchDetailTab('todo')">待办</button>
+      <button class="pd-status-tab" data-status="doing" onclick="switchDetailTab('doing')">在办</button>
+      <button class="pd-status-tab" data-status="done" onclick="switchDetailTab('done')">办结</button>
+    </div>
+  </div>
+  <div style="background:var(--card);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;gap:6px;justify-content:flex-end;flex-shrink:0">
+    <button onclick="saveProjectDetail()" style="background:#10B981;color:white;border:none;padding:6px 12px;border-radius:4px;cursor:pointer">💾 保存</button>
+    <button onclick="pdAction('read')" style="background:#3B82F6;color:white;border:none;padding:6px 12px;border-radius:4px;cursor:pointer">📥 阅件</button>
+    <button onclick="pdAction('return')" style="background:#F59E0B;color:white;border:none;padding:6px 12px;border-radius:4px;cursor:pointer">↩ 退回</button>
+    <button onclick="pdAction('complete')" style="background:#8B5CF6;color:white;border:none;padding:6px 12px;border-radius:4px;cursor:pointer">✅ 办理完毕</button>
+  </div>
+  <div id="pd-blocks-container" style="flex:1;overflow-y:auto;padding:12px 16px;background:var(--bg)">
+    <div style="text-align:center;padding:40px;color:var(--text2)">加载中...</div>
+  </div>
+  <div style="background:var(--card);border-top:1px solid var(--border);padding:6px 16px;font-size:11px;color:var(--text2);display:flex;justify-content:space-between;flex-shrink:0">
+    <span id="pd-owner-info">负责人: -</span>
+    <span id="pd-perm-info">权限: -</span>
+  </div>
+</div>
+<style>
+.pd-status-tab{background:transparent;border:none;padding:4px 10px;font-size:12px;color:var(--text2);cursor:pointer;border-radius:4px;font-weight:500}
+.pd-status-tab.active{background:var(--card);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,0.1)}
+.pd-block{background:var(--card);border:1px solid var(--border);border-radius:6px;margin-bottom:10px;overflow:hidden}
+.pd-block-header{padding:10px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
+.pd-block-header:hover{background:var(--bg2)}
+.pd-block-title{font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px}
+.pd-block-status{font-size:10px;padding:2px 6px;border-radius:3px;font-weight:500}
+.pd-block-status.pending{background:#FEF3C7;color:#92400E}
+.pd-block-status.in_progress{background:#DBEAFE;color:#1E40AF}
+.pd-block-status.done{background:#D1FAE5;color:#065F46}
+.pd-block-status.skipped{background:#F3F4F6;color:#6B7280}
+.pd-block-toggle{font-size:12px;color:var(--text2);transition:transform 0.2s;display:inline-block}
+.pd-block.collapsed .pd-block-toggle{transform:rotate(-90deg)}
+.pd-block.collapsed .pd-block-body{display:none}
+.pd-block-body{padding:12px 14px;border-top:1px solid var(--border);font-size:12px}
+.pd-block-row{display:flex;gap:8px;margin-bottom:6px;line-height:1.5;align-items:center}
+.pd-block-label{color:var(--text2);min-width:80px;flex-shrink:0;font-size:11px}
+.pd-block-value{flex:1;color:var(--text);font-size:12px}
+.pd-block-input{width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text);font-size:12px;box-sizing:border-box}
+.pd-block-views{font-size:10px;color:var(--text2);margin-top:8px;display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+.pd-dept-tag{background:var(--bg);padding:1px 5px;border-radius:3px;font-size:9px}
+.pd-no-access{padding:20px;text-align:center;color:var(--text2);font-size:12px}
+</style>
+
 
 <!-- My Profile Screen -->
 <div id="my-screen" style="display:none;min-height:100vh;background:var(--bg)">
@@ -15089,6 +15142,246 @@ async function loadFWStats(){
     sel.value=selUser;
   }catch(e){console.error(e);content.innerHTML='<div style="color:var(--danger)">加载失败</div>'}
 }
+
+// ============= 项目详情页 (独立视图) =============
+var curDetailId=null;
+var curDetailState='todo';
+var curDetailBlocks=[];
+var curDetailAssignments=[];
+var curDetailProject=null;
+
+async function renderProjectDetail(pid){
+  curDetailId=pid;
+  curDetailState='todo';
+
+  var v=document.getElementById('project-detail-view');
+  v.classList.remove('hidden');
+  v.style.display='flex';
+
+  var main=document.getElementById('main-screen');
+  if(main)main.style.display='none';
+
+  var sb=supabaseClient();
+  var r=await sb.from('projects').select('*').eq('id',pid).single();
+  if(r.error||!r.data){alert('项目不存在');closeProjectDetail();return}
+  curDetailProject=r.data;
+  document.getElementById('pd-pid-badge').textContent='#'+pid;
+  document.getElementById('pd-title').textContent=r.data.name||'未命名项目';
+  document.getElementById('pd-owner-info').textContent='负责人: '+(r.data.owner_email||'未指派');
+
+  var ra=await sb.from('project_assignments').select('*').eq('project_id',pid);
+  curDetailAssignments=ra.data||[];
+
+  var perm='none';
+  if(typeof isSuperAdmin!=='undefined'&&isSuperAdmin)perm='admin';
+  else if(typeof currentUserRole!=='undefined'&&currentUserRole==='admin')perm='admin';
+  else if(curDetailProject.owner_id===currentUser.id)perm='owner';
+  else{
+    var my=curDetailAssignments.find(function(a){return a.user_id===currentUser.id});
+    if(my)perm=my.project_role;
+  }
+  var permMap={admin:'全部(管理员)',owner:'全部(项目所有者)',edit:'编辑权限',view:'只读',approve:'审批权限',none:'无权限'};
+  document.getElementById('pd-perm-info').textContent='权限: '+(permMap[perm]||perm);
+
+  if(typeof loadTemplates==='function')await loadTemplates();
+  var tpl=null;
+  if(curDetailProject.template_id&&typeof allTemplates!=='undefined'){
+    tpl=allTemplates.find(function(t){return t.id==curDetailProject.template_id});
+  }
+  if(!tpl&&typeof allTemplates!=='undefined'&&allTemplates.length>0)tpl=allTemplates[0];
+
+  curDetailBlocks=[];
+  if(tpl&&tpl.steps){
+    var steps=Array.isArray(tpl.steps)?tpl.steps:[];
+    steps.forEach(function(st,i){
+      curDetailBlocks.push({
+        key:st.key||('step_'+i),
+        label:st.label||st.name||('步骤 '+(i+1)),
+        data:curDetailProject['step_'+i]||{},
+        visible_to:st.block_visible_to||[],
+        editable_to:st.block_editable_to||[],
+        department:st.department||''
+      });
+    });
+  }
+  if(curDetailBlocks.length===0){
+    curDetailBlocks=[{key:'basic',label:'基本信息',data:curDetailProject,visible_to:[],editable_to:[]}];
+  }
+
+  var rs=await sb.from('project_block_state').select('*').eq('project_id',pid);
+  var blockStates=rs.data||[];
+  curDetailBlocks.forEach(function(b){
+    var st=blockStates.find(function(x){return x.block_key===b.key});
+    b.state=st?st.status:'pending';
+  });
+
+  if(curDetailProject.current_state){
+    var stateMap={todo:'待办',doing:'在办',done:'办结',archived:'归档'};
+    document.getElementById('pd-owner-info').textContent='负责人: '+(curDetailProject.owner_email||'-')+' | 状态: '+(stateMap[curDetailProject.current_state]||curDetailProject.current_state);
+  }
+
+  switchDetailTab('todo');
+}
+
+function closeProjectDetail(){
+  var v=document.getElementById('project-detail-view');
+  v.classList.add('hidden');
+  v.style.display='none';
+  var main=document.getElementById('main-screen');
+  if(main)main.style.display='';
+  curDetailId=null;
+}
+
+function switchDetailTab(status){
+  curDetailState=status;
+  document.querySelectorAll('.pd-status-tab').forEach(function(el){
+    el.classList.toggle('active',el.dataset.status===status);
+  });
+  renderDetailBlocks();
+}
+
+function renderDetailBlocks(){
+  var c=document.getElementById('pd-blocks-container');
+  var perm=getCurrentPerm();
+
+  var visible=curDetailBlocks.filter(function(b){
+    if(curDetailState==='todo')return b.state==='pending'||b.state==='in_progress';
+    if(curDetailState==='doing')return b.state==='in_progress';
+    if(curDetailState==='done')return b.state==='done'||b.state==='skipped';
+    return true;
+  });
+
+  if(visible.length===0){
+    c.innerHTML='<div class="pd-no-access">该状态下没有可见的区块</div>';
+    return;
+  }
+
+  var html='';
+  visible.forEach(function(b){
+    if(!canViewBlock(b,perm))return;
+    var canEdit=canEditBlock(b,perm);
+    var collapsed=b.state==='done'?'collapsed':'';
+    var statusLabel={pending:'待办',in_progress:'进行中',done:'已完成',skipped:'已跳过'}[b.state]||b.state;
+
+    html+='<div class="pd-block '+collapsed+'" data-key="'+b.key+'">';
+    html+='<div class="pd-block-header" onclick="this.parentElement.classList.toggle(\'collapsed\')">';
+    html+='<div class="pd-block-title">'+escHtml(b.label);
+    if(b.department)html+=' <span class="pd-dept-tag">'+escHtml(b.department)+'</span>';
+    html+='</div>';
+    html+='<div style="display:flex;align-items:center;gap:8px">';
+    html+='<span class="pd-block-status '+b.state+'">'+statusLabel+'</span>';
+    html+='<span class="pd-block-toggle">▼</span>';
+    html+='</div></div>';
+
+    html+='<div class="pd-block-body">';
+    if(b.data&&typeof b.data==='object'&&!Array.isArray(b.data)){
+      Object.keys(b.data).forEach(function(k){
+        if(k.startsWith('_'))return;
+        var v=b.data[k];
+        html+='<div class="pd-block-row">';
+        html+='<div class="pd-block-label">'+escHtml(k)+'</div>';
+        if(canEdit){
+          html+='<input class="pd-block-input" data-block="'+b.key+'" data-field="'+escHtml(k)+'" value="'+escHtml(String(v==null?'':v))+'">';
+        }else{
+          html+='<div class="pd-block-value">'+escHtml(String(v==null?'-':v))+'</div>';
+        }
+        html+='</div>';
+      });
+    }else{
+      html+='<div class="pd-block-value">'+escHtml(String(b.data||'-'))+'</div>';
+    }
+
+    if(b.visible_to&&b.visible_to.length>0){
+      html+='<div class="pd-block-views">可见: ';
+      b.visible_to.forEach(function(d){html+='<span class="pd-dept-tag">'+escHtml(d)+'</span>'});
+      html+='</div>';
+    }
+    html+='</div></div>';
+  });
+
+  if(!html){
+    c.innerHTML='<div class="pd-no-access">当前权限下无可查看的区块</div>';
+    return;
+  }
+  c.innerHTML=html;
+}
+
+function getCurrentPerm(){
+  if(!curDetailProject)return 'none';
+  if(typeof isSuperAdmin!=='undefined'&&isSuperAdmin)return 'admin';
+  if(typeof currentUserRole!=='undefined'&&currentUserRole==='admin')return 'admin';
+  if(curDetailProject.owner_id===currentUser.id)return 'owner';
+  var my=curDetailAssignments.find(function(a){return a.user_id===currentUser.id});
+  return my?my.project_role:'none';
+}
+
+function canViewBlock(b,perm){
+  if(perm==='admin'||perm==='owner')return true;
+  if(perm==='none')return false;
+  if(!b.visible_to||b.visible_to.length===0)return perm!=='none';
+  var myDept=currentUser&&currentUser.department;
+  return b.visible_to.some(function(d){
+    return d==='all'||d===myDept||d===perm;
+  });
+}
+
+function canEditBlock(b,perm){
+  if(perm==='admin'||perm==='owner')return true;
+  if(perm==='edit'||perm==='approve'){
+    if(!b.editable_to||b.editable_to.length===0)return true;
+    var myDept=currentUser&&currentUser.department;
+    return b.editable_to.some(function(d){return d==='all'||d===myDept||d===perm});
+  }
+  return false;
+}
+
+async function saveProjectDetail(){
+  if(!curDetailId)return;
+  var inputs=document.querySelectorAll('.pd-block-input');
+  var updates={};
+  inputs.forEach(function(inp){
+    var b=inp.dataset.block;
+    var f=inp.dataset.field;
+    if(!updates[b])updates[b]={};
+    updates[b][f]=inp.value;
+  });
+  var merged={};
+  curDetailBlocks.forEach(function(b){
+    if(updates[b.key]){
+      var idx=curDetailBlocks.indexOf(b);
+      merged['step_'+idx]=Object.assign({},b.data||{},updates[b.key]);
+    }
+  });
+  var sb=supabaseClient();
+  var r=await sb.from('projects').update(merged).eq('id',curDetailId);
+  if(r.error){alert('保存失败: '+r.error.message);return}
+  toast('已保存','success');
+  renderProjectDetail(curDetailId);
+}
+
+async function pdAction(action){
+  if(!curDetailId)return;
+  var sb=supabaseClient();
+  if(action==='return'){
+    if(!confirm('确认退回？'))return;
+    await sb.from('projects').update({current_state:'todo'}).eq('id',curDetailId);
+    toast('已退回待办','info');
+  }else if(action==='complete'){
+    if(!confirm('确认办理完毕？此操作将项目状态置为办结'))return;
+    await sb.from('projects').update({current_state:'done'}).eq('id',curDetailId);
+    toast('已办结','success');
+  }else if(action==='read'){
+    var myEmail=currentUser?currentUser.email:'';
+    var r=await sb.from('project_block_state').select('*').eq('project_id',curDetailId);
+    var alreadyRead=(r.data||[]).some(function(x){return x.notes&&x.notes.indexOf(myEmail)>=0});
+    if(!alreadyRead){
+      await sb.from('project_block_state').insert({project_id:curDetailId,block_key:'_read_'+Date.now(),status:'done',notes:'已阅 by '+myEmail,completed_at:new Date().toISOString()});
+    }
+    toast(alreadyRead?'已记录阅件':'已标记为已阅','success');
+  }
+  renderProjectDetail(curDetailId);
+}
+
 </script>
 
 </div>
