@@ -14772,42 +14772,36 @@ async function doCheckIn(type){
   if(navigator.geolocation){
     try{
       var isMobile=/Mobi|Android|iPhone/i.test(navigator.userAgent)||('ontouchstart' in window);
-      console.log('[GPS] doCheckIn requesting, mobile='+isMobile);
       var pos=await new Promise(function(res,rej){
-        var timer=setTimeout(function(){rej(new Error('timeout'));},8000);
-        navigator.geolocation.getCurrentPosition(function(p){clearTimeout(timer);res(p)},function(e){clearTimeout(timer);rej(e)},{timeout:8000,enableHighAccuracy:isMobile,maximumAge:0})
+        var timer=setTimeout(function(){rej(new Error('timeout'));},10000);
+        var opts={timeout:10000,enableHighAccuracy:isMobile,maximumAge:30000};
+        navigator.geolocation.getCurrentPosition(function(p){clearTimeout(timer);res(p)},function(e){clearTimeout(timer);rej(e)},opts)
       });
       var lat=pos.coords.latitude,lng=pos.coords.longitude;
-      console.log('[GPS] doCheckIn got coords:',lat,lng);
+      if(isNaN(lat)||isNaN(lng)){throw new Error('invalid_coords')}
       gotLocation=true;
-      // 直接签到，跳过地图确认弹窗
       window._fwPendingType=type;
-      var r=await sb.from('field_checkins').insert({user_id:currentUser.id,type:type,latitude:lat,longitude:lng,address:addr,note:note||null,company_id:currentCompanyId}).select();
-      if(r.error){showToast('签到失败: '+r.error.message);fwResetBtn(type);return}
-      showToast(type==='in'?'✅ 签到成功！位置已记录':'🏠 签退成功，辛苦了！');
-      document.getElementById('fw-checkin-note').value='';
-      loadFWCheckin();loadFWOverview();
-      fwResetBtn(type);
-      return;
+      showLocationConfirm(lat,lng,type==='in'?'📍 上班签到 - 确认位置':'🏠 下班签退 - 确认位置',async function(clat,clng){
+        window._fwPendingType=null;
+        try{
+          var r=await sb.from('field_checkins').insert({user_id:currentUser.id,type:type,latitude:clat,longitude:clng,address:addr,note:note||null,company_id:currentCompanyId}).select();
+          if(r.error){showToast('签到失败: '+r.error.message);return}
+          showToast(type==='in'?'✅ 签到成功！':'🏠 签退成功，辛苦了！');
+          document.getElementById('fw-checkin-note').value='';
+          loadFWCheckin();loadFWOverview();
+        }catch(e){showToast('签到失败: '+(e.message||e));console.error(e)}
+        finally{fwResetBtn(type)}
+      });
     }catch(g){
       console.warn('[GPS] doCheckIn failed:',g.message||g,'code:',g.code);
-      if(g.code===1)showToast('⚠️ 定位被拒绝，请在浏览器设置中允许定位权限');
-      else if(g.code===2)showToast('⚠️ 定位不可用，请检查GPS/WiFi');
-      else if(g.code===3)showToast('⚠️ 定位超时（8秒）');
-      else showToast('⚠️ 定位失败: '+(g.message||'未知'));
+      if(g.code===1)showToast('⚠️ 定位被拒绝，请允许定位权限后重试');
+      else if(g.code===2)showToast('⚠️ GPS不可用，请到室外开阔处重试');
+      else if(g.code===3||(g.message==='timeout'))showToast('⚠️ 定位超时（10秒），请确保GPS已打开');
+      else showToast('⚠️ 定位失败，请检查手机GPS是否打开');
       fwResetBtn(type);
-      return;
     }
-  }
-  if(!gotLocation){
-    try{
-      var r=await sb.from('field_checkins').insert({user_id:currentUser.id,type:type,latitude:null,longitude:null,address:addr,note:note||null,company_id:currentCompanyId}).select();
-      if(r.error){showToast('签到失败: '+r.error.message);return}
-      showToast(type==='in'?'✅ 签到成功！（无定位）':'🏠 签退成功！（无定位）');
-      document.getElementById('fw-checkin-note').value='';
-      loadFWCheckin();loadFWOverview();
-    }catch(e){showToast('签到失败: '+(e.message||e));console.error(e)}
-    finally{fwResetBtn(type)}
+  }else{
+    showToast('⚠️ 浏览器不支持定位');fwResetBtn(type);
   }
 }async function loadFWVisits(){
   var filter=document.getElementById('fw-visit-filter').value;
@@ -14943,8 +14937,10 @@ function closeLocationConfirm(){
 function confirmLocation(){
   if(!fwLocationConfirmCallback) return;
   var cb=fwLocationConfirmCallback;
+  var lat=fwPendingLat,lng=fwPendingLng;
+  window._fwPendingType=null;
   closeLocationConfirm();
-  cb(fwPendingLat,fwPendingLng);
+  cb(lat,lng);
 }
 function showLocationConfirm(lat,lng,titleText,callback){
   fwPendingLat=lat;fwPendingLng=lng;
