@@ -14814,11 +14814,11 @@ async function doSaveCheckIn(lat,lng,type,note,addr){
     var b={user_id:currentUser.id,type:type,latitude:lat,longitude:lng,address:addr,note:note||null,company_id:currentCompanyId};
     var r=await sb.from('field_checkins').insert(b).select();
     btnEl.disabled=false;btnEl.textContent=type==='in'?'\u{1F4CD} 上班签到':'\u{1F3E0} 下班签退';
-    if(r.error){showToast(label+'失败: '+r.error.message);return}
+    if(r.error){console.error('[doSaveCheckIn] supabase error:',JSON.stringify(r.error));showToast(label+'失败: '+(r.error.message||r.error.details||JSON.stringify(r.error)));return}
     showToast(type==='in'?'\u2705 签到成功！':(lat!=null?'\u{1F3E0} 签退成功！':'\u{1F3E0} 签退成功！（无定位）'));
     document.getElementById('fw-checkin-note').value='';
     loadFWCheckin();loadFWOverview();
-  }catch(e){btnEl.disabled=false;btnEl.textContent=type==='in'?'\u{1F4CD} 上班签到':'\u{1F3E0} 下班签退';console.error(e)}
+  }catch(e){btnEl.disabled=false;btnEl.textContent=type==='in'?'\u{1F4CD} 上班签到':'\u{1F3E0} 下班签退';console.error('[doSaveCheckIn] exception:',e);showToast(label+'异常: '+(e.message||e))}
 }
 
 function openFWVisitForm(id){
