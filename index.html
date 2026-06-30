@@ -11718,7 +11718,7 @@ function wfShowProps(idx){
   h+='<div style="padding:6px 0;display:'+asgOpen+'">';
   h+='<label style="display:flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" '+(asg.enabled?'checked':'')+' onchange="wfSetAssignee('+idx+',\'enabled\',this.checked)"> 指定负责人</label>';
   h+='<label>授权部门</label><select onchange="wfSetAssignee('+idx+',\'value\',this.value)"><option value="">无</option>';
-  for(var di=0;di<(allDepartments||[]).length;di++){h+='<option value="'+escHtml(allDepartments[di].id)+'"'+(asg.value===allDepartments[di].id?' selected':'')+'>'+escHtml(allDepartments[di].name)+'</option>';}
+  for(var di=0;di<(allDepartments||[]).length;di++){h+='<option value="'+escHtml(allDepartments[di].id)+'"'+(String(asg.value||'')===String(allDepartments[di].id||'')?' selected':'')+'>'+escHtml(allDepartments[di].name)+'</option>';}
   h+='</select>';
   h+='<label>鎸囧畾鍛樺伐</label><select id="wf-staff-dd-'+idx+'" onchange="wfSetAssignee('+idx+',\'staffId\',this.value)"><option value="">--</option>';
   var selDept=asg.value||'';var selStaff=asg.staffId||'';
