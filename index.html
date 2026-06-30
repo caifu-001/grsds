@@ -3648,7 +3648,7 @@ async function showLeads(){
   document.getElementById('my-screen').style.display='none';
   var allViews=document.querySelectorAll('#main-screen > div[id$="-view"]');
   for(var i=0;i<allViews.length;i++)allViews[i].classList.add('hidden');
-  document.getElementById('home-view').classList.add('hidden');
+  var hv=document.getElementById('home-view');if(hv)hv.classList.add('hidden');
   var lv=document.getElementById('leads-view');
   if(lv)lv.classList.remove('hidden');
   document.getElementById('topbar-title').textContent='线索公海';
