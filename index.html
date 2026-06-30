@@ -3102,6 +3102,9 @@ async function callAdmin(op,table,opts){
     return await r.json();
   }catch(e){console.error('callAdmin error:',e);return{data:null,error:{message:e.message||'Network error'}};}
 }
+window.addEventListener('error',function(e){console.error('[global err]',e.message,e.filename,e.lineno)});
+window.addEventListener('unhandledrejection',function(e){console.error('[unhandled promise]',e.reason)});
+window.__wfDiag=true;  // toggle workflow diagnostics (set false in console to silence)
 document.getElementById('script-loaded-check').style.display='none';
 
 const BUILTIN_TYPES=['甲方','集成商','设计院','运营商','国央企','党政','厂家','制造业','军队','司法','教育','医疗','供应商'];
@@ -11693,6 +11696,7 @@ function wfShowProps(idx){
   h+='<button onclick="wfAddParam('+idx+')" style="margin-top:6px;font-size:11px;padding:4px 10px;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer">+ 添加参数</button></div>';
   // ── 审批设置 ──
   var appr=s.approval||{enabled:false,approverRole:'',onReject:'stay'};
+  if(window.__wfDiag)console.log('[wfShowProps] idx='+idx,'approval=',JSON.stringify(appr),'s.key='+s.key);
   h+='<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:8px">';
   h+='<div onclick="var n=this.nextElementSibling;n.style.display=n.style.display===\'none\'?\'block\':\'none\'" style="cursor:pointer;font-weight:600;font-size:12px;padding:4px 0;display:flex;align-items:center;gap:4px">🔒 审批设置 <span style="font-size:10px;color:var(--text3)">'+(appr.enabled?'已启用':'未启用')+'</span></div>';
   h+='<div style="padding:6px 0;display:none">';
@@ -11732,16 +11736,20 @@ function wfShowProps(idx){
   panel.innerHTML=h;
 }
 function wfSetApproval(idx,key,val){
-  if(idx<0||idx>=wfEditorSteps.length)return;
-  if(!wfEditorSteps[idx].approval)wfEditorSteps[idx].approval={enabled:false,approverRole:'',onReject:'stay'};
-  wfEditorSteps[idx].approval[key]=val;
-  wfShowProps(idx);
+  try{
+    if(!wfEditorSteps||idx<0||idx>=wfEditorSteps.length)return;
+    if(!wfEditorSteps[idx].approval)wfEditorSteps[idx].approval={enabled:false,approverRole:'',onReject:'stay'};
+    wfEditorSteps[idx].approval[key]=val;
+    wfShowProps(idx);
+  }catch(e){console.error('[wfSetApproval]',e)}
 }
 function wfSetAssignee(idx,key,val){
-  if(idx<0||idx>=wfEditorSteps.length)return;
-  if(!wfEditorSteps[idx].assignee)wfEditorSteps[idx].assignee={enabled:false,type:'dept',value:''};
-  wfEditorSteps[idx].assignee[key]=val;
-  wfShowProps(idx);
+  try{
+    if(!wfEditorSteps||idx<0||idx>=wfEditorSteps.length)return;
+    if(!wfEditorSteps[idx].assignee)wfEditorSteps[idx].assignee={enabled:false,type:'dept',value:''};
+    wfEditorSteps[idx].assignee[key]=val;
+    wfShowProps(idx);
+  }catch(e){console.error('[wfSetAssignee]',e)}
 }
 function wfSetPermField(idx,key,val){
   if(idx<0||idx>=wfEditorSteps.length)return;
@@ -11758,10 +11766,12 @@ function wfToggleEditableBy(idx,role,checked){
   wfEditorSteps[idx].permissions.editableBy=arr;
 }
 function wfSetProp(idx,key,value){
-  if(idx<0||idx>=wfEditorSteps.length)return;
-  wfEditorSteps[idx][key]=value;
-  wfRenderAll();
-  if(key==='seq')wfShowProps(idx);
+  try{
+    if(!wfEditorSteps||idx<0||idx>=wfEditorSteps.length)return;
+    wfEditorSteps[idx][key]=value;
+    wfRenderAll();
+    wfShowProps(idx);  // always re-render panel so select/input show new values
+  }catch(e){console.error('[wfSetProp]',e)}
 }
 function wfDeleteStep(idx){
   if(idx<0||idx>=wfEditorSteps.length)return;
@@ -11853,7 +11863,6 @@ async function saveWtVisual(){
   for(var i=0;i<wfEditorSteps.length;i++){
     var s=Object.assign({},wfEditorSteps[i]);
     delete s._x;delete s._y;
-    // Preserve new approval/assignee/permissions fields as-is (already merged by Object.assign)
     steps.push(s);
   }
   var btn=document.getElementById('wt-save-btn');
