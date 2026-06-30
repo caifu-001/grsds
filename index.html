@@ -3098,8 +3098,8 @@ async function callAdmin(op,table,opts){
   try{
     var body=JSON.stringify({op:op,table:table,method:opts.method||'GET',payload:opts.payload||null,query:opts.query||'*',filters:opts.filters||null});
     var r=await fetch(SUPAFUNC_BASE,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+(await sb.auth.getSession()).data.session?.access_token||''},body:body});
-    if(r&&r.error){var txt=await r.text();console.error('callAdmin failed:',r.status,txt);return{data:null,error:{message:'Admin API '+(opts.failMsg||'error')}}};
-    return r.data;
+    if(!r.ok){var txt=await r.text();console.error('callAdmin failed:',r.status,txt);return{data:null,error:{message:'Admin API '+(opts.failMsg||'error')}}};
+    return await r.json();
   }catch(e){console.error('callAdmin error:',e);return{data:null,error:{message:e.message||'Network error'}};}
 }
 document.getElementById('script-loaded-check').style.display='none';
@@ -11448,7 +11448,7 @@ async function renderWorkflowTemplates(){
     var url=SUPABASE_URL+'/rest/v1/workflow_templates?order=id';
     console.log('renderWorkflowTemplates: fetching',url);
     var r=await callAdmin('select','workflow_templates',{query:'*',filters:[{col:'',op:'order',val:'id'}]});
-    if(r&&r.error){console.log('renderWorkflowTemplates: fetch failed',r.status);list.innerHTML='<p style="color:var(--text2)">加载失败 (HTTP '+r.status+')</p>';return}
+    if(r&&r.error){console.log('renderWorkflowTemplates: fetch failed',r.error);list.innerHTML='<p style="color:var(--text2)">加载失败: '+escHtml(r.error.message||'未知错误')+'</p>';return}
     var data=r.data;console.log('renderWorkflowTemplates: got',data.length,'templates');
     allTemplates=data;
     var h='';
