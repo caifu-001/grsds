@@ -11658,10 +11658,10 @@ function wfShowProps(idx){
   if(!panel)return;
   // 后台加载部门/角色（fire-and-forget），加载完自动重渲染
   if(!allDepartments||!allDepartments.length){
-    sb.from('departments').select('*').eq('company_id',currentCompanyId).order('name').then(function(d){if(!d.error){allDepartments=d.data||[];wfShowProps(idx);}});
+    sb.from('departments').select('*').eq('company_id',currentCompanyId).order('name').then(function(d){if(!d.error){allDepartments=d.data||[];setTimeout(function(){wfShowProps(idx)},0);}});
   }
   if(!allRoles||!allRoles.length){
-    sb.from('roles').select('*').eq('company_id',currentCompanyId).order('name').then(function(d){if(!d.error){allRoles=d.data||[];wfShowProps(idx);}});
+    sb.from('roles').select('*').eq('company_id',currentCompanyId).order('name').then(function(d){if(!d.error){allRoles=d.data||[];setTimeout(function(){wfShowProps(idx)},0);}});
   }
 
   if(idx<0||idx>=wfEditorSteps.length){
@@ -11694,12 +11694,16 @@ function wfShowProps(idx){
   for(var pi=0;pi<params.length;pi++){h+=wfBuildParamRow(idx,pi,params[pi]);}
   h+='</div>';
   h+='<button onclick="wfAddParam('+idx+')" style="margin-top:6px;font-size:11px;padding:4px 10px;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer">+ 添加参数</button></div>';
+  // ── 记录当前的展开状态，方便重建后恢复 ──
+  var expanded=window.__wfExpanded||{};
+
   // ── 审批设置 ──
   var appr=s.approval||{enabled:false,approverRole:'',onReject:'stay'};
   if(window.__wfDiag)console.log('[wfShowProps] idx='+idx,'approval=',JSON.stringify(appr),'s.key='+s.key);
   h+='<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:8px">';
-  h+='<div onclick="var n=this.nextElementSibling;n.style.display=n.style.display===\'none\'?\'block\':\'none\'" style="cursor:pointer;font-weight:600;font-size:12px;padding:4px 0;display:flex;align-items:center;gap:4px">🔒 审批设置 <span style="font-size:10px;color:var(--text3)">'+(appr.enabled?'已启用':'未启用')+'</span></div>';
-  h+='<div style="padding:6px 0;display:none">';
+  var apprOpen=expanded['appr_'+idx]?'block':'none';
+  h+='<div onclick="var n=this.nextElementSibling;var d=n.style.display===\'none\'?\'block\':\'none\';n.style.display=d;window.__wfExpanded=window.__wfExpanded||{};window.__wfExpanded[\'appr_'+idx+'\']=d===\'block\'" style="cursor:pointer;font-weight:600;font-size:12px;padding:4px 0;display:flex;align-items:center;gap:4px">🔒 审批设置 <span style="font-size:10px;color:var(--text3)">'+(appr.enabled?'已启用':'未启用')+'</span></div>';
+  h+='<div style="padding:6px 0;display:'+apprOpen+'">';
   h+='<label style="display:flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" '+(appr.enabled?'checked':'')+' onchange="wfSetApproval('+idx+',\'enabled\',this.checked)"> 启用审批</label>';
   h+='<label>审批人角色</label><select onchange="wfSetApproval('+idx+',\'approverRole\',this.value)"><option value="">无</option>';
   for(var ri=0;ri<(allRoles||[]).length;ri++){h+='<option value="'+escHtml(allRoles[ri].name)+'"'+(appr.approverRole===allRoles[ri].name?' selected':'')+'>'+escHtml(allRoles[ri].name)+'</option>';}
@@ -11709,8 +11713,9 @@ function wfShowProps(idx){
   // ── 负责人设置 ──
   var asg=s.assignee||{enabled:false,type:'dept',value:''};
   h+='<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">';
-  h+='<div onclick="var n=this.nextElementSibling;n.style.display=n.style.display===\'none\'?\'block\':\'none\'" style="cursor:pointer;font-weight:600;font-size:12px;padding:4px 0;display:flex;align-items:center;gap:4px">👤 负责人设置 <span style="font-size:10px;color:var(--text3)">'+(asg.enabled?'已启用':'未启用')+'</span></div>';
-  h+='<div style="padding:6px 0;display:none">';
+  var asgOpen=expanded['asg_'+idx]?'block':'none';
+  h+='<div onclick="var n=this.nextElementSibling;var d=n.style.display===\'none\'?\'block\':\'none\';n.style.display=d;window.__wfExpanded=window.__wfExpanded||{};window.__wfExpanded[\'asg_'+idx+'\']=d===\'block\'" style="cursor:pointer;font-weight:600;font-size:12px;padding:4px 0;display:flex;align-items:center;gap:4px">👤 负责人设置 <span style="font-size:10px;color:var(--text3)">'+(asg.enabled?'已启用':'未启用')+'</span></div>';
+  h+='<div style="padding:6px 0;display:'+asgOpen+'">';
   h+='<label style="display:flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" '+(asg.enabled?'checked':'')+' onchange="wfSetAssignee('+idx+',\'enabled\',this.checked)"> 指定负责人</label>';
   h+='<label>授权部门</label><select onchange="wfSetAssignee('+idx+',\'value\',this.value)"><option value="">无</option>';
   for(var di=0;di<(allDepartments||[]).length;di++){h+='<option value="'+escHtml(allDepartments[di].id)+'"'+(asg.value===allDepartments[di].id?' selected':'')+'>'+escHtml(allDepartments[di].name)+'</option>';}
@@ -11722,9 +11727,10 @@ function wfShowProps(idx){
   h+='</div></div>';
   // 编辑权限设置 ──
   var perm=s.permissions||{editFields:[],editableBy:['admin']};
+  var permOpen=expanded['perm_'+idx]?'block':'none';
   h+='<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">';
-  h+='<div onclick="var n=this.nextElementSibling;n.style.display=n.style.display===\'none\'?\'block\':\'none\'" style="cursor:pointer;font-weight:600;font-size:12px;padding:4px 0">✏️ 编辑权限</div>';
-  h+='<div style="padding:6px 0;display:none">';
+  h+='<div onclick="var n=this.nextElementSibling;var d=n.style.display===\'none\'?\'block\':\'none\';n.style.display=d;window.__wfExpanded=window.__wfExpanded||{};window.__wfExpanded[\'perm_'+idx+'\']=d===\'block\'" style="cursor:pointer;font-weight:600;font-size:12px;padding:4px 0">✏️ 编辑权限</div>';
+  h+='<div style="padding:6px 0;display:'+permOpen+'">';
   h+='<label>可编辑字段（逗号分隔）</label><input value="'+escHtml((perm.editFields||[]).join(','))+'" onchange="wfSetPermField('+idx+',\'editFields\',this.value)" placeholder="空=全部可编辑">';
   var ebRoles=['assignee','approver','admin'];
   h+='<label>谁可编辑</label><div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">';
@@ -11740,7 +11746,7 @@ function wfSetApproval(idx,key,val){
     if(!wfEditorSteps||idx<0||idx>=wfEditorSteps.length)return;
     if(!wfEditorSteps[idx].approval)wfEditorSteps[idx].approval={enabled:false,approverRole:'',onReject:'stay'};
     wfEditorSteps[idx].approval[key]=val;
-    wfShowProps(idx);
+    setTimeout(function(){wfShowProps(idx)},0);
   }catch(e){console.error('[wfSetApproval]',e)}
 }
 function wfSetAssignee(idx,key,val){
@@ -11748,14 +11754,14 @@ function wfSetAssignee(idx,key,val){
     if(!wfEditorSteps||idx<0||idx>=wfEditorSteps.length)return;
     if(!wfEditorSteps[idx].assignee)wfEditorSteps[idx].assignee={enabled:false,type:'dept',value:''};
     wfEditorSteps[idx].assignee[key]=val;
-    wfShowProps(idx);
+    setTimeout(function(){wfShowProps(idx)},0);
   }catch(e){console.error('[wfSetAssignee]',e)}
 }
 function wfSetPermField(idx,key,val){
   if(idx<0||idx>=wfEditorSteps.length)return;
   if(!wfEditorSteps[idx].permissions)wfEditorSteps[idx].permissions={editFields:[],editableBy:['admin']};
   wfEditorSteps[idx].permissions.editFields=(val||'').split(',').map(function(x){return x.trim()}).filter(function(x){return x});
-  wfShowProps(idx);
+  setTimeout(function(){wfShowProps(idx)},0);
 }
 function wfToggleEditableBy(idx,role,checked){
   if(idx<0||idx>=wfEditorSteps.length)return;
@@ -11764,13 +11770,14 @@ function wfToggleEditableBy(idx,role,checked){
   if(checked){if(arr.indexOf(role)<0)arr.push(role)}
   else{var pos=arr.indexOf(role);if(pos>=0)arr.splice(pos,1)}
   wfEditorSteps[idx].permissions.editableBy=arr;
+  setTimeout(function(){wfShowProps(idx)},0);
 }
 function wfSetProp(idx,key,value){
   try{
     if(!wfEditorSteps||idx<0||idx>=wfEditorSteps.length)return;
     wfEditorSteps[idx][key]=value;
     wfRenderAll();
-    wfShowProps(idx);  // always re-render panel so select/input show new values
+    setTimeout(function(){wfShowProps(idx)},0);
   }catch(e){console.error('[wfSetProp]',e)}
 }
 function wfDeleteStep(idx){
