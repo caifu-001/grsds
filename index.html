@@ -10146,7 +10146,7 @@ function openLeadForm(id){
   document.getElementById('lf-creator').value='';
   document.getElementById('lf-created-at').value='';
   if(id){
-    var l=allLeads.find(function(x){return x.id==id||String(x.id)===String(id)});
+    var l=(allLeads||[]).concat(poolLeads||[]).find(function(x){return x.id==id||String(x.id)===String(id)});
     if(l){
       document.getElementById('lf-name').value=l.name||'';
       document.getElementById('lf-contact-name').value=l.contact_name||'';
