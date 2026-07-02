@@ -12486,6 +12486,9 @@ function showStepPanel(seq){
   var panelName=step.panel||'editor';
   var panelEl=document.getElementById('wb-panel-'+panelName);
   console.log('[showStepPanel] panelEl for wb-panel-'+panelName+'=',!!panelEl);
+  if(panelEl){console.log('[showStepPanel] panelEl display=',getComputedStyle(panelEl).display,'hidden class=',panelEl.classList.contains('hidden'));}
+  var rightEl=document.getElementById('wb-right');
+  if(rightEl){console.log('[showStepPanel] wb-right children count=',rightEl.children.length,'first child visible=',rightEl.children[0]?!rightEl.children[0].classList.contains('hidden'):'n/a');}
 
   // Populate data
   var data=curWorkflow[seq]?curWorkflow[seq].data||{}:{};
