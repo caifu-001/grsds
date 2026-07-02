@@ -3259,6 +3259,17 @@ async function onLoginSuccess(user){
  await loadClients();
  await loadCompanies();
   await loadTemplates();
+  // Load departments and set currentUser.department for permission checks
+  if(currentCompanyId){
+    var {data:depts}=await sb.from('departments').select('*').eq('company_id',currentCompanyId);
+    if(depts&&depts.length){
+      allDepartments=depts;
+      if(profile&&profile.department_id){
+        var myDept=depts.find(function(d){return d.id===profile.department_id});
+        if(myDept)currentUser.department=myDept.name;
+      }
+    }
+  }
   document.getElementById('main-screen').classList.remove('hidden');
   if(isSuperAdmin||currentUserRole==='admin')document.getElementById('tab-admin').classList.remove('hidden');
   if(isSuperAdmin){document.getElementById('admin-tab-companies-manage').classList.remove('hidden');document.getElementById('admin-tab-companies').classList.remove('hidden');}
