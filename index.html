@@ -14959,6 +14959,19 @@ async function doSaveFVisit(data){
   }catch(e){showToast('保存失败: '+(e.message||e));console.error(e)}
 }
 
+// Visit form modal
+function closeVisitForm(){
+  var m=document.getElementById('fw-visit-modal');
+  if(m){m.classList.add('hidden');m.style.display='';}
+  fwVisitEditId=null;
+  document.getElementById('fw-vm-client').value='';
+  document.getElementById('fw-vm-purpose').value='';
+  document.getElementById('fw-vm-date').value='';
+  document.getElementById('fw-vm-notes').value='';
+  document.getElementById('fw-vm-result').value='';
+  document.getElementById('fw-vm-title').textContent='新增拜访记录';
+}
+
 // Location confirmation modal
 function closeLocationConfirm(){
   document.getElementById('fw-location-confirm').classList.add('hidden');
