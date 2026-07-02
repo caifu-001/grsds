@@ -12464,7 +12464,10 @@ function saveStepNote(){
 }
 
 function showStepPanel(seq){
-  var step=WFLookup[seq];if(!step)return;
+  console.log('[showStepPanel] seq=',seq,'WFLookup=',Object.keys(WFLookup));
+  var step=WFLookup[seq];
+  if(!step){console.log('[showStepPanel] step not found for seq',seq);return;}
+  console.log('[showStepPanel] step=',step.name,'panel=',step.panel);
   // Hide all panels
   var panels=['wb-panel-basic','wb-panel-editor','wb-panel-competitor','wb-panel-decision-chain','wb-panel-training',
               'wb-panel-tender','wb-panel-bidding','wb-panel-contract','wb-panel-delivery',
@@ -12478,6 +12481,7 @@ function showStepPanel(seq){
 
   var panelName=step.panel||'editor';
   var panelEl=document.getElementById('wb-panel-'+panelName);
+  console.log('[showStepPanel] panelEl for wb-panel-'+panelName+'=',!!panelEl);
 
   // Populate data
   var data=curWorkflow[seq]?curWorkflow[seq].data||{}:{};
