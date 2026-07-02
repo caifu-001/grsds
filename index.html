@@ -15582,13 +15582,31 @@ async function loadPASteps(projectId){
     var {data:users}=await sb.from('profiles').select('user_id,display_name,email').eq('company_id',currentCompanyId);
     var userMap={};if(users)users.forEach(function(u){userMap[u.user_id]=u});
     if(!steps||!steps.length){container.innerHTML='<div style="text-align:center;padding:40px;color:var(--text2)">暂无步骤配置</div>';return;}
-    var html='<div style="margin-bottom:16px"><h4 style="margin:0 0 8px 0">步骤审批人配置</h4><p style="margin:0;font-size:13px;color:var(--text2)">为每个步骤指定审批方式：按角色分配或指定具体人员</p></div>';
+    var memberOpts='<option value="">选择人员</option>'+(members?members.map(function(m){var u=userMap[m.user_id]||{};var rl=BUSINESS_ROLES.find(function(r){return r.value===m.business_role});return'<option value="'+m.user_id+'">'+escHtml(u.display_name||u.email||'未知用户')+' ('+(rl?.label||'')+')</option>'}).join(''):'');
+    var roleOpts='<option value="">选择角色</option>'+BUSINESS_ROLES.map(function(r){return'<option value="'+r.value+'">'+r.label+'</option>'}).join('');
+    var html='<div style="margin-bottom:16px"><h4 style="margin:0 0 8px 0">步骤审批人 + 查阅人配置</h4><p style="margin:0;font-size:13px;color:var(--text2)">每个步骤独立配置<span style="color:#3b82f6">审批人</span>（可编辑）和<span style="color:#10b981">查阅人</span>（只读查看）</p></div>';
     steps.forEach(function(s,i){
-      var role=BUSINESS_ROLES.find(function(r){return r.value===s.assignee_role})||{label:'未设置',color:'#9ca3af'};
-      html+='<div class="pa-step-row"><div class="pa-step-header"><div><span style="font-weight:600">'+(i+1)+'. '+escHtml(s.step_label)+'</span></div><span class="pa-role-tag" style="background:'+role.color+'20;color:'+role.color+'">'+role.label+'</span></div>';
-      html+='<div style="display:flex;gap:12px;align-items:center;margin-bottom:12px"><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="assign-type-'+s.step_key+'" value="role"'+(s.assignee_type==='role'?' checked':'')+' onchange="updateStepAssigneeType(\''+projectId+'\',\''+s.step_key+'\',\'role\')"> <span>按角色分配</span></label><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="assign-type-'+s.step_key+'" value="user"'+(s.assignee_type==='user'?' checked':'')+' onchange="updateStepAssigneeType(\''+projectId+'\',\''+s.step_key+'\',\'user\')"> <span>指定人员</span></label></div>';
-      html+='<div id="role-select-'+s.step_key+'"'+(s.assignee_type==='user'?' style="display:none"':'')+'><select onchange="updateStepRole(\''+projectId+'\',\''+s.step_key+'\',this.value)" class="pa-assignee-select"><option value="">选择审批角色</option>'+BUSINESS_ROLES.map(function(r){return'<option value="'+r.value+'"'+(s.assignee_role===r.value?' selected':'')+'>'+r.label+'</option>'}).join('')+'</select></div>';
-      html+='<div id="user-select-'+s.step_key+'"'+(s.assignee_type==='role'?' style="display:none"':'')+'><select onchange="updateStepUser(\''+projectId+'\',\''+s.step_key+'\',this.value)" class="pa-assignee-select"><option value="">选择审批人</option>'+(members?members.map(function(m){var u=userMap[m.user_id]||{};var rl=BUSINESS_ROLES.find(function(r){return r.value===m.business_role});return'<option value="'+m.user_id+'"'+(s.assignee_user_id===m.user_id?' selected':'')+'>'+escHtml(u.display_name||u.email||'未知用户')+' ('+(rl?.label||'')+')</option>'}).join(''):'')+'</select></div></div>';
+      var ar=BUSINESS_ROLES.find(function(r){return r.value===s.assignee_role})||{label:'未设',color:'#9ca3af'};
+      var rr=BUSINESS_ROLES.find(function(r){return r.value===s.reviewer_role})||{label:'未设',color:'#9ca3af'};
+      var checkedR=s.assignee_type||'role';var checkedRV=s.reviewer_type||'role';
+      html+='<div class="pa-step-row">';
+      // 步骤标题
+      html+='<div class="pa-step-header"><div><span style="font-weight:600">'+(i+1)+'. '+escHtml(s.step_label)+'</span></div><div style="display:flex;gap:6px"><span class="pa-role-tag" style="background:'+ar.color+'20;color:'+ar.color+'">审批:'+ar.label+'</span><span class="pa-role-tag" style="background:'+rr.color+'20;color:'+rr.color+'">查阅:'+rr.label+'</span></div></div>';
+      // 审批人区域
+      html+='<div style="margin-bottom:12px;padding:10px;border-left:3px solid #3b82f6;border-radius:4px;background:var(--bg2)">';
+      html+='<div style="font-size:13px;font-weight:600;color:#3b82f6;margin-bottom:8px">📝 审批人（可编辑提交）</div>';
+      html+='<div style="display:flex;gap:12px;align-items:center;margin-bottom:8px"><label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px"><input type="radio" name="at-'+s.step_key+'" value="role"'+(checkedR==='role'?' checked':'')+' onchange="updateStepAssigneeType(\''+projectId+'\',\''+s.step_key+'\',\'role\')"> 按角色</label><label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px"><input type="radio" name="at-'+s.step_key+'" value="user"'+(checkedR==='user'?' checked':'')+' onchange="updateStepAssigneeType(\''+projectId+'\',\''+s.step_key+'\',\'user\')"> 指定人</label></div>';
+      html+='<div id="ar-role-'+s.step_key+'"'+(checkedR==='user'?' style="display:none"':'')+'><select onchange="updateStepRole(\''+projectId+'\',\''+s.step_key+'\',this.value)" class="pa-assignee-select">'+roleOpts.replace(/value="'+s.assignee_role+'"/,'value="'+s.assignee_role+'" selected')+'</select></div>';
+      html+='<div id="ar-user-'+s.step_key+'"'+(checkedR==='role'?' style="display:none"':'')+'><select onchange="updateStepUser(\''+projectId+'\',\''+s.step_key+'\',this.value)" class="pa-assignee-select">'+memberOpts.replace(/value="'+s.assignee_user_id+'"/,'value="'+s.assignee_user_id+'" selected')+'</select></div>';
+      html+='</div>';
+      // 查阅人区域
+      html+='<div style="padding:10px;border-left:3px solid #10b981;border-radius:4px;background:var(--bg2)">';
+      html+='<div style="font-size:13px;font-weight:600;color:#10b981;margin-bottom:8px">👁 查阅人（只读查看，不可编辑）</div>';
+      html+='<div style="display:flex;gap:12px;align-items:center;margin-bottom:8px"><label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px"><input type="radio" name="rt-'+s.step_key+'" value="role"'+(checkedRV==='role'?' checked':'')+' onchange="updateStepReviewerType(\''+projectId+'\',\''+s.step_key+'\',\'role\')"> 按角色</label><label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px"><input type="radio" name="rt-'+s.step_key+'" value="user"'+(checkedRV==='user'?' checked':'')+' onchange="updateStepReviewerType(\''+projectId+'\',\''+s.step_key+'\',\'user\')"> 指定人</label></div>';
+      html+='<div id="rr-role-'+s.step_key+'"'+(checkedRV==='user'?' style="display:none"':'')+'><select onchange="updateStepReviewerRole(\''+projectId+'\',\''+s.step_key+'\',this.value)" class="pa-assignee-select">'+roleOpts.replace(/value="'+s.reviewer_role+'"/,'value="'+s.reviewer_role+'" selected')+'</select></div>';
+      html+='<div id="rr-user-'+s.step_key+'"'+(checkedRV==='role'?' style="display:none"':'')+'><select onchange="updateStepReviewerUser(\''+projectId+'\',\''+s.step_key+'\',this.value)" class="pa-assignee-select">'+memberOpts.replace(/value="'+s.reviewer_user_id+'"/,'value="'+s.reviewer_user_id+'" selected')+'</select></div>';
+      html+='</div>';
+      html+='</div>';
     });
     container.innerHTML=html;
   }catch(e){container.innerHTML='<div style="text-align:center;padding:40px;color:#ef4444">加载失败: '+escHtml(e.message)+'</div>';}
@@ -15606,8 +15624,8 @@ async function addMember(projectId){
   try{var {error}=await sb.from('project_assignments').insert({project_id:projectId,user_id:userId,business_role:role||null,project_role:'edit'});if(error)throw error;showToast('✅ 成员已添加');userSelect.value='';roleSelect.value='';loadPAMembers(projectId);loadPASteps(projectId);}catch(e){showToast('❌ 添加失败: '+e.message);}
 }
 async function updateStepAssigneeType(projectId,stepKey,type){
-  document.getElementById('role-select-'+stepKey).style.display=type==='role'?'block':'none';
-  document.getElementById('user-select-'+stepKey).style.display=type==='user'?'block':'none';
+  document.getElementById('ar-role-'+stepKey).style.display=type==='role'?'block':'none';
+  document.getElementById('ar-user-'+stepKey).style.display=type==='user'?'block':'none';
   try{var {error}=await sb.from('project_step_assignees').update({assignee_type:type,updated_at:new Date().toISOString()}).eq('project_id',projectId).eq('step_key',stepKey);if(error)throw error;}catch(e){showToast('❌ 更新失败: '+e.message);}
 }
 async function updateStepRole(projectId,stepKey,role){
@@ -15615,6 +15633,17 @@ async function updateStepRole(projectId,stepKey,role){
 }
 async function updateStepUser(projectId,stepKey,userId){
   try{var {data:profile}=await sb.from('profiles').select('email,display_name').eq('user_id',userId).single();var {error}=await sb.from('project_step_assignees').update({assignee_user_id:userId,assignee_user_email:profile?.email||'',updated_at:new Date().toISOString()}).eq('project_id',projectId).eq('step_key',stepKey);if(error)throw error;showToast('✅ 审批人已更新');}catch(e){showToast('❌ 更新失败: '+e.message);}
+}
+async function updateStepReviewerType(projectId,stepKey,type){
+  document.getElementById('rr-role-'+stepKey).style.display=type==='role'?'block':'none';
+  document.getElementById('rr-user-'+stepKey).style.display=type==='user'?'block':'none';
+  try{var {error}=await sb.from('project_step_assignees').update({reviewer_type:type,updated_at:new Date().toISOString()}).eq('project_id',projectId).eq('step_key',stepKey);if(error)throw error;}catch(e){showToast('❌ 更新失败: '+e.message);}
+}
+async function updateStepReviewerRole(projectId,stepKey,role){
+  try{var {error}=await sb.from('project_step_assignees').update({reviewer_role:role,reviewer_user_id:null,updated_at:new Date().toISOString()}).eq('project_id',projectId).eq('step_key',stepKey);if(error)throw error;showToast('✅ 查阅角色已更新');}catch(e){showToast('❌ 更新失败: '+e.message);}
+}
+async function updateStepReviewerUser(projectId,stepKey,userId){
+  try{var {data:profile}=await sb.from('profiles').select('email,display_name').eq('user_id',userId).single();var {error}=await sb.from('project_step_assignees').update({reviewer_user_id:userId,reviewer_user_email:profile?.email||'',updated_at:new Date().toISOString()}).eq('project_id',projectId).eq('step_key',stepKey);if(error)throw error;showToast('✅ 查阅人已更新');}catch(e){showToast('❌ 更新失败: '+e.message);}
 }
 
 </script>
