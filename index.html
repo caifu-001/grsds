@@ -12486,7 +12486,18 @@ function showStepPanel(seq){
   var panelName=step.panel||'editor';
   var panelEl=document.getElementById('wb-panel-'+panelName);
   console.log('[showStepPanel] panelEl for wb-panel-'+panelName+'=',!!panelEl);
-  if(panelEl){console.log('[showStepPanel] panelEl display=',getComputedStyle(panelEl).display,'hidden class=',panelEl.classList.contains('hidden'));}
+  if(panelEl){
+    console.log('[showStepPanel] panelEl display=',getComputedStyle(panelEl).display,'hidden class=',panelEl.classList.contains('hidden'));
+    console.log('[showStepPanel] panelEl offsetHeight=',panelEl.offsetHeight,'offsetWidth=',panelEl.offsetWidth);
+    console.log('[showStepPanel] panelEl innerHTML length=',panelEl.innerHTML.length);
+    // Force visible styles
+    panelEl.style.display='block';
+    panelEl.style.visibility='visible';
+    panelEl.style.opacity='1';
+    panelEl.style.background='#fff';
+    panelEl.style.border='2px solid red';
+    panelEl.style.padding='20px';
+  }
   var rightEl=document.getElementById('wb-right');
   if(rightEl){console.log('[showStepPanel] wb-right children count=',rightEl.children.length,'first child visible=',rightEl.children[0]?!rightEl.children[0].classList.contains('hidden'):'n/a');}
 
