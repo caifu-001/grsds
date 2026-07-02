@@ -15390,7 +15390,8 @@ async function renderDetailBlocksAsync(){
       });
     }else if(b.panel){
       // 从数据库获取该步骤的字段配置和数据
-      var stepKey='step_'+(b.seq!=null?b.seq:b.key);
+      var stepKey='step_'+(b.seq!=null?b.seq:(String(b.key).replace('step_','')||0));
+      console.log('[DEBUG] render panel:',{key:b.key,seq:b.seq,stepKey:stepKey,allFieldsCount:allFields.length,matchedFields:allFields.filter(function(f){return f.step_key===stepKey;}).length});
       var stepFields=allFields.filter(function(f){return f.step_key===stepKey;});
       var stepValues=allValues.filter(function(v){return v.step_key===stepKey;});
       html+=renderPanelContent(b.panel,b.seq,canEdit,stepFields,stepValues);
