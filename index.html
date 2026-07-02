@@ -12010,15 +12010,19 @@ async function loadTemplates(){
   catch(e){console.error('loadTemplates',e)}
 }
 function getTemplateSteps(templateId){
-  if(!templateId||!allTemplates||!allTemplates.length)return WORKFLOW_STEPS;
-  var t=allTemplates.find(function(x){return x.id===templateId});
-  if(!t)return WORKFLOW_STEPS;
   var steps;
-  try{if(typeof t.steps==='string')steps=JSON.parse(t.steps);else if(Array.isArray(t.steps))steps=t.steps;}catch(e){}
-  if(!steps)return WORKFLOW_STEPS;
-  // Sync WFLookup with template steps
+  if(templateId&&allTemplates&&allTemplates.length){
+    var t=allTemplates.find(function(x){return x.id===templateId});
+    if(t){
+      try{if(typeof t.steps==='string')steps=JSON.parse(t.steps);else if(Array.isArray(t.steps))steps=t.steps;}catch(e){}
+    }
+  }
+  // Fallback to WORKFLOW_STEPS if no template steps found
+  if(!steps)steps=WORKFLOW_STEPS;
+  // Always sync WFLookup with the steps we're returning
   WFLookup={};
   for(var i=0;i<steps.length;i++){WFLookup[steps[i].seq]=steps[i];}
+  console.log('[getTemplateSteps] templateId=',templateId,'steps count=',steps.length,'WFLookup keys=',Object.keys(WFLookup));
   return steps;
 }
 
