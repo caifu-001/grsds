@@ -15493,6 +15493,104 @@ async function savePanelData(panel,seq){
   }catch(e){showToast('❌ 保存失败: '+e.message);}
 }
 
+// ===== 项目另存为模板 / 增量同步到模板 =====
+async function saveProjectAsTemplate(){
+  if(!curDetailId||!curDetailProject)return;
+  if(!isAdmin()){showToast('⚠️ 仅管理员可操作');return;}
+  var name=prompt('新模板名称:',curDetailProject.name||'未命名项目');
+  if(!name||!name.trim())return;
+  name=name.trim();
+  try{
+    // 1. 收集步骤定义（从模板或当前步骤）
+    var steps=[];
+    if(curDetailProject.template_id&&allTemplates){
+      var t=allTemplates.find(function(x){return x.id==curDetailProject.template_id});
+      if(t){try{steps=typeof t.steps==='string'?JSON.parse(t.steps):t.steps}catch(e){steps=[]}}
+    }
+    if(!steps||!steps.length){
+      // 从 curDetailBlocks 生成步骤
+      curDetailBlocks.forEach(function(b,i){
+        steps.push({key:b.key||('step_'+i),label:b.label||('步骤'+(i+1)),panel:b.panel||'editor'});
+      });
+    }
+    // 2. 收集字段配置
+    var {data:fields}=await sb.from('project_step_fields').select('*').eq('project_id',curDetailId).order('step_key,sort_order');
+    // 合并字段配置到步骤中
+    if(fields)fields.forEach(function(f){
+      var si=steps.findIndex(function(s){return (s.key||('step_'+steps.indexOf(s)))===f.step_key;});
+      if(si===-1)si=parseInt(String(f.step_key).replace('step_',''))||0;
+      if(si>=0&&si<steps.length){
+        if(!steps[si].fields)steps[si].fields=[];
+        steps[si].fields.push({key:f.field_key,label:f.field_label,type:f.field_type,options:f.field_options,required:f.is_required,placeholder:f.placeholder,sort:f.sort_order});
+      }
+    });
+    // 3. 收集审批人配置
+    var {data:assignees}=await sb.from('project_step_assignees').select('*').eq('project_id',curDetailId).order('step_key');
+    if(assignees)assignees.forEach(function(a){
+      var si=parseInt(String(a.step_key).replace('step_',''));
+      if(si>=0&&si<steps.length){
+        steps[si].default_assignee_type=a.assignee_type||'role';
+        steps[si].default_assignee_role=a.assignee_role||'';
+        steps[si].default_reviewer_type=a.reviewer_type||'role';
+        steps[si].default_reviewer_role=a.reviewer_role||'';
+      }
+    });
+    // 4. 创建新模板
+    var body={name:name,description:curDetailProject.name||'',steps:steps,created_at:new Date().toISOString(),updated_at:new Date().toISOString()};
+    var {error}=await callAdmin('insert','workflow_templates',{payload:body});
+    if(error)throw error;
+    showToast('✅ 模板"'+name+'"已创建');
+    await loadTemplates();
+  }catch(e){showToast('❌ 保存模板失败: '+e.message);}
+}
+
+async function syncProjectToTemplate(){
+  if(!curDetailId||!curDetailProject)return;
+  if(!isAdmin()){showToast('⚠️ 仅管理员可操作');return;}
+  var tid=curDetailProject.template_id;
+  if(!tid){showToast('⚠️ 该项目未关联模板');return;}
+  if(!confirm('确定将当前项目的步骤配置（字段+审批人）同步到原模板？\n这将覆盖模板的字段和审批人配置。'))return;
+  try{
+    // 1. 读取原模板
+    var t=allTemplates.find(function(x){return x.id==tid});
+    if(!t){showToast('❌ 原模板不存在');return;}
+    var steps=[];
+    try{steps=typeof t.steps==='string'?JSON.parse(t.steps):t.steps}catch(e){steps=[]}
+    // 2. 收集字段配置
+    var {data:fields}=await sb.from('project_step_fields').select('*').eq('project_id',curDetailId).order('step_key,sort_order');
+    if(fields)fields.forEach(function(f){
+      var si=steps.findIndex(function(s){return (s.key||('step_'+steps.indexOf(s)))===f.step_key;});
+      if(si===-1)si=parseInt(String(f.step_key).replace('step_',''))||0;
+      if(si>=0&&si<steps.length){
+        if(!steps[si].fields)steps[si].fields=[];
+        var existing=steps[si].fields.findIndex(function(ef){return ef.key===f.field_key});
+        var fd={key:f.field_key,label:f.field_label,type:f.field_type,options:f.field_options,required:f.is_required,placeholder:f.placeholder,sort:f.sort_order};
+        if(existing>=0)steps[si].fields[existing]=fd;
+        else steps[si].fields.push(fd);
+      }
+    });
+    // 3. 收集审批人配置
+    var {data:assignees}=await sb.from('project_step_assignees').select('*').eq('project_id',curDetailId).order('step_key');
+    if(assignees)assignees.forEach(function(a){
+      var si=parseInt(String(a.step_key).replace('step_',''));
+      if(si>=0&&si<steps.length){
+        steps[si].default_assignee_type=a.assignee_type||'role';
+        steps[si].default_assignee_role=a.assignee_role||'';
+        steps[si].default_reviewer_type=a.reviewer_type||'role';
+        steps[si].default_reviewer_role=a.reviewer_role||'';
+      }
+    });
+    // 4. 更新模板
+    var body={steps:steps,updated_at:new Date().toISOString()};
+    var {error}=await callAdmin('update','workflow_templates',{payload:body,filters:[{col:'id',op:'eq',val:tid}],query:'*'});
+    if(error)throw error;
+    showToast('✅ 已同步到模板"'+(t.name||'')+'"');
+    await loadTemplates();
+  }catch(e){showToast('❌ 同步失败: '+e.message);}
+}
+
+async function saveProjectFieldAndSteps(projectId){} // placeholder
+
 function getCurrentPerm(){
   if(!curDetailProject)return 'none';
   if(typeof isSuperAdmin!=='undefined'&&isSuperAdmin)return 'admin';
@@ -16397,6 +16495,8 @@ function isAdmin(){
   </div>
   <div style="background:var(--card);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;gap:6px;justify-content:flex-end;flex-shrink:0">
     <button onclick="openProjectAssignmentModal(curDetailProject.id)" style="background:#6366F1;color:white;border:none;padding:6px 12px;border-radius:4px;cursor:pointer">👥 配置成员</button>
+    <button onclick="saveProjectAsTemplate()" style="background:#F59E0B;color:white;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:12px">📋 另存模板</button>
+    <button onclick="syncProjectToTemplate()" style="background:#8B5CF6;color:white;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:12px">🔄 同步到模板</button>
     <button onclick="saveProjectDetail()" style="background:#10B981;color:white;border:none;padding:6px 12px;border-radius:4px;cursor:pointer">💾 保存</button>
     <button onclick="pdAction('read')" style="background:#3B82F6;color:white;border:none;padding:6px 12px;border-radius:4px;cursor:pointer">📥 阅件</button>
     <button onclick="pdAction('return')" style="background:#F59E0B;color:white;border:none;padding:6px 12px;border-radius:4px;cursor:pointer">↩ 退回</button>
