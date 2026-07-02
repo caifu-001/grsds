@@ -15551,16 +15551,18 @@ async function loadPAMembers(projectId){
   var container=document.getElementById('pa-members-panel');
   container.innerHTML='<div style="text-align:center;padding:40px">加载中...</div>';
   try{
-    var {data:assignments}=await sb.from('project_assignments').select('*,profiles:user_id(display_name,email)').eq('project_id',projectId);
+    var {data:assignments}=await sb.from('project_assignments').select('*').eq('project_id',projectId);
     var {data:users}=await sb.from('profiles').select('user_id,display_name,email,department_id').eq('company_id',currentCompanyId);
     var {data:depts}=await sb.from('departments').select('id,name').eq('company_id',currentCompanyId);
     var deptMap={};if(depts)depts.forEach(function(d){deptMap[d.id]=d.name});
+    var userMap={};if(users)users.forEach(function(u){userMap[u.user_id]=u});
     var html='<div style="margin-bottom:16px"><h4 style="margin:0 0 12px 0">已分配成员</h4>';
     if(assignments&&assignments.length){
       html+='<div style="border:1px solid var(--border);border-radius:12px;overflow:hidden">';
       assignments.forEach(function(a){
+        var u=userMap[a.user_id]||{};
         var role=BUSINESS_ROLES.find(function(r){return r.value===a.business_role})||{label:'未分配',color:'#9ca3af'};
-        html+='<div class="pa-user-row"><div style="flex:1"><div style="font-weight:600">'+escHtml(a.profiles.display_name||a.profiles.email)+'</div><div style="font-size:12px;color:var(--text2)">'+escHtml(a.profiles.email)+'</div>'+(a.department?'<div style="font-size:12px;color:var(--text2)">'+escHtml(a.department)+'</div>':'')+'</div><span class="pa-role-tag" style="background:'+role.color+'20;color:'+role.color+'">'+role.label+'</span><select onchange="updateMemberRole(\''+projectId+'\',\''+a.user_id+'\',this.value)" style="margin-left:12px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text)"><option value="">选择角色</option>'+BUSINESS_ROLES.map(function(r){return'<option value="'+r.value+'"'+(a.business_role===r.value?' selected':'')+'>'+r.label+'</option>'}).join('')+'</select><button onclick="removeMember(\''+projectId+'\',\''+a.user_id+'\')" style="margin-left:12px;padding:6px 10px;border:none;border-radius:6px;background:#ef444420;color:#ef4444;cursor:pointer;font-size:13px">移除</button></div>';
+        html+='<div class="pa-user-row"><div style="flex:1"><div style="font-weight:600">'+escHtml(u.display_name||u.email||'未知用户')+'</div><div style="font-size:12px;color:var(--text2)">'+escHtml(u.email||'')+'</div>'+(a.department?'<div style="font-size:12px;color:var(--text2)">'+escHtml(a.department)+'</div>':'')+'</div><span class="pa-role-tag" style="background:'+role.color+'20;color:'+role.color+'">'+role.label+'</span><select onchange="updateMemberRole(\''+projectId+'\',\''+a.user_id+'\',this.value)" style="margin-left:12px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text)"><option value="">选择角色</option>'+BUSINESS_ROLES.map(function(r){return'<option value="'+r.value+'"'+(a.business_role===r.value?' selected':'')+'>'+r.label+'</option>'}).join('')+'</select><button onclick="removeMember(\''+projectId+'\',\''+a.user_id+'\')" style="margin-left:12px;padding:6px 10px;border:none;border-radius:6px;background:#ef444420;color:#ef4444;cursor:pointer;font-size:13px">移除</button></div>';
       });
       html+='</div>';
     }else{html+='<div style="text-align:center;padding:40px;color:var(--text2)">暂无成员</div>';}
@@ -15575,7 +15577,9 @@ async function loadPASteps(projectId){
   container.innerHTML='<div style="text-align:center;padding:40px">加载中...</div>';
   try{
     var {data:steps}=await sb.from('project_step_assignees').select('*').eq('project_id',projectId).order('step_key');
-    var {data:members}=await sb.from('project_assignments').select('user_id,business_role,profiles:user_id(display_name,email)').eq('project_id',projectId);
+    var {data:members}=await sb.from('project_assignments').select('*').eq('project_id',projectId);
+    var {data:users}=await sb.from('profiles').select('user_id,display_name,email').eq('company_id',currentCompanyId);
+    var userMap={};if(users)users.forEach(function(u){userMap[u.user_id]=u});
     if(!steps||!steps.length){container.innerHTML='<div style="text-align:center;padding:40px;color:var(--text2)">暂无步骤配置</div>';return;}
     var html='<div style="margin-bottom:16px"><h4 style="margin:0 0 8px 0">步骤审批人配置</h4><p style="margin:0;font-size:13px;color:var(--text2)">为每个步骤指定审批方式：按角色分配或指定具体人员</p></div>';
     steps.forEach(function(s,i){
@@ -15583,7 +15587,7 @@ async function loadPASteps(projectId){
       html+='<div class="pa-step-row"><div class="pa-step-header"><div><span style="font-weight:600">'+(i+1)+'. '+escHtml(s.step_label)+'</span></div><span class="pa-role-tag" style="background:'+role.color+'20;color:'+role.color+'">'+role.label+'</span></div>';
       html+='<div style="display:flex;gap:12px;align-items:center;margin-bottom:12px"><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="assign-type-'+s.step_key+'" value="role"'+(s.assignee_type==='role'?' checked':'')+' onchange="updateStepAssigneeType(\''+projectId+'\',\''+s.step_key+'\',\'role\')"> <span>按角色分配</span></label><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="assign-type-'+s.step_key+'" value="user"'+(s.assignee_type==='user'?' checked':'')+' onchange="updateStepAssigneeType(\''+projectId+'\',\''+s.step_key+'\',\'user\')"> <span>指定人员</span></label></div>';
       html+='<div id="role-select-'+s.step_key+'"'+(s.assignee_type==='user'?' style="display:none"':'')+'><select onchange="updateStepRole(\''+projectId+'\',\''+s.step_key+'\',this.value)" class="pa-assignee-select"><option value="">选择审批角色</option>'+BUSINESS_ROLES.map(function(r){return'<option value="'+r.value+'"'+(s.assignee_role===r.value?' selected':'')+'>'+r.label+'</option>'}).join('')+'</select></div>';
-      html+='<div id="user-select-'+s.step_key+'"'+(s.assignee_type==='role'?' style="display:none"':'')+'><select onchange="updateStepUser(\''+projectId+'\',\''+s.step_key+'\',this.value)" class="pa-assignee-select"><option value="">选择审批人</option>'+(members?members.map(function(m){var rl=BUSINESS_ROLES.find(function(r){return r.value===m.business_role});return'<option value="'+m.user_id+'"'+(s.assignee_user_id===m.user_id?' selected':'')+'>'+escHtml(m.profiles.display_name||m.profiles.email)+' ('+(rl?.label||'')+')</option>'}).join(''):'')+'</select></div></div>';
+      html+='<div id="user-select-'+s.step_key+'"'+(s.assignee_type==='role'?' style="display:none"':'')+'><select onchange="updateStepUser(\''+projectId+'\',\''+s.step_key+'\',this.value)" class="pa-assignee-select"><option value="">选择审批人</option>'+(members?members.map(function(m){var u=userMap[m.user_id]||{};var rl=BUSINESS_ROLES.find(function(r){return r.value===m.business_role});return'<option value="'+m.user_id+'"'+(s.assignee_user_id===m.user_id?' selected':'')+'>'+escHtml(u.display_name||u.email||'未知用户')+' ('+(rl?.label||'')+')</option>'}).join(''):'')+'</select></div></div>';
     });
     container.innerHTML=html;
   }catch(e){container.innerHTML='<div style="text-align:center;padding:40px;color:#ef4444">加载失败: '+escHtml(e.message)+'</div>';}
