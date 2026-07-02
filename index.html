@@ -15577,11 +15577,13 @@ async function loadPASteps(projectId){
   var container=document.getElementById('pa-steps-panel');
   container.innerHTML='<div style="text-align:center;padding:40px">加载中...</div>';
   try{
-    var {data:steps}=await sb.from('project_step_assignees').select('*').eq('project_id',projectId).order('step_key');
+    console.log('[DEBUG] loadPASteps projectId:', projectId);
+    var {data:steps, error:stepsError}=await sb.from('project_step_assignees').select('*').eq('project_id',projectId).order('step_key');
+    console.log('[DEBUG] steps result:', {steps: steps?.length, error: stepsError?.message});
     var {data:members}=await sb.from('project_assignments').select('*').eq('project_id',projectId);
     var {data:users}=await sb.from('profiles').select('user_id,display_name,email').eq('company_id',currentCompanyId);
     var userMap={};if(users)users.forEach(function(u){userMap[u.user_id]=u});
-    if(!steps||!steps.length){container.innerHTML='<div style="text-align:center;padding:40px;color:var(--text2)">暂无步骤配置</div>';return;}
+    if(!steps||!steps.length){container.innerHTML='<div style="text-align:center;padding:40px;color:var(--text2)">暂无步骤配置 (projectId: '+projectId+', steps: '+(steps?steps.length:'null')+')</div>';return;}
     var memberOpts='<option value="">选择人员</option>'+(members?members.map(function(m){var u=userMap[m.user_id]||{};var rl=BUSINESS_ROLES.find(function(r){return r.value===m.business_role});return'<option value="'+m.user_id+'">'+escHtml(u.display_name||u.email||'未知用户')+' ('+(rl?.label||'')+')</option>'}).join(''):'');
     var roleOpts='<option value="">选择角色</option>'+BUSINESS_ROLES.map(function(r){return'<option value="'+r.value+'">'+r.label+'</option>'}).join('');
     var html='<div style="margin-bottom:16px"><h4 style="margin:0 0 8px 0">步骤审批人 + 查阅人配置</h4><p style="margin:0;font-size:13px;color:var(--text2)">每个步骤独立配置<span style="color:#3b82f6">审批人</span>（可编辑）和<span style="color:#10b981">查阅人</span>（只读查看）</p></div>';
