@@ -15255,7 +15255,9 @@ async function renderProjectDetail(pid){
         data:curDetailProject['step_'+i]||{},
         visible_to:st.block_visible_to||[],
         editable_to:st.block_editable_to||[],
-        department:st.department||''
+        department:st.department||'',
+        panel:st.panel||null,
+        seq:st.seq||i
       });
     });
   }
@@ -15334,9 +15336,10 @@ function renderDetailBlocks(){
     html+='</div></div>';
 
     html+='<div class="pd-block-body">';
-    if(b.data&&typeof b.data==='object'&&!Array.isArray(b.data)){
-      Object.keys(b.data).forEach(function(k){
-        if(k.startsWith('_'))return;
+    // Check if data has actual fields to render
+    var dataKeys=b.data&&typeof b.data==='object'&&!Array.isArray(b.data)?Object.keys(b.data).filter(function(k){return !k.startsWith('_')}):[];
+    if(dataKeys.length>0){
+      dataKeys.forEach(function(k){
         var v=b.data[k];
         html+='<div class="pd-block-row">';
         html+='<div class="pd-block-label">'+escHtml(k)+'</div>';
@@ -15347,8 +15350,11 @@ function renderDetailBlocks(){
         }
         html+='</div>';
       });
+    }else if(b.panel){
+      // Render panel content based on panel type
+      html+=renderPanelContent(b.panel,b.seq,canEdit);
     }else{
-      html+='<div class="pd-block-value">'+escHtml(String(b.data||'-'))+'</div>';
+      html+='<div class="pd-block-value" style="color:var(--text3);padding:20px;text-align:center">暂无数据</div>';
     }
 
     if(b.visible_to&&b.visible_to.length>0){
@@ -15364,6 +15370,55 @@ function renderDetailBlocks(){
     return;
   }
   c.innerHTML=html;
+}
+
+function renderPanelContent(panel,seq,canEdit){
+  var html='';
+  var panelDefs={
+    'lead_gathering':{title:'🔍 搜集线索',fields:[{k:'search',l:'搜索关键词',t:'text',p:'搜索线索...'},{k:'notes',l:'备注',t:'textarea',p:'线索备注...'}]},
+    'analysis':{title:'💡 分析与验证',fields:[{k:'budget',l:'客户预算',t:'text',p:'100-200万'},{k:'threat',l:'竞品威胁',t:'select',o:['','高','中','低']},{k:'start_date',l:'预计开始',t:'date'},{k:'end_date',l:'预计结束',t:'date'},{k:'tech_eval',l:'技术评估',t:'textarea',p:'技术难点、风险评估...'}]},
+    'competitor':{title:'📋 竞争对手',fields:[{k:'competitors',l:'竞争对手名单',t:'textarea',p:'列出主要竞争对手...'},{k:'analysis',l:'竞争分析',t:'textarea',p:'竞争优势劣势分析...'}]},
+    'training':{title:'📚 培训管理',fields:[{k:'training_content',l:'培训内容',t:'textarea',p:'培训内容...'},{k:'trainer',l:'培训师',t:'text'},{k:'training_date',l:'培训日期',t:'date'},{k:'result',l:'考核结果',t:'select',o:['','通过','未通过']}]},
+    'communication':{title:'🤝 客户沟通',fields:[{k:'contact_person',l:'联系人',t:'text'},{k:'contact_date',l:'沟通日期',t:'date'},{k:'content',l:'沟通内容',t:'textarea',p:'沟通记录...'},{k:'next_step',l:'下一步行动',t:'text'}]},
+    'bidding':{title:'🎯 招投标',fields:[{k:'bid_doc',l:'标书文档',t:'text',p:'标书链接或路径'},{k:'bid_amount',l:'投标金额',t:'text'},{k:'bid_date',l:'投标日期',t:'date'},{k:'result',l:'投标结果',t:'select',o:['','中标','未中标','待定']}]},
+    'contract':{title:'📝 合同签订',fields:[{k:'contract_no',l:'合同编号',t:'text'},{k:'contract_amount',l:'合同金额',t:'text'},{k:'sign_date',l:'签订日期',t:'date'},{k:'party_a',l:'甲方',t:'text'},{k:'party_b',l:'乙方',t:'text'}]},
+    'delivery':{title:'📦 项目交付',fields:[{k:'schedule',l:'工期安排',t:'textarea'},{k:'docs',l:'交付文档',t:'textarea'},{k:'sign_date',l:'签收日期',t:'date'},{k:'sign_person',l:'签收人',t:'text'}]},
+    'payment':{title:'💰 回款管理',fields:[{k:'invoice_amount',l:'开票金额',t:'text'},{k:'invoice_date',l:'开票日期',t:'date'},{k:'received_amount',l:'回款金额',t:'text'},{k:'received_date',l:'回款日期',t:'date'}]}
+  };
+  var def=panelDefs[panel]||{title:'📋 步骤信息',fields:[{k:'notes',l:'备注',t:'textarea',p:'填写步骤相关信息...'}]};
+  html+='<div style="background:var(--card-bg);border:1px solid var(--border);border-radius:10px;padding:16px">';
+  html+='<h4 style="margin:0 0 12px;font-size:14px;color:var(--text)">'+def.title+'</h4>';
+  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">';
+  def.fields.forEach(function(f){
+    html+='<div style="grid-column:'+(f.t==='textarea'?'1 / -1':'auto')+'">';
+    html+='<label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">'+f.l+'</label>';
+    if(f.t==='textarea'){
+      html+='<textarea data-panel="'+panel+'" data-seq="'+seq+'" data-field="'+f.k+'" '+(canEdit?'':'disabled')+' rows="3" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);font-size:14px;background:var(--card-bg);color:var(--text);resize:vertical" placeholder="'+(f.p||'')+'"></textarea>';
+    }else if(f.t==='select'){
+      html+='<select data-panel="'+panel+'" data-seq="'+seq+'" data-field="'+f.k+'" '+(canEdit?'':'disabled')+' style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);font-size:14px;background:var(--card-bg);color:var(--text)">';
+      (f.o||[]).forEach(function(opt){html+='<option value="'+opt+'">'+opt+'</option>';});
+      html+='</select>';
+    }else{
+      html+='<input type="'+f.t+'" data-panel="'+panel+'" data-seq="'+seq+'" data-field="'+f.k+'" '+(canEdit?'':'disabled')+' style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);font-size:14px;background:var(--card-bg);color:var(--text)" placeholder="'+(f.p||'')+'">';
+    }
+    html+='</div>';
+  });
+  html+='</div>';
+  if(canEdit){
+    html+='<div style="text-align:center;margin-top:12px">';
+    html+='<button onclick="savePanelData(\''+panel+'\','+seq+')" style="background:var(--primary);color:white;border:none;padding:8px 20px;border-radius:8px;cursor:pointer;font-size:14px">💾 保存</button>';
+    html+='</div>';
+  }
+  html+='</div>';
+  return html;
+}
+
+function savePanelData(panel,seq){
+  var inputs=document.querySelectorAll('[data-panel="'+panel+'"][data-seq="'+seq+'"]');
+  var data={};
+  inputs.forEach(function(el){data[el.dataset.field]=el.value;});
+  console.log('[savePanelData] panel='+panel+' seq='+seq+' data=',data);
+  showToast('数据已保存（演示模式）','success');
 }
 
 function getCurrentPerm(){
