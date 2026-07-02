@@ -15637,6 +15637,8 @@ async function loadPASteps(projectId){
     // 构建部门-人员选项（key统一为字符串，避免类型不匹配）
     var deptUserMap={};
     if(depts)depts.forEach(function(d){deptUserMap[String(d.id)]={name:d.name,users:[]};});
+    // 添加"未分配部门"分组
+    deptUserMap['__none__']={name:'未分配部门',users:[]};
     console.log('[DEBUG] depts:', depts);
     console.log('[DEBUG] profiles:', profiles?.slice(0,5));
     var unmatchedProfiles=[];
@@ -15644,13 +15646,10 @@ async function loadPASteps(projectId){
       if(p.department_id&&deptUserMap[String(p.department_id)]){
         deptUserMap[String(p.department_id)].users.push(p);
       }else{
-        unmatchedProfiles.push(p);
+        deptUserMap['__none__'].users.push(p);
       }
     });
     console.log('[DEBUG] deptUserMap:', JSON.stringify(Object.keys(deptUserMap).map(function(k){return{k:k,name:deptUserMap[k].name,userCount:deptUserMap[k].users.length};})));
-    console.log('[DEBUG] ALL profiles:', JSON.stringify(profiles));
-    console.log('[DEBUG] ALL dept keys:', Object.keys(deptUserMap));
-    console.log('[DEBUG] unmatched profiles (no dept match):', unmatchedProfiles);
     // 生成按部门分组的人员选项HTML
     var userOptsByDept='';
     Object.keys(deptUserMap).forEach(function(deptId){
