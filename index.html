@@ -15647,7 +15647,9 @@ async function loadPASteps(projectId){
       }
     });
     console.log('[DEBUG] deptUserMap:', JSON.stringify(Object.keys(deptUserMap).map(function(k){return{k:k,name:deptUserMap[k].name,userCount:deptUserMap[k].users.length};})));
-    console.log('[DEBUG] unmatched profiles (no dept match):', unmatchedProfiles.slice(0,5));
+    console.log('[DEBUG] ALL profiles:', JSON.stringify(profiles));
+    console.log('[DEBUG] ALL dept keys:', Object.keys(deptUserMap));
+    console.log('[DEBUG] unmatched profiles (no dept match):', unmatchedProfiles);
     // 生成按部门分组的人员选项HTML
     var userOptsByDept='';
     Object.keys(deptUserMap).forEach(function(deptId){
