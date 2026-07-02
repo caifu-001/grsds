@@ -15633,15 +15633,15 @@ async function loadPASteps(projectId){
     var {data:depts}=await sb.from('departments').select('id,name').eq('company_id',currentCompanyId).order('name');
     var {data:profiles}=await sb.from('profiles').select('user_id,display_name,email,department_id').eq('company_id',currentCompanyId);
     if(!steps||!steps.length){container.innerHTML='<div style="text-align:center;padding:40px;color:var(--text2)">暂无步骤配置 (projectId: '+projectId+', steps: '+(steps?steps.length:'null')+')</div>';return;}
-    // 构建部门-人员选项
+    // 构建部门-人员选项（key统一为字符串，避免类型不匹配）
     var deptUserMap={};
-    if(depts)depts.forEach(function(d){deptUserMap[d.id]={name:d.name,users:[]};});
+    if(depts)depts.forEach(function(d){deptUserMap[String(d.id)]={name:d.name,users:[]};});
     console.log('[DEBUG] depts:', depts);
     console.log('[DEBUG] profiles:', profiles?.slice(0,5));
     var unmatchedProfiles=[];
     if(profiles)profiles.forEach(function(p){
-      if(p.department_id&&deptUserMap[p.department_id]){
-        deptUserMap[p.department_id].users.push(p);
+      if(p.department_id&&deptUserMap[String(p.department_id)]){
+        deptUserMap[String(p.department_id)].users.push(p);
       }else{
         unmatchedProfiles.push(p);
       }
