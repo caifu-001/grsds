@@ -15425,45 +15425,78 @@ function renderPanelContent(panel,seq,canEdit,stepFields,stepValues){
     html+='<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">暂无配置字段，管理员可在"配置成员→字段配置"中添加</div>';
     return html;
   }
-  
+
+  // 按 sort_order 排序
+  fields.sort(function(a,b){return (a.sort_order||99)-(b.sort_order||99);});
+
+  // 检查是否有串行字段
+  var hasSerial=fields.some(function(f){return f.collaboration_mode==='serial';});
+
+  if(hasSerial){
+    // 串行模式：计算每个字段的可用状态
+    // 规则：第一个串行字段始终可填；后续字段需前一个字段有值才解锁
+    var prevSerialCompleted=true;
+    fields.forEach(function(f,i){
+      if(f.collaboration_mode==='serial'){
+        f._unlocked=prevSerialCompleted&&canEdit;
+        f._prevFk=f.depends_on||null;
+        var fv=valueMap[f.field_key]||'';
+        prevSerialCompleted=!!fv;
+      }else{
+        f._unlocked=canEdit;
+      }
+    });
+  }
+
   html+='<div style="background:var(--card-bg);border:1px solid var(--border);border-radius:10px;padding:16px">';
   html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">';
   fields.forEach(function(f){
     var val=valueMap[f.field_key]||f.default_value||'';
-    html+='<div style="grid-column:'+(f.field_type==='textarea'?'1 / -1':'auto')+'">';
-    html+='<label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">'+escHtml(f.field_label)+(f.is_required?'<span style="color:#ef4444">*</span>':'')+'</label>';
+    var fieldCanEdit=hasSerial?(f._unlocked!==false):canEdit;
+    var lockedStyle=fieldCanEdit?'':'opacity:0.5;pointer-events:none';
+    var lockIcon='';
+    if(!fieldCanEdit&&f.collaboration_mode==='serial'){
+      lockIcon=' 🔒<span style="font-size:10px;color:var(--text3)">需完成上一步</span>';
+    }
+    var modeTag=f.collaboration_mode==='serial'?'<span style="font-size:10px;background:#f59e0b20;color:#f59e0b;padding:2px 6px;border-radius:3px;margin-left:6px">串行</span>':'';
+    html+='<div style="grid-column:'+(f.field_type==='textarea'?'1 / -1':'auto')+'" class="field-row" data-field="'+f.field_key+'" data-mode="'+(f.collaboration_mode||'parallel')+'">';
+    html+='<label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">'+escHtml(f.field_label)+(f.is_required?'<span style="color:#ef4444">*</span>':'')+modeTag+lockIcon+'</label>';
     if(f.field_type==='textarea'){
-      html+='<textarea data-panel="'+panel+'" data-step="'+seq+'" data-field="'+f.field_key+'" data-field-id="'+f.id+'" '+(canEdit?'':'disabled')+' rows="3" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);font-size:14px;background:var(--card-bg);color:var(--text);resize:vertical" placeholder="'+(f.placeholder||'')+'">'+escHtml(val)+'</textarea>';
+      html+='<textarea data-panel="'+panel+'" data-step="'+seq+'" data-field="'+f.field_key+'" data-field-id="'+f.id+'" '+(fieldCanEdit?'':'disabled')+' rows="3" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);font-size:14px;background:var(--card-bg);color:var(--text);resize:vertical" placeholder="'+(f.placeholder||'')+'">'+escHtml(val)+'</textarea>';
     }else if(f.field_type==='select'||f.field_type==='radio'){
       var opts=[];
       try{opts=typeof f.field_options==='string'?JSON.parse(f.field_options):(f.field_options||[]);}catch(e){}
       if(f.field_type==='select'){
-        html+='<select data-panel="'+panel+'" data-step="'+seq+'" data-field="'+f.field_key+'" data-field-id="'+f.id+'" '+(canEdit?'':'disabled')+' style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);font-size:14px;background:var(--card-bg);color:var(--text)"><option value="">-</option>';
+        html+='<select data-panel="'+panel+'" data-step="'+seq+'" data-field="'+f.field_key+'" data-field-id="'+f.id+'" '+(fieldCanEdit?'':'disabled')+' style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);font-size:14px;background:var(--card-bg);color:var(--text)"><option value="">-</option>';
         opts.forEach(function(opt){html+='<option value="'+escHtml(String(opt))+'"'+(String(val)===String(opt)?' selected':'')+'>'+escHtml(String(opt))+'</option>';});
         html+='</select>';
       }else{
         html+='<div style="display:flex;gap:12px;flex-wrap:wrap;padding-top:4px">';
-        opts.forEach(function(opt){html+='<label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer"><input type="radio" name="rf-'+f.field_key+'" value="'+escHtml(String(opt))+'" data-panel="'+panel+'" data-step="'+seq+'" data-field="'+f.field_key+'" '+(canEdit?'':'disabled')+''+(String(val)===String(opt)?' checked':'')+'> '+escHtml(String(opt))+'</label>';});
+        opts.forEach(function(opt){html+='<label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer"><input type="radio" name="rf-'+f.field_key+'" value="'+escHtml(String(opt))+'" data-panel="'+panel+'" data-step="'+seq+'" data-field="'+f.field_key+'" '+(fieldCanEdit?'':'disabled')+''+(String(val)===String(opt)?' checked':'')+'> '+escHtml(String(opt))+'</label>';});
         html+='</div>';
       }
     }else if(f.field_type==='multiselect'){
       var mopts=[];
       try{mopts=typeof f.field_options==='string'?JSON.parse(f.field_options):(f.field_options||[]);}catch(e){}
       html+='<div style="display:flex;gap:12px;flex-wrap:wrap;padding-top:4px">';
-      mopts.forEach(function(opt){html+='<label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer"><input type="checkbox" value="'+escHtml(String(opt))+'" data-panel="'+panel+'" data-step="'+seq+'" data-field="'+f.field_key+'" '+(canEdit?'':'disabled')+''+(String(val).includes(String(opt))?' checked':'')+'> '+escHtml(String(opt))+'</label>';});
+      mopts.forEach(function(opt){html+='<label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer"><input type="checkbox" value="'+escHtml(String(opt))+'" data-panel="'+panel+'" data-step="'+seq+'" data-field="'+f.field_key+'" '+(fieldCanEdit?'':'disabled')+''+(String(val).includes(String(opt))?' checked':'')+'> '+escHtml(String(opt))+'</label>';});
       html+='</div>';
     }else if(f.field_type==='checkbox'){
-      html+='<div style="padding-top:4px"><label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" data-panel="'+panel+'" data-step="'+seq+'" data-field="'+f.field_key+'" value="1" '+(canEdit?'':'disabled')+''+(val==='1'?' checked':'')+'> '+escHtml(f.field_label)+'</label></div>';
+      html+='<div style="padding-top:4px"><label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" data-panel="'+panel+'" data-step="'+seq+'" data-field="'+f.field_key+'" value="1" '+(fieldCanEdit?'':'disabled')+''+(val==='1'?' checked':'')+'> '+escHtml(f.field_label)+'</label></div>';
     }else if(f.field_type==='number'){
-      html+='<input type="number" data-panel="'+panel+'" data-step="'+seq+'" data-field="'+f.field_key+'" data-field-id="'+f.id+'" '+(canEdit?'':'disabled')+' style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);font-size:14px;background:var(--card-bg);color:var(--text)" value="'+escHtml(val)+'" placeholder="'+(f.placeholder||'')+'">';
+      html+='<input type="number" data-panel="'+panel+'" data-step="'+seq+'" data-field="'+f.field_key+'" data-field-id="'+f.id+'" '+(fieldCanEdit?'':'disabled')+' style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);font-size:14px;background:var(--card-bg);color:var(--text)" value="'+escHtml(val)+'" placeholder="'+(f.placeholder||'')+'">';
     }else if(f.field_type==='date'){
-      html+='<input type="date" data-panel="'+panel+'" data-step="'+seq+'" data-field="'+f.field_key+'" data-field-id="'+f.id+'" '+(canEdit?'':'disabled')+' style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);font-size:14px;background:var(--card-bg);color:var(--text)" value="'+escHtml(val)+'">';
+      html+='<input type="date" data-panel="'+panel+'" data-step="'+seq+'" data-field="'+f.field_key+'" data-field-id="'+f.id+'" '+(fieldCanEdit?'':'disabled')+' style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);font-size:14px;background:var(--card-bg);color:var(--text)" value="'+escHtml(val)+'">';
     }else{
-      html+='<input type="text" data-panel="'+panel+'" data-step="'+seq+'" data-field="'+f.field_key+'" data-field-id="'+f.id+'" '+(canEdit?'':'disabled')+' style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);font-size:14px;background:var(--card-bg);color:var(--text)" value="'+escHtml(val)+'" placeholder="'+(f.placeholder||'')+'">';
+      html+='<input type="text" data-panel="'+panel+'" data-step="'+seq+'" data-field="'+f.field_key+'" data-field-id="'+f.id+'" '+(fieldCanEdit?'':'disabled')+' style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);font-size:14px;background:var(--card-bg);color:var(--text)" value="'+escHtml(val)+'" placeholder="'+(f.placeholder||'')+'">';
     }
     html+='</div>';
   });
   html+='</div>';
+  // 串行模式提示
+  if(hasSerial){
+    html+='<div style="margin-top:12px;padding:8px 12px;background:#f59e0b10;border:1px solid #f59e0b30;border-radius:8px;font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px"><span>🔗</span> 串行模式：按顺序填写，前一个字段保存后解锁下一个</div>';
+  }
   if(canEdit){
     html+='<div style="text-align:center;margin-top:12px">';
     html+='<button onclick="savePanelData(\''+panel+'\','+seq+')" style="background:var(--primary);color:white;border:none;padding:8px 20px;border-radius:8px;cursor:pointer;font-size:14px">💾 保存</button>';
@@ -15477,19 +15510,24 @@ async function savePanelData(panel,seq){
   var inputs=document.querySelectorAll('[data-panel="'+panel+'"][data-step="'+seq+'"]');
   var values=[];
   inputs.forEach(function(el){
+    if(el.disabled)return; // 跳过被锁定的串行字段
     var val=el.type==='checkbox'?(el.checked?el.value:''):el.value;
-    values.push({
-      project_id:curDetailId,
-      step_key:'step_'+seq,
-      field_key:el.dataset.field,
-      field_value:val,
-      updated_by:currentUser?.id
-    });
+    if(val!==undefined){
+      values.push({
+        project_id:curDetailId,
+        step_key:'step_'+seq,
+        field_key:el.dataset.field,
+        field_value:val,
+        updated_by:currentUser?.id
+      });
+    }
   });
   try{
     var {error}=await sb.from('project_step_field_values').upsert(values,{onConflict:'project_id,step_key,field_key'});
     if(error)throw error;
     showToast('✅ 数据已保存');
+    // 重新渲染以解锁串行下一步
+    renderDetailBlocks();
   }catch(e){showToast('❌ 保存失败: '+e.message);}
 }
 
@@ -15837,7 +15875,8 @@ async function loadPAFields(projectId){
       html+='<div class="pa-step-row"><div class="pa-step-header"><div><span style="font-weight:600">'+escHtml(s.step_label)+'</span></div><button onclick="addField(\''+projectId+'\',\''+s.step_key+'\')" style="padding:6px 12px;background:var(--primary);color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer">+ 添加字段</button></div>';
       if(stepFields.length){
         stepFields.forEach(function(f){
-          html+='<div class="pa-field-row"><input type="text" value="'+escHtml(f.field_label)+'" onchange="updateFieldLabel('+f.id+',this.value)" placeholder="字段名称"><select onchange="updateFieldType('+f.id+',this.value)">'+FIELD_TYPES.map(function(t){return'<option value="'+t.value+'"'+(f.field_type===t.value?' selected':'')+'>'+t.label+'</option>'}).join('')+'</select><label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer"><input type="checkbox"'+(f.is_required?' checked':'')+' onchange="updateFieldRequired('+f.id+',this.checked)"> 必填</label><button onclick="deleteField('+f.id+')" style="padding:4px 8px;background:#ef4444;color:#fff;border:none;border-radius:4px;font-size:12px;cursor:pointer">删除</button></div>';
+          var serialChecked=f.collaboration_mode==='serial'?' checked':'';
+          html+='<div class="pa-field-row"><input type="text" value="'+escHtml(f.field_label)+'" onchange="updateFieldLabel('+f.id+',this.value)" placeholder="字段名称"><select onchange="updateFieldType('+f.id+',this.value)">'+FIELD_TYPES.map(function(t){return'<option value="'+t.value+'"'+(f.field_type===t.value?' selected':'')+'>'+t.label+'</option>'}).join('')+'</select><label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer"><input type="checkbox"'+(f.is_required?' checked':'')+' onchange="updateFieldRequired('+f.id+',this.checked)"> 必填</label><select onchange="updateFieldCollabMode('+f.id+',this.value)" style="padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-size:12px;background:var(--bg);color:var(--text)"><option value="parallel"'+(''+(f.collaboration_mode||'parallel')==='parallel'?' selected':'')+'>并行</option><option value="serial"'+(''+(f.collaboration_mode||'parallel')==='serial'?' selected':'')+'>串行</option></select><button onclick="deleteField('+f.id+')" style="padding:4px 8px;background:#ef4444;color:#fff;border:none;border-radius:4px;font-size:12px;cursor:pointer">删除</button></div>';
         });
       }else{
         html+='<div style="padding:20px;text-align:center;color:var(--text2);font-size:13px">暂无字段，点击上方按钮添加</div>';
@@ -15849,7 +15888,7 @@ async function loadPAFields(projectId){
 }
 async function addField(projectId,stepKey){
   if(!isAdmin()){showToast('⚠️ 仅管理员可编辑字段配置');return;}
-  try{var {error}=await sb.from('project_step_fields').insert({project_id:projectId,step_key:stepKey,field_key:'field_'+Date.now(),field_label:'新字段',field_type:'text',sort_order:99});if(error)throw error;showToast('✅ 字段已添加');loadPAFields(projectId);}catch(e){showToast('❌ 添加失败: '+e.message);}
+  try{var {error}=await sb.from('project_step_fields').insert({project_id:projectId,step_key:stepKey,field_key:'field_'+Date.now(),field_label:'新字段',field_type:'text',sort_order:99,collaboration_mode:'parallel'});if(error)throw error;showToast('✅ 字段已添加');loadPAFields(projectId);}catch(e){showToast('❌ 添加失败: '+e.message);}
 }
 async function updateFieldLabel(fieldId,label){
   if(!isAdmin())return;
@@ -15863,15 +15902,35 @@ async function updateFieldRequired(fieldId,required){
   if(!isAdmin())return;
   try{var {error}=await sb.from('project_step_fields').update({is_required:required}).eq('id',fieldId);if(error)throw error;}catch(e){}
 }
+async function updateFieldCollabMode(fieldId,mode){
+  if(!isAdmin())return;
+  try{var {error}=await sb.from('project_step_fields').update({collaboration_mode:mode}).eq('id',fieldId);if(error)throw error;showToast('✅ 已切换为'+(mode==='serial'?'串行':'并行')+'模式');}catch(e){showToast('❌ 更新失败: '+e.message);}
+}
 async function deleteField(fieldId){
   if(!isAdmin()){showToast('⚠️ 仅管理员可删除字段');return;}
   if(!confirm('确定删除此字段？'))return;
   try{var {error}=await sb.from('project_step_fields').delete().eq('id',fieldId);if(error)throw error;showToast('✅ 字段已删除');var projectId=document.getElementById('project-assignment-modal').dataset.projectId;loadPAFields(projectId);}catch(e){showToast('❌ 删除失败: '+e.message);}
 }
+async function updateFieldCollabMode(fieldId,mode){
+  if(!isAdmin())return;
+  try{var {error}=await sb.from('project_step_fields').update({collaboration_mode:mode}).eq('id',fieldId);if(error)throw error;}catch(e){}
+}
+async function updateFieldCollabMode(fieldId,mode){
+  if(!isAdmin())return;
+  try{var {error}=await sb.from('project_step_fields').update({collaboration_mode:mode}).eq('id',fieldId);if(error)throw error;}catch(e){}
+}
 function isAdmin(){
   if(typeof isSuperAdmin!=='undefined'&&isSuperAdmin)return true;
   if(typeof currentUserRole!=='undefined'&&currentUserRole==='admin')return true;
   return false;
+}
+async function updateFieldCollabMode(fieldId,mode){
+  if(!isAdmin())return;
+  try{var {error}=await sb.from('project_step_fields').update({collaboration_mode:mode}).eq('id',fieldId);if(error)throw error;}catch(e){}
+}
+async function updateFieldCollabMode(fieldId,mode){
+  if(!isAdmin())return;
+  try{var {error}=await sb.from('project_step_fields').update({collaboration_mode:mode}).eq('id',fieldId);if(error)throw error;}catch(e){}
 }
 
 </script>
