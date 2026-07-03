@@ -15363,9 +15363,9 @@ async function renderDetailBlocksAsync(){
     var collapsed=b.state==='done'?'collapsed':'';
     var statusLabel={pending:'待办',in_progress:'进行中',done:'已完成',skipped:'已跳过'}[b.state]||b.state;
 
-    html+='<div class="pd-block '+collapsed+'" data-key="'+b.key+'">';
-    html+='<div class="pd-block-header" onclick="this.parentElement.classList.toggle(\'collapsed\')">';
-    html+='<div class="pd-block-title">'+escHtml(b.label);
+    html+='<div class="pd-block '+collapsed+'" data-key="'+b.key+'" data-seq="'+b.seq+'" draggable="true" ondragstart="pdBlockDragStart(event)" ondragover="pdBlockDragOver(event)" ondrop="pdBlockDrop(event)" ondragend="pdBlockDragEnd(event)">';
+    html+='<div class="pd-block-header" onclick="this.parentElement.classList.toggle(\'collapsed\')" style="cursor:grab">';
+    html+='<div class="pd-block-title"><span class="pd-drag-handle" style="margin-right:6px;color:var(--text3)">⠿</span>'+escHtml(b.label);
     if(b.department)html+=' <span class="pd-dept-tag">'+escHtml(b.department)+'</span>';
     html+='</div>';
     html+='<div style="display:flex;align-items:center;gap:8px">';
@@ -15531,6 +15531,66 @@ async function savePanelData(panel,seq){
   }catch(e){showToast('❌ 保存失败: '+e.message);}
 }
 
+// ===== 项目详情步骤拖拽重排 =====
+var pdDragSrcIdx=-1;
+function pdBlockDragStart(e){
+  var block=e.target.closest('.pd-block');
+  if(!block)return;
+  pdDragSrcIdx=Array.from(block.parentElement.children).indexOf(block);
+  block.classList.add('drag-src');
+  e.dataTransfer.effectAllowed='move';
+  e.dataTransfer.setData('text/plain','');
+}
+function pdBlockDragOver(e){
+  e.preventDefault();
+  e.dataTransfer.dropEffect='move';
+  var block=e.target.closest('.pd-block');
+  if(!block)return;
+  var all=document.querySelectorAll('#pd-blocks-container .pd-block.drag-over');
+  for(var i=0;i<all.length;i++)all[i].classList.remove('drag-over');
+  block.classList.add('drag-over');
+}
+function pdBlockDragEnd(e){
+  var all=document.querySelectorAll('#pd-blocks-container .pd-block');
+  for(var i=0;i<all.length;i++){all[i].classList.remove('drag-src','drag-over');}
+  pdDragSrcIdx=-1;
+}
+async function pdBlockDrop(e){
+  e.preventDefault();
+  var dropBlock=e.target.closest('.pd-block');
+  if(!dropBlock||pdDragSrcIdx<0)return;
+  var container=document.getElementById('pd-blocks-container');
+  var blocks=Array.from(container.querySelectorAll('.pd-block'));
+  var dropIdx=blocks.indexOf(dropBlock);
+  if(dropIdx<0||dropIdx===pdDragSrcIdx)return;
+  // 移动 DOM
+  var srcBlock=blocks[pdDragSrcIdx];
+  if(dropIdx>pdDragSrcIdx){
+    container.insertBefore(srcBlock,dropBlock.nextElementSibling);
+  }else{
+    container.insertBefore(srcBlock,dropBlock);
+  }
+  pdDragSrcIdx=-1;
+  // 更新 curDetailBlocks 顺序
+  var newOrder=[];
+  var allBlocks=container.querySelectorAll('.pd-block');
+  for(var i=0;i<allBlocks.length;i++){
+    var key=allBlocks[i].dataset.key;
+    var b=curDetailBlocks.find(function(x){return x.key===key});
+    if(b)newOrder.push(b);
+  }
+  curDetailBlocks=newOrder;
+  // 写回数据库：更新 project_step_assignees 的 sort_order
+  try{
+    var upserts=[];
+    for(var i=0;i<curDetailBlocks.length;i++){
+      upserts.push({project_id:curDetailId,step_key:curDetailBlocks[i].key,sort_order:i});
+    }
+    var {error}=await sb.from('project_step_assignees').upsert(upserts,{onConflict:'project_id,step_key'});
+    if(error)throw error;
+    showToast('✅ 步骤顺序已更新');
+  }catch(e){showToast('❌ 保存顺序失败: '+e.message);}
+}
 // ===== 项目另存为模板 / 增量同步到模板 =====
 async function saveProjectAsTemplate(){
   if(!curDetailId||!curDetailProject)return;
@@ -16572,8 +16632,11 @@ async function updateFieldCollabMode(fieldId,mode){
 <style>
 .pd-status-tab{background:transparent;border:none;padding:4px 10px;font-size:12px;color:var(--text2);cursor:pointer;border-radius:4px;font-weight:500}
 .pd-status-tab.active{background:var(--card);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,0.1)}
-.pd-block{background:var(--card);border:1px solid var(--border);border-radius:6px;margin-bottom:10px;overflow:hidden}
-.pd-block-header{padding:10px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
+.pd-block{background:var(--card);border:1px solid var(--border);border-radius:6px;margin-bottom:10px;overflow:hidden;transition:transform 0.15s,box-shadow 0.15s}
+.pd-block.drag-over{border-color:var(--primary);box-shadow:0 0 0 2px rgba(59,130,246,0.3)}
+.pd-block.drag-src{opacity:0.4}
+.pd-block-header{padding:10px 14px;display:flex;align-items:center;justify-content:space-between;cursor:grab;user-select:none}
+.pd-block-header:active{cursor:grabbing}
 .pd-block-header:hover{background:var(--bg2)}
 .pd-block-title{font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px}
 .pd-block-status{font-size:10px;padding:2px 6px;border-radius:3px;font-weight:500}
