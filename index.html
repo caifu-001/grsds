@@ -15364,11 +15364,15 @@ async function renderDetailBlocksAsync(){
     var statusLabel={pending:'待办',in_progress:'进行中',done:'已完成',skipped:'已跳过'}[b.state]||b.state;
 
     html+='<div class="pd-block '+collapsed+'" data-key="'+b.key+'" data-seq="'+b.seq+'" draggable="true" ondragstart="pdBlockDragStart(event)" ondragover="pdBlockDragOver(event)" ondrop="pdBlockDrop(event)" ondragend="pdBlockDragEnd(event)">';
-    html+='<div class="pd-block-header" onclick="this.parentElement.classList.toggle(\'collapsed\')" style="cursor:grab">';
-    html+='<div class="pd-block-title"><span class="pd-drag-handle" style="margin-right:6px;color:var(--text3)">⠿</span>'+escHtml(b.label);
+    html+='<div class="pd-block-header" onclick="if(event.target.closest(\'.pd-block-edit-btn\'))return;this.parentElement.classList.toggle(\'collapsed\')" style="cursor:grab">';
+    html+='<div class="pd-block-title"><span class="pd-drag-handle" style="margin-right:6px;color:var(--text3)">⠿</span><span class="pd-seq-badge">#'+b.seq+'</span>'+escHtml(b.label);
     if(b.department)html+=' <span class="pd-dept-tag">'+escHtml(b.department)+'</span>';
     html+='</div>';
     html+='<div style="display:flex;align-items:center;gap:8px">';
+    // 管理员的编辑入口
+    if(isAdmin()){
+      html+='<button class="pd-block-edit-btn" onclick="event.stopPropagation();pdEditStep(\''+b.key+'\')" style="font-size:11px;padding:2px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text2);cursor:pointer" title="编辑步骤属性">⚙</button>';
+    }
     html+='<span class="pd-block-status '+b.state+'">'+statusLabel+'</span>';
     html+='<span class="pd-block-toggle">▼</span>';
     html+='</div></div>';
@@ -15590,6 +15594,112 @@ async function pdBlockDrop(e){
     if(error)throw error;
     showToast('✅ 步骤顺序已更新');
   }catch(e){showToast('❌ 保存顺序失败: '+e.message);}
+}
+function pdEditStep(blockKey){
+  if(!isAdmin())return;
+  var b=curDetailBlocks.find(function(x){return x.key===blockKey});
+  if(!b)return;
+  // 查找模板步骤定义
+  var tplStep=null;
+  try{
+    if(curDetailProject.template_id&&allTemplates){
+      var t=allTemplates.find(function(x){return x.id===curDetailProject.template_id});
+      if(t){
+        var steps=typeof t.steps==='string'?JSON.parse(t.steps):(t.steps||[]);
+        tplStep=steps.find(function(s){return(s.key||'step_')===blockKey});
+      }
+    }
+  }catch(e){}
+  // 加载已有覆盖值
+  var overrides={};
+  sb.from('project_step_assignees').select('step_config').eq('project_id',curDetailId).eq('step_key',blockKey).maybeSingle().then(function(r){
+    if(r.data&&r.data.step_config)overrides=r.data.step_config;
+    showPdEditModal(b,blockKey,overrides,tplStep);
+  }).catch(function(){
+    showPdEditModal(b,blockKey,{},tplStep);
+  });
+}
+function showPdEditModal(b,blockKey,overrides,tplStep){
+  var old=document.querySelector('.pd-edit-overlay');
+  if(old)old.remove();
+  // 合并当前值
+  var label=overrides.label||b.label||'';
+  var seq=overrides.seq!=null?overrides.seq:b.seq;
+  var phase=overrides.phase||tplStep?.phase||'';
+  var panel=overrides.panel||b.panel||tplStep?.panel||'';
+  var decision=overrides.decision||b.decision||tplStep?.decision||false;
+  var decisionAsk=overrides.decisionAsk||b.decisionAsk||tplStep?.decisionAsk||'';
+  var decisionYes=overrides.decisionYes||b.decisionYes||tplStep?.decisionYes||'';
+  var decisionNo=overrides.decisionNo||b.decisionNo||tplStep?.decisionNo||'';
+  var nextStep=overrides.next_step||'';
+  // 构建所有步骤选项供下拉
+  var stepOptions='<option value="">默认(顺序下一个)</option>';
+  curDetailBlocks.forEach(function(s){
+    if(s.key!==blockKey){
+      stepOptions+='<option value="'+escHtml(s.key)+'"'+(String(nextStep)===String(s.key)?' selected':'')+'>#'+s.seq+' '+escHtml(s.label)+'</option>';
+    }
+  });
+  var panelOptions='<option value="">无</option>'+
+    ['competitor','training','communication','bidding','contract','delivery','payment','editor'].map(function(v){
+      return '<option value="'+v+'"'+(panel===v?' selected':'')+'>'+v+'</option>';
+    }).join('');
+  var overlay=document.createElement('div');overlay.className='pd-edit-overlay';
+  overlay.innerHTML='<div class="pd-edit-sheet">'+
+    '<h3 style="margin:0 0 12px;font-size:16px">⚙ 编辑步骤属性</h3>'+
+    '<label>步骤序号</label><input id="pd-edit-seq" type="number" value="'+seq+'" min="0">'+
+    '<label>步骤名称</label><input id="pd-edit-label" value="'+escHtml(label)+'" placeholder="步骤名称">'+
+    '<label>所属阶段</label><input id="pd-edit-phase" value="'+escHtml(phase)+'" placeholder="如：线索、商机">'+
+    '<label>面板类型</label><select id="pd-edit-panel">'+panelOptions+'</select>'+
+    '<label>下一步骤</label><select id="pd-edit-next">'+stepOptions+'</select>'+
+    '<div style="margin-top:12px;padding:10px;background:#fff3e0;border-radius:8px">'+
+    '<label style="display:flex;align-items:center;gap:6px;margin-top:0"><input type="checkbox" id="pd-edit-decision" '+(decision?'checked':'')+' onchange="var d=this.checked;document.getElementById(\'pd-edit-da\').style.display=d?\'block\':\'none\';document.getElementById(\'pd-edit-dy\').style.display=d?\'block\':\'none\';document.getElementById(\'pd-edit-dn\').style.display=d?\'block\':\'none\'"> 这是判断节点</label>'+
+    '<div id="pd-edit-da" style="display:'+(decision?'block':'none')+'"><label>判断问题</label><input id="pd-edit-decision-ask" value="'+escHtml(decisionAsk)+'" placeholder="如：是否通过？"></div>'+
+    '<div id="pd-edit-dy" style="display:'+(decision?'block':'none')+'"><label>✓ 是 → 跳转步骤</label><select id="pd-edit-decision-yes">'+stepOptions.replace(/默认/g,'不跳转')+'</select></div>'+
+    '<div id="pd-edit-dn" style="display:'+(decision?'block':'none')+'"><label>✗ 否 → 跳转步骤</label><select id="pd-edit-decision-no">'+stepOptions.replace(/默认/g,'不跳转')+'</select></div>'+
+    '</div>'+
+    '<div class="pd-edit-btns">'+
+    '<button onclick="this.closest(\'.pd-edit-overlay\').remove()" style="background:var(--bg2);color:var(--text)">取消</button>'+
+    '<button onclick="pdSaveStepEdit(\''+blockKey+'\')" style="background:var(--primary);color:#fff">💾 保存</button>'+
+    '</div></div>';
+  overlay.addEventListener('click',function(e){if(e.target===overlay)overlay.remove();});
+  document.body.appendChild(overlay);
+}
+async function pdSaveStepEdit(blockKey){
+  var b=curDetailBlocks.find(function(x){return x.key===blockKey});
+  if(!b)return;
+  var seq=parseInt(document.getElementById('pd-edit-seq').value)||0;
+  var label=document.getElementById('pd-edit-label').value.trim();
+  var phase=document.getElementById('pd-edit-phase').value.trim();
+  var panel=document.getElementById('pd-edit-panel').value;
+  var nextStep=document.getElementById('pd-edit-next').value;
+  var decision=document.getElementById('pd-edit-decision').checked;
+  var decisionAsk='',decisionYes='',decisionNo='';
+  if(decision){
+    decisionAsk=document.getElementById('pd-edit-decision-ask').value.trim();
+    decisionYes=document.getElementById('pd-edit-decision-yes').value;
+    decisionNo=document.getElementById('pd-edit-decision-no').value;
+  }
+  var config={
+    seq:seq,label:label,phase:phase,panel:panel||null,
+    next_step:nextStep||null,
+    decision:decision,decisionAsk:decisionAsk||null,decisionYes:decisionYes||null,decisionNo:decisionNo||null
+  };
+  // 删除 null 值
+  Object.keys(config).forEach(function(k){if(config[k]===null||config[k]===undefined)delete config[k];});
+  try{
+    var {error}=await sb.from('project_step_assignees').upsert({
+      project_id:curDetailId,step_key:blockKey,step_label:label,step_config:config,
+      updated_at:new Date().toISOString()
+    },{onConflict:'project_id,step_key'});
+    if(error)throw error;
+    // 立即更新 curDetailBlocks
+    b.seq=seq;b.label=label;b.phase=phase;b.panel=panel||null;
+    b.decision=decision;b.decisionAsk=decisionAsk;b.decisionYes=decisionYes;b.decisionNo=decisionNo;
+    b.next_step=nextStep||null;
+    document.querySelector('.pd-edit-overlay').remove();
+    showToast('✅ 步骤属性已更新');
+    renderDetailBlocks();
+  }catch(e){showToast('❌ 保存失败: '+e.message);}
 }
 // ===== 项目另存为模板 / 增量同步到模板 =====
 async function saveProjectAsTemplate(){
@@ -16654,7 +16764,15 @@ async function updateFieldCollabMode(fieldId,mode){
 .pd-block-input{width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text);font-size:12px;box-sizing:border-box}
 .pd-block-views{font-size:10px;color:var(--text2);margin-top:8px;display:flex;gap:4px;flex-wrap:wrap;align-items:center}
 .pd-dept-tag{background:var(--bg);padding:1px 5px;border-radius:3px;font-size:9px}
+.pd-seq-badge{display:inline-block;background:var(--primary);color:#fff;font-size:10px;padding:1px 5px;border-radius:3px;margin-right:2px;font-weight:400}
 .pd-no-access{padding:20px;text-align:center;color:var(--text2);font-size:12px}
+/* 步骤编辑弹窗 */
+.pd-edit-overlay{position:fixed;top:0;left:0;width:100%;height:100vh;z-index:9999;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center}
+.pd-edit-sheet{background:var(--bg);border-radius:16px;padding:20px;width:480px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.3)}
+.pd-edit-sheet label{display:block;font-size:12px;color:var(--text2);margin-top:10px;margin-bottom:3px}
+.pd-edit-sheet input,.pd-edit-sheet select{width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);font-size:13px;background:var(--card-bg);color:var(--text);box-sizing:border-box}
+.pd-edit-sheet .pd-edit-btns{display:flex;gap:8px;margin-top:16px}
+.pd-edit-sheet .pd-edit-btns button{flex:1;padding:10px;border:none;border-radius:8px;font-size:14px;cursor:pointer;font-weight:500}
 </style>
 </body>
 </html>
