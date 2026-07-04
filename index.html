@@ -3716,7 +3716,7 @@ function showCompanyDetail(name){
   if(comp.established)rows+='<tr><td class="di-l">成立日期</td><td>'+h(comp.established)+'</td></tr>';
   if(comp.address)rows+='<tr><td class="di-l">地址</td><td>'+h(comp.address)+'</td></tr>';
   if(comp.business_scope)rows+='<tr><td class="di-l">经营范围</td><td style="max-width:300px">'+h(comp.business_scope).substring(0,200)+'</td></tr>';
-  var modal=document.createElement('div');modal.className='confirm-overlay';
+  var modal=document.createElement('div');modal.className='confirm-overlay';modal.style.zIndex='10100';
   modal.innerHTML='<div class="confirm-box" style="max-width:480px;max-height:80vh;overflow-y:auto"><h3 style="margin:0 0 12px">'+h(name)+'</h3>'
     +'<table style="width:100%;font-size:13px;border-collapse:collapse"><tbody>'+rows+'</tbody></table>'
     +'<div class="btns" style="margin-top:16px"><button class="btn-cancel" onclick="this.closest(\'.confirm-overlay\').remove()">关闭</button>'
