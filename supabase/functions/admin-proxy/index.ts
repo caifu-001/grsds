@@ -65,6 +65,10 @@ Deno.serve(async (req) => {
             eqs.push(f.col + "=is." + encodeURIComponent(String(f.val)));
           } else if (f.op === "ilike") {
             eqs.push(f.col + "=ilike." + encodeURIComponent(String(f.val)));
+          } else if (f.op === "limit") {
+            qs += "&limit=" + encodeURIComponent(String(f.val));
+          } else if (f.op === "offset") {
+            qs += "&offset=" + encodeURIComponent(String(f.val));
           }
         }
       }

@@ -3626,7 +3626,7 @@ async function loadClients(){
 // === Companies Directory ===
 async function loadCompanies(){
   try{
-    var {data}=await sb.from('companies').select('*').order('name');
+    var {data}=await sb.from('companies').select('*',{count:'exact'}).order('name').limit(50000);
     allCompanies=(data||[]);
     allCompaniesMap={};
     for(var i=0;i<allCompanies.length;i++){
@@ -6125,7 +6125,7 @@ async function checkPendingCompany(){
 /* ── Admin Company Management ── */
 var allAdminCompanies=[];
 async function loadAdminCompanies(){
-  try{var r=await callAdmin('select','companies',{query:'*',filters:[{col:'',op:'order',val:'name.asc'}]});if(r&&r.data){allAdminCompanies=r.data;}else{console.warn('callAdmin companies no data:',r)}}catch(e){}
+  try{var r=await callAdmin('select','companies',{query:'*',filters:[{col:'',op:'order',val:'name.asc'},{col:'',op:'limit',val:'50000'}]});if(r&&r.data){allAdminCompanies=r.data;}else{console.warn('callAdmin companies no data:',r)}}catch(e){}
 }
 function renderAdminCompanies(){
   var el=document.getElementById('admin-companies-manage-list');
