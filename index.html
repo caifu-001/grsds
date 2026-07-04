@@ -3740,6 +3740,11 @@ function fillCompanyInfo(comp){
   document.getElementById('ci-credit').value=comp.credit_code||'';
   document.getElementById('ci-capital').value=comp.reg_capital||'';
   document.getElementById('ci-status').value=comp.reg_status||'';
+  // 自动回填客户地址
+  if(comp.address){
+    var addr=document.getElementById('f-address');
+    if(addr&&!addr.value.trim())addr.value=comp.address;
+  }
   (function(){var s=document.getElementById('ci-source');if(s)s.value='来自企业名录';})();
 }
 function displayCompanyInfo(ci){
