@@ -203,6 +203,7 @@ input,select,textarea,button{font-family:inherit}
 .dir-item .di-row span{display:inline-flex;align-items:center;gap:4px}
 .dir-item .di-label{color:var(--text3);font-size:11px}
 .dir-item .di-badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:10px;background:var(--primary-light);color:var(--primary);font-weight:500;margin-top:4px}
+.di-l{color:var(--text3);font-size:12px;width:70px;vertical-align:top;padding:4px 8px 4px 0;white-space:nowrap}
 
 /* ── Company Info in Form ── */
 .company-info-section{background:var(--bg);border-radius:12px;padding:14px;margin-top:12px;border:1px solid var(--border)}
@@ -3698,24 +3699,41 @@ function renderDir(){
     if(c.reg_status)rows+='<span>📌 '+h(c.reg_status)+'</span>';
     var created=c.created_at?new Date(c.created_at).toLocaleDateString('zh-CN'):'';
     if(created)rows+='<span>📅 '+created+'</span>';
-    html+='<div class="dir-item" onclick="useCompanyName(\''+h(c.name||'').replace(/'/g,"\\'")+'\')"><div class="di-name">'+h(c.name)+'</div>'+(rows?'<div class="di-row">'+rows+'</div>':'')+(c.base?'<span class="di-badge">'+h(c.base)+'</span>':'')+'</div>';
+    html+='<div class="dir-item" onclick="showCompanyDetail(\''+h(c.name||'').replace(/'/g,"\\'")+'\')"><div class="di-name">'+h(c.name)+'</div>'+(rows?'<div class="di-row">'+rows+'</div>':'')+(c.base?'<span class="di-badge">'+h(c.base)+'</span>':'')+'</div>';
   }
   el.innerHTML=html;
 }
-function useCompanyName(name){
+function showCompanyDetail(name){
+  var key=name.toLowerCase();
+  var comp=allCompaniesMap[key];
+  if(!comp){showToast('未找到公司信息');return}
+  // 在名录内弹窗展示详情
+  var rows='';
+  if(comp.legal_person)rows+='<tr><td class="di-l">法人</td><td>'+h(comp.legal_person)+'</td></tr>';
+  if(comp.credit_code)rows+='<tr><td class="di-l">信用代码</td><td>'+h(comp.credit_code)+'</td></tr>';
+  if(comp.reg_capital)rows+='<tr><td class="di-l">注册资金</td><td>'+h(comp.reg_capital)+'</td></tr>';
+  if(comp.reg_status)rows+='<tr><td class="di-l">状态</td><td>'+h(comp.reg_status)+'</td></tr>';
+  if(comp.established)rows+='<tr><td class="di-l">成立日期</td><td>'+h(comp.established)+'</td></tr>';
+  if(comp.address)rows+='<tr><td class="di-l">地址</td><td>'+h(comp.address)+'</td></tr>';
+  if(comp.business_scope)rows+='<tr><td class="di-l">经营范围</td><td style="max-width:300px">'+h(comp.business_scope).substring(0,200)+'</td></tr>';
+  var modal=document.createElement('div');modal.className='confirm-overlay';
+  modal.innerHTML='<div class="confirm-box" style="max-width:480px;max-height:80vh;overflow-y:auto"><h3 style="margin:0 0 12px">'+h(name)+'</h3>'
+    +'<table style="width:100%;font-size:13px;border-collapse:collapse"><tbody>'+rows+'</tbody></table>'
+    +'<div class="btns" style="margin-top:16px"><button class="btn-cancel" onclick="this.closest(\'.confirm-overlay\').remove()">关闭</button>'
+    +'<button class="btn-confirm" onclick="this.closest(\'.confirm-overlay\').remove();addCompanyAsClient(\''+h(name).replace(/'/g,"\\'")+'\')">➕ 添加为客户</button></div></div>';
+  document.body.appendChild(modal);
+}
+function addCompanyAsClient(name){
   closeDir();
-  // Search in main screen for this company
   document.getElementById('search-input').value=name;
   renderList();
-  // If company not in clients, open add form
   var exists=allClients.find(function(c){return c.name.toLowerCase()===name.toLowerCase()});
-  if(exists) openForm(exists.id);
-  else{
-    document.getElementById('f-name').value=name;
-    // Auto-fill from directory
-    var key=name.toLowerCase();
-    if(allCompaniesMap[key]) fillCompanyInfo(allCompaniesMap[key]);
-  }
+  if(exists){openForm(exists.id);showToast('该客户已存在');return}
+  document.getElementById('f-name').value=name;
+  var key=name.toLowerCase();
+  if(allCompaniesMap[key]) fillCompanyInfo(allCompaniesMap[key]);
+  // 打开表单
+  var fab=document.getElementById('main-fab');if(fab)fab.click();
 }
 function fillCompanyInfo(comp){
   document.getElementById('ci-legal').value=comp.legal_person||'';
