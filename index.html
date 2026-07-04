@@ -3729,11 +3729,11 @@ function addCompanyAsClient(name){
   renderList();
   var exists=allClients.find(function(c){return c.name.toLowerCase()===name.toLowerCase()});
   if(exists){openForm(exists.id);showToast('该客户已存在');return}
+  // 先打开空白表单，再回填（否则 openForm 会清空所有字段）
+  var fab=document.getElementById('main-fab');if(fab)fab.click();
   document.getElementById('f-name').value=name;
   var key=name.toLowerCase();
   if(allCompaniesMap[key]) fillCompanyInfo(allCompaniesMap[key]);
-  // 打开表单
-  var fab=document.getElementById('main-fab');if(fab)fab.click();
 }
 function fillCompanyInfo(comp){
   document.getElementById('ci-legal').value=comp.legal_person||'';
