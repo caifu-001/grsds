@@ -2163,7 +2163,38 @@ input,select,textarea,button{font-family:inherit}
       </table>
      </div>
     </div>
+    <!-- Tax Rate Row -->
+    <div style="background:var(--card);border-radius:12px;padding:14px;margin-bottom:16px;display:flex;align-items:center;gap:12px">
+      <span style="font-size:13px;font-weight:600;white-space:nowrap">🧮 税率设置</span>
+      <span style="font-size:12px;color:var(--text-secondary)">增值税率</span>
+      <input id="sc-tax-rate" type="number" step="1" min="0" max="30" value="13" style="width:64px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px;text-align:center" onchange="refreshScoutingCompare()">
+      <span style="font-size:12px;color:var(--text-secondary)">%</span>
+      <span style="font-size:11px;color:var(--text-secondary);margin-left:4px">毛利率 = (含税售价/(1+税率) - 采购价) / (含税售价/(1+税率)) ×100%</span>
+    </div>
+    <!-- Price & Margin Charts as 1-row 2-col -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px" id="scouting-charts-row-1">
+     <div style="background:var(--card);border-radius:12px;padding:16px">
+      <h4 style="margin:0 0 12px;font-size:14px">💰 供应商价格对比</h4>
+      <canvas id="sc-price-chart" style="width:100%;height:240px"></canvas>
+     </div>
+     <div style="background:var(--card);border-radius:12px;padding:16px">
+      <h4 style="margin:0 0 12px;font-size:14px">📊 税后毛利率对比</h4>
+      <canvas id="sc-margin-chart" style="width:100%;height:240px"></canvas>
+     </div>
+    </div>
+    <!-- Commission & MOQ Charts -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px" id="scouting-charts-row-2">
+     <div style="background:var(--card);border-radius:12px;padding:16px">
+      <h4 style="margin:0 0 12px;font-size:14px">💸 达人佣金对比</h4>
+      <canvas id="sc-commission-chart" style="width:100%;height:240px"></canvas>
+     </div>
+     <div style="background:var(--card);border-radius:12px;padding:16px">
+      <h4 style="margin:0 0 12px;font-size:14px">📦 起订量(MOQ)对比</h4>
+      <canvas id="sc-moq-chart" style="width:100%;height:240px"></canvas>
+     </div>
+    </div>
+    <!-- Channels & Status -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px" id="scouting-charts-row-3">
      <div style="background:var(--card);border-radius:12px;padding:16px">
       <h4 style="margin:0 0 12px;font-size:14px">🏪 渠道分布</h4>
       <div id="sc-channel-chart" style="display:flex;flex-direction:column;gap:8px"></div>
@@ -2171,28 +2202,6 @@ input,select,textarea,button{font-family:inherit}
      <div style="background:var(--card);border-radius:12px;padding:16px">
       <h4 style="margin:0 0 12px;font-size:14px">📋 状态统计</h4>
       <div id="sc-status-chart" style="display:flex;flex-direction:column;gap:8px"></div>
-     </div>
-    </div>
-    <!-- Price & Commission Charts -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px" id="scouting-charts-row-2">
-     <div style="background:var(--card);border-radius:12px;padding:16px">
-      <h4 style="margin:0 0 12px;font-size:14px">💰 价格对比分析（按分类）</h4>
-      <canvas id="sc-price-chart" style="width:100%;height:240px"></canvas>
-     </div>
-     <div style="background:var(--card);border-radius:12px;padding:16px">
-      <h4 style="margin:0 0 12px;font-size:14px">📊 佣金分析（按分类）</h4>
-      <canvas id="sc-margin-chart" style="width:100%;height:240px"></canvas>
-      <canvas id="sc-commission-chart" style="width:100%;height:240px"></canvas>
-     </div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px" id="scouting-charts-row-3">
-     <div style="background:var(--card);border-radius:12px;padding:16px">
-      <h4 style="margin:0 0 12px;font-size:14px">📦 MOQ 对比分析（按分类）</h4>
-      <canvas id="sc-moq-chart" style="width:100%;height:240px"></canvas>
-     </div>
-     <div style="background:var(--card);border-radius:12px;padding:16px">
-      <h4 style="margin:0 0 12px;font-size:14px">📈 分类产品数量分布</h4>
-      <canvas id="sc-category-chart" style="width:100%;height:240px"></canvas>
      </div>
     </div>
    </div>
@@ -7980,6 +7989,9 @@ function renderScouting(){
 }
 
 function refreshScoutingCompare(){
+  // Restore saved tax rate
+  var _tr=document.getElementById('sc-tax-rate');if(_tr&&!_tr.dataset.loaded){var _saved=localStorage.getItem('sc_tax_rate');if(_saved!==null)_tr.value=_saved;_tr.dataset.loaded='1';
+    _tr.addEventListener('change',function(){localStorage.setItem('sc_tax_rate',this.value)});}
   var head=document.getElementById('scouting-compare-head');
   var body=document.getElementById('scouting-compare-body');
   if(!head||!body)return;
@@ -8003,7 +8015,7 @@ function refreshScoutingCompare(){
   // ====== Summary Cards ======
   var cards=document.getElementById('scouting-summary-cards');
   if(cards){
-    var total=filtered.length;
+    var total=filtered.length;var supSet=new Set();for(var vi=0;vi<filtered.length;vi++){if(filtered[vi].supplier_name)supSet.add(filtered[vi].supplier_name.trim().toLowerCase());}var supplierCount=supSet.size;
     if(!total){cards.innerHTML='';}else{
       var totalPrice=0,priceCount=0,minPrice=Infinity,maxPrice=-Infinity;
       var hasSample=0,totalMoq=0,moqCount=0;
@@ -8084,7 +8096,7 @@ function refreshScoutingCompare(){
         var bg=cheapest?' style="background:#e8f5e9"':'';
         bodyHtml+='<td'+bg+'><b>'+escHtml(it.supplier_name||'-')+'</b><br><span style="font-size:11px;color:var(--text-secondary)">'+escHtml(it.channel||'')+'</span></td>';
         bodyHtml+='<td'+(cheapest?' style="background:#e8f5e9;font-weight:700;color:var(--success)"':'')+'>'+fmtNum(it.purchase_price)+'</td>';
-        var itSp=parseFloat(it.selling_price)||0,itPp=parseFloat(it.purchase_price)||0,itMargin=itSp>0?Math.round((itSp-itPp)/itSp*100):0;bodyHtml+='<td'+(itMargin>0?' style="color:var(--success);font-weight:600"':'')+(itMargin<0?' style="color:var(--danger);font-weight:600"':'')+'>'+(itSp>0?itMargin+'%':'N/A')+'</td>';
+        var itSp=parseFloat(it.selling_price)||0,itPp=parseFloat(it.purchase_price)||0;var _taxEl=document.getElementById('sc-tax-rate');var _taxRate=parseFloat((_taxEl&&_taxEl.value)||13)||0;var itNetPrice=itSp>0?itSp/(1+_taxRate/100):0;var itMargin=itNetPrice>0?Math.round((itNetPrice-itPp)/itNetPrice*100):0;bodyHtml+='<td'+(itMargin>0?' style="color:var(--success);font-weight:600"':'')+(itMargin<0?' style="color:var(--danger);font-weight:600"':'')+'>'+(itSp>0?itMargin+'%':'N/A')+'</td>';
         bodyHtml+='<td'+bg+'>'+(it.moq||'-')+'</td>';
         bodyHtml+='<td style="font-size:12px'+bg+'">'+pstr+'</td>';
         bodyHtml+='<td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'+bg+'">'+escHtml((it.compliance_requirements||'-').substring(0,30))+'</td>';
@@ -8315,42 +8327,51 @@ function drawGroupedBarChart(canvasId,data,cfg){
 }
 
 function drawScoutingCategoryCharts(data){
+  var taxEl=document.getElementById("sc-tax-rate");
+  var taxRate=parseFloat((taxEl&&taxEl.value)||13)||0;
   var byProd={};
   for(var i=0;i<data.length;i++){
-    var d=data[i];var key=(d.product_name||'未命名').substring(0,10);
-    if(!byProd[key])byProd[key]={count:0,prices:[],sellPrices:[],margins:[],commissions:[],moqs:[],minPrice:Infinity};
+    var d=data[i];var key=(d.product_name||"未命名").substring(0,12);
+    if(!byProd[key])byProd[key]={count:0,prices:[],sellPrices:[],margins:[],commissions:[],moqs:[],channels:new Set()};
     byProd[key].count++;
-    var pp=parseFloat(d.purchase_price)||0;if(pp>0){byProd[key].prices.push(pp);if(pp<byProd[key].minPrice)byProd[key].minPrice=pp;}
-    var sp=parseFloat(d.selling_price)||0;if(sp>0){byProd[key].sellPrices.push(sp);}
-    if(sp>0&&pp>0){byProd[key].margins.push(Math.round((sp-pp)/sp*100));}
+    var pp=parseFloat(d.purchase_price)||0;
+    var sp=parseFloat(d.selling_price)||0;
+    if(pp>0)byProd[key].prices.push(pp);
+    if(sp>0){byProd[key].sellPrices.push(sp);}
+    // Post-tax margin: (selling/(1+taxRate/100) - purchase) / (selling/(1+taxRate/100)) * 100
+    if(sp>0&&pp>0){
+      var netPrice=sp/(1+taxRate/100);
+      var margin=Math.round((netPrice-pp)/netPrice*100);
+      byProd[key].margins.push(margin);
+    }
     var cm=parseFloat(d.influencer_commission)||0;if(cm>0)byProd[key].commissions.push(cm);
     var mq=parseInt(d.moq)||0;if(mq>0)byProd[key].moqs.push(mq);
+    if(d.channel)byProd[key].channels.add(d.channel);
   }
   var keys=Object.keys(byProd).sort();if(!keys.length)return;
   function avg(arr){return arr.length?Math.round(arr.reduce(function(a,b){return a+b},0)/arr.length):0;}
 
+  // Price comparison chart (grouped: purchase vs selling per product)
   var priceData=[];var pmax=0;
   for(var p=0;p<keys.length;p++){var prod=byProd[keys[p]];var avp=avg(prod.prices),avs=avg(prod.sellPrices);pmax=Math.max(pmax,avp,avs);
-    priceData.push({label:keys[p],groups:[{value:avp,color:'#4a90d9'},{value:avs,color:'#27ae60'}]});}
-  drawGroupedBarChart('sc-price-chart',priceData,{maxValue:pmax,groupLabels:['平均采购价','平均销售价'],groupColors:['#4a90d9','#27ae60'],labelWidth:80});
+    priceData.push({label:keys[p],groups:[{value:avp,color:"#e74c3c"},{value:avs,color:"#27ae60"}]});}
+  drawGroupedBarChart("sc-price-chart",priceData,{maxValue:pmax,groupLabels:["平均采购价","平均销售价"],groupColors:["#e74c3c","#27ae60"],labelWidth:80});
 
+  // Post-tax margin chart per product
   var marginData=[];var mxmax=0;
-  for(var m0=0;m0<keys.length;m0++){var mv=avg(byProd[keys[m0]].margins);mxmax=Math.max(mxmax,Math.abs(mv));marginData.push({label:keys[m0],value:mv,color:mv>=0?'#27ae60':'#e74c3c'});}
-  drawBarChart('sc-margin-chart',marginData,{maxValue:mxmax||10,valueFormatter:function(v){return v+'%'},labelWidth:80});
+  for(var m0=0;m0<keys.length;m0++){var mv=avg(byProd[keys[m0]].margins);mxmax=Math.max(mxmax,Math.abs(mv));marginData.push({label:keys[m0],value:mv,color:mv>=0?"#27ae60":"#e74c3c"});}
+  drawBarChart("sc-margin-chart",marginData,{maxValue:mxmax||10,valueFormatter:function(v){return v+"%"},labelWidth:80});
 
+  // Commission chart per product
   var commData=[];var cmax=0;
-  for(var c2=0;c2<keys.length;c2++){var cv=avg(byProd[keys[c2]].commissions);cmax=Math.max(cmax,cv);commData.push({label:keys[c2],value:cv,color:'#e67e22'});}
-  drawBarChart('sc-commission-chart',commData,{maxValue:cmax||10,valueFormatter:function(v){return v+'%'},labelWidth:80});
+  for(var c2=0;c2<keys.length;c2++){var cv=avg(byProd[keys[c2]].commissions);cmax=Math.max(cmax,cv);commData.push({label:keys[c2],value:cv,color:"#e67e22"});}
+  drawBarChart("sc-commission-chart",commData,{maxValue:cmax||10,valueFormatter:function(v){return v+"%"},labelWidth:80});
 
+  // MOQ chart per product
   var moqData=[];var mmax=0;
-  for(var m=0;m<keys.length;m++){var mqv=avg(byProd[keys[m]].moqs);mmax=Math.max(mmax,mqv);moqData.push({label:keys[m],value:mqv,color:'#8e44ad'});}
-  drawBarChart('sc-moq-chart',moqData,{maxValue:mmax||100,valueFormatter:function(v){return v+'件'},labelWidth:80});
-
-  var cntData=[];var cntMax=0;
-  for(var n=0;n<keys.length;n++){cntMax=Math.max(cntMax,byProd[keys[n]].count);cntData.push({label:keys[n],value:byProd[keys[n]].count,color:'#3498db'});}
-  drawBarChart('sc-category-chart',cntData,{maxValue:cntMax,labelWidth:80});
-}
-// === Company Directory Cascade Sync ===
+  for(var m=0;m<keys.length;m++){var mqv=avg(byProd[keys[m]].moqs);mmax=Math.max(mmax,mqv);moqData.push({label:keys[m],value:mqv,color:"#8e44ad"});}
+  drawBarChart("sc-moq-chart",moqData,{maxValue:mmax||100,valueFormatter:function(v){return v+"件"},labelWidth:80});
+}/ === Company Directory Cascade Sync ===
 async function syncCompanyDirectoryRefs(){
   // When a company name/record is updated, refresh FK-linked records
   // Called after company directory save/edit
