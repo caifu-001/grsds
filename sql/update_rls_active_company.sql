@@ -59,7 +59,7 @@ CREATE POLICY "Company users own projects" ON projects FOR ALL USING (
   auth.uid() = owner_id AND EXISTS(SELECT 1 FROM profiles WHERE user_id = auth.uid() AND active_company_id = projects.company_id)
 );
 
--- suppliers
+-- suppliers（无 user_id 列，仅按 company_id 隔离）
 DROP POLICY IF EXISTS "Company admins all suppliers" ON suppliers;
 CREATE POLICY "Company admins all suppliers" ON suppliers FOR ALL USING (
   EXISTS(SELECT 1 FROM profiles WHERE user_id = auth.uid() AND active_company_id = suppliers.company_id AND role IN('admin','super_admin'))
@@ -69,7 +69,7 @@ CREATE POLICY "Company users own suppliers" ON suppliers FOR ALL USING (
   EXISTS(SELECT 1 FROM profiles WHERE user_id = auth.uid() AND active_company_id = suppliers.company_id)
 );
 
--- products
+-- products（无 user_id 列，仅按 company_id 隔离）
 DROP POLICY IF EXISTS "Company admins all products" ON products;
 CREATE POLICY "Company admins all products" ON products FOR ALL USING (
   EXISTS(SELECT 1 FROM profiles WHERE user_id = auth.uid() AND active_company_id = products.company_id AND role IN('admin','super_admin'))
@@ -79,14 +79,14 @@ CREATE POLICY "Company users view products" ON products FOR SELECT USING (
   EXISTS(SELECT 1 FROM profiles WHERE user_id = auth.uid() AND active_company_id = products.company_id)
 );
 
--- product_scouting
+-- product_scouting（无 user_id 列，仅按 company_id 隔离）
 DROP POLICY IF EXISTS "Company admins all scouting" ON product_scouting;
 CREATE POLICY "Company admins all scouting" ON product_scouting FOR ALL USING (
   EXISTS(SELECT 1 FROM profiles WHERE user_id = auth.uid() AND active_company_id = product_scouting.company_id AND role IN('admin','super_admin'))
 );
 DROP POLICY IF EXISTS "Company users own scouting" ON product_scouting;
 CREATE POLICY "Company users own scouting" ON product_scouting FOR ALL USING (
-  auth.uid() = user_id AND EXISTS(SELECT 1 FROM profiles WHERE user_id = auth.uid() AND active_company_id = product_scouting.company_id)
+  EXISTS(SELECT 1 FROM profiles WHERE user_id = auth.uid() AND active_company_id = product_scouting.company_id)
 );
 
 -- operations_logs
