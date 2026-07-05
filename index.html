@@ -3453,7 +3453,7 @@ function showCompanySelector(memberships){
   for(var i=0;i<memberships.length;i++){
     var m=memberships[i];
     var roleLabel=m.role==='admin'?'管理员':m.role==='editor'?'编辑':'成员';
-    html+='<div onclick="closeModal();switchActiveCompany('+m.company_id+')" style="cursor:pointer;padding:12px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;transition:all 0.2s" onmouseenter="this.style.borderColor='var(--primary)';this.style.background='var(--bg)'" onmouseleave="this.style.borderColor='var(--border)';this.style.background='transparent'">';
+    html+='<div onclick="closeModal();switchActiveCompany('+m.company_id+')" style="cursor:pointer;padding:12px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;transition:all 0.2s" onmouseenter="this.style.borderColor=&#39;var(--primary)&#39;;this.style.background=&#39;var(--bg)&#39;" onmouseleave="this.style.borderColor=&#39;var(--border)&#39;;this.style.background=&#39;transparent&#39;">';
     html+='<div style="font-weight:600">'+escHtml(m.company_name||'未命名公司')+'</div>';
     html+='<div style="font-size:13px;color:var(--muted)">'+roleLabel+'</div>';
     html+='</div>';
