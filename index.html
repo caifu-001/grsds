@@ -8424,7 +8424,7 @@ function updateScoutingDatalists(){
     if(s.product_category&&cats.indexOf(s.product_category)<0)cats.push(s.product_category);
     if(s.supplier_name&&suppliers.indexOf(s.supplier_name)<0)suppliers.push(s.supplier_name);
   }
-  document.getElementById('sc-cat-list').innerHTML=cats.map(function(x){return '<option value="'+escHtml(x)+'">'}).join('');
+  buildScCatDropdowns();
 }
 
 async function approveScouting(id){
