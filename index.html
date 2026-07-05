@@ -4074,6 +4074,10 @@ async function openForm(id){
       // Load attachments
       try{clientAttachments=JSON.parse(c.attachments||'[]');if(!Array.isArray(clientAttachments))clientAttachments=[]}catch(e){clientAttachments=[]}
       renderClientAttachments();
+      // Load company_directory_id FK
+      if(c.company_directory_id){
+        for(var dk3 in allCompaniesMap){if(allCompaniesMap[dk3].id===c.company_directory_id){fillCompanyInfo(allCompaniesMap[dk3]);break}}
+      }
       // Load company_info
       var ciStr=c.company_info||'{}';
       try{var ci=JSON.parse(ciStr);displayCompanyInfo(ci);}
@@ -4202,6 +4206,8 @@ async function saveClient(){
   if(!selTypes.length){document.getElementById('type-err').textContent='请选择至少一个客户属性';setTimeout(function(){document.getElementById('type-err').textContent=''},3000);return}
   var name=document.getElementById('f-name').value.trim();
   if(!name){showToast('请输入客户名称');return}
+  // FK: match company directory
+  var dirId=null;var dk=name.toLowerCase();if(allCompaniesMap&&allCompaniesMap[dk])dirId=allCompaniesMap[dk].id;
   // Company name uniqueness check
   var dup=allClients.filter(function(c){return c.name.toLowerCase()===name.toLowerCase()&&c.id!==editId});
   if(dup.length>0){showToast('客户名称「'+name+'」已存在');return}
@@ -4294,6 +4300,7 @@ async function saveClient(){
     type:JSON.stringify(selTypes),
     name:name,
     project:fp,
+    company_directory_id:dirId,
     bidding_date:projectsArr.length>0?projectsArr[0].bidding_date:null,
     address:document.getElementById('f-address').value.trim(),
     notes:document.getElementById('f-notes').value.trim(),
@@ -8080,6 +8087,7 @@ function editScouting(id){
   document.getElementById('sc-product-name').value=s.product_name||'';
   document.getElementById('sc-product-category').value=s.product_category||'';
   document.getElementById('sc-supplier').value=s.supplier_name||'';
+  document.getElementById('sc-supplier').dataset.supplierId=s.supplier_id||'';
   document.getElementById('sc-purchase-price').value=s.purchase_price||'';
   document.getElementById('sc-selling-price').value=s.selling_price||'';
   document.getElementById('sc-commission').value=s.influencer_commission||'';
@@ -8116,6 +8124,7 @@ async function saveScouting(){
     product_name:name,
     product_category:document.getElementById('sc-product-category').value.trim()||null,
     supplier_name:document.getElementById('sc-supplier').value.trim()||null,
+    supplier_id:function(){var sn=document.getElementById('sc-supplier').value.trim().toLowerCase();for(var i=0;i<allSuppliers.length;i++){if((allSuppliers[i].name||'').toLowerCase()===sn)return allSuppliers[i].id}return null}(),
     purchase_price:parseFloat(document.getElementById('sc-purchase-price').value)||0,
     selling_price:parseFloat(document.getElementById('sc-selling-price').value)||0,
     influencer_commission:parseFloat(document.getElementById('sc-commission').value)||0,
@@ -8144,6 +8153,18 @@ async function deleteScouting(id){
   await loadScouting();
 }
 
+
+// === Company Directory Cascade Sync ===
+async function syncCompanyDirectoryRefs(){
+  // When a company name/record is updated, refresh FK-linked records
+  // Called after company directory save/edit
+  if(!allCompaniesMap)return;
+  // Rebuild allCompaniesMap
+  for(var sk=0;sk<allCompanies.length;sk++){
+    var cc=allCompanies[sk];var ck=(cc.name||'').toLowerCase();if(ck)allCompaniesMap[ck]=cc;
+  }
+  await loadSuppliers();loadClients();
+}
 
 // === Scouting Supplier Autocomplete (from company directory) ===
 var scSuppSuggList=[],scSuppSuggIdx=-1;
@@ -9723,7 +9744,15 @@ async function loadSuppliers(){
   allSuppliers=r.data||[];
   var clientMap={};
   for(var i=0;i<allClients.length;i++)clientMap[allClients[i].id]=allClients[i].name;
-  for(var j=0;j<allSuppliers.length;j++)allSuppliers[j].linked_client_name=clientMap[allSuppliers[j].linked_client_id]||'';
+  // Resolve company directory names for suppliers
+  for(var j=0;j<allSuppliers.length;j++){
+    allSuppliers[j].linked_client_name=clientMap[allSuppliers[j].linked_client_id]||'';
+    if(allSuppliers[j].company_directory_id&&allCompaniesMap){
+      var co=allSuppliers[j];var dco=null;
+      for(var dk2 in allCompaniesMap){if(allCompaniesMap[dk2].id===co.company_directory_id){dco=allCompaniesMap[dk2];break}}
+      if(dco)co._dir_name=dco.name;
+    }
+  }
   buildSupCategories();
   renderSuppliers();
   // Defense-in-depth: ensure FAB hidden on supplier view
@@ -9808,7 +9837,7 @@ function renderSuppliers(){
       var pr=prods[pj];
       prodRows+='<tr><td>'+(pr.name||'')+'</td><td>'+(pr.moq||'')+'</td><td style="font-weight:600;color:var(--primary)">'+(pr.unit_price?'\u00a5'+fmtNum(pr.unit_price):'')+'</td></tr>';
     }
-    h+='<div class="sup-card"><div class="sc-header"><div><div class="sc-name">'+escHtml(sp.name||'')+'</div><div class="sc-cat">'+(sp.category||'\u672a\u5206\u7c7b')+'</div></div><span class="level-badge level-'+sp.cooperation_level+'">'+(sp.cooperation_level||'C')+'\u7ea7</span></div>';
+    h+='<div class="sup-card"><div class="sc-header"><div><div class="sc-name">'+escHtml(sp.name||'')+'</div><div class="sc-cat">'+(sp.category||'\u672a\u5206\u7c7b')+'</div>'+(sp._dir_name&&sp._dir_name!==sp.name?'<div class="sc-dir-link" style="font-size:11px;color:var(--primary)">\ud83d\udcc2 \u4f01\u4e1a\u540d\u5f55: '+escHtml(sp._dir_name)+'</div>':'')+'</div><span class="level-badge level-'+sp.cooperation_level+'">'+(sp.cooperation_level||'C')+'\u7ea7</span></div>';
     if(sp.contact_name||phoneStr)h+='<div class="sc-contact">\U0001f464 '+escHtml(sp.contact_name||'\u672a\u77e5')+(phoneStr?' &nbsp; <a href="tel:'+phones[0]+'">'+escHtml(phoneStr)+'</a>':'')+'</div>';
     if(sp.linked_client_name)h+='<div class="sc-linked"><span style="opacity:0.6">\u2192 \u5173\u8054\u5ba2\u6237:</span> '+escHtml(sp.linked_client_name)+'</div>';
     if(prodRows)h+='<table class="sup-products"><thead><tr><th>\u4ea7\u54c1</th><th>MOQ</th><th>\u5355\u4ef7</th></tr></thead><tbody>'+prodRows+'</tbody></table>';
@@ -9829,7 +9858,10 @@ function openSupplierForm(id){
   document.getElementById('sup-defect-rate').value=sp?(sp.defect_rate||0):0;
   document.getElementById('sup-notes').value=sp?(sp.notes||''):'';
   document.getElementById('sup-compliance').value=sp?(sp.compliance_requirements||''):'';
-  document.getElementById('sup-compliance').value=sp?(sp.compliance_requirements||''):'';
+  // FK: if has company_directory_id, show linked company
+  if(sp&&sp.company_directory_id&&allCompaniesMap){
+    for(var dk4 in allCompaniesMap){if(allCompaniesMap[dk4].id===sp.company_directory_id){document.getElementById('sup-name').dataset.dirId=sp.company_directory_id;document.getElementById('sup-name').title='\u5173\u8054\u4f01\u4e1a\u540d\u5f55: '+allCompaniesMap[dk4].name;break}}
+  }
   // Linked client
   supLinkedClientId=sp?(sp.linked_client_id||null):null;
   supLinkedClientName=sp?(sp.linked_client_name||''):'';
@@ -9973,6 +10005,7 @@ function closeSupplierForm(){
 async function saveSupplier(){
   var name=document.getElementById('sup-name').value.trim();
   if(!name){showToast('\u8bf7\u8f93\u5165\u4f9b\u5e94\u5546\u540d\u79f0');return}
+  var dirId=null;var dk=name.toLowerCase();if(allCompaniesMap&&allCompaniesMap[dk])dirId=allCompaniesMap[dk].id;
   var phInputs=document.querySelectorAll('#sup-phones input');
   var phones=[];
   for(var i=0;i<phInputs.length;i++){var v=phInputs[i].value.trim();if(v)phones.push(v)}
@@ -9987,6 +10020,7 @@ async function saveSupplier(){
   }
   var obj={
     company_id:currentCompanyId,
+    company_directory_id:dirId,
     name:name,
     contact_name:document.getElementById('sup-contact-name').value.trim()||null,
     contact_phone:JSON.stringify(phones),
