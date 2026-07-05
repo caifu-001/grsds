@@ -3577,20 +3577,7 @@ function toggleMemberPanel(){
   var panel=document.getElementById('member-panel');
   if(!panel)return;
   var hidden=panel.classList.contains('hidden');
-  if(hidden){
-    panel.classList.remove('hidden');
-    // 添加遮罩层
-    var overlay=document.createElement('div');
-    overlay.id='member-panel-overlay';
-    overlay.style.cssText='position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.3);z-index:9999';
-    overlay.onclick=function(){document.getElementById('member-panel').classList.add('hidden');this.remove()};
-    document.body.appendChild(overlay);
-    loadCompanyMembersForAdmin();
-  }else{
-    panel.classList.add('hidden');
-    var ov=document.getElementById('member-panel-overlay');
-    if(ov)ov.remove();
-  }
+  if(hidden){panel.classList.remove('hidden');loadCompanyMembersForAdmin()}else{panel.classList.add('hidden')}
 }
 
 async function inviteMemberToCompany(){
