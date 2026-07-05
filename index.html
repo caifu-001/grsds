@@ -7813,7 +7813,7 @@ var allScouting=[],scoutingEditId=null;
 
 (function(){
   var modals=document.createElement('div');
-  modals.innerHTML='<div class="modal-overlay hidden" id="scouting-modal" onclick="closeScoutingForm()"><div class="modal" onclick="event.stopPropagation()"><div class="modal-box" style="max-width:640px"><div class="modal-head"><span id="scouting-modal-title">\u6dfb\u52a0\u9009\u54c1</span><span class="modal-close" onclick="closeScoutingForm()">\u00d7</span></div><div class="modal-body" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="form-group"><label>\u9009\u54c1\u6e20\u9053 *</label><select id="sc-channel"><option value="">\u8bf7\u9009\u62e9</option><option value="1688">1688</option><option value="\u4e49\u4e4c">\u4e49\u4e4c</option><option value="\u4e9a\u9a6c\u900a">\u4e9a\u9a6c\u900a</option><option value="TikTok Shop">TikTok Shop</option><option value="\u62fc\u591a\u591a">\u62fc\u591a\u591a</option><option value="\u6dd8\u5b9d">\u6dd8\u5b9d</option><option value="\u4eac\u4e1c">\u4eac\u4e1c</option><option value="\u5176\u4ed6">\u5176\u4ed6</option></select></div><div class="form-group"><label>\u4ea7\u54c1\u540d\u79f0 *</label><input id="sc-product-name" placeholder="\u4ea7\u54c1\u540d\u79f0"></div><div class="form-group"><label>\u4ea7\u54c1\u5206\u7c7b</label><input id="sc-product-category" placeholder="\u5982\uff1a\u7535\u5b50\u3001\u670d\u9970" list="sc-cat-list"><datalist id="sc-cat-list"></datalist></div><div class="form-group"><label>\u4f9b\u5e94\u5546</label><input id="sc-supplier" placeholder="\u4f9b\u5e94\u5546\u540d\u79f0"></div><div class="form-group"><label>\u91c7\u8d2d\u4ef7(\u5143)</label><input id="sc-purchase-price" type="number" step="0.01" placeholder="0"></div><div class="form-group"><label>\u9500\u552e\u4ef7(\u5143)</label><input id="sc-selling-price" type="number" step="0.01" placeholder="0"></div><div class="form-group"><label>\u8fbe\u4eba\u4f63\u91d1(%)</label><input id="sc-commission" type="number" step="0.01" min="0" max="100" placeholder="0"></div><div class="form-group"><label>MOQ</label><input id="sc-moq" type="number" min="1" placeholder="\u6700\u5c0f\u8d77\u8ba2\u91cf"></div><div class="form-group" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="sc-has-sample" style="width:auto"><label style="margin:0">\u5df2\u62ff\u6837\u54c1</label></div><div class="form-group" style="grid-column:1/-1"><label>\u5408\u89c4\u8981\u6c42</label><textarea id="sc-compliance" rows="2" placeholder="\u8d44\u8d28\u8bc1\u4e66\u3001\u73af\u4fdd\u6807\u51c6\u3001ISO\u8ba4\u8bc1\u7b49..."></textarea></div><div class="form-group" style="grid-column:1/-1"><label>\u4ea7\u54c1\u53c2\u6570</label><div id="sc-params"></div><button class="btn-sm" style="background:var(--surface);border:1px solid var(--border);margin-top:4px" onclick="addScoutingParam()">\uff0b \u6dfb\u52a0\u53c2\u6570</button></div><div class="form-group" style="grid-column:1/-1"><label>\u5907\u6ce8</label><input id="sc-notes" placeholder="\u53ef\u9009"></div></div><div class="modal-actions"><button class="btn-cancel" onclick="closeScoutingForm()">\u53d6\u6d88</button><button class="btn-delete hidden" id="sc-btn-delete" onclick="deleteScouting(scoutingEditId)">\u5220\u9664</button><button class="btn-save" onclick="saveScouting()">\u4fdd\u5b58</button></div></div></div></div>';
+  modals.innerHTML='<div class="modal-overlay hidden" id="scouting-modal" onclick="closeScoutingForm()"><div class="modal" onclick="event.stopPropagation()"><div class="modal-box" style="max-width:640px"><div class="modal-head"><span id="scouting-modal-title">\u6dfb\u52a0\u9009\u54c1</span><span class="modal-close" onclick="closeScoutingForm()">\u00d7</span></div><div class="modal-body" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="form-group"><label>\u9009\u54c1\u6e20\u9053 *</label><input id="sc-channel" placeholder="\u5982\uff1a1688\u3001\u4e49\u4e4c..." list="sc-channel-list" autocomplete="off"><datalist id="sc-channel-list"><option value="1688"><option value="\u4e49\u4e4c"><option value="\u4e9a\u9a6c\u900a"><option value="TikTok Shop"><option value="\u62fc\u591a\u591a"><option value="\u6dd8\u5b9d"><option value="\u4eac\u4e1c"><option value="\u5176\u4ed6"></datalist></div><div class="form-group"><label>\u4ea7\u54c1\u540d\u79f0 *</label><input id="sc-product-name" placeholder="\u4ea7\u54c1\u540d\u79f0"></div><div class="form-group"><label>\u4ea7\u54c1\u5206\u7c7b</label><input id="sc-product-category" placeholder="\u5982\uff1a\u7535\u5b50\u3001\u670d\u9970" list="sc-cat-list"><datalist id="sc-cat-list"></datalist></div><div class="form-group"><label>\u4f9b\u5e94\u5546 <span style="font-size:11px;color:var(--text-secondary);font-weight:400">\u2014 \u652f\u6301\u4f01\u4e1a\u540d\u5f55\u81ea\u52a8\u5339\u914d</span></label><div style="position:relative"><input id="sc-supplier" placeholder="\u4f9b\u5e94\u5546\u540d\u79f0" autocomplete="off" oninput="onScoutingSupplierInput()" onfocus="onScoutingSupplierInput()" onkeydown="onScoutingSupplierKeydown(event)"><div class="name-suggestions hidden" id="sc-supplier-suggestions"></div></div></div><div class="form-group"><label>\u91c7\u8d2d\u4ef7(\u5143)</label><input id="sc-purchase-price" type="number" step="0.01" placeholder="0"></div><div class="form-group"><label>\u9500\u552e\u4ef7(\u5143)</label><input id="sc-selling-price" type="number" step="0.01" placeholder="0"></div><div class="form-group"><label>\u8fbe\u4eba\u4f63\u91d1(%)</label><input id="sc-commission" type="number" step="0.01" min="0" max="100" placeholder="0"></div><div class="form-group"><label>MOQ</label><input id="sc-moq" type="number" min="1" placeholder="\u6700\u5c0f\u8d77\u8ba2\u91cf"></div><div class="form-group" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="sc-has-sample" style="width:auto"><label style="margin:0">\u5df2\u62ff\u6837\u54c1</label></div><div class="form-group" style="grid-column:1/-1"><label>\u5408\u89c4\u8981\u6c42</label><textarea id="sc-compliance" rows="2" placeholder="\u8d44\u8d28\u8bc1\u4e66\u3001\u73af\u4fdd\u6807\u51c6\u3001ISO\u8ba4\u8bc1\u7b49..."></textarea></div><div class="form-group" style="grid-column:1/-1"><label>\u4ea7\u54c1\u53c2\u6570</label><div id="sc-params"></div><button class="btn-sm" style="background:var(--surface);border:1px solid var(--border);margin-top:4px" onclick="addScoutingParam()">\uff0b \u6dfb\u52a0\u53c2\u6570</button></div><div class="form-group" style="grid-column:1/-1"><label>\u5907\u6ce8</label><input id="sc-notes" placeholder="\u53ef\u9009"></div></div><div class="modal-actions"><button class="btn-cancel" onclick="closeScoutingForm()">\u53d6\u6d88</button><button class="btn-delete hidden" id="sc-btn-delete" onclick="deleteScouting(scoutingEditId)">\u5220\u9664</button><button class="btn-save" onclick="saveScouting()">\u4fdd\u5b58</button></div></div></div></div>';
   document.body.appendChild(modals);
 })();
 
@@ -7952,6 +7952,8 @@ function openScoutingForm(){
   document.getElementById('sc-notes').value='';
   document.getElementById('sc-btn-delete').classList.add('hidden');
   renderScParams();
+  // Update supplier autocomplete with existing scouting suppliers
+  updateScoutingDatalists();
   document.getElementById('scouting-modal').classList.remove('hidden');
   // Update categories datalist
   var cats=[];
@@ -7980,6 +7982,7 @@ function editScouting(id){
   scTempParams=[];
   if(params&&typeof params==='object'){var ks=Object.keys(params);for(var k=0;k<ks.length;k++)scTempParams.push({key:ks[k],val:params[ks[k]]});}
   renderScParams();
+  updateScoutingDatalists();
   // Categories
   var cats=[];
   for(var i=0;i<allScouting.length;i++){var c2=allScouting[i].product_category;if(c2&&cats.indexOf(c2)<0)cats.push(c2);}
@@ -8028,6 +8031,92 @@ async function deleteScouting(id){
   showToast('\u5df2\u5220\u9664');
   closeScoutingForm();
   await loadScouting();
+}
+
+
+// === Scouting Supplier Autocomplete (from company directory) ===
+var scSuppSuggList=[],scSuppSuggIdx=-1;
+
+function onScoutingSupplierInput(){
+  var inp=document.getElementById('sc-supplier');
+  var val=(inp.value||'').trim().toLowerCase();
+  var dd=document.getElementById('sc-supplier-suggestions');
+  if(!val||val.length<1){dd.classList.add('hidden');scSuppSuggList=[];scSuppSuggIdx=-1;return}
+  var matches=[],seen={};
+  // Search allCompanies (company directory)
+  for(var i=0;i<allCompanies.length;i++){
+    var co=allCompanies[i];
+    var con=(co.name||'').toLowerCase();
+    if(con&&con.indexOf(val)>=0&&!seen[con]){
+      seen[con]=1;
+      var detail='';
+      if(co.legal_person)detail+=co.legal_person;
+      if(co.reg_capital){if(detail)detail+=' · ';detail+='注册资本'+co.reg_capital;}
+      if(co.business_scope){if(detail)detail+=' · ';var bs=co.business_scope;if(bs.length>40)bs=bs.substring(0,40)+'...';detail+=bs;}
+      matches.push({name:co.name,detail:detail,comp:co});
+    }
+  }
+  // Search existing suppliers
+  for(var j=0;j<allSuppliers.length;j++){
+    var s=allSuppliers[j];
+    var sn=(s.name||'').toLowerCase();
+    if(sn&&sn.indexOf(val)>=0&&!seen[sn]){seen[sn]=1;matches.push({name:s.name,source:'已存供应商',exists:true,id:s.id})}
+  }
+  matches.sort(function(a,b){
+    var ae=a.name.toLowerCase()===val,be=b.name.toLowerCase()===val;
+    if(ae&&!be)return -1;if(!ae&&be)return 1;
+    if(a.exists&&!b.exists)return -1;if(!a.exists&&b.exists)return 1;
+    return (a.name||'').length-(b.name||'').length;
+  });
+  matches=matches.slice(0,20);
+  if(!matches.length){dd.classList.add('hidden');scSuppSuggList=[];scSuppSuggIdx=-1;return}
+  scSuppSuggList=matches;scSuppSuggIdx=-1;
+  var h='';
+  for(var m=0;m<matches.length;m++){
+    var mt=matches[m];
+    h+='<div class="name-suggestion" data-idx="'+m+'" onmousedown="selectScoutingSupplier('+m+')"><div><div class="ns-name">'+escHtml(mt.name)+'</div>'+(mt.detail?'<div class="ns-detail">'+escHtml(mt.detail)+'</div>':'')+'</div>'+(mt.exists?'<span class="ns-exists">⚠ 已存</span>':'<span class="ns-source">点击填充</span>')+'</div>';
+  }
+  dd.innerHTML=h;dd.classList.remove('hidden');
+}
+function onScoutingSupplierKeydown(e){
+  var dd=document.getElementById('sc-supplier-suggestions');
+  if(dd.classList.contains('hidden'))return;
+  if(e.key==='ArrowDown'){e.preventDefault();scSuppSuggIdx=Math.min(scSuppSuggIdx+1,scSuppSuggList.length-1);updateScSuppActive()}
+  else if(e.key==='ArrowUp'){e.preventDefault();scSuppSuggIdx=Math.max(scSuppSuggIdx-1,0);updateScSuppActive()}
+  else if(e.key==='Enter'||e.key==='Tab'){e.preventDefault();if(scSuppSuggIdx>=0)selectScoutingSupplier(scSuppSuggIdx)}
+  else if(e.key==='Escape'){dd.classList.add('hidden');scSuppSuggIdx=-1}
+}
+function updateScSuppActive(){
+  var items=document.querySelectorAll('#sc-supplier-suggestions .name-suggestion');
+  for(var i=0;i<items.length;i++)items[i].classList.toggle('active',i===scSuppSuggIdx);
+  if(scSuppSuggIdx>=0&&items[scSuppSuggIdx])items[scSuppSuggIdx].scrollIntoView({block:'nearest'});
+}
+function selectScoutingSupplier(idx){
+  var m=scSuppSuggList[idx];if(!m)return;
+  document.getElementById('sc-supplier').value=m.name;
+  document.getElementById('sc-supplier-suggestions').classList.add('hidden');
+  scSuppSuggList=[];scSuppSuggIdx=-1;
+  if(m.comp){
+    // Auto-fill from company directory
+    var comp=m.comp;
+    if(comp.legal_person)document.getElementById('sc-compliance').value=document.getElementById('sc-compliance').value||('法人:'+(comp.legal_person||''));
+    if(comp.reg_capital&&!document.getElementById('sc-notes').value)document.getElementById('sc-notes').value='注册资本:'+comp.reg_capital;
+    // Post-fill note: company info attached
+    showToast('已关联企业名录: '+comp.name+(comp.legal_person?' (法人:'+comp.legal_person+')':''));
+  }
+}
+
+
+function updateScoutingDatalists(){
+  // Update product name datalist
+  var names=[],cats=[],suppliers=[];
+  for(var i=0;i<allScouting.length;i++){
+    var s=allScouting[i];
+    if(s.product_name&&names.indexOf(s.product_name)<0)names.push(s.product_name);
+    if(s.product_category&&cats.indexOf(s.product_category)<0)cats.push(s.product_category);
+    if(s.supplier_name&&suppliers.indexOf(s.supplier_name)<0)suppliers.push(s.supplier_name);
+  }
+  document.getElementById('sc-cat-list').innerHTML=cats.map(function(x){return '<option value="'+escHtml(x)+'">'}).join('');
 }
 
 async function approveScouting(id){
