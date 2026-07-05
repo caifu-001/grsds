@@ -1213,7 +1213,31 @@ input,select,textarea,button{font-family:inherit}
    <button class="topbar-btn" onclick="openMy()" title="我的">👤</button>
    <button class="topbar-btn" id="btn-more" onclick="toggleMoreMenu()" title="更多">☰</button>
   </div>
- </div>
+ 
+  <div style="flex:1;text-align:right;display:flex;align-items:center;justify-content:flex-end;gap:8px;padding-right:12px">
+    <button id="current-company-badge" onclick="showCompanySelector(allMyCompanies)" style="background:var(--primary);color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:13px;cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="切换公司">...</button>
+    <button id="btn-members" onclick="toggleMemberPanel()" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:13px;cursor:pointer" title="成员管理">👥</button>
+  </div>
+<!-- 成员管理面板 -->
+<div id="member-panel" class="hidden" style="position:fixed;top:0;right:0;width:380px;max-width:100vw;height:100vh;background:var(--card);z-index:10000;box-shadow:-4px 0 20px rgba(0,0,0,0.15);overflow-y:auto">
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:16px;border-bottom:1px solid var(--border)">
+    <h3 style="margin:0;font-size:16px">👥 成员管理</h3>
+    <button onclick="document.getElementById('member-panel').classList.add('hidden')" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">×</button>
+  </div>
+  <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
+    <div style="display:flex;gap:8px">
+      <input id="invite-email-input" placeholder="输入邮箱邀请成员" style="flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px">
+      <select id="invite-role-select" style="padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px">
+        <option value="member">成员</option>
+        <option value="editor">编辑</option>
+        <option value="admin">管理员</option>
+      </select>
+      <button onclick="inviteMemberToCompany()" style="background:var(--primary);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:13px;cursor:pointer;white-space:nowrap">邀请</button>
+    </div>
+  </div>
+  <div id="member-list" style="padding:0"></div>
+</div>
+</div>
  <div id="client-view" class="hidden">
   <div class="toolbar">
    <select id="filter-select" onchange="onFilterChange()"><option value="all">全部类型</option></select>
@@ -3225,6 +3249,8 @@ const BUILTIN_COLORS=['#3B82F6','#10B981','#8B5CF6','#F59E0B','#EF4444','#DC2626
 const PALETTE=['#3B82F6','#10B981','#8B5CF6','#F59E0B','#EF4444','#06B6D4','#EC4899','#84CC16','#6366F1','#F97316','#14B8A6','#78716C','#0EA5E9','#D946EF','#E84C3D'];
 
 let loginMode='login',currentUser=null,allClients=[],allContacts=[],allCompanies=[],allCompaniesMap={},currentFilter='all',selTypes=[],customTypes=[],newTypeColor=PALETTE[0];
+// === 多公司支持 ===
+let currentCompanyId=null,currentCompanyRole='member',currentCompanyName='',allMyCompanies=[];
 let allUsers=[];
 let editId=null,deleteId=null,formContacts=[],pendingImport=null;
 let moveContactIdx=-1,moveContactObj=null;
@@ -3317,62 +3343,64 @@ async function handleLogin(){
 }
 async function onLoginSuccess(user){
   currentUser=user;
-  // Upsert profile and load role/company
+  // Upsert profile
   var profile=null;
-  try{var r2=await sb.from('profiles').upsert({user_id:user.id,email:user.email},{onConflict:'user_id'}).select('role,company_id,department_id,display_name,phone,position,invited_company_id,invited_at').single();profile=r2.data}catch(e){console.error('profile upsert failed:',e);throw new Error('无法加载用户档案: '+(e.message||JSON.stringify(e)))}
+  try{var r2=await sb.from('profiles').upsert({user_id:user.id,email:user.email},{onConflict:'user_id'}).select('*').single();profile=r2.data}catch(e){console.error('profile upsert failed:',e);throw new Error('无法加载用户档案: '+(e.message||JSON.stringify(e)))}
   try{sb.from('profiles').update({last_login_at:new Date().toISOString()}).eq('user_id',user.id).then(function(){}).catch(function(){})}catch(e){}
-  if(profile){currentUserRole=profile.role||'user';isSuperAdmin=profile.role==='super_admin';currentCompanyId=profile.company_id;
-    // Process due resignation
-    if(currentCompanyId&&profile.resignation_status==='approved'&&profile.resignation_date){
-      var resignDate=new Date(profile.resignation_date);var today=new Date();today.setHours(0,0,0,0);
-      if(resignDate<=today){
-        await callAdmin('update','profiles',{payload:{company_id:null,department_id:null,status:'leave',resignation_status:'approved'},filters:[{col:'user_id',op:'eq',val:currentUser.id}],query:'*'});
-        currentCompanyId=null;currentUserRole='user';isSuperAdmin=false;
-        document.getElementById('login-user').value='';document.getElementById('login-pass').value='';
-        document.getElementById('login-screen').classList.add('hidden');
-        showToast('离职已生效，已解除与原公司的关联');
-        showCompanyRegScreen();return;
-      }
-    }
-  }if(!currentCompanyId&&profile&&profile.department_id){try{var deptFetch=await callAdmin('select','departments',{query:'company_id',filters:[{col:'id',op:'eq',val:profile.department_id}]});if(deptFetch.ok){var deptData=await deptFetch.json();if(deptData&&deptData.length>0&&deptData[0].company_id){currentCompanyId=deptData[0].company_id;profile.company_id=currentCompanyId;await sb.from('profiles').update({company_id:currentCompanyId}).eq('user_id',user.id);if(!currentUserRole||currentUserRole==='user'){currentUserRole='admin';await sb.from('profiles').update({role:'admin'}).eq('user_id',user.id)}}}}catch(fb){console.error('resolve company via dept failed:',fb)}}
 
+  // === 多公司支持 ===
+  isSuperAdmin=profile&&profile.role==='super_admin';
   document.getElementById('login-user').value='';
   document.getElementById('login-pass').value='';
   document.getElementById('login-screen').classList.add('hidden');
 
-  if(!currentCompanyId){
-    // Check for pending invitation first
-    if(profile&&profile.invited_company_id){
-      showInvitationDialog(profile.invited_company_id);
-      return;
-    }
-    // Check for pending registration
+  // 获取所有公司成员关系
+  var memberships=[];
+  try{
+    var memResp=await sb.rpc('get_my_memberships');
+    if(!memResp.error&&memResp.data)memberships=memResp.data;
+  }catch(e){console.error('get_my_memberships error:',e)}
+
+  // 兼容旧数据：如果 memberships 为空但有 profile.company_id
+  if(memberships.length===0&&profile&&profile.company_id){
+    memberships.push({company_id:profile.company_id,company_name:'默认公司',role:profile.role==='super_admin'?'admin':(profile.role||'member'),status:'active'});
+  }
+
+  allMyCompanies=memberships;
+
+  // 决定激活哪家公司
+  if(memberships.length===0){
+    // 无任何公司：检查注册中的公司或邀请
     var {data:pend}=await sb.from('companies').select('id,name,status').eq('created_by',user.id).order('created_at',{ascending:false}).limit(1);
-    if(pend && pend.length>0){
-      if(pend[0].status==='pending'){showPendingScreen(pend[0].name);return}
-      if(pend[0].status==='rejected'){showCompanyRegScreen();return}
-      // Approved - set company_id, preserve existing role (don't downgrade super_admin)
-      currentCompanyId=pend[0].id;
-      if(!currentUserRole||currentUserRole==='user'){
-        await sb.from('profiles').upsert({user_id:user.id,email:user.email,company_id:currentCompanyId,role:'admin'},{onConflict:'user_id'});
-        currentUserRole='admin';isSuperAdmin=false;
-      }else{
-        await sb.from('profiles').upsert({user_id:user.id,email:user.email,company_id:currentCompanyId},{onConflict:'user_id'});
-      }
+    if(pend&&pend.length>0&&pend[0].status==='pending'){showPendingScreen(pend[0].name);return}
+    // 检查邀请
+    var {data:invites}=await sb.from('invitations').select('*').eq('to_email',user.email).eq('status','pending');
+    if(invites&&invites.length>0){showMyInvitations(invites);return}
+    showCompanyRegScreen();return;
+  }
+
+  if(memberships.length===1){
+    // 只有一家公司，直接激活
+    currentCompanyId=memberships[0].company_id;
+    currentCompanyRole=memberships[0].role||'member';
+    currentCompanyName=memberships[0].company_name||'';
+  }else{
+    // 多家公司，尝试从 profiles.active_company_id 恢复
+    var activeCid=profile&&profile.active_company_id;
+    var found=memberships.find(function(m){return m.company_id===activeCid});
+    if(found){
+      currentCompanyId=found.company_id;
+      currentCompanyRole=found.role||'member';
+      currentCompanyName=found.company_name||'';
     }else{
-      showCompanyRegScreen();
+      // 弹公司选择器
+      showCompanySelector(memberships);
       return;
     }
   }
 
-  await loadCustomTypes();
- buildFilterSelect();
- buildTypeGrid();
- buildStageGrid();
- await loadClients();
- await loadCompanies();
-  await loadTemplates();
-  // Load departments and set currentUser.department for permission checks
+  // 更新 profiles.active_company_id
+  try{await sb.from('profiles').update({active_company_id:currentCompanyId,role:isSuperAdmin?'super_admin':currentCompanyRole}).eq('user_id',user.id)}catch(e)Load departments and set currentUser.department for permission checks
   if(currentCompanyId){
     var {data:depts}=await sb.from('departments').select('*').eq('company_id',currentCompanyId);
     if(depts&&depts.length){
@@ -3384,12 +3412,190 @@ async function onLoginSuccess(user){
     }
   }
   document.getElementById('main-screen').classList.remove('hidden');
-  if(isSuperAdmin||currentUserRole==='admin')document.getElementById('tab-admin').classList.remove('hidden');
+  updateCompanyUIBadge();
+  if(isSuperAdmin||currentCompanyRole==='admin')document.getElementById('tab-admin').classList.remove('hidden');
   if(isSuperAdmin){document.getElementById('admin-tab-companies-manage').classList.remove('hidden');document.getElementById('admin-tab-companies').classList.remove('hidden');}
   pollNotifications();
   writeOpLog('login','auth',currentUser.id,currentUser.email,'用户登录');
   switchTab('analytics');
 }
+
+// === 多公司：切换激活公司 ===
+async function switchActiveCompany(companyId){
+  var mem=allMyCompanies.find(function(m){return m.company_id===companyId});
+  if(!mem)return;
+  try{await sb.rpc('set_active_company',{p_company_id:companyId})}catch(e){console.error('set_active_company failed:',e)}
+  currentCompanyId=companyId;
+  currentCompanyRole=mem.role||'member';
+  currentCompanyName=mem.company_name||'';
+  updateCompanyUIBadge();
+  // 重新加载所有数据
+  location.reload();
+}
+
+function updateCompanyUIBadge(){
+  var badge=document.getElementById('current-company-badge');
+  if(badge){
+    badge.textContent=currentCompanyName||'未选择公司';
+    badge.title='点击切换公司';
+  }
+}
+
+// === 多公司：公司选择器 ===
+function showCompanySelector(memberships){
+  var overlay=document.createElement('div');
+  overlay.className='modal-overlay';
+  overlay.style.cssText='position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.5);z-index:20000;display:flex;align-items:center;justify-content:center';
+  var html='<div class="modal" style="background:var(--card);border-radius:12px;padding:24px;max-width:420px;width:90%;max-height:80vh;overflow-y:auto">';
+  html+='<h3 style="margin:0 0 16px">选择公司</h3>';
+  html+='<p style="color:var(--muted);font-size:14px;margin:0 0 16px">你在以下公司有职位，请选择进入哪家公司：</p>';
+  for(var i=0;i<memberships.length;i++){
+    var m=memberships[i];
+    var roleLabel=m.role==='admin'?'管理员':m.role==='editor'?'编辑':'成员';
+    html+='<div onclick="closeModal();switchActiveCompany('+m.company_id+')" style="cursor:pointer;padding:12px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;transition:all 0.2s" onmouseenter="this.style.borderColor='var(--primary)';this.style.background='var(--bg)'" onmouseleave="this.style.borderColor='var(--border)';this.style.background='transparent'">';
+    html+='<div style="font-weight:600">'+escHtml(m.company_name||'未命名公司')+'</div>';
+    html+='<div style="font-size:13px;color:var(--muted)">'+roleLabel+'</div>';
+    html+='</div>';
+  }
+  html+='<button class="btn-sm" onclick="closeModal()" style="width:100%;margin-top:8px">取消</button>';
+  html+='</div>';
+  overlay.innerHTML=html;
+  overlay.onclick=function(e){if(e.target===overlay)closeModal()};
+  document.body.appendChild(overlay);
+}
+
+function closeModal(){
+  var overlays=document.querySelectorAll('.modal-overlay');
+  for(var i=overlays.length-1;i>=0;i--){
+    var ov=overlays[i];
+    if(ov.style.zIndex&&parseInt(ov.style.zIndex)>=20000){ov.remove();break}
+  }
+  // Clean up temp overlays
+  var allOv=document.querySelectorAll('.modal-overlay');
+  for(var j=allOv.length-1;j>=0;j--){
+    var o=allOv[j];
+    if(parseInt(o.style.zIndex||'0')>=20000)o.remove();
+  }
+}
+
+// === 多公司：我的邀请列表 ===
+function showMyInvitations(invitations){
+  var overlay=document.createElement('div');
+  overlay.className='modal-overlay';
+  overlay.style.cssText='position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.5);z-index:20000;display:flex;align-items:center;justify-content:center';
+  var html='<div class="modal" style="background:var(--card);border-radius:12px;padding:24px;max-width:450px;width:90%;max-height:80vh;overflow-y:auto">';
+  html+='<h3 style="margin:0 0 16px">入职邀请</h3>';
+  html+='<p style="color:var(--muted);font-size:14px;margin:0 0 16px">以下公司邀请你加入：</p>';
+  for(var i=0;i<invitations.length;i++){
+    var inv=invitations[i];
+    html+='<div style="padding:12px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px">';
+    html+='<div style="font-weight:600;margin-bottom:6px">公司ID: '+inv.from_company_id+'</div>';
+    html+='<div style="display:flex;gap:8px">';
+    html+='<button class="btn-sm btn-sm-primary" onclick="handleInvite('+inv.id+','accept')">接受</button>';
+    html+='<button class="btn-sm" onclick="handleInvite('+inv.id+','reject')">拒绝</button>';
+    html+='</div></div>';
+  }
+  html+='<button class="btn-sm" onclick="closeModal()" style="width:100%;margin-top:8px">关闭</button>';
+  html+='</div>';
+  overlay.innerHTML=html;
+  overlay.onclick=function(e){if(e.target===overlay)closeModal()};
+  document.body.appendChild(overlay);
+}
+
+async function handleInvite(invitationId,action){
+  try{
+    var r=await sb.rpc('handle_invitation',{p_invitation_id:invitationId,p_action:action});
+    if(r.error){showToast(r.error.message||'操作失败');return}
+    closeModal();
+    if(action==='accept'){
+      showToast('已加入公司！正在刷新...');
+      // Reload memberships and activate
+      var memResp=await sb.rpc('get_my_memberships');
+      if(!memResp.error&&memResp.data){
+        allMyCompanies=memResp.data;
+        closeModal();
+        location.reload();
+      }
+    }else{
+      showToast('已拒绝邀请');
+    }
+  }catch(e){showToast('操作失败: '+(e.message||e.toString()))}
+}
+
+// === 管理面板：成员管理 ===
+async function loadCompanyMembersForAdmin(){
+  var list=document.getElementById('member-list');
+  if(!list)return;
+  list.innerHTML='<div style="text-align:center;color:var(--muted);padding:20px">加载中...</div>';
+  try{
+    var r=await sb.rpc('list_company_members',{p_company_id:currentCompanyId});
+    if(r.error){list.innerHTML='<div class="empty-state">加载失败: '+r.error.message+'</div>';return}
+    var members=r.data||[];
+    if(members.length===0){list.innerHTML='<div class="empty-state">暂无成员</div>';return}
+    var html='';
+    for(var i=0;i<members.length;i++){
+      var m=members[i];
+      var roleLabel=m.role==='admin'?'管理员':m.role==='editor'?'编辑':'成员';
+      var canManage=currentCompanyRole==='admin'&&m.user_id!==currentUser.id;
+      html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--border)">';
+      html+='<div><div style="font-weight:600">'+escHtml(m.display_name||m.email||'未命名')+'</div><div style="font-size:12px;color:var(--muted)">'+escHtml(m.email||'')+(m.department_name?' · '+escHtml(m.department_name):'')+' · '+roleLabel+'</div></div>';
+      if(canManage){
+        html+='<div style="display:flex;gap:6px">';
+        if(m.role!=='admin')html+='<button class="btn-sm" onclick="promoteMember(''+m.user_id+'')" title="提升为管理员">设管理</button>';
+        html+='<button class="btn-sm" style="color:var(--danger)" onclick="removeMemberFromCompany(''+m.user_id+'')">移除</button>';
+        html+='</div>';
+      }
+      html+='</div>';
+    }
+    list.innerHTML=html;
+  }catch(e){list.innerHTML='<div class="empty-state">加载失败</div>';console.error(e)}
+}
+
+async function promoteMember(userId){
+  if(!confirm('确认提升该成员为管理员？'))return;
+  try{
+    var r=await sb.from('company_memberships').update({role:'admin'}).eq('user_id',userId).eq('company_id',currentCompanyId);
+    if(r.error){showToast(r.error.message);return}
+    showToast('已提升为管理员');
+    loadCompanyMembersForAdmin();
+  }catch(e){showToast('操作失败: '+(e.message||e.toString()))}
+}
+
+async function removeMemberFromCompany(userId){
+  if(!confirm('确认移除该成员？该成员将失去对该公司数据的访问权限。'))return;
+  try{
+    var r=await sb.rpc('remove_member',{p_company_id:currentCompanyId,p_user_id:userId});
+    if(r.error){showToast(r.error.message);return}
+    showToast('已移除');
+    loadCompanyMembersForAdmin();
+  }catch(e){showToast('操作失败: '+(e.message||e.toString()))}
+}
+
+// === 多公司：成员管理面板开关 ===
+function toggleMemberPanel(){
+  var panel=document.getElementById('member-panel');
+  if(!panel)return;
+  var hidden=panel.classList.contains('hidden');
+  if(hidden){panel.classList.remove('hidden');loadCompanyMembersForAdmin()}else{panel.classList.add('hidden')}
+}
+
+async function inviteMemberToCompany(){
+  var email=document.getElementById('invite-email-input');
+  var role=document.getElementById('invite-role-select');
+  if(!email||!email.value.trim()){showToast('请输入邮箱');return}
+  try{
+    var r=await sb.rpc('invite_member',{p_company_id:currentCompanyId,p_email:email.value.trim(),p_role:role?role.value:'member'});
+    if(r.error){showToast(r.error.message);return}
+    showToast('邀请已发送！');
+    if(email)email.value='';
+  }catch(e){showToast('邀请失败: '+(e.message||e.toString()))}
+}
+
+// === 兼容旧 currentUserRole (从 currentCompanyRole 派生) ===
+Object.defineProperty(window,'currentUserRole',{
+  get:function(){return currentCompanyRole||'member'},
+  set:function(v){currentCompanyRole=v}
+});
 async function doLogout(){await sb.auth.signOut();currentUser=null;allClients=[];allContacts=[];customTypes=[];document.getElementById('main-screen').classList.add('hidden');document.getElementById('login-screen').classList.remove('hidden')}
 
 // === Custom Types ===
