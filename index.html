@@ -2130,7 +2130,8 @@ input,select,textarea,button{font-family:inherit}
     <input id="sc-filter-supplier" placeholder="搜索供应商..." style="width:140px" oninput="renderScouting()">
     <select id="sc-filter-channel" onchange="renderScouting()" style="width:110px"><option value="">全部渠道</option></select>
     <select id="sc-filter-status" onchange="renderScouting()" style="width:100px"><option value="">全部状态</option><option value="pending">待评估</option><option value="approved">已通过</option><option value="rejected">已否决</option><option value="ordered">已采购</option></select>
-    <select id="sc-filter-category" onchange="renderScouting()" style="width:120px"><option value="">全部分类</option></select>
+    <select id="sc-filter-category"id="sc-filter-compare" style="margin-left:8px;vertical-align:middle" title="仅对比已勾选"><label style="font-size:12px;margin-left:4px;cursor:pointer">对比已选</label>&nbsp;&nbsp;<button class="btn-xs" style="background:var(--surface);border:1px solid var(--border);cursor:pointer;border-radius:4px;padding:2px 8px;font-size:11px" onclick="toggleAllCompare()" title="全选/取消">全选</button>
+    &nbsp; onchange="renderScouting()" style="width:120px"><option value="">全部分类</option></select>
     <button class="btn-xs" style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;cursor:pointer" id="sc-cat-toolbar-btn" onclick="toggleScCatManage()">📂 类别</button>
     <div id="sc-cat-toolbar-panel" class="hidden" style="width:100%;background:var(--card);border-radius:8px;padding:10px;margin-top:4px"><div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px">分类管理</div><div id="sc-cat-toolbar-tags" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div><div style="display:flex;gap:6px"><input id="sc-cat-toolbar-new" placeholder="新分类名称" style="flex:1;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--bg);color:var(--text)" onkeydown="if(event.key===&#39;Enter&#39;)addScCatToolbar()"><button class="btn-sm" style="background:var(--primary);color:#fff;font-size:12px" onclick="addScCatToolbar()">添加</button></div></div>
     <div style="flex:1"></div>
@@ -2140,7 +2141,7 @@ input,select,textarea,button{font-family:inherit}
    <div style="overflow-x:auto">
     <table class="check-table" id="scouting-table">
      <thead><tr>
-      <th>选品渠道</th><th>产品名称</th><th>产品分类</th><th>供应商</th>
+      <th style="width:32px">对比</th><th>选品渠道</th><th>产品名称</th><th>产品分类</th><th>供应商</th>
       <th>采购价</th><th>销售价</th><th>达人佣金</th><th>合规要求</th>
       <th>产品参数</th><th>MOQ</th><th>样品</th><th>状态</th><th>操作</th>
      </tr></thead>
@@ -7963,7 +7964,7 @@ function renderScouting(){
   }
   // Render table
   if(!filtered.length){
-    tbody.innerHTML='<tr><td colspan="13" style="text-align:center;padding:24px;color:var(--text-secondary)">暂无匹配数据</td></tr>';
+    tbody.innerHTML='<tr><td colspan="14" style="text-align:center;padding:24px;color:var(--text-secondary)">暂无匹配数据</td></tr>';
     refreshScoutingCompare();
     return;
   }
@@ -7981,7 +7982,7 @@ function renderScouting(){
     var statusMap={pending:'\u5f85\u8bc4\u4f30',approved:'\u5df2\u901a\u8fc7',rejected:'\u5df2\u5426\u51b3',ordered:'\u5df2\u91c7\u8d2d'};
     var statusCls={pending:'tag-warning',approved:'tag-success',rejected:'tag-danger',ordered:'tag-primary'};
     var status=s.status||'pending';
-    h+='<tr><td>'+escHtml(s.channel||'')+'</td><td><b>'+escHtml(s.product_name||'')+'</b></td><td>'+escHtml(s.product_category||'')+'</td><td>'+escHtml(s.supplier_name||'')+'</td><td>'+fmtNum(s.purchase_price)+'</td><td>'+fmtNum(s.selling_price)+'</td><td>'+(parseFloat(s.influencer_commission)||0)+'%</td><td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escHtml(s.compliance_requirements||'')+'">'+escHtml(s.compliance_requirements||'-')+'</td><td style="font-size:12px">'+paramsStr+'</td><td>'+(s.moq||'-')+'</td><td>'+(s.has_sample?'\u2705':'\\u274c')+'</td><td><span class="tag '+statusCls[status]+'">'+statusMap[status]+'</span></td><td><button class="btn-xs" style="color:var(--primary);cursor:pointer" onclick="editScouting('+s.id+')">\u7f16\u8f91</button> <button class="btn-xs" style="color:var(--success);cursor:pointer" onclick="approveScouting('+s.id+')">\u5165\u5e93</button></td></tr>';
+    h+='<tr><td><input type="checkbox" class="sc-compare-cb" data-id="'+s.id+'" onchange="refreshScoutingCompare()" title="加入对比"></td><td>'+escHtml(s.channel||'')+'</td><td><b>'+escHtml(s.product_name||'')+'</b></td><td>'+escHtml(s.product_category||'')+'</td><td>'+escHtml(s.supplier_name||'')+'</td><td>'+fmtNum(s.purchase_price)+'</td><td>'+fmtNum(s.selling_price)+'</td><td>'+(parseFloat(s.influencer_commission)||0)+'%</td><td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escHtml(s.compliance_requirements||'')+'">'+escHtml(s.compliance_requirements||'-')+'</td><td style="font-size:12px">'+paramsStr+'</td><td>'+(s.moq||'-')+'</td><td>'+(s.has_sample?'\u2705':'\\u274c')+'</td><td><span class="tag '+statusCls[status]+'">'+statusMap[status]+'</span></td><td><button class="btn-xs" style="color:var(--primary);cursor:pointer" onclick="editScouting('+s.id+')">\u7f16\u8f91</button> <button class="btn-xs" style="color:var(--success);cursor:pointer" onclick="approveScouting('+s.id+')">\u5165\u5e93</button></td></tr>';
   }
   tbody.innerHTML=h;
   // Refresh analytics
@@ -8011,6 +8012,17 @@ function refreshScoutingCompare(){
     if(fst&&s.status!==fst)continue;
     if(fct&&s.product_category!==fct)continue;
     filtered.push(s);
+  }
+  // Compare-only mode: filter by checked boxes
+  var compCb=document.getElementById('sc-filter-compare');
+  var compOnly=compCb&&compCb.checked;
+  if(compOnly){
+    var checkedIds={};
+    var cbs=document.querySelectorAll('.sc-compare-cb:checked');
+    for(var cbi=0;cbi<cbs.length;cbi++){checkedIds[cbs[cbi].getAttribute('data-id')]=true;}
+    var compFiltered=[];
+    for(var fi2=0;fi2<filtered.length;fi2++){if(checkedIds[String(filtered[fi2].id)])compFiltered.push(filtered[fi2]);}
+    if(compFiltered.length)filtered=compFiltered;
   }
   // ====== Summary Cards ======
   var cards=document.getElementById('scouting-summary-cards');
@@ -8077,7 +8089,7 @@ function refreshScoutingCompare(){
   var gkeys=Object.keys(groups);
   var maxSuppliers=0;
   for(var g2=0;g2<gkeys.length;g2++){if(groups[gkeys[g2]].items.length>maxSuppliers)maxSuppliers=groups[gkeys[g2]].items.length;}
-  var headHtml='<tr><th>\u4ea7\u54c1</th><th>\u6bdb\u5229\u7387</th>';
+  var headHtml='<tr><th>\u4ea7\u54c1</th>';
   for(var sh=0;sh<maxSuppliers;sh++)headHtml+='<th>\u4f9b\u5e94\u5546\uff06\u6e20\u9053</th><th>\u91c7\u8d2d\u4ef7</th><th>\u6bdb\u5229\u7387</th><th>MOQ</th><th>\u53c2\u6570</th><th>\u5408\u89c4</th><th>\u4f63\u91d1</th><th>\u6837\u54c1</th>';
   headHtml+='</tr>';head.innerHTML=headHtml;
   var bodyHtml='';
@@ -8102,7 +8114,7 @@ function refreshScoutingCompare(){
         bodyHtml+='<td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'+bg+'">'+escHtml((it.compliance_requirements||'-').substring(0,30))+'</td>';
         bodyHtml+='<td'+bg+'>'+(parseFloat(it.influencer_commission)||0)+'%</td>';
         bodyHtml+='<td'+bg+'>'+(it.has_sample?'\u2705':'\\u274c')+'</td>';
-      }else{bodyHtml+='<td colspan="6" style="color:var(--text-secondary);text-align:center">-</td>';}
+      }else{bodyHtml+='<td colspan="8" style="color:var(--text-secondary);text-align:center">-</td>';}
     }
     bodyHtml+='</tr>';
   }
@@ -8197,6 +8209,15 @@ async function saveScouting(){
   showToast(scoutingEditId?'\u5df2\u66f4\u65b0':'\u5df2\u6dfb\u52a0');
   closeScoutingForm();
   await loadScouting();
+}
+
+function toggleAllCompare(){
+  var cbs=document.querySelectorAll('.sc-compare-cb');
+  if(!cbs.length)return;
+  var allChecked=cbs.length===document.querySelectorAll('.sc-compare-cb:checked').length;
+  var newState=!allChecked;
+  for(var i=0;i<cbs.length;i++)cbs[i].checked=newState;
+  refreshScoutingCompare();
 }
 
 async function deleteScouting(id){
