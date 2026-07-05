@@ -3400,7 +3400,8 @@ async function onLoginSuccess(user){
   }
 
   // 更新 profiles.active_company_id
-  try{await sb.from('profiles').update({active_company_id:currentCompanyId,role:isSuperAdmin?'super_admin':currentCompanyRole}).eq('user_id',user.id)}catch(e)Load departments and set currentUser.department for permission checks
+  try{await sb.from('profiles').update({active_company_id:currentCompanyId,role:isSuperAdmin?'super_admin':currentCompanyRole}).eq('user_id',user.id)}catch(e){}
+  // Load departments and set currentUser.department for permission checks
   if(currentCompanyId){
     var {data:depts}=await sb.from('departments').select('*').eq('company_id',currentCompanyId);
     if(depts&&depts.length){
