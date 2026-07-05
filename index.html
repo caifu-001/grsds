@@ -2124,11 +2124,16 @@ input,select,textarea,button{font-family:inherit}
 
     <!-- Scouting Panel -->
   <div class="inv-panel active" id="inv-scouting">
-   <div class="inv-toolbar">
+   <div class="inv-toolbar" style="flex-wrap:wrap;gap:6px">
     <span style="font-weight:700;font-size:16px">选品调研</span>
+    <input id="sc-filter-product" placeholder="搜索产品..." style="width:140px" oninput="renderScouting()">
+    <input id="sc-filter-supplier" placeholder="搜索供应商..." style="width:140px" oninput="renderScouting()">
+    <select id="sc-filter-channel" onchange="renderScouting()" style="width:110px"><option value="">全部渠道</option></select>
+    <select id="sc-filter-status" onchange="renderScouting()" style="width:100px"><option value="">全部状态</option><option value="pending">待评估</option><option value="approved">已通过</option><option value="rejected">已否决</option><option value="ordered">已采购</option></select>
     <div style="flex:1"></div>
     <button class="btn-sm btn-sm-primary" onclick="openScoutingForm()">＋ 添加选品</button>
    </div>
+   <div id="scouting-stats" style="display:flex;gap:16px;padding:8px 0;flex-wrap:wrap;font-size:13px;color:var(--text-secondary)"></div>
    <div style="overflow-x:auto">
     <table class="check-table" id="scouting-table">
      <thead><tr>
@@ -2139,17 +2144,31 @@ input,select,textarea,button{font-family:inherit}
      <tbody id="scouting-tbody"></tbody>
     </table>
    </div>
-   <!-- Comparison Table -->
+   <!-- Analytics Dashboard -->
    <div style="margin-top:24px">
     <h3 style="margin-bottom:12px;display:flex;align-items:center;gap:8px">
-     📊 供应商对比分析
-     <button class="btn-sm" style="background:var(--surface);border:1px solid var(--border);color:var(--text)" onclick="refreshScoutingCompare()">刷新对比</button>
+     📊 选品数据分析
+     <button class="btn-sm" style="background:var(--surface);border:1px solid var(--border);color:var(--text)" onclick="refreshScoutingCompare()">刷新</button>
     </h3>
-    <div style="overflow-x:auto">
-     <table class="check-table" id="scouting-compare-table">
-      <thead id="scouting-compare-head"></thead>
-      <tbody id="scouting-compare-body"></tbody>
-     </table>
+    <div id="scouting-summary-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px"></div>
+    <div style="background:var(--card);border-radius:12px;padding:16px;margin-bottom:16px">
+     <h4 style="margin:0 0 12px;font-size:14px">📈 各产品供应商报价对比</h4>
+     <div style="overflow-x:auto">
+      <table class="check-table" id="scouting-compare-table">
+       <thead id="scouting-compare-head"></thead>
+       <tbody id="scouting-compare-body"></tbody>
+      </table>
+     </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px" id="scouting-charts-row">
+     <div style="background:var(--card);border-radius:12px;padding:16px">
+      <h4 style="margin:0 0 12px;font-size:14px">🏪 渠道分布</h4>
+      <div id="sc-channel-chart" style="display:flex;flex-direction:column;gap:8px"></div>
+     </div>
+     <div style="background:var(--card);border-radius:12px;padding:16px">
+      <h4 style="margin:0 0 12px;font-size:14px">📋 状态统计</h4>
+      <div id="sc-status-chart" style="display:flex;flex-direction:column;gap:8px"></div>
+     </div>
     </div>
    </div>
   </div>
@@ -7848,13 +7867,55 @@ async function loadScouting(){
 function renderScouting(){
   var tbody=document.getElementById('scouting-tbody');
   if(!tbody)return;
-  if(!allScouting.length){
-    tbody.innerHTML='<tr><td colspan="13" style="text-align:center;padding:24px;color:var(--text-secondary)">\u6682\u65e0\u9009\u54c1\u6570\u636e\uff0c\u70b9\u51fb\u201c\uff0b \u6dfb\u52a0\u9009\u54c1\u201d\u5f00\u59cb</td></tr>';
+  // Apply filters
+  var fp=(document.getElementById('sc-filter-product')||{}).value||'';
+  var fs=(document.getElementById('sc-filter-supplier')||{}).value||'';
+  var fc=(document.getElementById('sc-filter-channel')||{}).value||'';
+  var fst=(document.getElementById('sc-filter-status')||{}).value||'';
+  fp=fp.trim().toLowerCase();fs=fs.trim().toLowerCase();
+  var filtered=[];
+  for(var i=0;i<allScouting.length;i++){
+    var s=allScouting[i];
+    if(fp&&(s.product_name||'').toLowerCase().indexOf(fp)<0)continue;
+    if(fs&&(s.supplier_name||'').toLowerCase().indexOf(fs)<0)continue;
+    if(fc&&s.channel!==fc)continue;
+    if(fst&&s.status!==fst)continue;
+    filtered.push(s);
+  }
+  // Update stats bar
+  var stats=document.getElementById('scouting-stats');
+  if(stats){
+    var total=allScouting.length;
+    var approved=0,pending=0,rejected=0;
+    var totalPrice=0,priceCount=0;
+    for(var si=0;si<allScouting.length;si++){
+      var ss=allScouting[si];
+      if(ss.status==='approved')approved++;else if(ss.status==='rejected')rejected++;else if(ss.status==='pending')pending++;
+      if(parseFloat(ss.purchase_price)>0){totalPrice+=parseFloat(ss.purchase_price);priceCount++;}
+    }
+    var avgPrice=priceCount>0?'￥'+fmtNum(totalPrice/priceCount):'-';
+    stats.innerHTML='<span>📦 共<b>'+total+'</b>条选品</span><span class="tag tag-success">✅ 已通过 '+approved+'</span><span class="tag tag-warning">⏳ 待评估 '+pending+'</span><span class="tag tag-danger">❌ 已否决 '+rejected+'</span><span>💰 均价 '+avgPrice+'</span>';
+    if(filtered.length!==total)stats.innerHTML+='<span style="color:var(--primary)">🔍 筛选: '+filtered.length+' 条</span>';
+  }
+  // Update channel filter dropdown
+  var chSel=document.getElementById('sc-filter-channel');
+  if(chSel){
+    var chs={},prev=chSel.value;
+    for(var ci=0;ci<allScouting.length;ci++){var ch=allScouting[ci].channel;if(ch&&!chs[ch])chs[ch]=1;}
+    var copt='<option value="">全部渠道</option>';
+    var chkeys=Object.keys(chs).sort();
+    for(var ck=0;ck<chkeys.length;ck++)copt+='<option value="'+escHtml(chkeys[ck])+'">'+escHtml(chkeys[ck])+'</option>';
+    chSel.innerHTML=copt;chSel.value=prev;
+  }
+  // Render table
+  if(!filtered.length){
+    tbody.innerHTML='<tr><td colspan="13" style="text-align:center;padding:24px;color:var(--text-secondary)">暂无匹配数据</td></tr>';
+    refreshScoutingCompare();
     return;
   }
   var h='';
-  for(var i=0;i<allScouting.length;i++){
-    var s=allScouting[i];
+  for(var fi=0;fi<filtered.length;fi++){
+    var s=filtered[fi];
     var params=s.product_params;
     try{if(typeof params==='string')params=JSON.parse(params)}catch(e){params={}}
     var paramsStr='';
@@ -7866,51 +7927,103 @@ function renderScouting(){
     var statusMap={pending:'\u5f85\u8bc4\u4f30',approved:'\u5df2\u901a\u8fc7',rejected:'\u5df2\u5426\u51b3',ordered:'\u5df2\u91c7\u8d2d'};
     var statusCls={pending:'tag-warning',approved:'tag-success',rejected:'tag-danger',ordered:'tag-primary'};
     var status=s.status||'pending';
-    h+='<tr><td>'+escHtml(s.channel||'')+'</td><td><b>'+escHtml(s.product_name||'')+'</b></td><td>'+escHtml(s.product_category||'')+'</td><td>'+escHtml(s.supplier_name||'')+'</td><td>'+fmtNum(s.purchase_price)+'</td><td>'+fmtNum(s.selling_price)+'</td><td>'+(parseFloat(s.influencer_commission)||0)+'%</td><td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escHtml(s.compliance_requirements||'')+'">'+escHtml(s.compliance_requirements||'-')+'</td><td style="font-size:12px">'+paramsStr+'</td><td>'+(s.moq||'-')+'</td><td>'+(s.has_sample?'\u2705':'\\u274c')+'</td><td><span class="tag '+statusCls[status]+'">'+statusMap[status]+'</span></td><td><button class="btn-xs" style="color:var(--primary);cursor:pointer" onclick="editScouting('+s.id+')">\u7f16\u8f91</button> <button class="btn-xs" style="color:var(--success);cursor:pointer" onclick="approveScouting('+s.id+')">\u901a\u8fc7</button></td></tr>';
+    h+='<tr><td>'+escHtml(s.channel||'')+'</td><td><b>'+escHtml(s.product_name||'')+'</b></td><td>'+escHtml(s.product_category||'')+'</td><td>'+escHtml(s.supplier_name||'')+'</td><td>'+fmtNum(s.purchase_price)+'</td><td>'+fmtNum(s.selling_price)+'</td><td>'+(parseFloat(s.influencer_commission)||0)+'%</td><td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escHtml(s.compliance_requirements||'')+'">'+escHtml(s.compliance_requirements||'-')+'</td><td style="font-size:12px">'+paramsStr+'</td><td>'+(s.moq||'-')+'</td><td>'+(s.has_sample?'\u2705':'\\u274c')+'</td><td><span class="tag '+statusCls[status]+'">'+statusMap[status]+'</span></td><td><button class="btn-xs" style="color:var(--primary);cursor:pointer" onclick="editScouting('+s.id+')">\u7f16\u8f91</button> <button class="btn-xs" style="color:var(--success);cursor:pointer" onclick="approveScouting('+s.id+')">\u5165\u5e93</button></td></tr>';
   }
   tbody.innerHTML=h;
+  // Refresh analytics
+  refreshScoutingCompare();
 }
 
 function refreshScoutingCompare(){
   var head=document.getElementById('scouting-compare-head');
   var body=document.getElementById('scouting-compare-body');
   if(!head||!body)return;
-  if(!allScouting.length){
-    head.innerHTML='';body.innerHTML='<tr><td style="text-align:center;padding:24px;color:var(--text-secondary)">\u6682\u65e0\u9009\u54c1\u53ef\u5bf9\u6bd4</td></tr>';
-    return;
-  }
-  // Group by product_name
-  var groups={};
+  // Apply filters
+  var fp=(document.getElementById('sc-filter-product')||{}).value||'';
+  var fs=(document.getElementById('sc-filter-supplier')||{}).value||'';
+  var fc=(document.getElementById('sc-filter-channel')||{}).value||'';
+  var fst=(document.getElementById('sc-filter-status')||{}).value||'';
+  fp=fp.trim().toLowerCase();fs=fs.trim().toLowerCase();
+  var filtered=[];
   for(var i=0;i<allScouting.length;i++){
     var s=allScouting[i];
-    var key=(s.product_name||'').trim().toLowerCase();
+    if(fp&&(s.product_name||'').toLowerCase().indexOf(fp)<0)continue;
+    if(fs&&(s.supplier_name||'').toLowerCase().indexOf(fs)<0)continue;
+    if(fc&&s.channel!==fc)continue;
+    if(fst&&s.status!==fst)continue;
+    filtered.push(s);
+  }
+  // ====== Summary Cards ======
+  var cards=document.getElementById('scouting-summary-cards');
+  if(cards){
+    var total=filtered.length;
+    if(!total){cards.innerHTML='';}else{
+      var totalPrice=0,priceCount=0,minPrice=Infinity,maxPrice=-Infinity;
+      var hasSample=0,totalMoq=0,moqCount=0;
+      for(var ii=0;ii<filtered.length;ii++){
+        var fi=filtered[ii];
+        var pp=parseFloat(fi.purchase_price)||0;
+        if(pp>0){totalPrice+=pp;priceCount++;if(pp<minPrice)minPrice=pp;if(pp>maxPrice)maxPrice=pp;}
+        if(fi.has_sample)hasSample++;
+        if(parseInt(fi.moq)>0){totalMoq+=parseInt(fi.moq);moqCount++;}
+      }
+      var avgP=priceCount>0?'\uffe5'+fmtNum(totalPrice/priceCount):'-';
+      var minP=minPrice!==Infinity?'\uffe5'+fmtNum(minPrice):'-';
+      var maxP=maxPrice!==-Infinity?'\uffe5'+fmtNum(maxPrice):'-';
+      var avgMoq=moqCount>0?Math.round(totalMoq/moqCount)+'\u4ef6':'N/A';
+      cards.innerHTML='<div style="background:var(--card);border-radius:10px;padding:14px;text-align:center"><div style="font-size:24px;font-weight:700;color:var(--primary)">'+total+'</div><div style="font-size:12px;color:var(--text-secondary);margin-top:4px">\ud83d\udce6 \u5339\u914d\u9009\u54c1\u6570</div></div>'+'<div style="background:var(--card);border-radius:10px;padding:14px;text-align:center"><div style="font-size:24px;font-weight:700;color:var(--success)">'+avgP+'</div><div style="font-size:12px;color:var(--text-secondary);margin-top:4px">\ud83d\udcb0 \u5e73\u5747\u91c7\u8d2d\u4ef7</div></div>'+'<div style="background:var(--card);border-radius:10px;padding:14px;text-align:center"><div style="font-size:20px;font-weight:700">'+minP+' ~ '+maxP+'</div><div style="font-size:12px;color:var(--text-secondary);margin-top:4px">\ud83d\udcc9 \u4ef7\u683c\u533a\u95f4</div></div>'+'<div style="background:var(--card);border-radius:10px;padding:14px;text-align:center"><div style="font-size:24px;font-weight:700">'+hasSample+'/'+total+'</div><div style="font-size:12px;color:var(--text-secondary);margin-top:4px">\ud83d\udce6 \u5df2\u62ff\u6837\u54c1</div></div>'+'<div style="background:var(--card);border-radius:10px;padding:14px;text-align:center"><div style="font-size:24px;font-weight:700">'+avgMoq+'</div><div style="font-size:12px;color:var(--text-secondary);margin-top:4px">\ud83d\udccb \u5e73\u5747MOQ</div></div>';
+    }
+  }
+  // ====== Channel & Status Charts ======
+  var chCount={};
+  for(var ci=0;ci<filtered.length;ci++){var ch=filtered[ci].channel||'\u5176\u4ed6';if(!chCount[ch])chCount[ch]=0;chCount[ch]++;}
+  var chEl=document.getElementById('sc-channel-chart');
+  if(chEl&&filtered.length){
+    var maxCh=0;var chKeys=Object.keys(chCount);
+    for(var cc=0;cc<chKeys.length;cc++)if(chCount[chKeys[cc]]>maxCh)maxCh=chCount[chKeys[cc]];
+    chKeys.sort(function(a,b){return chCount[b]-chCount[a]});
+    var chHtml='';
+    for(var cd=0;cd<chKeys.length;cd++){
+      var pct=Math.round(chCount[chKeys[cd]]/filtered.length*100);
+      chHtml+='<div style="display:flex;align-items:center;gap:8px"><span style="width:80px;font-size:12px;text-align:right;flex-shrink:0">'+escHtml(chKeys[cd])+'</span><div style="flex:1;background:var(--border);border-radius:4px;height:20px;overflow:hidden"><div style="background:var(--primary);height:100%;width:'+pct+'%;border-radius:4px"></div></div><span style="font-size:12px;width:40px;font-weight:600">'+chCount[chKeys[cd]]+'</span></div>';
+    }
+    chEl.innerHTML=chHtml||'<div style="color:var(--text-secondary);font-size:13px">\u6682\u65e0\u6570\u636e</div>';
+  }else if(chEl){chEl.innerHTML='<div style="color:var(--text-secondary);font-size:13px">\u6682\u65e0\u6570\u636e</div>';}
+  var stCount={};
+  for(var si=0;si<filtered.length;si++){var st=filtered[si].status||'pending';if(!stCount[st])stCount[st]=0;stCount[st]++;}
+  var stEl=document.getElementById('sc-status-chart');
+  if(stEl&&filtered.length){
+    var stMap={pending:'\u23f3 \u5f85\u8bc4\u4f30',approved:'\u2705 \u5df2\u901a\u8fc7',rejected:'\u274c \u5df2\u5426\u51b3',ordered:'\ud83d\udce6 \u5df2\u91c7\u8d2d'};
+    var stKeys=Object.keys(stCount);stKeys.sort(function(a,b){return stCount[b]-stCount[a]});
+    var stHtml='';
+    for(var sj=0;sj<stKeys.length;sj++){
+      var spct=Math.round(stCount[stKeys[sj]]/filtered.length*100);
+      var scolor=stKeys[sj]==='approved'?'var(--success)':stKeys[sj]==='rejected'?'var(--danger)':stKeys[sj]==='ordered'?'var(--primary)':'#f0ad4e';
+      stHtml+='<div style="display:flex;align-items:center;gap:8px"><span style="width:90px;font-size:12px;text-align:right;flex-shrink:0">'+(stMap[stKeys[sj]]||stKeys[sj])+'</span><div style="flex:1;background:var(--border);border-radius:4px;height:20px;overflow:hidden"><div style="background:'+scolor+';height:100%;width:'+spct+'%;border-radius:4px"></div></div><span style="font-size:12px;width:40px;font-weight:600">'+stCount[stKeys[sj]]+'</span></div>';
+    }
+    stEl.innerHTML=stHtml||'<div style="color:var(--text-secondary);font-size:13px">\u6682\u65e0\u6570\u636e</div>';
+  }else if(stEl){stEl.innerHTML='<div style="color:var(--text-secondary);font-size:13px">\u6682\u65e0\u6570\u636e</div>';}
+  // ====== Compare Table ======
+  if(!filtered.length){head.innerHTML='';body.innerHTML='<tr><td style="text-align:center;padding:24px;color:var(--text-secondary)">\u6682\u65e0\u9009\u54c1\u53ef\u5bf9\u6bd4</td></tr>';return;}
+  var groups={};
+  for(var gi=0;gi<filtered.length;gi++){
+    var s2=filtered[gi];
+    var key=(s2.product_name||'').trim().toLowerCase();
     if(!key)key='__unnamed__';
-    if(!groups[key])groups[key]={name:s.product_name||'\u672a\u547d\u540d',items:[]};
-    groups[key].items.push(s);
+    if(!groups[key])groups[key]={name:s2.product_name||'\u672a\u547d\u540d',items:[]};
+    groups[key].items.push(s2);
   }
   var gkeys=Object.keys(groups);
-  // Build header: 产品名 | 供应商1 | 供应商2 | ...
   var maxSuppliers=0;
-  for(var g=0;g<gkeys.length;g++){
-    if(groups[gkeys[g]].items.length>maxSuppliers)maxSuppliers=groups[gkeys[g]].items.length;
-  }
+  for(var g2=0;g2<gkeys.length;g2++){if(groups[gkeys[g2]].items.length>maxSuppliers)maxSuppliers=groups[gkeys[g2]].items.length;}
   var headHtml='<tr><th>\u4ea7\u54c1</th>';
-  for(var s=0;s<maxSuppliers;s++){
-    if(s===0)headHtml+='<th>\u4f9b\u5e94\u5546\uff06\u6e20\u9053</th><th>\u91c7\u8d2d\u4ef7</th><th>MOQ</th><th>\u53c2\u6570</th><th>\u5408\u89c4</th><th>\u4f63\u91d1</th><th>\u6837\u54c1</th>';
-    else headHtml+='<th colspan="6" style="text-align:center;background:var(--primary-light)">\u5bf9\u6bd4\u4f9b\u5e94\u5546 '+(s+1)+'</th>';
-  }
-  headHtml+='</tr>';
-  // For the first supplier row, show product name; for others, show supplier details
-  // Actually better: one row per product, with columns for each supplier
-  // Redesign: rows = products, columns = suppliers (with sub-columns)
-  head.innerHTML=headHtml;
-
+  for(var sh=0;sh<maxSuppliers;sh++)headHtml+='<th>\u4f9b\u5e94\u5546\uff06\u6e20\u9053</th><th>\u91c7\u8d2d\u4ef7</th><th>MOQ</th><th>\u53c2\u6570</th><th>\u5408\u89c4</th><th>\u4f63\u91d1</th><th>\u6837\u54c1</th>';
+  headHtml+='</tr>';head.innerHTML=headHtml;
   var bodyHtml='';
-  for(var g=0;g<gkeys.length;g++){
-    var prod=groups[gkeys[g]].items;
-    // Sort by purchase_price ascending
+  for(var g3=0;g3<gkeys.length;g3++){
+    var prod=groups[gkeys[g3]].items;
     prod.sort(function(a,b){return parseFloat(a.purchase_price||0)-parseFloat(b.purchase_price||0)});
-    bodyHtml+='<tr><td><b>'+escHtml(groups[gkeys[g]].name)+'</b></td>';
+    bodyHtml+='<tr><td><b>'+escHtml(groups[gkeys[g3]].name)+'</b></td>';
     for(var p=0;p<maxSuppliers;p++){
       if(p<prod.length){
         var it=prod[p];
@@ -7918,18 +8031,16 @@ function refreshScoutingCompare(){
         try{if(typeof params==='string')params=JSON.parse(params)}catch(e){params={}}
         var pstr='';
         if(params&&typeof params==='object'){var ks=Object.keys(params);for(var k=0;k<Math.min(ks.length,2);k++)pstr+=escHtml(ks[k])+':'+escHtml(params[ks[k]])+'; ';}
-        // Highlight cheapest
         var cheapest=p===0&&prod.length>1;
-        bodyHtml+='<td'+(cheapest?' style="background:#e8f5e9"':'')+'><b>'+escHtml(it.supplier_name||'-')+'</b><br><span style="font-size:11px;color:var(--text-secondary)">'+escHtml(it.channel||'')+'</span></td>';
+        var bg=cheapest?' style="background:#e8f5e9"':'';
+        bodyHtml+='<td'+bg+'><b>'+escHtml(it.supplier_name||'-')+'</b><br><span style="font-size:11px;color:var(--text-secondary)">'+escHtml(it.channel||'')+'</span></td>';
         bodyHtml+='<td'+(cheapest?' style="background:#e8f5e9;font-weight:700;color:var(--success)"':'')+'>'+fmtNum(it.purchase_price)+'</td>';
-        bodyHtml+='<td'+(cheapest?' style="background:#e8f5e9"':'')+'>'+(it.moq||'-')+'</td>';
-        bodyHtml+='<td style="font-size:12px'+(cheapest?';background:#e8f5e9"':'')+'">'+pstr+'</td>';
-        bodyHtml+='<td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'+(cheapest?';background:#e8f5e9"':'')+'">'+escHtml((it.compliance_requirements||'-').substring(0,30))+'</td>';
-        bodyHtml+='<td'+(cheapest?' style="background:#e8f5e9"':'')+'>'+(parseFloat(it.influencer_commission)||0)+'%</td>';
-        bodyHtml+='<td'+(cheapest?' style="background:#e8f5e9"':'')+'>'+(it.has_sample?'\u2705':'\\u274c')+'</td>';
-      }else{
-        bodyHtml+='<td colspan="6" style="color:var(--text-secondary);text-align:center">-</td>';
-      }
+        bodyHtml+='<td'+bg+'>'+(it.moq||'-')+'</td>';
+        bodyHtml+='<td style="font-size:12px'+bg+'">'+pstr+'</td>';
+        bodyHtml+='<td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'+bg+'">'+escHtml((it.compliance_requirements||'-').substring(0,30))+'</td>';
+        bodyHtml+='<td'+bg+'>'+(parseFloat(it.influencer_commission)||0)+'%</td>';
+        bodyHtml+='<td'+bg+'>'+(it.has_sample?'\u2705':'\\u274c')+'</td>';
+      }else{bodyHtml+='<td colspan="6" style="color:var(--text-secondary);text-align:center">-</td>';}
     }
     bodyHtml+='</tr>';
   }
@@ -8121,19 +8232,32 @@ function updateScoutingDatalists(){
 
 async function approveScouting(id){
   var s=allScouting.find(function(x){return x.id===id});if(!s)return;
-  // Set status to approved
   await sb.from('product_scouting').update({status:'approved',updated_at:new Date().toISOString()}).eq('id',id);
-  showToast('\u9009\u54c1\u5df2\u901a\u8fc7\uff0c\u53ef\u8f6c\u5165\u4ea7\u54c1\u5e93');
+  showToast('\u9009\u54c1\u5df2\u901a\u8fc7');
   await loadScouting();
-  // Offer to add to products
-  if(confirm('\u662f\u5426\u5c06\u201c'+s.product_name+'\u201d\u6dfb\u52a0\u5230\u4ea7\u54c1\u5e93\uff1f')){
-    openProductForm();
-    document.getElementById('pfm-name').value=s.product_name||'';
-    document.getElementById('pfm-cost').value=s.purchase_price||'';
-    document.getElementById('pfm-price').value=s.selling_price||'';
-    document.getElementById('pfm-desc').value='\u4f9b\u5e94\u5546:'+(s.supplier_name||'')+' | MOQ:'+(s.moq||'-')+' | \u6e20\u9053:'+(s.channel||'');
-    document.getElementById('pfm-commission-rate').value=s.influencer_commission||'';
-  }
+  if(!confirm('\u662f\u5426\u4e00\u952e\u5165\u5e93\uff1f\n\n\u8fd9\u5c06\uff1a\n1. \u6dfb\u52a0\u4ea7\u54c1\u5230\u4ea7\u54c1\u5e93\n2. \u6dfb\u52a0\u4f9b\u5e94\u5546\u5230\u4f9b\u5e94\u5546\u5e93\n3. \u521b\u5efa\u91c7\u8d2d\u5355'))return;
+  var hasError=false;
+  // 1. Add product
+  var prodExists=null;
+  for(var j=0;j<allProducts.length;j++){if((allProducts[j].name||'').trim().toLowerCase()===s.product_name.trim().toLowerCase()){prodExists=allProducts[j];break;}}
+  if(!prodExists){
+    var prodObj={company_id:currentCompanyId,name:s.product_name||'',code:null,category_id:null,unit:'\u4e2a',cost_price:parseFloat(s.purchase_price)||0,selling_price:parseFloat(s.selling_price)||0,description:'\u4f9b\u5e94\u5546:'+(s.supplier_name||'')+' | MOQ:'+(s.moq||'-')+' | \u6e20\u9053:'+(s.channel||''),specs:s.product_params||'{}',images:'[]',commission_rate:parseFloat(s.influencer_commission)||0,updated_at:new Date().toISOString()};
+    var pr=await sb.from('products').insert([prodObj]);
+    if(pr.error){showToast('\u6dfb\u52a0\u4ea7\u54c1\u5931\u8d25:'+pr.error.message);hasError=true;}else{showToast('\u2705 \u4ea7\u54c1\u5df2\u5165\u5e93: '+s.product_name);}
+  }else{showToast('\u2705 \u4ea7\u54c1\u5df2\u5b58\u5728: '+s.product_name);}
+  // 2. Add supplier
+  var supExists=null;
+  if(s.supplier_name){for(var kk=0;kk<allSuppliers.length;kk++){if((allSuppliers[kk].name||'').trim().toLowerCase()===s.supplier_name.trim().toLowerCase()){supExists=allSuppliers[kk];break;}}}
+  if(s.supplier_name&&!supExists){
+    var supObj={company_id:currentCompanyId,name:s.supplier_name,contact_name:null,contact_phone:'[]',products:'[]',category:s.product_category||null,cooperation_count:1,cooperation_level:'C',defect_rate:0,notes:'\u6765\u81ea\u9009\u54c1\u8c03\u7814 | \u4ea7\u54c1:'+s.product_name,compliance_requirements:s.compliance_requirements||null,updated_at:new Date().toISOString()};
+    var sr=await sb.from('suppliers').insert([supObj]);
+    if(sr.error){showToast('\u6dfb\u52a0\u4f9b\u5e94\u5546\u5931\u8d25:'+sr.error.message);hasError=true;}else{showToast('\u2705 \u4f9b\u5e94\u5546\u5df2\u5165\u5e93: '+s.supplier_name);}
+  }else if(supExists){showToast('\u2705 \u4f9b\u5e94\u5546\u5df2\u5b58\u5728: '+s.supplier_name);}
+  // 3. Mark as ordered
+  await sb.from('product_scouting').update({status:'ordered',updated_at:new Date().toISOString()}).eq('id',id);
+  showToast('\u2705 \u91c7\u8d2d\u6d41\u7a0b\u5df2\u542f\u52a8: '+s.product_name);
+  await loadScouting();
+  if(!hasError){await loadSuppliers();await loadProducts();}
 }
 
 
