@@ -41,9 +41,19 @@ SET active_company_id = (
 WHERE p.active_company_id IS NULL
   AND EXISTS (SELECT 1 FROM company_memberships cm WHERE cm.user_id = p.user_id AND cm.status = 'active');
 
--- 5. 增强 invitations 表
-ALTER TABLE invitations ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'member' CHECK (role IN ('admin','editor','member'));
-ALTER TABLE invitations ADD COLUMN IF NOT EXISTS invited_by UUID REFERENCES auth.users(id) ON DELETE SET NULL;
+-- 4.5 创建 invitations 表（如果不存在，确保 handle_invitation 函数可用）
+CREATE TABLE IF NOT EXISTS invitations (
+  id BIGSERIAL PRIMARY KEY,
+  from_company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  to_email TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('admin','editor','member')),
+  invited_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','accepted','rejected')),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  accepted_at TIMESTAMPTZ,
+  rejected_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_inv_to_email_status ON invitations(to_email, status);
 
 -- 6. profiles 表保留 company_id 为兼容字段（通过触发器同步）
 
