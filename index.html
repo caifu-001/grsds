@@ -7908,6 +7908,7 @@ function openProductForm(){
   document.getElementById('pfm-unit').value='个';
   document.getElementById('pfm-cost').value='';
   document.getElementById('pfm-price').value='';
+  document.getElementById('pfm-commission-rate').value='';
   document.getElementById('pfm-desc').value='';
   document.getElementById('pfm-image-url').value='';
   document.getElementById('product-btn-delete').classList.add('hidden');
@@ -7926,6 +7927,7 @@ function editProduct(id){
   document.getElementById('pfm-unit').value=p.unit||'个';
   document.getElementById('pfm-cost').value=p.cost_price||'';
   document.getElementById('pfm-price').value=p.selling_price||'';
+  document.getElementById('pfm-commission-rate').value=p.commission_rate||'';
   document.getElementById('pfm-desc').value=p.description||'';
   tempSpecs=(p.specs&&typeof p.specs==='object'&&!Array.isArray(p.specs))?Object.entries(p.specs).map(function(e){return{key:e[0],val:e[1]}}):[];
   tempImages=(p.images&&Array.isArray(p.images))?p.images:[];
@@ -7973,6 +7975,7 @@ async function saveProduct(){
     unit:document.getElementById('pfm-unit').value.trim()||'个',
     cost_price:parseFloat(document.getElementById('pfm-cost').value)||0,
     selling_price:parseFloat(document.getElementById('pfm-price').value)||0,
+    commission_rate:parseFloat(document.getElementById('pfm-commission-rate').value)||0,
     description:document.getElementById('pfm-desc').value.trim(),
     specs:JSON.stringify(specs),
     images:JSON.stringify(tempImages),
@@ -9333,6 +9336,8 @@ function openSupplierForm(id){
   document.getElementById('sup-cooperation-level').value=sp?(sp.cooperation_level||'C'):'C';
   document.getElementById('sup-defect-rate').value=sp?(sp.defect_rate||0):0;
   document.getElementById('sup-notes').value=sp?(sp.notes||''):'';
+  document.getElementById('sup-compliance').value=sp?(sp.compliance_requirements||''):'';
+  document.getElementById('sup-compliance').value=sp?(sp.compliance_requirements||''):'';
   // Linked client
   supLinkedClientId=sp?(sp.linked_client_id||null):null;
   supLinkedClientName=sp?(sp.linked_client_name||''):'';
@@ -9499,6 +9504,8 @@ async function saveSupplier(){
     cooperation_level:document.getElementById('sup-cooperation-level').value,
     defect_rate:parseFloat(document.getElementById('sup-defect-rate').value)||0,
     notes:document.getElementById('sup-notes').value.trim()||null,
+    compliance_requirements:document.getElementById('sup-compliance').value.trim()||null,
+    compliance_requirements:document.getElementById('sup-compliance').value.trim()||null,
     linked_client_id:supLinkedClientId||null,
     updated_at:new Date().toISOString()
   };
@@ -9521,7 +9528,7 @@ var supLinkedClientId=null;var supLinkedClientName='';
 // Modal injection
 (function(){
   var modals=document.createElement('div');
-  modals.innerHTML='<div class="modal-overlay hidden" id="supplier-modal" onclick="closeSupplierForm()"><div class="modal" onclick="event.stopPropagation()"><div class="modal-box" style="max-width:560px"><div class="modal-head"><span id="sup-modal-title">\u65b0\u5efa\u4f9b\u5e94\u5546</span><span class="modal-close" onclick="closeSupplierForm()">\u00d7</span></div><div class="modal-body"><div class="form-group"><label>\u4f9b\u5e94\u5546\u540d\u79f0 <span style="font-size:11px;color:var(--text-secondary);font-weight:400">\u2014 \u652f\u6301\u4f01\u4e1a\u540d\u5f55\u81ea\u52a8\u5339\u914d</span></label><div style="position:relative"><input id="sup-name" placeholder="\u5fc5\u586b" autocomplete="off" oninput="onSupNameInput()" onfocus="onSupNameInput()" onkeydown="onSupNameKeydown(event)"><div class="name-suggestions hidden" id="sup-name-suggestions"></div></div></div><div class="form-group"><label>\u8054\u7cfb\u4eba</label><input id="sup-contact-name" placeholder="\u8054\u7cfb\u4eba\u59d3\u540d"></div></div><div class="form-group"><label>\u5173\u8054\u5ba2\u6237</label><div style="position:relative"><input id="sup-link-client" placeholder="\u641c\u7d22\u5173\u8054\u5ba2\u6237..." autocomplete="off" oninput="searchSupplierLinkClient()" onkeydown="supLinkClientKeydown(event)"><div class="search-list hidden" id="sup-link-list"></div></div><div id="sup-link-selected" style="display:none;margin-top:4px;padding:6px 10px;background:var(--primary-light);border-radius:6px;font-size:13px"><span id="sup-link-client-name"></span><button class="btn-xs" style="color:var(--text-secondary);margin-left:8px;cursor:pointer" onclick="clearSupLinkClient()">\u00d7</button><button class="btn-xs" style="color:var(--primary);margin-left:8px;cursor:pointer" onclick="importClientContacts()">\u5bfc\u5165\u8054\u7cfb\u4eba</button><div class="search-list hidden" id="sup-contact-picker" style="margin-top:6px;max-height:160px;overflow-y:auto"></div></div><div class="form-group"><label>\u8054\u7cfb\u7535\u8bdd</label><div id="sup-phones"></div><button class="btn-sm" style="background:var(--surface);border:1px solid var(--border);margin-top:4px" onclick="addSupPhone()">\uff0b \u6dfb\u52a0\u7535\u8bdd</button></div><div class="form-group"><label>\u4ea7\u54c1\u6e05\u5355</label><div id="sup-products"></div><button class="btn-sm" style="background:var(--surface);border:1px solid var(--border);margin-top:4px" onclick="addSupProduct()">\uff0b \u6dfb\u52a0\u4ea7\u54c1</button></div><div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>\u7c7b\u522b</label><input id="sup-category" placeholder="\u5982\uff1a\u7535\u5b50\u5143\u4ef6" list="sup-cat-list"><datalist id="sup-cat-list"></datalist></div><div><label>\u5408\u4f5c\u6b21\u6570</label><input id="sup-cooperation-count" type="number" min="0"></div></div><div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>\u5408\u4f5c\u7ea7\u522b</label><select id="sup-cooperation-level"><option value="A">A\u7ea7</option><option value="B">B\u7ea7</option><option value="C" selected>C\u7ea7</option><option value="D">D\u7ea7</option><option value="E">E\u7ea7</option></select></div><div><label>\u6b21\u54c1\u7387 (%)</label><input id="sup-defect-rate" type="number" step="0.01" min="0" max="100" value="0"></div></div><div class="form-group"><label>\u5907\u6ce8</label><input id="sup-notes" placeholder="\u53ef\u9009"></div></div><div class="modal-actions"><button class="btn-cancel" onclick="closeSupplierForm()">\u53d6\u6d88</button><button class="btn-delete hidden" id="sup-btn-delete" onclick="deleteSupplier(supplierEditId)">\u5220\u9664</button><button class="btn-save" onclick="saveSupplier()">\u4fdd\u5b58</button></div></div></div></div>';
+  modals.innerHTML='<div class="modal-overlay hidden" id="supplier-modal" onclick="closeSupplierForm()"><div class="modal" onclick="event.stopPropagation()"><div class="modal-box" style="max-width:560px"><div class="modal-head"><span id="sup-modal-title">\u65b0\u5efa\u4f9b\u5e94\u5546</span><span class="modal-close" onclick="closeSupplierForm()">\u00d7</span></div><div class="modal-body"><div class="form-group"><label>\u4f9b\u5e94\u5546\u540d\u79f0 <span style="font-size:11px;color:var(--text-secondary);font-weight:400">\u2014 \u652f\u6301\u4f01\u4e1a\u540d\u5f55\u81ea\u52a8\u5339\u914d</span></label><div style="position:relative"><input id="sup-name" placeholder="\u5fc5\u586b" autocomplete="off" oninput="onSupNameInput()" onfocus="onSupNameInput()" onkeydown="onSupNameKeydown(event)"><div class="name-suggestions hidden" id="sup-name-suggestions"></div></div></div><div class="form-group"><label>\u8054\u7cfb\u4eba</label><input id="sup-contact-name" placeholder="\u8054\u7cfb\u4eba\u59d3\u540d"></div></div><div class="form-group"><label>\u5173\u8054\u5ba2\u6237</label><div style="position:relative"><input id="sup-link-client" placeholder="\u641c\u7d22\u5173\u8054\u5ba2\u6237..." autocomplete="off" oninput="searchSupplierLinkClient()" onkeydown="supLinkClientKeydown(event)"><div class="search-list hidden" id="sup-link-list"></div></div><div id="sup-link-selected" style="display:none;margin-top:4px;padding:6px 10px;background:var(--primary-light);border-radius:6px;font-size:13px"><span id="sup-link-client-name"></span><button class="btn-xs" style="color:var(--text-secondary);margin-left:8px;cursor:pointer" onclick="clearSupLinkClient()">\u00d7</button><button class="btn-xs" style="color:var(--primary);margin-left:8px;cursor:pointer" onclick="importClientContacts()">\u5bfc\u5165\u8054\u7cfb\u4eba</button><div class="search-list hidden" id="sup-contact-picker" style="margin-top:6px;max-height:160px;overflow-y:auto"></div></div><div class="form-group"><label>\u8054\u7cfb\u7535\u8bdd</label><div id="sup-phones"></div><button class="btn-sm" style="background:var(--surface);border:1px solid var(--border);margin-top:4px" onclick="addSupPhone()">\uff0b \u6dfb\u52a0\u7535\u8bdd</button></div><div class="form-group"><label>\u4ea7\u54c1\u6e05\u5355</label><div id="sup-products"></div><button class="btn-sm" style="background:var(--surface);border:1px solid var(--border);margin-top:4px" onclick="addSupProduct()">\uff0b \u6dfb\u52a0\u4ea7\u54c1</button></div><div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>\u7c7b\u522b</label><input id="sup-category" placeholder="\u5982\uff1a\u7535\u5b50\u5143\u4ef6" list="sup-cat-list"><datalist id="sup-cat-list"></datalist></div><div><label>\u5408\u4f5c\u6b21\u6570</label><input id="sup-cooperation-count" type="number" min="0"></div></div><div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>\u5408\u4f5c\u7ea7\u522b</label><select id="sup-cooperation-level"><option value="A">A\u7ea7</option><option value="B">B\u7ea7</option><option value="C" selected>C\u7ea7</option><option value="D">D\u7ea7</option><option value="E">E\u7ea7</option></select></div><div><label>\u6b21\u54c1\u7387 (%)</label><input id="sup-defect-rate" type="number" step="0.01" min="0" max="100" value="0"></div></div><div class="form-group"><label>\u5907\u6ce8</label><input id="sup-notes" placeholder="\u53ef\u9009"></div><div class="form-group"><label>\u5408\u89c4\u8981\u6c42</label><textarea id="sup-compliance" rows="2" placeholder="\u8d44\u8d28\u8bc1\u4e66\u3001\u73af\u4fdd\u6807\u51c6\u3001ISO\u8ba4\u8bc1\u7b49..."></textarea></div></div><div class="modal-actions"><button class="btn-cancel" onclick="closeSupplierForm()">\u53d6\u6d88</button><button class="btn-delete hidden" id="sup-btn-delete" onclick="deleteSupplier(supplierEditId)">\u5220\u9664</button><button class="btn-save" onclick="saveSupplier()">\u4fdd\u5b58</button></div></div></div></div>';
   document.body.appendChild(modals);
 })();
 
@@ -16507,6 +16514,9 @@ async function updateFieldCollabMode(fieldId,mode){
   <div class="form-row">
    <div class="form-group"><label>成本价(元)</label><input id="pfm-cost" type="number" step="0.01" placeholder="0"></div>
    <div class="form-group"><label>销售价(元)</label><input id="pfm-price" type="number" step="0.01" placeholder="0"></div>
+  </div>
+  <div class="form-row">
+   <div class="form-group"><label>佣金比例(%)</label><input id="pfm-commission-rate" type="number" step="0.01" min="0" max="100" placeholder="0"></div>
   </div>
   <div class="form-group"><label>规格参数</label>
    <div id="pfm-specs"></div>
