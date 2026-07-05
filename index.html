@@ -15665,7 +15665,6 @@ function openFWVisitForm(id){
   document.getElementById('fw-vm-client-list').classList.add('hidden');
   document.getElementById('fw-vm-client-list').innerHTML='';
   document.getElementById('fw-visit-modal').classList.remove('hidden');
-  });
   if(id){
     // Load existing data
     sb.from('field_visits').select('*').eq('id',id).single().then(function(r){
