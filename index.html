@@ -6379,9 +6379,11 @@ sb.auth.getSession().then(async function(res){
     // Fire-and-forget: update last_login_at on session restore
     sb.from('profiles').update({last_login_at:new Date().toISOString()}).eq('user_id',currentUser.id).then(function(){}).catch(function(){});
     // Load profile for company/role
-    var {data:profile}=await sb.from('profiles').select('role,company_id').eq('user_id',currentUser.id).single();
-    if(profile){currentUserRole=profile.role||'user';isSuperAdmin=profile.role==='super_admin';currentCompanyId=profile.company_id;}
+    var {data:profile}=await sb.from('profiles').select('role,company_id,active_company_id').eq('user_id',currentUser.id).single();
+    if(profile){currentUserRole=profile.role||'user';isSuperAdmin=profile.role==='super_admin';currentCompanyId=profile.active_company_id||profile.company_id;currentCompanyRole=currentUserRole;currentCompanyName='';}
     if(!currentCompanyId){document.getElementById('login-screen').classList.remove('hidden');return}
+    // Load multi-company memberships
+    try{var {data:mems}=await sb.rpc('get_my_memberships');if(mems&&mems.length){allMyCompanies=mems;var cur=mems.find(function(m){return m.company_id==currentCompanyId});if(cur){currentCompanyRole=cur.role||currentUserRole;currentCompanyName=cur.company_name||'';}}}catch(e){console.error('get_my_memberships failed:',e)}
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('main-screen').classList.remove('hidden');
     switchTab('analytics');
