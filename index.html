@@ -3356,6 +3356,7 @@ async function onLoginSuccess(user){
 
   // 获取所有公司成员关系
   var memberships=[];
+  console.log('profile after upsert:',{role:profile&&profile.role,company_id:profile&&profile.company_id,active_company_id:profile&&profile.active_company_id});
   try{
     var memResp=await sb.rpc('get_my_memberships');
     if(!memResp.error&&memResp.data)memberships=memResp.data;
