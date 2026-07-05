@@ -3367,6 +3367,7 @@ async function onLoginSuccess(user){
   }
 
   allMyCompanies=memberships;
+  console.log('allMyCompanies set to:',JSON.parse(JSON.stringify(allMyCompanies)));
 
   // 决定激活哪家公司
   if(memberships.length===0){
@@ -3444,6 +3445,7 @@ function updateCompanyUIBadge(){
 
 // === 多公司：公司选择器 ===
 function showCompanySelector(memberships){
+  console.log('showCompanySelector incoming:',JSON.parse(JSON.stringify(memberships)));
   var overlay=document.createElement('div');
   overlay.className='modal-overlay';
   overlay.style.cssText='position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.5);z-index:20000;display:flex;align-items:center;justify-content:center';
