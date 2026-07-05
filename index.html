@@ -3542,8 +3542,8 @@ async function loadCompanyMembersForAdmin(){
       html+='<div><div style="font-weight:600">'+escHtml(m.display_name||m.email||'未命名')+'</div><div style="font-size:12px;color:var(--muted)">'+escHtml(m.email||'')+(m.department_name?' · '+escHtml(m.department_name):'')+' · '+roleLabel+'</div></div>';
       if(canManage){
         html+='<div style="display:flex;gap:6px">';
-        if(m.role!=='admin')html+='<button class="btn-sm" onclick="promoteMember(''+m.user_id+'')" title="提升为管理员">设管理</button>';
-        html+='<button class="btn-sm" style="color:var(--danger)" onclick="removeMemberFromCompany(''+m.user_id+'')">移除</button>';
+        if(m.role!=='admin')html+='<button class="btn-sm" onclick="promoteMember(&quot;'+m.user_id+'&quot;)" title="提升为管理员">设管理</button>';
+        html+='<button class="btn-sm" style="color:var(--danger)" onclick="removeMemberFromCompany(&quot;'+m.user_id+'&quot;)">移除</button>';
         html+='</div>';
       }
       html+='</div>';
