@@ -1,7 +1,7 @@
 -- 选品调研表
 CREATE TABLE IF NOT EXISTS product_scouting (
   id BIGSERIAL PRIMARY KEY,
-  company_id UUID REFERENCES companies(id) ON DELETE CASCADE,
+  company_id BIGINT REFERENCES companies(id) ON DELETE CASCADE,
   channel TEXT,                          -- 选品渠道
   product_name TEXT NOT NULL,            -- 产品名称
   product_category TEXT,                 -- 产品分类
@@ -19,8 +19,8 @@ CREATE TABLE IF NOT EXISTS product_scouting (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 权限：管理员和登录用户可操作
+-- 权限：同一公司的用户可操作自己公司的选品数据
 ALTER TABLE product_scouting ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "scouting_company_access" ON product_scouting FOR ALL
-  USING (company_id IN (SELECT id FROM companies WHERE owner_id = auth.uid()))
-  WITH CHECK (company_id IN (SELECT id FROM companies WHERE owner_id = auth.uid()));
+  USING (company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid()))
+  WITH CHECK (company_id IN (SELECT company_id FROM profiles WHERE user_id = auth.uid()));
