@@ -128,7 +128,7 @@ RETURNS TABLE(
   department_name TEXT,
   role TEXT,
   phone TEXT,
-  position TEXT,
+  "position" TEXT,
   joined_at TIMESTAMPTZ,
   invited_by_email TEXT
 )
@@ -154,7 +154,7 @@ BEGIN
       d.name AS department_name,
       cm.role,
       p.phone,
-      p.position,
+      p."position",
       cm.joined_at,
       inviter.email::TEXT AS invited_by_email
     FROM company_memberships cm
