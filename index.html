@@ -1146,7 +1146,7 @@ input,select,textarea,button{font-family:inherit}
 <body>
 
 <div id="global-error-banner" style="display:none;background:#e74c3c;color:#fff;padding:10px 16px;font-size:13px;position:fixed;top:0;left:0;right:0;z-index:99999;text-align:center;white-space:pre-wrap;line-height:1.4"></div>
-<script>(function(){var el=document.getElementById('global-error-banner');window.onerror=function(m,u,l,c,e){el.style.display='block';el.innerHTML='🔴 JS ERROR: '+h(m)+'<br><small>line '+l+':'+c+' | '+h(u.substr(u.lastIndexOf('/')+1))+'</small>';if(e&&e.stack)el.innerHTML+='<br><small>'+h(e.stack.split('\n').slice(0,3).join('<br>'))+'</small>'};window.addEventListener('unhandledrejection',function(ev){el.style.display='block';el.innerHTML='🔴 PROMISE REJECTION: '+h(ev.reason)});console.error=function(){el.style.display='block';el.innerHTML='🔴 console.error: '+h(Array.from(arguments).join(' '))}})();</script>
+<script>(function(){var el=document.getElementById('global-error-banner');window.onerror=function(m,u,l,c,e){el.style.display='block';el.innerHTML='🔴 JS ERROR: '+(m||'')+'<br><small>line '+l+':'+c+' | '+h(u.substr(u.lastIndexOf('/')+1))+'</small>';if(e&&e.stack)el.innerHTML+='<br><small>'+h(e.stack.split('\n').slice(0,3).join('<br>'))+'</small>'};window.addEventListener('unhandledrejection',function(ev){el.style.display='block';el.innerHTML='🔴 PROMISE REJECTION: '+h(ev.reason)});console.error=function(){el.style.display='block';el.innerHTML='🔴 console.error: '+h(Array.from(arguments).join(' '))}})();</script>
 
 <!-- Login -->
 <!-- 更多下拉菜单 -->
@@ -8371,7 +8371,9 @@ function drawScoutingCategoryCharts(data){
   var moqData=[];var mmax=0;
   for(var m=0;m<keys.length;m++){var mqv=avg(byProd[keys[m]].moqs);mmax=Math.max(mmax,mqv);moqData.push({label:keys[m],value:mqv,color:"#8e44ad"});}
   drawBarChart("sc-moq-chart",moqData,{maxValue:mmax||100,valueFormatter:function(v){return v+"件"},labelWidth:80});
-}/ === Company Directory Cascade Sync ===
+}
+
+// === Company Directory Cascade Sync ===
 async function syncCompanyDirectoryRefs(){
   // When a company name/record is updated, refresh FK-linked records
   // Called after company directory save/edit
