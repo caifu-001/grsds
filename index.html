@@ -2157,11 +2157,19 @@ input,select,textarea,button{font-family:inherit}
     <div id="scouting-summary-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px"></div>
     <div style="background:var(--card);border-radius:12px;padding:16px;margin-bottom:16px">
      <h4 style="margin:0 0 12px;font-size:14px">📈 各产品供应商报价对比</h4>
-     <div style="overflow-x:auto">
-      <table class="check-table" id="scouting-compare-table">
-       <thead id="scouting-compare-head"></thead>
-       <tbody id="scouting-compare-body"></tbody>
-      </table>
+     <!-- Compare Filter Bar -->
+    <div style="background:var(--card);border-radius:12px;padding:14px;margin-bottom:16px">
+     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span style="font-weight:600;font-size:14px">📋 供应商横向对比</span>
+      <span style="color:var(--text-secondary);font-size:12px">筛选产品：</span>
+      <input id="sc-cmp-filter-name" placeholder="产品名称" style="width:140px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px" oninput="refreshScoutingCompare()">
+      <select id="sc-cmp-filter-cat" style="width:110px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px" onchange="refreshScoutingCompare()">
+       <option value="">全部分类</option>
+      </select>
+      <select id="sc-cmp-filter-status" style="width:100px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px" onchange="refreshScoutingCompare()">
+       <option value="">全部状态</option><option value="pending">待评估</option><option value="approved">已通过</option><option value="rejected">已否决</option><option value="ordered">已采购</option>
+      </select>
+      <label style="font-size:12px;cursor:pointer;display:flex;align-items:center;gap:4px"><input type="checkbox" id="sc-cmp-ignore-noprice" onchange="refreshScoutingCompare()"> 隐藏无报价</label>
      </div>
     </div>
     <!-- Tax Rate Row -->
@@ -2172,7 +2180,9 @@ input,select,textarea,button{font-family:inherit}
       <span style="font-size:12px;color:var(--text-secondary)">%</span>
       <span style="font-size:11px;color:var(--text-secondary);margin-left:4px">毛利率 = (含税售价/(1+税率) - 采购价) / (含税售价/(1+税率)) ×100%</span>
     </div>
-    <!-- Price & Margin Charts as 1-row 2-col -->
+    <!-- Product Compare Tables -->
+    <div id="scouting-compare-container" style="display:flex;flex-direction:column;gap:16px;margin-bottom:16px"></div>
+    <!-- Price & Margin Charts --><!-- Price & Margin Charts as 1-row 2-col -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px" id="scouting-charts-row-1">
      <div style="background:var(--card);border-radius:12px;padding:16px">
       <h4 style="margin:0 0 12px;font-size:14px">💰 供应商价格对比</h4>
@@ -8076,50 +8086,115 @@ function refreshScoutingCompare(){
   }else if(stEl){stEl.innerHTML='<div style="color:var(--text-secondary);font-size:13px">\u6682\u65e0\u6570\u636e</div>';}
   // ====== Canvas Charts ======
   drawScoutingCategoryCharts(filtered);
-  // ====== Compare Table ======
-  if(!filtered.length){head.innerHTML='';body.innerHTML='<tr><td style="text-align:center;padding:24px;color:var(--text-secondary)">\u6682\u65e0\u9009\u54c1\u53ef\u5bf9\u6bd4</td></tr>';return;}
-  var groups={};
-  for(var gi=0;gi<filtered.length;gi++){
-    var s2=filtered[gi];
-    var key=(s2.product_name||'').trim().toLowerCase();
-    if(!key)key='__unnamed__';
-    if(!groups[key])groups[key]={name:s2.product_name||'\u672a\u547d\u540d',items:[]};
-    groups[key].items.push(s2);
-  }
-  var gkeys=Object.keys(groups);
-  var maxSuppliers=0;
-  for(var g2=0;g2<gkeys.length;g2++){if(groups[gkeys[g2]].items.length>maxSuppliers)maxSuppliers=groups[gkeys[g2]].items.length;}
-  var headHtml='<tr><th>\u4ea7\u54c1</th>';
-  for(var sh=0;sh<maxSuppliers;sh++)headHtml+='<th>\u4f9b\u5e94\u5546\uff06\u6e20\u9053</th><th>\u91c7\u8d2d\u4ef7</th><th>\u6bdb\u5229\u7387</th><th>MOQ</th><th>\u53c2\u6570</th><th>\u5408\u89c4</th><th>\u4f63\u91d1</th><th>\u6837\u54c1</th>';
-  headHtml+='</tr>';head.innerHTML=headHtml;
-  var bodyHtml='';
-  for(var g3=0;g3<gkeys.length;g3++){
-    var prod=groups[gkeys[g3]].items;
-    prod.sort(function(a,b){return parseFloat(a.purchase_price||0)-parseFloat(b.purchase_price||0)});
-    bodyHtml+='<tr><td><b>'+escHtml(groups[gkeys[g3]].name)+'</b></td>';
-    for(var p=0;p<maxSuppliers;p++){
-      if(p<prod.length){
-        var it=prod[p];
-        var params=it.product_params;
-        try{if(typeof params==='string')params=JSON.parse(params)}catch(e){params={}}
-        var pstr='';
-        if(params&&typeof params==='object'){var ks=Object.keys(params);for(var k=0;k<Math.min(ks.length,2);k++)pstr+=escHtml(ks[k])+':'+escHtml(params[ks[k]])+'; ';}
-        var cheapest=p===0&&prod.length>1;
-        var bg=cheapest?' style="background:#e8f5e9"':'';
-        bodyHtml+='<td'+bg+'><b>'+escHtml(it.supplier_name||'-')+'</b><br><span style="font-size:11px;color:var(--text-secondary)">'+escHtml(it.channel||'')+'</span></td>';
-        bodyHtml+='<td'+(cheapest?' style="background:#e8f5e9;font-weight:700;color:var(--success)"':'')+'>'+fmtNum(it.purchase_price)+'</td>';
-        var itSp=parseFloat(it.selling_price)||0,itPp=parseFloat(it.purchase_price)||0;var _taxEl=document.getElementById('sc-tax-rate');var _taxRate=parseFloat((_taxEl&&_taxEl.value)||13)||0;var itNetPrice=itSp>0?itSp/(1+_taxRate/100):0;var itMargin=itNetPrice>0?Math.round((itNetPrice-itPp)/itNetPrice*100):0;bodyHtml+='<td'+(itMargin>0?' style="color:var(--success);font-weight:600"':'')+(itMargin<0?' style="color:var(--danger);font-weight:600"':'')+'>'+(itSp>0?itMargin+'%':'N/A')+'</td>';
-        bodyHtml+='<td'+bg+'>'+(it.moq||'-')+'</td>';
-        bodyHtml+='<td style="font-size:12px'+bg+'">'+pstr+'</td>';
-        bodyHtml+='<td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'+bg+'">'+escHtml((it.compliance_requirements||'-').substring(0,30))+'</td>';
-        bodyHtml+='<td'+bg+'>'+(parseFloat(it.influencer_commission)||0)+'%</td>';
-        bodyHtml+='<td'+bg+'>'+(it.has_sample?'\u2705':'\\u274c')+'</td>';
-      }else{bodyHtml+='<td colspan="8" style="color:var(--text-secondary);text-align:center">-</td>';}
+  // ====== Compare Table (Horizontal: suppliers as rows per product) ======
+  var cmpContainer=document.getElementById('scouting-compare-container');
+  if(!cmpContainer)return;
+  
+  // Populate compare filter dropdowns from all scouting data
+  (function(){
+    var catSel=document.getElementById('sc-cmp-filter-cat');
+    if(catSel&&!catSel.dataset.built){
+      var cats={};for(var ci=0;ci<allScouting.length;ci++){var cc=allScouting[ci].product_category;if(cc)cats[cc]=1;}
+      var opts='<option value="">全部分类</option>';
+      var cks=Object.keys(cats).sort();for(var ck=0;ck<cks.length;ck++)opts+='<option value="'+escHtml(cks[ck])+'">'+escHtml(cks[ck])+'</option>';
+      catSel.innerHTML=opts;catSel.dataset.built='1';
     }
-    bodyHtml+='</tr>';
+  })();
+  
+  // Apply compare filters
+  var cfName=(document.getElementById('sc-cmp-filter-name')||{}).value||'';
+  var cfCat=(document.getElementById('sc-cmp-filter-cat')||{}).value||'';
+  var cfStatus=(document.getElementById('sc-cmp-filter-status')||{}).value||'';
+  var cfNoPrice=document.getElementById('sc-cmp-ignore-noprice')&&document.getElementById('sc-cmp-ignore-noprice').checked;
+  cfName=cfName.trim().toLowerCase();
+  
+  var cmpFiltered=[];
+  for(var fi=0;fi<filtered.length;fi++){
+    var f=filtered[fi];
+    if(cfName&&(f.product_name||'').toLowerCase().indexOf(cfName)<0)continue;
+    if(cfCat&&f.product_category!==cfCat)continue;
+    if(cfStatus&&f.status!==cfStatus)continue;
+    if(cfNoPrice&&parseFloat(f.purchase_price)<=0)continue;
+    cmpFiltered.push(f);
   }
-  body.innerHTML=bodyHtml;
-}
+  
+  if(!cmpFiltered.length){
+    cmpContainer.innerHTML='<div style="text-align:center;padding:32px;color:var(--text-secondary);background:var(--card);border-radius:12px">📭 无匹配的对比数据</div>';
+    return;
+  }
+  
+  // Group by product name
+  var prodGroups={};
+  for(var gi=0;gi<cmpFiltered.length;gi++){
+    var s=cmpFiltered[gi];
+    var key=(s.product_name||'未命名').trim().toLowerCase();
+    if(!prodGroups[key])prodGroups[key]={name:s.product_name||'未命名',category:s.product_category||'未分类',items:[]};
+    prodGroups[key].items.push(s);
+  }
+  var pkeys=Object.keys(prodGroups).sort();
+  
+  // Get tax rate
+  var taxEl=document.getElementById('sc-tax-rate');
+  var taxRate=parseFloat((taxEl&&taxEl.value)||13)||0;
+  
+  var containerHtml='';
+  for(var pi=0;pi<pkeys.length;pi++){
+    var grp=prodGroups[pkeys[pi]];
+    var items=grp.items;
+    // Sort by purchase price ascending
+    items.sort(function(a,b){return parseFloat(a.purchase_price||0)-parseFloat(b.purchase_price||0)});
+    var minPrice=parseFloat(items[0].purchase_price)||Infinity;
+    
+    // Product header
+    var prodTitle=escHtml(grp.name);
+    if(grp.category&&grp.category!=='未分类')prodTitle+=' <span style="font-size:11px;color:var(--text-secondary);font-weight:400">['+escHtml(grp.category)+']</span>';
+    prodTitle+=' <span style="font-size:11px;color:var(--text-secondary);font-weight:400">('+items.length+'家供应商)</span>';
+    
+    containerHtml+='<div style="background:var(--card);border-radius:12px;padding:16px"><h4 style="margin:0 0 10px;font-size:14px;border-bottom:1px solid var(--border);padding-bottom:8px">📦 '+prodTitle+'</h4><div style="overflow-x:auto"><table class="check-table" style="width:100%;min-width:800px"><thead><tr><th>供应商</th><th>渠道</th><th>采购价(¥)</th><th>销售价(¥)</th><th>税后毛利率</th><th>达人佣金</th><th>MOQ</th><th>样品</th><th>合规要求</th><th>产品参数</th><th>状态</th></tr></thead><tbody>';
+    
+    for(var si=0;si<items.length;si++){
+      var it=items[si];
+      var itPp=parseFloat(it.purchase_price)||0;
+      var itSp=parseFloat(it.selling_price)||0;
+      var itNetPrice=itSp>0?itSp/(1+taxRate/100):0;
+      var itMargin=itNetPrice>0?Math.round((itNetPrice-itPp)/itNetPrice*100):0;
+      var cheapest=itPp===minPrice&&minPrice>0&&items.length>1;
+      var bg=cheapest?' style="background:#e8f5e9"':'';
+      
+      // Parse params
+      var params=it.product_params;
+      try{if(typeof params==='string')params=JSON.parse(params)}catch(e){params={}}
+      if(!params||typeof params!=='object')params={};
+      var pstr='';
+      var pks=Object.keys(params);
+      for(var pk=0;pk<Math.min(pks.length,3);pk++){
+        var kv=String(params[pks[pk]]||'');
+        // Skip internal fields
+        if(pks[pk]==='MOQ'||pks[pk]==='有无样品'||pks[pk]==='渠道'||pks[pk]==='合规要求'||pks[pk]==='产品分类'||pks[pk]==='moq')continue;
+        pstr+=escHtml(pks[pk])+':'+escHtml(kv.substring(0,20))+(pk<Math.min(pks.length,3)-1?'<br>':'');
+      }
+      
+      var statusMap={pending:'⏳待评估',approved:'✅已通过',rejected:'❌已否决',ordered:'📦已采购'};
+      var stCls={pending:'#f0ad4e',approved:'var(--success)',rejected:'var(--danger)',ordered:'var(--primary)'};
+      var st=it.status||'pending';
+      
+      containerHtml+='<tr>'+
+        '<td'+bg+'><b>'+escHtml(it.supplier_name||'-')+'</b></td>'+
+        '<td'+bg+'>'+escHtml(it.channel||'-')+'</td>'+
+        '<td'+(cheapest?' style="background:#e8f5e9;font-weight:700;color:var(--success)"':'')+'>'+(itPp>0?'¥'+fmtNum(itPp):'-')+'</td>'+
+        '<td'+bg+'>'+(itSp>0?'¥'+fmtNum(itSp):'-')+'</td>'+
+        '<td style="font-weight:600;color:'+(itMargin>=0?'var(--success)':'var(--danger)')+''+bg+'">'+(itSp>0?itMargin+'%':'N/A')+'</td>'+
+        '<td'+bg+'>'+(parseFloat(it.influencer_commission)||0)+'%</td>'+
+        '<td'+bg+'>'+(it.moq||'-')+'</td>'+
+        '<td'+bg+'>'+(it.has_sample?'✅':'❌')+'</td>'+
+        '<td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'+bg+'" title="'+escHtml(it.compliance_requirements||'')+'">'+escHtml((it.compliance_requirements||'-').substring(0,30))+'</td>'+
+        '<td style="font-size:11px'+bg+'">'+(pstr||'-')+'</td>'+
+        '<td'+bg+'><span style="font-size:11px;padding:2px 6px;border-radius:4px;background:'+(stCls[st]||'#999')+';color:#fff;white-space:nowrap">'+statusMap[st]+'</span></td>'+
+        '</tr>';
+    }
+    containerHtml+='</tbody></table></div></div>';
+  }
+  cmpContainer.innerHTML=containerHtml;
 
 function openScoutingForm(){
   scoutingEditId=null;scTempParams=[];
