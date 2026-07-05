@@ -2181,6 +2181,7 @@ input,select,textarea,button{font-family:inherit}
      </div>
      <div style="background:var(--card);border-radius:12px;padding:16px">
       <h4 style="margin:0 0 12px;font-size:14px">📊 佣金分析（按分类）</h4>
+      <canvas id="sc-margin-chart" style="width:100%;height:240px"></canvas>
       <canvas id="sc-commission-chart" style="width:100%;height:240px"></canvas>
      </div>
     </div>
@@ -8064,8 +8065,8 @@ function refreshScoutingCompare(){
   var gkeys=Object.keys(groups);
   var maxSuppliers=0;
   for(var g2=0;g2<gkeys.length;g2++){if(groups[gkeys[g2]].items.length>maxSuppliers)maxSuppliers=groups[gkeys[g2]].items.length;}
-  var headHtml='<tr><th>\u4ea7\u54c1</th>';
-  for(var sh=0;sh<maxSuppliers;sh++)headHtml+='<th>\u4f9b\u5e94\u5546\uff06\u6e20\u9053</th><th>\u91c7\u8d2d\u4ef7</th><th>MOQ</th><th>\u53c2\u6570</th><th>\u5408\u89c4</th><th>\u4f63\u91d1</th><th>\u6837\u54c1</th>';
+  var headHtml='<tr><th>\u4ea7\u54c1</th><th>\u6bdb\u5229\u7387</th>';
+  for(var sh=0;sh<maxSuppliers;sh++)headHtml+='<th>\u4f9b\u5e94\u5546\uff06\u6e20\u9053</th><th>\u91c7\u8d2d\u4ef7</th><th>\u6bdb\u5229\u7387</th><th>MOQ</th><th>\u53c2\u6570</th><th>\u5408\u89c4</th><th>\u4f63\u91d1</th><th>\u6837\u54c1</th>';
   headHtml+='</tr>';head.innerHTML=headHtml;
   var bodyHtml='';
   for(var g3=0;g3<gkeys.length;g3++){
@@ -8083,6 +8084,7 @@ function refreshScoutingCompare(){
         var bg=cheapest?' style="background:#e8f5e9"':'';
         bodyHtml+='<td'+bg+'><b>'+escHtml(it.supplier_name||'-')+'</b><br><span style="font-size:11px;color:var(--text-secondary)">'+escHtml(it.channel||'')+'</span></td>';
         bodyHtml+='<td'+(cheapest?' style="background:#e8f5e9;font-weight:700;color:var(--success)"':'')+'>'+fmtNum(it.purchase_price)+'</td>';
+        var itSp=parseFloat(it.selling_price)||0,itPp=parseFloat(it.purchase_price)||0,itMargin=itSp>0?Math.round((itSp-itPp)/itSp*100):0;bodyHtml+='<td'+(itMargin>0?' style="color:var(--success);font-weight:600"':'')+(itMargin<0?' style="color:var(--danger);font-weight:600"':'')+'>'+(itSp>0?itMargin+'%':'N/A')+'</td>';
         bodyHtml+='<td'+bg+'>'+(it.moq||'-')+'</td>';
         bodyHtml+='<td style="font-size:12px'+bg+'">'+pstr+'</td>';
         bodyHtml+='<td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'+bg+'">'+escHtml((it.compliance_requirements||'-').substring(0,30))+'</td>';
@@ -8313,37 +8315,41 @@ function drawGroupedBarChart(canvasId,data,cfg){
 }
 
 function drawScoutingCategoryCharts(data){
-  var byCat={};
+  var byProd={};
   for(var i=0;i<data.length;i++){
-    var d=data[i];var cat=d.product_category||'未分类';
-    if(!byCat[cat])byCat[cat]={count:0,prices:[],sellPrices:[],commissions:[],moqs:[]};
-    byCat[cat].count++;
-    var pp=parseFloat(d.purchase_price)||0;if(pp>0)byCat[cat].prices.push(pp);
-    var sp=parseFloat(d.selling_price)||0;if(sp>0)byCat[cat].sellPrices.push(sp);
-    var cm=parseFloat(d.influencer_commission)||0;if(cm>0)byCat[cat].commissions.push(cm);
-    var mq=parseInt(d.moq)||0;if(mq>0)byCat[cat].moqs.push(mq);
+    var d=data[i];var key=(d.product_name||'未命名').substring(0,10);
+    if(!byProd[key])byProd[key]={count:0,prices:[],sellPrices:[],margins:[],commissions:[],moqs:[],minPrice:Infinity};
+    byProd[key].count++;
+    var pp=parseFloat(d.purchase_price)||0;if(pp>0){byProd[key].prices.push(pp);if(pp<byProd[key].minPrice)byProd[key].minPrice=pp;}
+    var sp=parseFloat(d.selling_price)||0;if(sp>0){byProd[key].sellPrices.push(sp);}
+    if(sp>0&&pp>0){byProd[key].margins.push(Math.round((sp-pp)/sp*100));}
+    var cm=parseFloat(d.influencer_commission)||0;if(cm>0)byProd[key].commissions.push(cm);
+    var mq=parseInt(d.moq)||0;if(mq>0)byProd[key].moqs.push(mq);
   }
-  var cats=Object.keys(byCat).sort();if(!cats.length)return;
+  var keys=Object.keys(byProd).sort();if(!keys.length)return;
   function avg(arr){return arr.length?Math.round(arr.reduce(function(a,b){return a+b},0)/arr.length):0;}
 
   var priceData=[];var pmax=0;
-  for(var p=0;p<cats.length;p++){var pcat=byCat[cats[p]];var avp=avg(pcat.prices),avs=avg(pcat.sellPrices);pmax=Math.max(pmax,avp,avs);
-    priceData.push({label:cats[p],groups:[{value:avp,color:'#4a90d9'},{value:avs,color:'#27ae60'}]});}
+  for(var p=0;p<keys.length;p++){var prod=byProd[keys[p]];var avp=avg(prod.prices),avs=avg(prod.sellPrices);pmax=Math.max(pmax,avp,avs);
+    priceData.push({label:keys[p],groups:[{value:avp,color:'#4a90d9'},{value:avs,color:'#27ae60'}]});}
   drawGroupedBarChart('sc-price-chart',priceData,{maxValue:pmax,groupLabels:['平均采购价','平均销售价'],groupColors:['#4a90d9','#27ae60'],labelWidth:80});
 
+  var marginData=[];var mxmax=0;
+  for(var m0=0;m0<keys.length;m0++){var mv=avg(byProd[keys[m0]].margins);mxmax=Math.max(mxmax,Math.abs(mv));marginData.push({label:keys[m0],value:mv,color:mv>=0?'#27ae60':'#e74c3c'});}
+  drawBarChart('sc-margin-chart',marginData,{maxValue:mxmax||10,valueFormatter:function(v){return v+'%'},labelWidth:80});
+
   var commData=[];var cmax=0;
-  for(var c2=0;c2<cats.length;c2++){var cv=avg(byCat[cats[c2]].commissions);cmax=Math.max(cmax,cv);commData.push({label:cats[c2],value:cv,color:'#e67e22'});}
+  for(var c2=0;c2<keys.length;c2++){var cv=avg(byProd[keys[c2]].commissions);cmax=Math.max(cmax,cv);commData.push({label:keys[c2],value:cv,color:'#e67e22'});}
   drawBarChart('sc-commission-chart',commData,{maxValue:cmax||10,valueFormatter:function(v){return v+'%'},labelWidth:80});
 
   var moqData=[];var mmax=0;
-  for(var m=0;m<cats.length;m++){var mv=avg(byCat[cats[m]].moqs);mmax=Math.max(mmax,mv);moqData.push({label:cats[m],value:mv,color:'#8e44ad'});}
+  for(var m=0;m<keys.length;m++){var mqv=avg(byProd[keys[m]].moqs);mmax=Math.max(mmax,mqv);moqData.push({label:keys[m],value:mqv,color:'#8e44ad'});}
   drawBarChart('sc-moq-chart',moqData,{maxValue:mmax||100,valueFormatter:function(v){return v+'件'},labelWidth:80});
 
   var cntData=[];var cntMax=0;
-  for(var n=0;n<cats.length;n++){cntMax=Math.max(cntMax,byCat[cats[n]].count);cntData.push({label:cats[n],value:byCat[cats[n]].count,color:'#3498db'});}
+  for(var n=0;n<keys.length;n++){cntMax=Math.max(cntMax,byProd[keys[n]].count);cntData.push({label:keys[n],value:byProd[keys[n]].count,color:'#3498db'});}
   drawBarChart('sc-category-chart',cntData,{maxValue:cntMax,labelWidth:80});
 }
-
 // === Company Directory Cascade Sync ===
 async function syncCompanyDirectoryRefs(){
   // When a company name/record is updated, refresh FK-linked records
