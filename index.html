@@ -5785,7 +5785,7 @@ function switchTab(tab){
     iv.classList.remove('hidden');ti.classList.add('active');
     document.getElementById('topbar-title').textContent='供应链';
     console.log('[DEBUG switchTab] inventory-view display:',getComputedStyle(iv).display,'innerHTML len:',iv.innerHTML.length);
-    switchResTab('inventory');
+    switchResTab('scouting');
   }else if(tab==='suppliers'){
     console.log('[DEBUG switchTab] suppliers branch');
     iv.classList.remove('hidden');ti.classList.add('active');
@@ -6602,7 +6602,7 @@ function switchResTab(sub){
   if(sub==='scouting'){
     tabs[0].classList.add('active');
     var fab3=document.getElementById('main-fab');if(fab3)fab3.classList.add('hidden');
-    if(itabs)itabs.style.display='';
+    if(itabs)itabs.style.display='none';
     switchInventoryTab('scouting');
   }else if(sub==='inventory'){
     tabs[1].classList.add('active');
@@ -7839,7 +7839,7 @@ var allScouting=[],scoutingEditId=null;
 
 (function(){
   var modals=document.createElement('div');
-  modals.innerHTML='<div class="modal-overlay hidden" id="scouting-modal" onclick="closeScoutingForm()"><div class="modal" onclick="event.stopPropagation()"><div class="modal-box" style="max-width:640px"><div class="modal-head"><span id="scouting-modal-title">\u6dfb\u52a0\u9009\u54c1</span><span class="modal-close" onclick="closeScoutingForm()">\u00d7</span></div><div class="modal-body" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="form-group"><label>\u9009\u54c1\u6e20\u9053 *</label><input id="sc-channel" placeholder="\u5982\uff1a1688\u3001\u4e49\u4e4c..." list="sc-channel-list" autocomplete="off"><datalist id="sc-channel-list"><option value="1688"><option value="\u4e49\u4e4c"><option value="\u4e9a\u9a6c\u900a"><option value="TikTok Shop"><option value="\u62fc\u591a\u591a"><option value="\u6dd8\u5b9d"><option value="\u4eac\u4e1c"><option value="\u5176\u4ed6"></datalist></div><div class="form-group"><label>\u4ea7\u54c1\u540d\u79f0 *</label><input id="sc-product-name" placeholder="\u4ea7\u54c1\u540d\u79f0"></div><div class="form-group"><label>\u4ea7\u54c1\u5206\u7c7b</label><input id="sc-product-category" placeholder="\u5982\uff1a\u7535\u5b50\u3001\u670d\u9970" list="sc-cat-list"><datalist id="sc-cat-list"></datalist></div><div class="form-group"><label>\u4f9b\u5e94\u5546 <span style="font-size:11px;color:var(--text-secondary);font-weight:400">\u2014 \u652f\u6301\u4f01\u4e1a\u540d\u5f55\u81ea\u52a8\u5339\u914d</span></label><div style="position:relative"><input id="sc-supplier" placeholder="\u4f9b\u5e94\u5546\u540d\u79f0" autocomplete="off" oninput="onScoutingSupplierInput()" onfocus="onScoutingSupplierInput()" onkeydown="onScoutingSupplierKeydown(event)"><div class="name-suggestions hidden" id="sc-supplier-suggestions"></div></div></div><div class="form-group"><label>\u91c7\u8d2d\u4ef7(\u5143)</label><input id="sc-purchase-price" type="number" step="0.01" placeholder="0"></div><div class="form-group"><label>\u9500\u552e\u4ef7(\u5143)</label><input id="sc-selling-price" type="number" step="0.01" placeholder="0"></div><div class="form-group"><label>\u8fbe\u4eba\u4f63\u91d1(%)</label><input id="sc-commission" type="number" step="0.01" min="0" max="100" placeholder="0"></div><div class="form-group"><label>MOQ</label><input id="sc-moq" type="number" min="1" placeholder="\u6700\u5c0f\u8d77\u8ba2\u91cf"></div><div class="form-group" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="sc-has-sample" style="width:auto"><label style="margin:0">\u5df2\u62ff\u6837\u54c1</label></div><div class="form-group" style="grid-column:1/-1"><label>\u5408\u89c4\u8981\u6c42</label><textarea id="sc-compliance" rows="2" placeholder="\u8d44\u8d28\u8bc1\u4e66\u3001\u73af\u4fdd\u6807\u51c6\u3001ISO\u8ba4\u8bc1\u7b49..."></textarea></div><div class="form-group" style="grid-column:1/-1"><label>\u4ea7\u54c1\u53c2\u6570</label><div id="sc-params"></div><button class="btn-sm" style="background:var(--surface);border:1px solid var(--border);margin-top:4px" onclick="addScoutingParam()">\uff0b \u6dfb\u52a0\u53c2\u6570</button></div><div class="form-group" style="grid-column:1/-1"><label>\u5907\u6ce8</label><input id="sc-notes" placeholder="\u53ef\u9009"></div></div><div class="modal-actions"><button class="btn-cancel" onclick="closeScoutingForm()">\u53d6\u6d88</button><button class="btn-delete hidden" id="sc-btn-delete" onclick="deleteScouting(scoutingEditId)">\u5220\u9664</button><button class="btn-save" onclick="saveScouting()">\u4fdd\u5b58</button></div></div></div></div>';
+  modals.innerHTML='<div class="modal-overlay hidden" id="scouting-modal" onclick="closeScoutingForm()"><div class="modal" onclick="event.stopPropagation()"><div class="modal-box" style="max-width:640px"><div class="modal-head"><span id="scouting-modal-title">\u6dfb\u52a0\u9009\u54c1</span><span class="modal-close" onclick="closeScoutingForm()">\u00d7</span></div><div class="modal-body" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="form-group"><label>\u9009\u54c1\u6e20\u9053 *</label><input id="sc-channel" placeholder="\u5982\uff1a1688\u3001\u4e49\u4e4c..." list="sc-channel-list" autocomplete="off"><datalist id="sc-channel-list"><option value="1688"><option value="\u4e49\u4e4c"><option value="\u4e9a\u9a6c\u900a"><option value="TikTok Shop"><option value="\u62fc\u591a\u591a"><option value="\u6dd8\u5b9d"><option value="\u4eac\u4e1c"><option value="\u5176\u4ed6"></datalist></div><div class="form-group"><label>\u4ea7\u54c1\u540d\u79f0 *</label><input id="sc-product-name" placeholder="\u4ea7\u54c1\u540d\u79f0"></div><div class="form-group"><label>\u4ea7\u54c1\u5206\u7c7b</label><input id="sc-product-category" placeholder="\u5982\uff1a\u7535\u5b50\u3001\u670d\u9970" list="sc-cat-list"><datalist id="sc-cat-list"></datalist></div><div class="form-group"><label>\u4f9b\u5e94\u5546 <span style="font-size:11px;color:var(--text-secondary);font-weight:400">\u2014 \u652f\u6301\u4f01\u4e1a\u540d\u5f55\u81ea\u52a8\u5339\u914d</span></label><div style="position:relative"><input id="sc-supplier" placeholder="\u4f9b\u5e94\u5546\u540d\u79f0" autocomplete="off" oninput="onScoutingSupplierInput()" onfocus="onScoutingSupplierInput()" onkeydown="onScoutingSupplierKeydown(event)"><div class="name-suggestions hidden" id="sc-supplier-suggestions"></div></div></div><div class="form-group"><label>\u91c7\u8d2d\u4ef7(\u5143)</label><input id="sc-purchase-price" type="number" step="0.01" placeholder="0"></div><div class="form-group"><label>\u9500\u552e\u4ef7(\u5143)</label><input id="sc-selling-price" type="number" step="0.01" placeholder="0"></div><div class="form-group"><label>\u8fbe\u4eba\u4f63\u91d1(%)</label><input id="sc-commission" type="number" step="0.01" min="0" max="100" placeholder="0"></div><div class="form-group"><label>MOQ</label><input id="sc-moq" type="number" min="1" placeholder="\u6700\u5c0f\u8d77\u8ba2\u91cf"></div><div class="form-group" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="sc-has-sample" style="width:auto"><label style="margin:0">\u5df2\u62ff\u6837\u54c1</label></div><div class="form-group"><label>\u72b6\u6001</label><select id="sc-status"><option value="pending">\u5f85\u8bc4\u4f30</option><option value="approved">\u5df2\u901a\u8fc7</option><option value="rejected">\u5df2\u5426\u51b3</option><option value="ordered">\u5df2\u91c7\u8d2d</option></select></div><div class="form-group" style="grid-column:1/-1"><label>\u5408\u89c4\u8981\u6c42</label><textarea id="sc-compliance" rows="2" placeholder="\u8d44\u8d28\u8bc1\u4e66\u3001\u73af\u4fdd\u6807\u51c6\u3001ISO\u8ba4\u8bc1\u7b49..."></textarea></div><div class="form-group" style="grid-column:1/-1"><label>\u4ea7\u54c1\u53c2\u6570</label><div id="sc-params"></div><button class="btn-sm" style="background:var(--surface);border:1px solid var(--border);margin-top:4px" onclick="addScoutingParam()">\uff0b \u6dfb\u52a0\u53c2\u6570</button></div><div class="form-group" style="grid-column:1/-1"><label>\u5907\u6ce8</label><input id="sc-notes" placeholder="\u53ef\u9009"></div></div><div class="modal-actions"><button class="btn-cancel" onclick="closeScoutingForm()">\u53d6\u6d88</button><button class="btn-delete hidden" id="sc-btn-delete" onclick="deleteScouting(scoutingEditId)">\u5220\u9664</button><button class="btn-save" onclick="saveScouting()">\u4fdd\u5b58</button></div></div></div></div>';
   document.body.appendChild(modals);
 })();
 
@@ -8061,6 +8061,7 @@ function openScoutingForm(){
   document.getElementById('sc-product-name').value='';
   document.getElementById('sc-product-category').value='';
   document.getElementById('sc-supplier').value='';
+  document.getElementById('sc-status').value='pending';
   document.getElementById('sc-purchase-price').value='';
   document.getElementById('sc-selling-price').value='';
   document.getElementById('sc-commission').value='';
@@ -8088,6 +8089,7 @@ function editScouting(id){
   document.getElementById('sc-product-category').value=s.product_category||'';
   document.getElementById('sc-supplier').value=s.supplier_name||'';
   document.getElementById('sc-supplier').dataset.supplierId=s.supplier_id||'';
+  document.getElementById('sc-status').value=s.status||'pending';
   document.getElementById('sc-purchase-price').value=s.purchase_price||'';
   document.getElementById('sc-selling-price').value=s.selling_price||'';
   document.getElementById('sc-commission').value=s.influencer_commission||'';
@@ -8133,7 +8135,7 @@ async function saveScouting(){
     compliance_requirements:document.getElementById('sc-compliance').value.trim()||null,
     product_params:JSON.stringify(params),
     notes:document.getElementById('sc-notes').value.trim()||null,
-    status:'pending',
+    status:document.getElementById('sc-status').value||'pending',
     updated_at:new Date().toISOString()
   };
   var r;
