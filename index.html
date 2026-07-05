@@ -2131,7 +2131,8 @@ input,select,textarea,button{font-family:inherit}
     <select id="sc-filter-channel" onchange="renderScouting()" style="width:110px"><option value="">全部渠道</option></select>
     <select id="sc-filter-status" onchange="renderScouting()" style="width:100px"><option value="">全部状态</option><option value="pending">待评估</option><option value="approved">已通过</option><option value="rejected">已否决</option><option value="ordered">已采购</option></select>
     <select id="sc-filter-category" onchange="renderScouting()" style="width:120px"><option value="">全部分类</option></select>
-    <button class="btn-xs" style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;cursor:pointer" onclick="toggleScCatManage()">📂 类别</button>
+    <button class="btn-xs" style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;cursor:pointer" id="sc-cat-toolbar-btn" onclick="toggleScCatManage()">📂 类别</button>
+    <div id="sc-cat-toolbar-panel" class="hidden" style="width:100%;background:var(--card);border-radius:8px;padding:10px;margin-top:4px"><div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px">分类管理</div><div id="sc-cat-toolbar-tags" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div><div style="display:flex;gap:6px"><input id="sc-cat-toolbar-new" placeholder="新分类名称" style="flex:1;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--bg);color:var(--text)" onkeydown="if(event.key===\u0027Enter\u0027)addScCatToolbar()"><button class="btn-sm" style="background:var(--primary);color:#fff;font-size:12px" onclick="addScCatToolbar()">添加</button></div></div>
     <div style="flex:1"></div>
     <button class="btn-sm btn-sm-primary" onclick="openScoutingForm()">＋ 添加选品</button>
    </div>
@@ -8199,8 +8200,21 @@ function initScCat(){
 }
 function saveScCat(){localStorage.setItem('custom_scouting_cats',JSON.stringify(scoutingCategories));}
 function toggleScCatManage(){
-  var panel=document.getElementById('sc-cat-manage');if(!panel)return;
-  panel.classList.toggle('hidden');if(!panel.classList.contains('hidden'))renderScCatTags();
+  var panel=document.getElementById('sc-cat-toolbar-panel');if(!panel)return;
+  panel.classList.toggle('hidden');if(!panel.classList.contains('hidden'))renderScCatToolbarTags();
+}
+function renderScCatToolbarTags(){
+  initScCat();var el=document.getElementById('sc-cat-toolbar-tags');if(!el)return;
+  if(!scoutingCategories.length){el.innerHTML='<span style="font-size:12px;color:var(--text-secondary)">暂无自定义分类</span>';return;}
+  var h='';
+  for(var i=0;i<scoutingCategories.length;i++)h+='<span style="display:inline-flex;align-items:center;gap:4px;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-size:12px">'+escHtml(scoutingCategories[i])+' <span style="cursor:pointer;color:var(--danger);font-weight:700" onclick="removeScCat('+i+');renderScCatToolbarTags();buildScCatDropdowns();buildScCatFilterDropdown()">×</span></span>';
+  el.innerHTML=h;
+}
+function addScCatToolbar(){
+  var input=document.getElementById('sc-cat-toolbar-new');if(!input)return;
+  var name=input.value.trim();if(!name)return;
+  initScCat();if(scoutingCategories.indexOf(name)<0)scoutingCategories.push(name);
+  scoutingCategories.sort();saveScCat();input.value='';renderScCatToolbarTags();buildScCatDropdowns();buildScCatFilterDropdown();
 }
 function renderScCatTags(){
   initScCat();var el=document.getElementById('sc-cat-tags');if(!el)return;
@@ -15648,15 +15662,9 @@ function openFWVisitForm(id){
   document.getElementById('fw-vm-purpose').value='';
   document.getElementById('fw-vm-notes').value='';
   document.getElementById('fw-vm-result').value='';
+  document.getElementById('fw-vm-client-list').classList.add('hidden');
   document.getElementById('fw-vm-client-list').innerHTML='';
   document.getElementById('fw-visit-modal').classList.remove('hidden');
-  // Client autocomplete
-  document.getElementById('fw-vm-client').addEventListener('input',function(){
-    var q=this.value.trim().toLowerCase();var list=document.getElementById('fw-vm-client-list');
-    if(!q||!allClients.length){list.innerHTML='';return}
-    var matches=allClients.filter(function(c){return (c.name||'').toLowerCase().indexOf(q)>-1}).slice(0,6);
-    var h='';for(var i=0;i<matches.length;i++){var mid=matches[i].id;var mn=matches[i].name.replace(/'/g,"\\'");h+='<div style="padding:8px 10px;cursor:pointer;border-bottom:1px solid var(--border2)'+(i===0?'background:var(--bg2);font-weight:600':'')+'" onclick="selectFWClient(\''+mid+'\',\''+mn+'\')">'+h2(matches[i].name)+'</div>'}
-    list.innerHTML=h;
   });
   if(id){
     // Load existing data
@@ -15674,10 +15682,36 @@ function openFWVisitForm(id){
 }
 // Helper for autocomplete
 function h2(s){return s?s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'):''}
+var fwClientSuggIdx=-1,fwClientSuggList=[];
+function onFWClientInput(){
+  var inp=document.getElementById('fw-vm-client');if(!inp)return;
+  var q=(inp.value||'').trim().toLowerCase();
+  var list=document.getElementById('fw-vm-client-list');if(!list)return;
+  if(!q||!allClients.length){list.classList.add('hidden');list.innerHTML='';return}
+  var matches=allClients.filter(function(c){return (c.name||'').toLowerCase().indexOf(q)>=0}).slice(0,8);
+  if(!matches.length){list.classList.add('hidden');list.innerHTML='';return}
+  fwClientSuggList=matches;fwClientSuggIdx=0;
+  var h='';
+  for(var i=0;i<matches.length;i++){
+    h+='<div class="name-suggestion-item'+(i===0?' active':'')+'" onmousedown="selectFWClient(\''+matches[i].id+'\')">'+escHtml(matches[i].name)+'</div>';
+  }
+  list.innerHTML=h;list.classList.remove('hidden');
+}
+function onFWClientKey(e){
+  var list=document.getElementById('fw-vm-client-list');if(!list||list.classList.contains('hidden'))return;
+  var items=list.querySelectorAll('.name-suggestion-item');if(!items.length)return;
+  if(e.key==='ArrowDown'){e.preventDefault();fwClientSuggIdx=Math.min((fwClientSuggIdx||-1)+1,items.length-1)}
+  else if(e.key==='ArrowUp'){e.preventDefault();fwClientSuggIdx=Math.max((fwClientSuggIdx||0)-1,0)}
+  else if(e.key==='Enter'&&fwClientSuggIdx>=0){e.preventDefault();items[fwClientSuggIdx]&&items[fwClientSuggIdx].click();return}
+  else{fwClientSuggIdx=-1}
+  for(var i=0;i<items.length;i++)items[i].classList.toggle('active',i===fwClientSuggIdx);
+}
 function selectFWClient(id,name){
-  document.getElementById('fw-vm-client').value=name;
   fwVisitClientId=id;
-  document.getElementById('fw-vm-client-list').innerHTML='';
+  var list=document.getElementById('fw-vm-client-list');if(list){list.classList.add('hidden');list.innerHTML=''}
+  fwClientSuggIdx=-1;fwClientSuggList=[];
+  var cl=allClients.find(function(x){return x.id===id});
+  document.getElementById('fw-vm-client').value=cl?cl.name:(name||'');
 }
 function closeFVisit(){document.getElementById('fw-visit-modal').classList.add('hidden')}
 var fwLocationConfirmCallback=null;
@@ -16973,7 +17007,7 @@ async function updateFieldCollabMode(fieldId,mode){
       <div class="modal-card" style="max-width:520px;max-height:85vh;overflow-y:auto">
         <div class="modal-hdr"><span id="fw-vm-title">新增拜访记录</span><button class="modal-x" onclick="closeVisitForm()">✕</button></div>
         <div class="fw-visit-form">
-          <div class="fw-field"><label>客户名称 *</label><input id="fw-vm-client" placeholder="搜索客户..." style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg);color:var(--text)"><div id="fw-vm-client-list" style="max-height:150px;overflow-y:auto"></div></div>
+          <div class="fw-field" style="position:relative"><label>客户名称 *</label><input id="fw-vm-client" placeholder="搜索客户..." style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg);color:var(--text)" autocomplete="off" oninput="onFWClientInput()" onkeydown="onFWClientKey(event)" onblur="setTimeout(function(){var l=document.getElementById('fw-vm-client-list');if(l)l.classList.add('hidden')},200)"><div id="fw-vm-client-list" class="name-suggestions hidden"></div></div>
           <div class="fw-field"><label>拜访目的</label><select id="fw-vm-purpose" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg);color:var(--text)"><option value="">请选择</option><option value="初次拜访">初次拜访</option><option value="需求沟通">需求沟通</option><option value="方案演示">方案演示</option><option value="商务谈判">商务谈判</option><option value="合同签署">合同签署</option><option value="售后服务">售后服务</option><option value="关系维护">关系维护</option><option value="催款">催款</option><option value="其他">其他</option></select></div>
           <div class="fw-field"><label>拜访日期</label><input type="date" id="fw-vm-date" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg);color:var(--text)"></div>
           <div class="fw-field"><label>拜访内容</label><textarea id="fw-vm-notes" rows="3" placeholder="沟通内容、客户反馈..." style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg);color:var(--text);resize:vertical"></textarea></div>
