@@ -8619,6 +8619,10 @@ function openProductForm(){
   document.getElementById('pfm-cost').value='';
   document.getElementById('pfm-price').value='';
   document.getElementById('pfm-commission-rate').value='';
+  document.getElementById('pfm-moq').value='';
+  document.getElementById('pfm-sample').value='';
+  document.getElementById('pfm-channel').value='';
+  document.getElementById('pfm-compliance').value='';
   document.getElementById('pfm-desc').value='';
   document.getElementById('pfm-image-url').value='';
   document.getElementById('product-btn-delete').classList.add('hidden');
@@ -8638,6 +8642,11 @@ function editProduct(id){
   document.getElementById('pfm-cost').value=p.cost_price||'';
   document.getElementById('pfm-price').value=p.selling_price||'';
   document.getElementById('pfm-commission-rate').value=p.commission_rate||'';
+  var _sp={};try{_sp=typeof p.specs==='string'?JSON.parse(p.specs):(p.specs||{})}catch(e){_sp={}}
+  document.getElementById('pfm-moq').value=_sp['MOQ']||_sp['moq']||'';
+  document.getElementById('pfm-sample').value=_sp['有无样品']==='有'?'1':(_sp['有无样品']==='无'?'0':'');
+  document.getElementById('pfm-channel').value=_sp['渠道']||_sp['供货渠道']||'';
+  document.getElementById('pfm-compliance').value=_sp['合规要求']||'';
   document.getElementById('pfm-desc').value=p.description||'';
   tempSpecs=(p.specs&&typeof p.specs==='object'&&!Array.isArray(p.specs))?Object.entries(p.specs).map(function(e){return{key:e[0],val:e[1]}}):[];
   tempImages=(p.images&&Array.isArray(p.images))?p.images:[];
@@ -8677,6 +8686,10 @@ async function saveProduct(){
   if(!name){showToast('请输入产品名称');return}
   var specs={};
   for(var i=0;i<tempSpecs.length;i++)if(tempSpecs[i].key)specs[tempSpecs[i].key]=tempSpecs[i].val||'';
+  var _moq=document.getElementById('pfm-moq').value.trim();if(_moq)specs['MOQ']=_moq;
+  var _sample=document.getElementById('pfm-sample').value;if(_sample==='1')specs['有无样品']='有';else if(_sample==='0')specs['有无样品']='无';
+  var _channel=document.getElementById('pfm-channel').value.trim();if(_channel)specs['渠道']=_channel;
+  var _compliance=document.getElementById('pfm-compliance').value.trim();if(_compliance)specs['合规要求']=_compliance;
   var data={
     company_id:currentCompanyId,
     name:name,
@@ -17259,6 +17272,14 @@ async function updateFieldCollabMode(fieldId,mode){
   </div>
   <div class="form-row">
    <div class="form-group"><label>佣金比例(%)</label><input id="pfm-commission-rate" type="number" step="0.01" min="0" max="100" placeholder="0"></div>
+  </div>
+  <div class="form-row">
+   <div class="form-group"><label>起订量(MOQ)</label><input id="pfm-moq" type="number" step="1" min="0" placeholder="最低起订量"></div>
+   <div class="form-group"><label>有无样品</label><select id="pfm-sample"><option value="">未设置</option><option value="1">有</option><option value="0">无</option></select></div>
+  </div>
+  <div class="form-row">
+   <div class="form-group"><label>供货渠道</label><input id="pfm-channel" placeholder="如：1688、线下批发"></div>
+   <div class="form-group"><label>合规要求</label><input id="pfm-compliance" placeholder="如：CE认证、FDA注册"></div>
   </div>
   <div class="form-group"><label>规格参数</label>
    <div id="pfm-specs"></div>
