@@ -2130,8 +2130,9 @@ input,select,textarea,button{font-family:inherit}
     <input id="sc-filter-supplier" placeholder="搜索供应商..." style="width:140px" oninput="renderScouting()">
     <select id="sc-filter-channel" onchange="renderScouting()" style="width:110px"><option value="">全部渠道</option></select>
     <select id="sc-filter-status" onchange="renderScouting()" style="width:100px"><option value="">全部状态</option><option value="pending">待评估</option><option value="approved">已通过</option><option value="rejected">已否决</option><option value="ordered">已采购</option></select>
-    <select id="sc-filter-category"id="sc-filter-compare" style="margin-left:8px;vertical-align:middle" title="仅对比已勾选"><label style="font-size:12px;margin-left:4px;cursor:pointer">对比已选</label>&nbsp;&nbsp;<button class="btn-xs" style="background:var(--surface);border:1px solid var(--border);cursor:pointer;border-radius:4px;padding:2px 8px;font-size:11px" onclick="toggleAllCompare()" title="全选/取消">全选</button>
-    &nbsp; onchange="renderScouting()" style="width:120px"><option value="">全部分类</option></select>
+    <select id="sc-filter-category" onchange="renderScouting()" style="width:120px"><option value="">全部分类</option></select>
+    <label style="font-size:12px;margin-left:8px;cursor:pointer;vertical-align:middle;user-select:none"><input type="checkbox" id="sc-filter-compare" onchange="refreshScoutingCompare()" title="仅对比已勾选" style="vertical-align:middle;margin-right:4px">对比已选</label>
+    <button class="btn-xs" style="background:var(--surface);border:1px solid var(--border);cursor:pointer;border-radius:4px;padding:2px 8px;font-size:11px" onclick="toggleAllCompare()" title="全选/取消">全选</button>
     <button class="btn-xs" style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;cursor:pointer" id="sc-cat-toolbar-btn" onclick="toggleScCatManage()">📂 类别</button>
     <div id="sc-cat-toolbar-panel" class="hidden" style="width:100%;background:var(--card);border-radius:8px;padding:10px;margin-top:4px"><div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px">分类管理</div><div id="sc-cat-toolbar-tags" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div><div style="display:flex;gap:6px"><input id="sc-cat-toolbar-new" placeholder="新分类名称" style="flex:1;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--bg);color:var(--text)" onkeydown="if(event.key===&#39;Enter&#39;)addScCatToolbar()"><button class="btn-sm" style="background:var(--primary);color:#fff;font-size:12px" onclick="addScCatToolbar()">添加</button></div></div>
     <div style="flex:1"></div>
@@ -8005,9 +8006,7 @@ function refreshScoutingCompare(){
   // Restore saved tax rate
   var _tr=document.getElementById('sc-tax-rate');if(_tr&&!_tr.dataset.loaded){var _saved=localStorage.getItem('sc_tax_rate');if(_saved!==null)_tr.value=_saved;_tr.dataset.loaded='1';
     _tr.addEventListener('change',function(){localStorage.setItem('sc_tax_rate',this.value)});}
-  var head=document.getElementById('scouting-compare-head');
-  var body=document.getElementById('scouting-compare-body');
-  if(!head||!body)return;
+
   // Apply filters
   var fp=(document.getElementById('sc-filter-product')||{}).value||'';
   var fs=(document.getElementById('sc-filter-supplier')||{}).value||'';
