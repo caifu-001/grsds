@@ -2130,6 +2130,8 @@ input,select,textarea,button{font-family:inherit}
     <input id="sc-filter-supplier" placeholder="搜索供应商..." style="width:140px" oninput="renderScouting()">
     <select id="sc-filter-channel" onchange="renderScouting()" style="width:110px"><option value="">全部渠道</option></select>
     <select id="sc-filter-status" onchange="renderScouting()" style="width:100px"><option value="">全部状态</option><option value="pending">待评估</option><option value="approved">已通过</option><option value="rejected">已否决</option><option value="ordered">已采购</option></select>
+    <select id="sc-filter-category" onchange="renderScouting()" style="width:120px"><option value="">全部分类</option></select>
+    <button class="btn-xs" style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;cursor:pointer" onclick="toggleScCatManage()">📂 类别</button>
     <div style="flex:1"></div>
     <button class="btn-sm btn-sm-primary" onclick="openScoutingForm()">＋ 添加选品</button>
    </div>
@@ -2160,7 +2162,7 @@ input,select,textarea,button{font-family:inherit}
       </table>
      </div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px" id="scouting-charts-row">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px" id="scouting-charts-row-1">
      <div style="background:var(--card);border-radius:12px;padding:16px">
       <h4 style="margin:0 0 12px;font-size:14px">🏪 渠道分布</h4>
       <div id="sc-channel-chart" style="display:flex;flex-direction:column;gap:8px"></div>
@@ -2168,6 +2170,27 @@ input,select,textarea,button{font-family:inherit}
      <div style="background:var(--card);border-radius:12px;padding:16px">
       <h4 style="margin:0 0 12px;font-size:14px">📋 状态统计</h4>
       <div id="sc-status-chart" style="display:flex;flex-direction:column;gap:8px"></div>
+     </div>
+    </div>
+    <!-- Price & Commission Charts -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px" id="scouting-charts-row-2">
+     <div style="background:var(--card);border-radius:12px;padding:16px">
+      <h4 style="margin:0 0 12px;font-size:14px">💰 价格对比分析（按分类）</h4>
+      <canvas id="sc-price-chart" style="width:100%;height:240px"></canvas>
+     </div>
+     <div style="background:var(--card);border-radius:12px;padding:16px">
+      <h4 style="margin:0 0 12px;font-size:14px">📊 佣金分析（按分类）</h4>
+      <canvas id="sc-commission-chart" style="width:100%;height:240px"></canvas>
+     </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px" id="scouting-charts-row-3">
+     <div style="background:var(--card);border-radius:12px;padding:16px">
+      <h4 style="margin:0 0 12px;font-size:14px">📦 MOQ 对比分析（按分类）</h4>
+      <canvas id="sc-moq-chart" style="width:100%;height:240px"></canvas>
+     </div>
+     <div style="background:var(--card);border-radius:12px;padding:16px">
+      <h4 style="margin:0 0 12px;font-size:14px">📈 分类产品数量分布</h4>
+      <canvas id="sc-category-chart" style="width:100%;height:240px"></canvas>
      </div>
     </div>
    </div>
@@ -7839,7 +7862,7 @@ var allScouting=[],scoutingEditId=null;
 
 (function(){
   var modals=document.createElement('div');
-  modals.innerHTML='<div class="modal-overlay hidden" id="scouting-modal" onclick="closeScoutingForm()"><div class="modal" onclick="event.stopPropagation()"><div class="modal-box" style="max-width:640px"><div class="modal-head"><span id="scouting-modal-title">\u6dfb\u52a0\u9009\u54c1</span><span class="modal-close" onclick="closeScoutingForm()">\u00d7</span></div><div class="modal-body" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="form-group"><label>\u9009\u54c1\u6e20\u9053 *</label><input id="sc-channel" placeholder="\u5982\uff1a1688\u3001\u4e49\u4e4c..." list="sc-channel-list" autocomplete="off"><datalist id="sc-channel-list"><option value="1688"><option value="\u4e49\u4e4c"><option value="\u4e9a\u9a6c\u900a"><option value="TikTok Shop"><option value="\u62fc\u591a\u591a"><option value="\u6dd8\u5b9d"><option value="\u4eac\u4e1c"><option value="\u5176\u4ed6"></datalist></div><div class="form-group"><label>\u4ea7\u54c1\u540d\u79f0 *</label><input id="sc-product-name" placeholder="\u4ea7\u54c1\u540d\u79f0"></div><div class="form-group"><label>\u4ea7\u54c1\u5206\u7c7b</label><input id="sc-product-category" placeholder="\u5982\uff1a\u7535\u5b50\u3001\u670d\u9970" list="sc-cat-list"><datalist id="sc-cat-list"></datalist></div><div class="form-group"><label>\u4f9b\u5e94\u5546 <span style="font-size:11px;color:var(--text-secondary);font-weight:400">\u2014 \u652f\u6301\u4f01\u4e1a\u540d\u5f55\u81ea\u52a8\u5339\u914d</span></label><div style="position:relative"><input id="sc-supplier" placeholder="\u4f9b\u5e94\u5546\u540d\u79f0" autocomplete="off" oninput="onScoutingSupplierInput()" onfocus="onScoutingSupplierInput()" onkeydown="onScoutingSupplierKeydown(event)"><div class="name-suggestions hidden" id="sc-supplier-suggestions"></div></div></div><div class="form-group"><label>\u91c7\u8d2d\u4ef7(\u5143)</label><input id="sc-purchase-price" type="number" step="0.01" placeholder="0"></div><div class="form-group"><label>\u9500\u552e\u4ef7(\u5143)</label><input id="sc-selling-price" type="number" step="0.01" placeholder="0"></div><div class="form-group"><label>\u8fbe\u4eba\u4f63\u91d1(%)</label><input id="sc-commission" type="number" step="0.01" min="0" max="100" placeholder="0"></div><div class="form-group"><label>MOQ</label><input id="sc-moq" type="number" min="1" placeholder="\u6700\u5c0f\u8d77\u8ba2\u91cf"></div><div class="form-group" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="sc-has-sample" style="width:auto"><label style="margin:0">\u5df2\u62ff\u6837\u54c1</label></div><div class="form-group"><label>\u72b6\u6001</label><select id="sc-status"><option value="pending">\u5f85\u8bc4\u4f30</option><option value="approved">\u5df2\u901a\u8fc7</option><option value="rejected">\u5df2\u5426\u51b3</option><option value="ordered">\u5df2\u91c7\u8d2d</option></select></div><div class="form-group" style="grid-column:1/-1"><label>\u5408\u89c4\u8981\u6c42</label><textarea id="sc-compliance" rows="2" placeholder="\u8d44\u8d28\u8bc1\u4e66\u3001\u73af\u4fdd\u6807\u51c6\u3001ISO\u8ba4\u8bc1\u7b49..."></textarea></div><div class="form-group" style="grid-column:1/-1"><label>\u4ea7\u54c1\u53c2\u6570</label><div id="sc-params"></div><button class="btn-sm" style="background:var(--surface);border:1px solid var(--border);margin-top:4px" onclick="addScoutingParam()">\uff0b \u6dfb\u52a0\u53c2\u6570</button></div><div class="form-group" style="grid-column:1/-1"><label>\u5907\u6ce8</label><input id="sc-notes" placeholder="\u53ef\u9009"></div></div><div class="modal-actions"><button class="btn-cancel" onclick="closeScoutingForm()">\u53d6\u6d88</button><button class="btn-delete hidden" id="sc-btn-delete" onclick="deleteScouting(scoutingEditId)">\u5220\u9664</button><button class="btn-save" onclick="saveScouting()">\u4fdd\u5b58</button></div></div></div></div>';
+  modals.innerHTML='<div class="modal-overlay hidden" id="scouting-modal" onclick="closeScoutingForm()"><div class="modal" onclick="event.stopPropagation()"><div class="modal-box" style="max-width:640px"><div class="modal-head"><span id="scouting-modal-title">\u6dfb\u52a0\u9009\u54c1</span><span class="modal-close" onclick="closeScoutingForm()">\u00d7</span></div><div class="modal-body" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="form-group"><label>\u9009\u54c1\u6e20\u9053 *</label><input id="sc-channel" placeholder="\u5982\uff1a1688\u3001\u4e49\u4e4c..." list="sc-channel-list" autocomplete="off"><datalist id="sc-channel-list"><option value="1688"><option value="\u4e49\u4e4c"><option value="\u4e9a\u9a6c\u900a"><option value="TikTok Shop"><option value="\u62fc\u591a\u591a"><option value="\u6dd8\u5b9d"><option value="\u4eac\u4e1c"><option value="\u5176\u4ed6"></datalist></div><div class="form-group"><label>\u4ea7\u54c1\u540d\u79f0 *</label><input id="sc-product-name" placeholder="\u4ea7\u54c1\u540d\u79f0"></div><div class="form-group"><label>\u4ea7\u54c1\u5206\u7c7b <button class=\"btn-xs\" style=\"background:var(--surface);border:1px solid var(--border);color:var(--text);margin-left:4px;cursor:pointer;padding:2px 6px;border-radius:4px\" onclick=\"event.stopPropagation();toggleScCatManage()\" title=\"\u7ba1\u7406\u5206\u7c7b\">\ud83d\udcc2</button></label><select id=\"sc-product-category\"><option value=\"\">\u9009\u62e9\u5206\u7c7b</option></select><div id=\"sc-cat-manage\" class=\"hidden\" style=\"grid-column:1/-1;background:var(--surface);border-radius:8px;padding:10px\"><div style=\"font-size:12px;color:var(--text-secondary);margin-bottom:6px\">\u5206\u7c7b\u7ba1\u7406</div><div id=\"sc-cat-tags\" style=\"display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px\"></div><div style=\"display:flex;gap:6px\"><input id=\"sc-cat-new\" placeholder=\"\u65b0\u5206\u7c7b\u540d\u79f0\" style=\"flex:1\" onkeydown=\"if(event.key===\\\u0027Enter\\u0027)addScCat()\"><button class=\"btn-sm\" style=\"background:var(--primary);color:#fff\" onclick=\"addScCat()\">\u6dfb\u52a0</button></div></div></div><div class="form-group"><label>\u4f9b\u5e94\u5546 <span style="font-size:11px;color:var(--text-secondary);font-weight:400">\u2014 \u652f\u6301\u4f01\u4e1a\u540d\u5f55\u81ea\u52a8\u5339\u914d</span></label><div style="position:relative"><input id="sc-supplier" placeholder="\u4f9b\u5e94\u5546\u540d\u79f0" autocomplete="off" oninput="onScoutingSupplierInput()" onfocus="onScoutingSupplierInput()" onkeydown="onScoutingSupplierKeydown(event)"><div class="name-suggestions hidden" id="sc-supplier-suggestions"></div></div></div><div class="form-group"><label>\u91c7\u8d2d\u4ef7(\u5143)</label><input id="sc-purchase-price" type="number" step="0.01" placeholder="0"></div><div class="form-group"><label>\u9500\u552e\u4ef7(\u5143)</label><input id="sc-selling-price" type="number" step="0.01" placeholder="0"></div><div class="form-group"><label>\u8fbe\u4eba\u4f63\u91d1(%)</label><input id="sc-commission" type="number" step="0.01" min="0" max="100" placeholder="0"></div><div class="form-group"><label>MOQ</label><input id="sc-moq" type="number" min="1" placeholder="\u6700\u5c0f\u8d77\u8ba2\u91cf"></div><div class="form-group" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="sc-has-sample" style="width:auto"><label style="margin:0">\u5df2\u62ff\u6837\u54c1</label></div><div class="form-group"><label>\u72b6\u6001</label><select id="sc-status"><option value="pending">\u5f85\u8bc4\u4f30</option><option value="approved">\u5df2\u901a\u8fc7</option><option value="rejected">\u5df2\u5426\u51b3</option><option value="ordered">\u5df2\u91c7\u8d2d</option></select></div><div class="form-group" style="grid-column:1/-1"><label>\u5408\u89c4\u8981\u6c42</label><textarea id="sc-compliance" rows="2" placeholder="\u8d44\u8d28\u8bc1\u4e66\u3001\u73af\u4fdd\u6807\u51c6\u3001ISO\u8ba4\u8bc1\u7b49..."></textarea></div><div class="form-group" style="grid-column:1/-1"><label>\u4ea7\u54c1\u53c2\u6570</label><div id="sc-params"></div><button class="btn-sm" style="background:var(--surface);border:1px solid var(--border);margin-top:4px" onclick="addScoutingParam()">\uff0b \u6dfb\u52a0\u53c2\u6570</button></div><div class="form-group" style="grid-column:1/-1"><label>\u5907\u6ce8</label><input id="sc-notes" placeholder="\u53ef\u9009"></div></div><div class="modal-actions"><button class="btn-cancel" onclick="closeScoutingForm()">\u53d6\u6d88</button><button class="btn-delete hidden" id="sc-btn-delete" onclick="deleteScouting(scoutingEditId)">\u5220\u9664</button><button class="btn-save" onclick="saveScouting()">\u4fdd\u5b58</button></div></div></div></div>';
   document.body.appendChild(modals);
 })();
 
@@ -7869,6 +7892,7 @@ async function loadScouting(){
   allScouting=r.data||[];
   renderScouting();
   refreshScoutingCompare();
+  buildScCatFilterDropdown();
 }
 
 function renderScouting(){
@@ -7879,6 +7903,7 @@ function renderScouting(){
   var fs=(document.getElementById('sc-filter-supplier')||{}).value||'';
   var fc=(document.getElementById('sc-filter-channel')||{}).value||'';
   var fst=(document.getElementById('sc-filter-status')||{}).value||'';
+  var fct=(document.getElementById('sc-filter-category')||{}).value||'';
   fp=fp.trim().toLowerCase();fs=fs.trim().toLowerCase();
   var filtered=[];
   for(var i=0;i<allScouting.length;i++){
@@ -7887,6 +7912,7 @@ function renderScouting(){
     if(fs&&(s.supplier_name||'').toLowerCase().indexOf(fs)<0)continue;
     if(fc&&s.channel!==fc)continue;
     if(fst&&s.status!==fst)continue;
+    if(fct&&s.product_category!==fct)continue;
     filtered.push(s);
   }
   // Update stats bar
@@ -7903,6 +7929,16 @@ function renderScouting(){
     var avgPrice=priceCount>0?'￥'+fmtNum(totalPrice/priceCount):'-';
     stats.innerHTML='<span>📦 共<b>'+total+'</b>条选品</span><span class="tag tag-success">✅ 已通过 '+approved+'</span><span class="tag tag-warning">⏳ 待评估 '+pending+'</span><span class="tag tag-danger">❌ 已否决 '+rejected+'</span><span>💰 均价 '+avgPrice+'</span>';
     if(filtered.length!==total)stats.innerHTML+='<span style="color:var(--primary)">🔍 筛选: '+filtered.length+' 条</span>';
+  }
+  // Update category filter dropdown
+  var ctSel=document.getElementById('sc-filter-category');
+  if(ctSel){
+    var cts={},ctprev=ctSel.value;
+    for(var cti=0;cti<allScouting.length;cti++){var ct2=allScouting[cti].product_category;if(ct2&&!cts[ct2])cts[ct2]=1;}
+    var ctOpt='<option value="">全部分类</option>';
+    var ctKeys=Object.keys(cts).sort();
+    for(var ctk=0;ctk<ctKeys.length;ctk++)ctOpt+='<option value="'+escHtml(ctKeys[ctk])+'">'+escHtml(ctKeys[ctk])+'</option>';
+    ctSel.innerHTML=ctOpt;ctSel.value=ctprev;
   }
   // Update channel filter dropdown
   var chSel=document.getElementById('sc-filter-channel');
@@ -7950,6 +7986,7 @@ function refreshScoutingCompare(){
   var fs=(document.getElementById('sc-filter-supplier')||{}).value||'';
   var fc=(document.getElementById('sc-filter-channel')||{}).value||'';
   var fst=(document.getElementById('sc-filter-status')||{}).value||'';
+  var fct=(document.getElementById('sc-filter-category')||{}).value||'';
   fp=fp.trim().toLowerCase();fs=fs.trim().toLowerCase();
   var filtered=[];
   for(var i=0;i<allScouting.length;i++){
@@ -7958,6 +7995,7 @@ function refreshScoutingCompare(){
     if(fs&&(s.supplier_name||'').toLowerCase().indexOf(fs)<0)continue;
     if(fc&&s.channel!==fc)continue;
     if(fst&&s.status!==fst)continue;
+    if(fct&&s.product_category!==fct)continue;
     filtered.push(s);
   }
   // ====== Summary Cards ======
@@ -8010,6 +8048,8 @@ function refreshScoutingCompare(){
     }
     stEl.innerHTML=stHtml||'<div style="color:var(--text-secondary);font-size:13px">\u6682\u65e0\u6570\u636e</div>';
   }else if(stEl){stEl.innerHTML='<div style="color:var(--text-secondary);font-size:13px">\u6682\u65e0\u6570\u636e</div>';}
+  // ====== Canvas Charts ======
+  drawScoutingCategoryCharts(filtered);
   // ====== Compare Table ======
   if(!filtered.length){head.innerHTML='';body.innerHTML='<tr><td style="text-align:center;padding:24px;color:var(--text-secondary)">\u6682\u65e0\u9009\u54c1\u53ef\u5bf9\u6bd4</td></tr>';return;}
   var groups={};
@@ -8073,11 +8113,9 @@ function openScoutingForm(){
   renderScParams();
   // Update supplier autocomplete with existing scouting suppliers
   updateScoutingDatalists();
+  buildScCatDropdowns();
+  buildScCatFilterDropdown();
   document.getElementById('scouting-modal').classList.remove('hidden');
-  // Update categories datalist
-  var cats=[];
-  for(var i=0;i<allScouting.length;i++){var c2=allScouting[i].product_category;if(c2&&cats.indexOf(c2)<0)cats.push(c2);}
-  document.getElementById('sc-cat-list').innerHTML=cats.map(function(x){return '<option value="'+escHtml(x)+'">'}).join('');
 }
 
 function editScouting(id){
@@ -8104,10 +8142,9 @@ function editScouting(id){
   if(params&&typeof params==='object'){var ks=Object.keys(params);for(var k=0;k<ks.length;k++)scTempParams.push({key:ks[k],val:params[ks[k]]});}
   renderScParams();
   updateScoutingDatalists();
-  // Categories
-  var cats=[];
-  for(var i=0;i<allScouting.length;i++){var c2=allScouting[i].product_category;if(c2&&cats.indexOf(c2)<0)cats.push(c2);}
-  document.getElementById('sc-cat-list').innerHTML=cats.map(function(x){return '<option value="'+escHtml(x)+'">'}).join('');
+  buildScCatDropdowns();
+  buildScCatFilterDropdown();
+  document.getElementById('sc-product-category').value=s.product_category||'';
   document.getElementById('scouting-modal').classList.remove('hidden');
 }
 
@@ -8155,6 +8192,143 @@ async function deleteScouting(id){
   await loadScouting();
 }
 
+
+// === Canvas Chart Helpers ===
+function initScCat(){
+  try{scoutingCategories=JSON.parse(localStorage.getItem('custom_scouting_cats')||'[]')}catch(e){scoutingCategories=[]}
+}
+function saveScCat(){localStorage.setItem('custom_scouting_cats',JSON.stringify(scoutingCategories));}
+function toggleScCatManage(){
+  var panel=document.getElementById('sc-cat-manage');if(!panel)return;
+  panel.classList.toggle('hidden');if(!panel.classList.contains('hidden'))renderScCatTags();
+}
+function renderScCatTags(){
+  initScCat();var el=document.getElementById('sc-cat-tags');if(!el)return;
+  if(!scoutingCategories.length){el.innerHTML='<span style="font-size:12px;color:var(--text-secondary)">暂无自定义分类</span>';return;}
+  var h='';
+  for(var i=0;i<scoutingCategories.length;i++)h+='<span style="display:inline-flex;align-items:center;gap:4px;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-size:12px">'+escHtml(scoutingCategories[i])+' <span style="cursor:pointer;color:var(--danger);font-weight:700" onclick="removeScCat('+i+')">\u00d7</span></span>';
+  el.innerHTML=h;
+}
+function addScCat(){
+  var input=document.getElementById('sc-cat-new');if(!input)return;
+  var name=input.value.trim();if(!name)return;
+  initScCat();if(scoutingCategories.indexOf(name)<0)scoutingCategories.push(name);
+  scoutingCategories.sort();saveScCat();input.value='';renderScCatTags();buildScCatDropdowns();
+}
+function removeScCat(idx){initScCat();scoutingCategories.splice(idx,1);saveScCat();renderScCatTags();buildScCatDropdowns();}
+function buildScCatDropdowns(){
+  var sel=document.getElementById('sc-product-category');if(!sel)return;
+  initScCat();var existing={};
+  for(var i=0;i<allScouting.length;i++){var c2=allScouting[i].product_category;if(c2)existing[c2]=1;}
+  for(var j=0;j<scoutingCategories.length;j++){if(!existing[scoutingCategories[j]])existing[scoutingCategories[j]]=1;}
+  var sorted=Object.keys(existing).sort();
+  var prev=sel.value;sel.innerHTML='<option value="">选择分类</option>';
+  for(var k=0;k<sorted.length;k++)sel.innerHTML+='<option value="'+escHtml(sorted[k])+'">'+escHtml(sorted[k])+'</option>';
+  sel.value=prev;
+}
+function buildScCatFilterDropdown(){
+  var sel=document.getElementById('sc-filter-category');if(!sel)return;
+  initScCat();var existing={};
+  for(var i=0;i<allScouting.length;i++){var c2=allScouting[i].product_category;if(c2)existing[c2]=1;}
+  var sorted=Object.keys(existing).sort();
+  var prev=sel.value;sel.innerHTML='<option value="">全部分类</option>';
+  for(var k=0;k<sorted.length;k++)sel.innerHTML+='<option value="'+escHtml(sorted[k])+'">'+escHtml(sorted[k])+'</option>';
+  sel.value=prev;
+}
+
+function drawBarChart(canvasId,data,cfg){
+  var cvs=document.getElementById(canvasId);if(!cvs)return;
+  var ctx=cvs.getContext('2d');var dpr=window.devicePixelRatio||1;
+  var rect=cvs.getBoundingClientRect();var w=rect.width,h=cvs.height||240;
+  cvs.width=w*dpr;cvs.height=h*dpr;cvs.style.width=w+'px';cvs.style.height=h+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
+  if(!data.length){ctx.fillStyle='#999';ctx.font='13px sans-serif';ctx.textAlign='center';ctx.fillText('暂无数据',w/2,h/2);return;}
+  var barH=Math.min(32,Math.max(18,(h-20)/data.length)),gap=4,totalH=barH*data.length,startY=Math.max(0,(h-totalH)/2);
+  var maxV=cfg&&cfg.maxValue?cfg.maxValue:0;
+  for(var i=0;i<data.length;i++){if(data[i].value>maxV)maxV=data[i].value;}
+  if(maxV===0)maxV=1;
+  var barX=cfg&&cfg.labelWidth||80,barW=w-barX-60;
+  ctx.font='12px sans-serif';ctx.textAlign='right';
+  for(var d=0;d<data.length;d++){
+    var y=startY+d*barH,pct=Math.min(1,data[d].value/maxV),bw=barW*pct;
+    ctx.fillStyle='#666';ctx.textBaseline='middle';
+    var lbl=data[d].label.length>8?data[d].label.substring(0,7)+'\u2026':data[d].label;
+    ctx.fillText(lbl,barX-6,y+barH/2);
+    ctx.fillStyle=data[d].color||'#4a90d9';
+    ctx.beginPath();ctx.roundRect(barX,y,bw,barH-gap,4);ctx.fill();
+    ctx.fillStyle='#333';ctx.textAlign='left';
+    var vText=cfg&&cfg.valueFormatter?cfg.valueFormatter(data[d].value):String(data[d].value);
+    ctx.fillText(vText,barX+bw+6,y+barH/2);
+  }
+}
+
+function drawGroupedBarChart(canvasId,data,cfg){
+  var cvs=document.getElementById(canvasId);if(!cvs)return;
+  var ctx=cvs.getContext('2d');var dpr=window.devicePixelRatio||1;
+  var rect=cvs.getBoundingClientRect();var w=rect.width,h=cvs.height||240;
+  cvs.width=w*dpr;cvs.height=h*dpr;cvs.style.width=w+'px';cvs.style.height=h+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
+  if(!data.length){ctx.fillStyle='#999';ctx.font='13px sans-serif';ctx.textAlign='center';ctx.fillText('暂无数据',w/2,h/2);return;}
+  var groups=data[0].groups?data[0].groups.length:1;
+  var barH=Math.min(28,Math.max(20,(h-40)/data.length/groups)),totalH=barH*data.length*groups,startY=Math.max(10,(h-totalH)/2);
+  var maxV=cfg&&cfg.maxValue?cfg.maxValue:0;
+  for(var i=0;i<data.length;i++){for(var j=0;j<data[i].groups.length;j++){if(data[i].groups[j].value>maxV)maxV=data[i].groups[j].value;}}
+  if(maxV===0)maxV=1;
+  var gclr=cfg&&cfg.groupColors?cfg.groupColors:['#4a90d9','#e74c3c','#27ae60','#f39c12'];
+  var lblW=cfg&&cfg.labelWidth||80,barArea=w-lblW-50;
+  if(cfg&&cfg.groupLabels){
+    ctx.font='10px sans-serif';ctx.textAlign='left';var lx=lblW,ly=startY-6;
+    for(var gl=0;gl<cfg.groupLabels.length;gl++){
+      ctx.fillStyle=gclr[gl]||'#666';ctx.fillRect(lx,ly-10,10,10);
+      ctx.fillStyle='#666';ctx.fillText(cfg.groupLabels[gl],lx+14,ly-1);
+      lx+=ctx.measureText(cfg.groupLabels[gl]).width+30;
+    }
+    startY+=8;
+  }
+  var gap=2;ctx.font='11px sans-serif';ctx.textAlign='right';
+  for(var d=0;d<data.length;d++){
+    var label=data[d].label,grps=data[d].groups;
+    for(var g=0;g<grps.length;g++){
+      var y=startY+d*barH*groups+g*barH/groups,pct=Math.min(1,grps[g].value/maxV),bw=(barArea/groups)*pct,bx=lblW+g*(barArea/groups);
+      if(g===0){ctx.fillStyle='#666';ctx.textBaseline='middle';var clbl=label.length>8?label.substring(0,7)+'\u2026':label;ctx.fillText(clbl,lblW-6,y+barH/3);}
+      ctx.fillStyle=gclr[g]||'#4a90d9';
+      ctx.beginPath();ctx.roundRect(bx,y,bw,(barH/groups)-gap,3);ctx.fill();
+      if(bw>18){ctx.fillStyle='#fff';ctx.textAlign='left';ctx.font='9px sans-serif';ctx.fillText(grps[g].value,bx+3,y+barH/(groups*2)+3);}
+    }
+  }
+}
+
+function drawScoutingCategoryCharts(data){
+  var byCat={};
+  for(var i=0;i<data.length;i++){
+    var d=data[i];var cat=d.product_category||'未分类';
+    if(!byCat[cat])byCat[cat]={count:0,prices:[],sellPrices:[],commissions:[],moqs:[]};
+    byCat[cat].count++;
+    var pp=parseFloat(d.purchase_price)||0;if(pp>0)byCat[cat].prices.push(pp);
+    var sp=parseFloat(d.selling_price)||0;if(sp>0)byCat[cat].sellPrices.push(sp);
+    var cm=parseFloat(d.influencer_commission)||0;if(cm>0)byCat[cat].commissions.push(cm);
+    var mq=parseInt(d.moq)||0;if(mq>0)byCat[cat].moqs.push(mq);
+  }
+  var cats=Object.keys(byCat).sort();if(!cats.length)return;
+  function avg(arr){return arr.length?Math.round(arr.reduce(function(a,b){return a+b},0)/arr.length):0;}
+
+  var priceData=[];var pmax=0;
+  for(var p=0;p<cats.length;p++){var pcat=byCat[cats[p]];var avp=avg(pcat.prices),avs=avg(pcat.sellPrices);pmax=Math.max(pmax,avp,avs);
+    priceData.push({label:cats[p],groups:[{value:avp,color:'#4a90d9'},{value:avs,color:'#27ae60'}]});}
+  drawGroupedBarChart('sc-price-chart',priceData,{maxValue:pmax,groupLabels:['平均采购价','平均销售价'],groupColors:['#4a90d9','#27ae60'],labelWidth:80});
+
+  var commData=[];var cmax=0;
+  for(var c2=0;c2<cats.length;c2++){var cv=avg(byCat[cats[c2]].commissions);cmax=Math.max(cmax,cv);commData.push({label:cats[c2],value:cv,color:'#e67e22'});}
+  drawBarChart('sc-commission-chart',commData,{maxValue:cmax||10,valueFormatter:function(v){return v+'%'},labelWidth:80});
+
+  var moqData=[];var mmax=0;
+  for(var m=0;m<cats.length;m++){var mv=avg(byCat[cats[m]].moqs);mmax=Math.max(mmax,mv);moqData.push({label:cats[m],value:mv,color:'#8e44ad'});}
+  drawBarChart('sc-moq-chart',moqData,{maxValue:mmax||100,valueFormatter:function(v){return v+'件'},labelWidth:80});
+
+  var cntData=[];var cntMax=0;
+  for(var n=0;n<cats.length;n++){cntMax=Math.max(cntMax,byCat[cats[n]].count);cntData.push({label:cats[n],value:byCat[cats[n]].count,color:'#3498db'});}
+  drawBarChart('sc-category-chart',cntData,{maxValue:cntMax,labelWidth:80});
+}
 
 // === Company Directory Cascade Sync ===
 async function syncCompanyDirectoryRefs(){
