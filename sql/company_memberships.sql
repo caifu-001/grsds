@@ -177,7 +177,89 @@ BEGIN
 END;
 $$;
 
--- 11+12. 邀请成员和接受邀请函数 → 见 invitation_functions.sql（拆分以避免编译依赖）
+-- 11. RPC: 邀请成员（管理员用）
+DROP FUNCTION IF EXISTS invite_member(INTEGER, TEXT, TEXT);
+CREATE OR REPLACE FUNCTION invite_member(p_company_id INTEGER, p_email TEXT, p_role TEXT DEFAULT 'member')
+RETURNS BIGINT
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $$
+DECLARE
+  v_is_admin BOOLEAN;
+  v_invitation_id BIGINT;
+BEGIN
+  SELECT (cm.role = 'admin') INTO v_is_admin
+  FROM company_memberships cm
+  WHERE cm.user_id = auth.uid()
+    AND cm.company_id = p_company_id
+    AND cm.status = 'active';
+  
+  IF NOT v_is_admin THEN
+    RAISE EXCEPTION '仅公司管理员可邀请';
+  END IF;
+
+  EXECUTE 'SELECT 1 FROM invitations WHERE from_company_id = $1 AND to_email = $2 AND status = ''pending'' LIMIT 1'
+  INTO v_is_admin USING p_company_id, p_email;
+  IF v_is_admin THEN
+    RAISE EXCEPTION '该邮箱已有待处理的邀请';
+  END IF;
+
+  EXECUTE 'SELECT 1 FROM company_memberships cm JOIN profiles p ON p.user_id = cm.user_id WHERE cm.company_id = $1 AND p.email = $2 AND cm.status = ''active'' LIMIT 1'
+  INTO v_is_admin USING p_company_id, p_email;
+  IF v_is_admin THEN
+    RAISE EXCEPTION '该用户已是公司成员';
+  END IF;
+
+  EXECUTE 'INSERT INTO invitations (from_company_id, to_email, role, invited_by, status) VALUES ($1, $2, $3, $4, ''pending'') RETURNING id'
+  INTO v_invitation_id USING p_company_id, p_email, p_role, auth.uid();
+
+  RETURN v_invitation_id;
+END;
+$$;
+
+-- 12. RPC: 接受/拒绝邀请
+DROP FUNCTION IF EXISTS handle_invitation(BIGINT, TEXT);
+CREATE OR REPLACE FUNCTION handle_invitation(p_invitation_id BIGINT, p_action TEXT)
+RETURNS TEXT
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $$
+DECLARE
+  v_inv RECORD;
+BEGIN
+  IF p_action NOT IN ('accept','reject') THEN
+    RAISE EXCEPTION 'action must be accept or reject';
+  END IF;
+
+  EXECUTE 'SELECT * FROM invitations WHERE id = $1' INTO v_inv USING p_invitation_id;
+  IF v_inv IS NULL THEN
+    RAISE EXCEPTION '邀请不存在';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM profiles WHERE user_id = auth.uid() AND email = v_inv.to_email) THEN
+    RAISE EXCEPTION '邀请的邮箱不是你注册的邮箱';
+  END IF;
+
+  IF v_inv.status != 'pending' THEN
+    RAISE EXCEPTION '该邀请已被处理';
+  END IF;
+
+  IF p_action = 'accept' THEN
+    EXECUTE 'UPDATE invitations SET status = ''accepted'', accepted_at = NOW() WHERE id = $1' USING p_invitation_id;
+    
+    INSERT INTO company_memberships (user_id, company_id, role, invited_by, status)
+    VALUES (auth.uid(), v_inv.from_company_id, COALESCE(v_inv.role, 'member'), v_inv.invited_by, 'active')
+    ON CONFLICT (user_id, company_id) DO UPDATE SET status = 'active', role = COALESCE(v_inv.role, 'member');
+
+    UPDATE profiles SET active_company_id = v_inv.from_company_id
+    WHERE user_id = auth.uid() AND active_company_id IS NULL;
+    
+    RETURN 'accepted';
+  ELSE
+    EXECUTE 'UPDATE invitations SET status = ''rejected'', rejected_at = NOW() WHERE id = $1' USING p_invitation_id;
+    RETURN 'rejected';
+  END IF;
+END;
+$$;
+
 -- 13. RPC: 移除成员（管理员用）
 DROP FUNCTION IF EXISTS remove_member(INTEGER, UUID);
 CREATE OR REPLACE FUNCTION remove_member(p_company_id INTEGER, p_user_id UUID)
