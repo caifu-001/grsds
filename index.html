@@ -3492,8 +3492,8 @@ function showMyInvitations(invitations){
     html+='<div style="padding:12px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px">';
     html+='<div style="font-weight:600;margin-bottom:6px">公司ID: '+inv.from_company_id+'</div>';
     html+='<div style="display:flex;gap:8px">';
-    html+='<button class="btn-sm btn-sm-primary" onclick="handleInvite('+inv.id+','accept')">接受</button>';
-    html+='<button class="btn-sm" onclick="handleInvite('+inv.id+','reject')">拒绝</button>';
+    html+='<button class="btn-sm btn-sm-primary" onclick="handleInvite('+inv.id+',&quot;accept&quot;)">接受</button>';
+    html+='<button class="btn-sm" onclick="handleInvite('+inv.id+',&quot;reject&quot;)">拒绝</button>';
     html+='</div></div>';
   }
   html+='<button class="btn-sm" onclick="closeModal()" style="width:100%;margin-top:8px">关闭</button>';
