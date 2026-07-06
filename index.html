@@ -6017,8 +6017,7 @@ function switchTab(tab){
   for(var i=0;i<allViews.length;i++)if(allViews[i]){allViews[i].classList.add('hidden');allViews[i].style.display='';allViews[i].style.visibility='';}
   // Deactivate all tabs
   var tr=document.getElementById('tab-reports');var tan=document.getElementById('tab-analytics');
-  var allTabs=[tc,to,document.getElementById('tab-service'),document.getElementById('tab-collab'),document.getElementById('tab-projects'),tr,ta,ti];if(tan)allTabs.push(tan);for(var j=0;j<allTabs.length;j++)if(allTabs[j])allTabs[j].classList.remove('active');
-  var tfw=document.getElementById('tab-fieldwork');if(tfw)allTabs.push(tfw);
+  var allTabs=[tc,to,document.getElementById('tab-service'),document.getElementById('tab-collab'),document.getElementById('tab-projects'),tr,ta,ti];if(tan)allTabs.push(tan);var tfw=document.getElementById('tab-fieldwork');if(tfw)allTabs.push(tfw);for(var j=0;j<allTabs.length;j++)if(allTabs[j])allTabs[j].classList.remove('active');
   fab.classList.add('hidden');
 
       if(tab==='clients'){
