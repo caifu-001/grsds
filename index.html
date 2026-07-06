@@ -3292,6 +3292,18 @@ const PALETTE=['#3B82F6','#10B981','#8B5CF6','#F59E0B','#EF4444','#06B6D4','#EC4
 let loginMode='login',currentUser=null,allClients=[],allContacts=[],allCompanies=[],allCompaniesMap={},currentFilter='all',selTypes=[],customTypes=[],newTypeColor=PALETTE[0];
 // === 多公司支持 ===
 let currentCompanyId=null,currentCompanyRole='member',currentCompanyName='',allMyCompanies=[];
+// === 资源授权缓存（member 只能看授权的资源）===
+let memberGrants={clients:[],products:[],suppliers:[]};
+async function loadMemberGrants(){
+  if(isSuperAdmin)return;
+  if(currentCompanyRole==='admin')return;
+  try{for(var t of ['clients','products','suppliers']){var d=await sb.rpc('get_member_grants',{p_user_id:currentUser.id,p_company_id:currentCompanyId,p_resource_type:t});memberGrants[t]=(d&&d.data?d.data.map(function(r){return r.resource_id}):[]);}}catch(e){console.error('loadMemberGrants:',e)}
+}
+function canAccess(type,id){
+  if(isSuperAdmin)return true;
+  if(currentCompanyRole==='admin')return true;
+  return memberGrants[type]&&memberGrants[type].indexOf(id)>=0;
+}
 let allUsers=[];
 let editId=null,deleteId=null,formContacts=[],pendingImport=null;
 let moveContactIdx=-1,moveContactObj=null;
@@ -3977,7 +3989,8 @@ async function loadClients(){
   try{
     var {data,error}=await sb.from('clients').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
     if(error){grid.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div>加载失败<br><span style="font-size:12px;color:var(--text3)">'+h(error.message)+'</span></div>';statsBar.innerHTML='';return}
-    allClients=data||[];
+    allClients=(data||[]);
+    if(currentCompanyRole==='member'&&!isSuperAdmin){allClients=allClients.filter(function(cl){return canAccess('clients',cl.id)})}
     var {data:cd}=await sb.from('contacts').select('*').eq('company_id',currentCompanyId);
     allContacts=(cd||[]);
     await loadOrders();
@@ -6505,6 +6518,7 @@ sb.auth.getSession().then(async function(res){
     buildStageGrid();
     await loadClients();
     loadCompanies();
+    loadMemberGrants();
     loadNotifs();
   }else document.getElementById('login-screen').classList.remove('hidden');
 }).catch(function(){document.getElementById('login-screen').classList.remove('hidden')});
@@ -7049,6 +7063,70 @@ async function switchAdminTab(tab){
   else if(tab==='security'){var sp=document.getElementById('admin-security');sp.classList.remove('hidden');subs[11].classList.add('active');renderSecurityPanel();}
   else if(tab==='workflows'){(async function(){var wf=document.getElementById('admin-workflows');wf.classList.remove('hidden');subs[12].classList.add('active');if(!allRoles||!allRoles.length||!allDepartments||!allDepartments.length)await loadAdminData();renderWorkflowTemplates();})();}
 }
+function renderGrantsPanel(){
+  var panel=document.getElementById('admin-grants');
+  panel.classList.remove('hidden');
+  // Load members
+  var sel=document.getElementById('grant-member-select');
+  sel.innerHTML='<option value="">-- 选择成员 --</option>';
+  allUsers.forEach(function(u){
+    sel.innerHTML+='<option value="'+u.id+'">'+h(u.name||u.email)+'</option>';
+  });
+  loadMemberGrantsPanel();
+}
+
+async function loadMemberGrantsPanel(){
+  var user_id=document.getElementById('grant-member-select').value;
+  var type=document.getElementById('grant-type-select').value;
+  var list=document.getElementById('admin-grants-list');
+  if(!user_id){list.innerHTML='<div class="empty-state">请选择成员</div>';return}
+  
+  // Load all resources of this type
+  var resources=[];
+  if(type==='clients'){resources=allClients}
+  else if(type==='products'){resources=allProducts}
+  else if(type==='suppliers'){resources=allSuppliers}
+  
+  // Load existing grants for this member
+  try{
+    var rg=await callAdmin('select','resource_grants',{query:'*',filters:[
+      {col:'user_id',op:'eq',val:user_id},{col:'resource_type',op:'eq',val:type}
+    ]});
+    var granted=(rg&&rg.data?rg.data.map(function(r){return r.resource_id}):[]);
+  }catch(e){var granted=[]}
+  
+  if(resources.length===0){list.innerHTML='<div class="empty-state">暂无'+({'clients':'客户','products':'产品','suppliers':'供应商'}[type]||type)+'数据</div>';return}
+  
+  var htm='<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--bg2)"><th style="padding:8px;text-align:left;border-bottom:1px solid var(--border)">名称</th><th style="padding:8px;text-align:center;border-bottom:1px solid var(--border);width:80px">授权</th></tr></thead><tbody>';
+  resources.forEach(function(r){
+    var name=h(r.name||r.title||'未命名');
+    var checked=granted.indexOf(r.id)>=0?'checked':'';
+    htm+='<tr><td style="padding:8px;border-bottom:1px solid var(--border2)">'+name+'</td><td style="padding:8px;text-align:center;border-bottom:1px solid var(--border2)"><input type="checkbox" value="'+r.id+'" '+checked+' onchange="onGrantCheck(this)" style="width:16px;height:16px;cursor:pointer"></td></tr>';
+  });
+  htm+='</tbody></table>';
+  list.innerHTML=htm;
+}
+
+// Track checked grants
+function onGrantCheck(cb){
+  // Just track via the checkbox state
+}
+
+async function saveMemberGrants(){
+  var user_id=document.getElementById('grant-member-select').value;
+  var type=document.getElementById('grant-type-select').value;
+  if(!user_id){showToast('请选择成员');return}
+  
+  var ids=[];
+  document.querySelectorAll('#admin-grants-list input[type="checkbox"]:checked').forEach(function(cb){ids.push(parseInt(cb.value))});
+  
+  try{
+    var r=await callAdmin('rpc','batch_grant_resources',{p_user_id:user_id,p_company_id:currentCompanyId,p_resource_type:type,p_resource_ids:ids});
+    if(r.error){showToast('授权失败: '+r.error.message);return}
+    showToast('✅ 授权已保存');
+  }catch(e){showToast('授权失败: '+(e.message||e))}
+}
+
 
 /* ── Users ── */
 var allRoles=[];
@@ -9020,6 +9098,7 @@ async function loadProducts(){
   var r=await q;
   if(r.error){console.error(r.error);return}
   allProducts=r.data||[];
+  if(currentCompanyRole==='member'&&!isSuperAdmin){allProducts=allProducts.filter(function(p){return canAccess('products',p.id)})}
   await loadStockBalances();
   renderProducts();
 }
@@ -10402,6 +10481,7 @@ async function loadSuppliers(){
   var q=sb.from('suppliers').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
   var r=await q;
   allSuppliers=r.data||[];
+  if(currentCompanyRole==='member'&&!isSuperAdmin){allSuppliers=allSuppliers.filter(function(s){return canAccess('suppliers',s.id)})}
   var clientMap={};
   for(var i=0;i<allClients.length;i++)clientMap[allClients[i].id]=allClients[i].name;
   // Resolve company directory names for suppliers
@@ -17979,4 +18059,14 @@ async function updateFieldCollabMode(fieldId,mode){
 .pd-edit-sheet .pd-edit-btns button{flex:1;padding:10px;border:none;border-radius:8px;font-size:14px;cursor:pointer;font-weight:500}
 </style>
 </body>
-</html>
+</html
+  <!-- Resource Grants -->
+  <div id="admin-grants" class="admin-panel hidden">
+   <div class="toolbar" style="margin-bottom:10px;flex-wrap:wrap;gap:8px">
+    <select id="grant-member-select" onchange="loadMemberGrantsPanel()" style="padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:13px;background:var(--card);color:var(--text)"><option value="">-- 选择成员 --</option></select>
+    <select id="grant-type-select" onchange="loadMemberGrantsPanel()" style="padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:13px;background:var(--card);color:var(--text)"><option value="clients">客户</option><option value="products">产品</option><option value="suppliers">供应商</option></select>
+    <button class="btn-save" style="padding:8px 14px;font-size:13px" onclick="saveMemberGrants()">💾 保存授权</button>
+   </div>
+   <div id="admin-grants-list"></div>
+  </div>
+  >
