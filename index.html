@@ -3461,7 +3461,8 @@ function showCompanySelector(memberships){
     html+='<div style="font-size:13px;color:var(--muted)">'+roleLabel+'</div>';
     html+='</div>';
   }
-  html+='<button class="btn-sm" onclick="closeModal()" style="width:100%;margin-top:8px">取消</button>';
+  html+='<button class="btn-sm btn-sm-primary" onclick="closeModal();showCompanyRegScreen()" style="width:100%;margin-bottom:8px">＋ 注册新公司</button>';
+  html+='<button class="btn-sm" onclick="closeModal()" style="width:100%">取消</button>';
   html+='</div>';
   overlay.innerHTML=html;
   overlay.onclick=function(e){if(e.target===overlay)closeModal()};
@@ -6458,7 +6459,8 @@ async function checkPendingCompany(){
   if(!data||data.length===0){showCompanyRegScreen();return}
   if(data[0].status==='approved'){
     currentCompanyId=data[0].id;
-    await sb.from('profiles').upsert({user_id:user.id,email:user.email,company_id:currentCompanyId,role:'admin'},{onConflict:'user_id'});
+    await sb.from('profiles').upsert({user_id:user.id,email:user.email,company_id:currentCompanyId,role:'admin',active_company_id:currentCompanyId},{onConflict:'user_id'});
+    await sb.from('company_memberships').upsert({user_id:user.id,company_id:currentCompanyId,role:'admin',status:'active',joined_at:new Date().toISOString()},{onConflict:'user_id,company_id'});
     if(window._pendPoll)clearInterval(window._pendPoll);
     await loadCustomTypes();
  buildFilterSelect();
@@ -6619,7 +6621,10 @@ async function approveCompany(id){
   if(error){alert('操作失败: '+error.message);return}
   // Set the creator as admin
   var {data:comp}=await sb.from('companies').select('created_by').eq('id',id).single();
-  if(comp){await sb.from('profiles').upsert({user_id:comp.created_by,company_id:id,role:'admin'},{onConflict:'user_id'});}
+  if(comp){
+    await sb.from('profiles').upsert({user_id:comp.created_by,company_id:id,role:'admin',active_company_id:id},{onConflict:'user_id'});
+    await sb.from('company_memberships').upsert({user_id:comp.created_by,company_id:id,role:'admin',status:'active',joined_at:new Date().toISOString()},{onConflict:'user_id,company_id'});
+  }
   loadPendingCompanies();
 }
 
