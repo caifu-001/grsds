@@ -339,7 +339,9 @@ input,select,textarea,button{font-family:inherit}
 .btn-sm-muted:active{opacity:.8}
 
 /* Company Registration */
-.reg-box{background:var(--card);border-radius:16px;padding:32px 28px;margin:12px;max-width:420px;width:100%;box-shadow:0 4px 24px rgba(0,0,0,.08)}
+#company-reg-screen,#pending-screen,#invitation-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+#company-reg-screen.hidden,#pending-screen.hidden,#invitation-screen.hidden{display:none !important}
+.reg-box{background:var(--card);border-radius:16px;padding:32px 28px;max-width:420px;width:100%;box-shadow:0 4px 24px rgba(0,0,0,.08)}
 .reg-box h2{font-size:24px;font-weight:700;margin-bottom:6px;color:var(--text)}
 .reg-field{margin-bottom:14px}
 .reg-field label{display:block;font-size:13px;color:var(--text2);margin-bottom:4px;font-weight:500}
