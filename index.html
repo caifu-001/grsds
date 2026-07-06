@@ -7113,20 +7113,17 @@ async function saveMemberGrants(){
   if(!user_id){showToast('请选择成员');return}
   
   var ids=[];
-  document.querySelectorAll('#admin-grants-list input[type="checkbox"]:checked').forEach(function(cb){ids.push(parseInt(cb.value))});
-  
-  console.log('[saveMemberGrants] saving',{user_id:user_id,type:type,ids:ids,companyId:currentCompanyId});
+  document.querySelectorAll('#admin-grants-list input[type="checkbox"]:checked').forEach(function(cb){ids.push(cb.value)});
+  var idsStr=ids.join(',');
+  console.log('[saveMemberGrants] saving',{user_id:user_id,type:type,idsStr:idsStr,companyId:currentCompanyId});
   try{
-    var r=await callAdmin('rpc','batch_grant_resources',{payload:{p_user_id:user_id,p_company_id:currentCompanyId,p_resource_type:type,p_resource_ids:ids}});
+    var r=await callAdmin('rpc','batch_grant_resources',{payload:{p_user_id:user_id,p_company_id:currentCompanyId,p_resource_type:type,p_resource_ids:idsStr,p_granted_by:currentUser?currentUser.id:null}});
     console.log('[saveMemberGrants] raw response:',JSON.stringify(r));
-    // callAdmin wraps admin-proxy response: {data:..., error:...}
-    // admin-proxy wraps Supabase response again: {data: {data:..., error:...}, error:...}
-    var inner=r&&r.data; // Supabase response inside admin-proxy
+    var inner=r&&r.data;
     var err=r&&r.error;
-    if(inner&&inner.error){err=inner.error;} // deeper error from Supabase
+    if(inner&&inner.error){err=inner.error;}
     if(err){showToast('授权失败: '+(err.message||JSON.stringify(err)));return}
     showToast('已授权 '+ids.length+' 项');
-    // Reload grants for the member (they'll see after next page load)
   }catch(e){console.error('[saveMemberGrants] exception:',e);showToast('授权失败: '+(e.message||e))}
 }
 
