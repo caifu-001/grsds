@@ -8136,7 +8136,6 @@ async function loadScouting(){
   if(r.error){console.error(r.error);return}
   allScouting=r.data||[];
   renderScouting();
-  refreshScoutingCompare();
   buildScCatFilterDropdown();
 }
 
@@ -8223,7 +8222,6 @@ function renderScouting(){
 }
 
 function refreshScoutingCompare(){
-  console.log('[refreshScoutingCompare] allScouting.length:',allScouting.length);
   // Restore saved tax rate
   var _tr=document.getElementById('sc-tax-rate');if(_tr&&!_tr.dataset.loaded){var _saved=localStorage.getItem('sc_tax_rate');if(_saved!==null)_tr.value=_saved;_tr.dataset.loaded='1';
     _tr.addEventListener('change',function(){localStorage.setItem('sc_tax_rate',this.value)});}
@@ -8340,8 +8338,6 @@ function refreshScoutingCompare(){
     cmpFiltered.push(f);
   }
   
-  console.log('[refreshScoutingCompare] filtered after table filters:',filtered.length,'compOnly:',compOnly);
-  console.log('[refreshScoutingCompare] cmpFiltered after compare filters:',cmpFiltered.length);
   if(!cmpFiltered.length){
     cmpContainer.innerHTML='<div style="text-align:center;padding:32px;color:var(--text-secondary);background:var(--card);border-radius:12px">📭 无匹配的对比数据</div>';
     return;
