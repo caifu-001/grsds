@@ -5929,14 +5929,18 @@ async function loadMyInvitations(){
   el.innerHTML='<div class="empty-state">加载中...</div>';
   if(!currentUser)return;
   console.log('loadMyInvitations: email=',currentUser.email);
-  var resp=await sb.from('invitations').select('*,from_company_id(name)').eq('to_email',currentUser.email).eq('status','pending').order('created_at',{ascending:false});
+  var resp=await sb.from('invitations').select('*').eq('to_email',currentUser.email).eq('status','pending').order('created_at',{ascending:false});
   console.log('invitations resp:',resp);
   var invites=resp.data;
   if(invites&&invites.length){
+    // 确保公司名录已加载
+    if(!allCompanies||!allCompanies.length)await loadCompanies();
+    var companyMap={};if(allCompanies)for(var k=0;k<allCompanies.length;k++)companyMap[allCompanies[k].id]=allCompanies[k];
     var h='';
     for(var i=0;i<invites.length;i++){
       var inv=invites[i];
-      var cname=(inv.from_company_id&&inv.from_company_id.name)||inv.from_company_id;
+      var c=companyMap[inv.from_company_id];
+      var cname=c?c.name:('公司#'+inv.from_company_id);
       var d=new Date(inv.created_at);var t=d.toLocaleDateString('zh-CN')+' '+d.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
       h+='<div style="padding:14px;border:1px solid var(--border);border-radius:10px;margin-bottom:10px;background:#f8fafc">';
       h+='<div style="font-weight:600;margin-bottom:4px">'+escHtml(cname)+'</div>';
