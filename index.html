@@ -1232,7 +1232,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
    <div id="cr-err" class="err-msg" style="display:none"></div>
    <button class="btn-primary" onclick="submitCompanyReg()" style="width:100%;margin-top:6px">提交审核</button>
    <button class="btn-outline" onclick="showCompanySelector(allMyCompanies)" style="width:100%;margin-top:8px">← 返回选择公司</button>
-   <button class="btn-outline" onclick="logout()" style="width:100%;margin-top:8px">退出登录</button>
+   <button class="btn-outline" onclick="doLogout()" style="width:100%;margin-top:8px">退出登录</button>
    </div>
  </div>
 
@@ -1255,7 +1255,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
    <p class="sub" id="pending-company-name"></p>
    <p style="color:var(--text3);font-size:13px;margin:12px 0">您的公司注册申请已提交，管理员审核通过后即可开始使用。</p>
    <button class="btn-outline" onclick="checkPendingCompany()" style="width:100%;margin-top:6px">刷新状态</button>
-   <button class="btn-outline" onclick="logout()" style="width:100%;margin-top:8px;color:var(--danger)">退出登录</button>
+   <button class="btn-outline" onclick="doLogout()" style="width:100%;margin-top:8px;color:var(--danger)">退出登录</button>
   </div>
  </div>
 <div id="main-screen" class="hidden">
