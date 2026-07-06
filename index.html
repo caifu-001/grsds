@@ -3275,9 +3275,19 @@ let currentCompanyId=null,currentCompanyRole='member',currentCompanyName='',allM
 // === 资源授权缓存（member 只能看授权的资源）===
 let memberGrants={clients:[],products:[],suppliers:[]};
 async function loadMemberGrants(){
-  if(isSuperAdmin)return;
-  if(currentCompanyRole==='admin')return;
-  try{for(var t of ['clients','products','suppliers']){var d=await sb.rpc('get_member_grants',{p_user_id:currentUser.id,p_company_id:currentCompanyId,p_resource_type:t});memberGrants[t]=(d&&d.data?d.data.map(function(r){return r.resource_id}):[]);}}catch(e){console.error('loadMemberGrants:',e)}
+  if(isSuperAdmin){memberGrants={clients:'all',products:'all',suppliers:'all'};return}
+  if(currentCompanyRole==='admin'){memberGrants={clients:'all',products:'all',suppliers:'all'};return}
+  console.log('[loadMemberGrants] loading for user:',currentUser.id,'company:',currentCompanyId);
+  try{
+    for(var t of ['clients','products','suppliers']){
+      var d=await sb.rpc('get_member_grants',{p_user_id:currentUser.id,p_company_id:currentCompanyId,p_resource_type:t});
+      console.log('[loadMemberGrants] '+t+' raw:',JSON.stringify(d));
+      // sb.rpc returns {data: [...], error: ...}
+      if(d&&d.error){console.error('[loadMemberGrants] '+t+' rpc error:',d.error);memberGrants[t]=[];continue}
+      memberGrants[t]=(d&&d.data?d.data.map(function(r){return r.resource_id}):[]);
+      console.log('[loadMemberGrants] '+t+' granted ids:',memberGrants[t]);
+    }
+  }catch(e){console.error('[loadMemberGrants] exception:',e)}
 }
 function canAccess(type,id){
   if(isSuperAdmin)return true;
@@ -6499,9 +6509,10 @@ sb.auth.getSession().then(async function(res){
     buildFilterSelect();
     buildTypeGrid();
     buildStageGrid();
+    // 先加载授权，再加载数据（否则 canAccess 返回 false 过滤所有资源）
+    await loadMemberGrants();
     await loadClients();
     loadCompanies();
-    loadMemberGrants();
     loadNotifs();
   }else document.getElementById('login-screen').classList.remove('hidden');
 }).catch(function(){document.getElementById('login-screen').classList.remove('hidden')});
@@ -7104,11 +7115,19 @@ async function saveMemberGrants(){
   var ids=[];
   document.querySelectorAll('#admin-grants-list input[type="checkbox"]:checked').forEach(function(cb){ids.push(parseInt(cb.value))});
   
+  console.log('[saveMemberGrants] saving',{user_id:user_id,type:type,ids:ids,companyId:currentCompanyId});
   try{
     var r=await callAdmin('rpc','batch_grant_resources',{payload:{p_user_id:user_id,p_company_id:currentCompanyId,p_resource_type:type,p_resource_ids:ids}});
-    if(r.error){showToast('授权失败: '+(r.error.message||JSON.stringify(r.error)));return}
-    showToast('✅ 授权已保存');
-  }catch(e){showToast('授权失败: '+(e.message||e))}
+    console.log('[saveMemberGrants] raw response:',JSON.stringify(r));
+    // callAdmin wraps admin-proxy response: {data:..., error:...}
+    // admin-proxy wraps Supabase response again: {data: {data:..., error:...}, error:...}
+    var inner=r&&r.data; // Supabase response inside admin-proxy
+    var err=r&&r.error;
+    if(inner&&inner.error){err=inner.error;} // deeper error from Supabase
+    if(err){showToast('授权失败: '+(err.message||JSON.stringify(err)));return}
+    showToast('已授权 '+ids.length+' 项');
+    // Reload grants for the member (they'll see after next page load)
+  }catch(e){console.error('[saveMemberGrants] exception:',e);showToast('授权失败: '+(e.message||e))}
 }
 
 
