@@ -5869,7 +5869,9 @@ async function loadNotifs(){
   var el=document.getElementById('notif-list');
   el.innerHTML='<div class="empty-state">加载中...</div>';
   if(!currentUser)return;
-  var {data:notifs}=await sb.from('notifications').select('*').eq('user_id',currentUser.id).order('created_at',{ascending:false}).limit(50);
+  var d1=Date.now();
+  var {data:notifs,error}=await sb.from('notifications').select('*').eq('user_id',currentUser.id).order('created_at',{ascending:false}).limit(50);
+  console.log('loadNotifs:',Date.now()-d1+'ms, rows:',(notifs||[]).length,'err:',error);
   var unread=0;
   if(notifs&&notifs.length){
     var h='';
@@ -5958,11 +5960,13 @@ async function loadMyInvitations(){
 
 async function acceptInvitation(id){
   try{
+    console.log('acceptInvitation called, id=',id);
     var r=await sb.rpc('handle_invitation',{p_invitation_id:id,p_action:'accept'});
+    console.log('handle_invitation response:',r);
     if(r.error){showToast(r.error.message||'操作失败');return}
     showToast('已加入公司！刷新中...');
     setTimeout(function(){location.reload()},800);
-  }catch(e){showToast('操作失败: '+(e.message||e.toString()))}
+  }catch(e){console.error('acceptInvitation error:',e);showToast('操作失败: '+(e.message||e.toString()))}
 }
 
 async function rejectInvitation(id){
