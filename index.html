@@ -7244,7 +7244,7 @@ async function saveUserEdit(userId){
     showToast('权限不足: 不能修改其他公司的成员');return;
   }
   var newStatus=data.status;
-  if(!isSuperAdmin&&userId===currentUser.user.id&&newStatus==='leave'){
+  if(!isSuperAdmin&&userId===currentUser.id&&newStatus==='leave'){
     showToast('不能将自己设为离职，请联系其他管理员操作');return;
   }
   if(newStatus==='leave'){data.company_id=null;data.department_id=null;}
