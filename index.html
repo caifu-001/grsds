@@ -7065,6 +7065,7 @@ async function switchAdminTab(tab){
   else if(tab==='security'){var sp=document.getElementById('admin-security');sp.classList.remove('hidden');subs[11].classList.add('active');renderSecurityPanel();}
   else if(tab==='workflows'){(async function(){var wf=document.getElementById('admin-workflows');wf.classList.remove('hidden');subs[12].classList.add('active');if(!allRoles||!allRoles.length||!allDepartments||!allDepartments.length)await loadAdminData();renderWorkflowTemplates();})();}
   else if(tab==='grants'){var gr=document.getElementById('admin-grants');gr.classList.remove('hidden');subs[13].classList.add('active');renderGrantsPanel();}
+  else if(tab==='grants'){var gr=document.getElementById('admin-grants');gr.classList.remove('hidden');subs[13].classList.add('active');renderGrantsPanel();}
 }
 function renderGrantsPanel(){
   var panel=document.getElementById('admin-grants');
@@ -7171,8 +7172,7 @@ function renderAdminUsers(){
 async function setUserRole(userId,role){
   var {error}=await sb.from('profiles').upsert({user_id:userId,role:role},{onConflict:'user_id'});
   if(error){alert('操作失败: '+error.message);return}
-  for(var i=0;i<adminUserList.length;i++){if(adminUserList[i].user_id===userId){adminUserList[i].role=role;break;
-    case'grants':renderGrantsPanel();break;}}
+  for(var i=0;i<adminUserList.length;i++){if(adminUserList[i].user_id===userId){adminUserList[i].role=role;break;}}
   renderAdminUsers();
 }
 
