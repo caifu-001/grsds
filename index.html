@@ -7073,8 +7073,8 @@ function renderGrantsPanel(){
   // Load members
   var sel=document.getElementById('grant-member-select');
   sel.innerHTML='<option value="">-- 选择成员 --</option>';
-  allUsers.forEach(function(u){
-    sel.innerHTML+='<option value="'+u.id+'">'+h(u.name||u.email)+'</option>';
+  (allUsers||[]).forEach(function(u){
+    sel.innerHTML+='<option value="'+u.user_id+'">'+h(u.name||u.email)+'</option>';
   });
   loadMemberGrantsPanel();
 }
@@ -7226,6 +7226,7 @@ async function saveUserEdit(userId){
   var role=roleVal,roleId=null;
   if(roleVal&&roleVal.startsWith('r_')){roleId=parseInt(roleVal.slice(2));role='custom'}
   var companyId=currentCompanyId;if(isSuperAdmin){var cname=document.getElementById('uedit-company').value.trim();if(cname){var found=null;var cab=typeof allAdminCompanies!=='undefined'?allAdminCompanies:allCompanies||[];for(var i=0;i<cab.length;i++){if(cab[i].name===cname){found=cab[i];break}}if(found){companyId=found.id}}}
+  var targetUser=adminUserList.find(function(u){return u.user_id===userId;});
   var data={
     display_name:document.getElementById('uedit-name').value.trim(),
     position:document.getElementById('uedit-position').value.trim(),
@@ -7236,7 +7237,6 @@ async function saveUserEdit(userId){
     company_id:companyId
   };
   var error=null;
-  var targetUser=adminUserList.find(function(u){return u.user_id===userId;});
   if(!isSuperAdmin&&currentUserRole==='admin'&&targetUser&&targetUser.company_id!==currentCompanyId){
     showToast('权限不足: 不能修改其他公司的成员');return;
   }
