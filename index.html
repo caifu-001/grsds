@@ -3642,11 +3642,10 @@ async function inviteMemberToCompany(){
   }catch(e){showToast('邀请失败: '+(e.message||e.toString()))}
 }
 
-// === 兼容旧 currentUserRole (从 currentCompanyRole 派生) ===
-Object.defineProperty(window,'currentUserRole',{
-  get:function(){return currentCompanyRole||'member'},
-  set:function(v){currentCompanyRole=v}
-});
+// === 多公司：currentUserRole 是 profiles.role（超管保持 super_admin）
+// currentCompanyRole 是当前企业内的角色（admin/editor/member）
+// 不再用代理覆盖 currentUserRole，改为分别判断
+let currentUserRole='user';
 async function doLogout(){await sb.auth.signOut();currentUser=null;allClients=[];allContacts=[];customTypes=[];document.getElementById('main-screen').classList.add('hidden');document.getElementById('login-screen').classList.remove('hidden')}
 
 // === Custom Types ===
@@ -6697,9 +6696,9 @@ async function loadAdminData(){
   var {data:roles,error:rerr}=await sb.from('roles').select('*').eq('company_id',currentCompanyId).order('name');
   if(!rerr)allRoles=roles||[];
   // Load all users for admin (profiles now has email column populated at login)
-  if(currentUserRole==='admin'||currentUserRole==='super_admin'){await loadAdminCompanies();}
-  if(currentUserRole==='admin'||currentUserRole==='super_admin'){
-    if(currentUserRole==='super_admin'){
+  if(isSuperAdmin||currentUserRole==='admin'){await loadAdminCompanies();}
+  if(isSuperAdmin||currentUserRole==='admin'){
+    if(isSuperAdmin){
       try{var ur=await callAdmin('select','profiles',{query:'*'});if(ur&&ur.data&&ur.data.length>0){adminUserList=ur.data;allUsers=adminUserList;populatePerfSelects();}else{console.warn('callAdmin returned no data, falling back to direct query:',ur);throw new Error('admin-proxy empty')}}catch(e){console.error('callAdmin profiles failed, fallback direct:',e.message);try{var {data:fb,error:fe}=await sb.from('profiles').select('*');if(!fe&&fb){adminUserList=fb;allUsers=adminUserList;populatePerfSelects();console.log('fallback direct: '+fb.length+' users');}else{console.error('fallback direct also failed:',fe)}}catch(e2){console.error('fallback error:',e2)}}
     }else{
       try{var ur=await callAdmin('select','profiles',{query:'*',filters:[{col:'company_id',op:'eq',val:currentCompanyId}]});if(ur&&ur.data){adminUserList=ur.data;allUsers=adminUserList.slice();populatePerfSelects();}else{console.warn('loadAdminData profiles:',ur)}}catch(e){console.error('loadAdminData users:',e)}
