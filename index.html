@@ -1237,16 +1237,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
  </div>
 
  <!-- Invitation Dialog -->
- <div id="invitation-screen" class="hidden">
-  <div class="reg-box">
-   <h2>📨 入职邀请</h2>
-   <p class="sub" id="invitation-company-name"></p>
-   <p style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:16px">该公司邀请您加入，接受后将自动入职</p>
-   <div id="invitation-err" class="err-msg" style="display:none"></div>
-   <button class="btn-primary" onclick="acceptInvitation()" style="width:100%;margin-bottom:8px">✅ 接受邀请</button>
-   <button class="btn-outline" onclick="rejectInvitation()" style="width:100%">❌ 拒绝</button>
-  </div>
- </div>
+ 
 
  <!-- Pending Approval -->
  <div id="pending-screen" class="hidden">
@@ -12126,49 +12117,7 @@ async function inviteFreeAgent(uid,email){
   }catch(e){showToast('邀请失败: '+e.message)}
 }
 
-// === Invitation Accept/Reject ===
-var pendingInvitation=null;
-function showInvitationDialog(companyId){
-  pendingInvitation=companyId;
-  document.getElementById('login-screen').classList.add('hidden');
-  document.getElementById('main-screen').classList.add('hidden');
-  document.getElementById('company-reg-screen').classList.add('hidden');
-  document.getElementById('pending-screen').classList.add('hidden');
-  document.getElementById('invitation-screen').classList.remove('hidden');
-  // Load company name
-  callAdmin('select','companies',{query:'name',filters:[{col:'id',op:'eq',val:companyId}]}).then(function(d){
-    if(d&&d.length>0)document.getElementById('invitation-company-name').textContent='公司: '+d[0].name;
-    else document.getElementById('invitation-company-name').textContent='公司ID: '+companyId;
-  }).catch(function(){});
-}
-async function acceptInvitation(){
-  if(!pendingInvitation||!currentUser)return;
-  try{
-    var r=await callAdmin('update','profiles',{payload:{company_id:pendingInvitation,role:'user',status:'active',invited_company_id:null,invited_at:null},filters:[{col:'user_id',op:'eq',val:currentUser.id}],query:'*'});
-    if(r.error){document.getElementById('invitation-err').textContent='入职失败: '+r.error.message;document.getElementById('invitation-err').style.display='block';return}
-    var data=r.data;
-    if(data&&data.length>0){currentCompanyId=data[0].company_id;currentUserRole=data[0].role||'user';isSuperAdmin=data[0].role==='super_admin'}
-    document.getElementById('invitation-screen').classList.add('hidden');
-    await loadCustomTypes();
-    buildFilterSelect();buildTypeGrid();buildStageGrid();
-    await loadClients();await loadCompanies();
-    document.getElementById('main-screen').classList.remove('hidden');
-    if(isSuperAdmin||currentUserRole==='admin')document.getElementById('tab-admin').classList.remove('hidden');
-    if(isSuperAdmin){document.getElementById('admin-tab-companies-manage').classList.remove('hidden');document.getElementById('admin-tab-companies').classList.remove('hidden');}
-    pollNotifications();
-    writeOpLog('login','auth',currentUser.id,currentUser.email,'通过邀请入职');
-    switchTab('analytics');
-  }catch(e){document.getElementById('invitation-err').textContent='入职失败: '+e.message;document.getElementById('invitation-err').style.display='block'}
-}
-async function rejectInvitation(){
-  if(!currentUser)return;
-  try{
-    await callAdmin('update','profiles',{payload:{invited_company_id:null,invited_at:null},filters:[{col:'user_id',op:'eq',val:currentUser.id}],query:'*'});
-  }catch(e){}
-  pendingInvitation=null;
-  document.getElementById('invitation-screen').classList.add('hidden');
-  showCompanyRegScreen();
-}
+
 
 // === Resignation ===
 function openResignForm(){
