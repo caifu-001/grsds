@@ -3275,7 +3275,11 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 async function callAdmin(op,table,opts){
   opts=opts||{};
   try{
-    var body=JSON.stringify({op:op,table:table,method:opts.method||'GET',payload:opts.payload||null,query:opts.query||'*',filters:opts.filters||null});
+    var bodyObj={op:op,table:table,method:opts.method||'GET',payload:opts.payload||null,query:opts.query||'*',filters:opts.filters||null};
+    // 透传额外参数（如 auth 操作的 userId/password）
+    if(opts.userId!==undefined)bodyObj.userId=opts.userId;
+    if(opts.password!==undefined)bodyObj.password=opts.password;
+    var body=JSON.stringify(bodyObj);
     var r=await fetch(SUPAFUNC_BASE,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+(await sb.auth.getSession()).data.session?.access_token||''},body:body});
     if(!r.ok){var txt=await r.text();console.error('callAdmin failed:',r.status,txt);return{data:null,error:{message:'Admin API '+(opts.failMsg||'error')}}};
     return await r.json();
@@ -7027,21 +7031,14 @@ async function setUserRole(userId,role){
 
 async function deleteUser(userId){
   if(!confirm('确定要删除该员工账号吗？此操作不可撤销，将同时清除其所有关联数据。'))return;
-  // 1. Delete from Auth (admin API)
   try{
-    // FIXME: Auth admin API requires service_key - cannot use callAdmin\n  // var ar=await fetch('https://jyefbatmmbelrhhzsgva.supabase.co/auth/v1/admin/users/'+userId,{\n  //   method:'DELETE',\n  //   headers:{'Authorization':'Bearer '+SUPABASE_SERVICE_KEY,'apikey':SUPABASE_SERVICE_KEY}\n  // });\n  // TODO: migrate to admin-proxy Edge Function with deleteUser endpoint\n  var ar={ok:false}; console.warn('Auth delete disabled - needs admin-proxy migration'); throw new Error('Auth delete not available');;
-    if(!ar.ok)throw new Error('Auth delete failed: '+(await ar.text()));
-  }catch(e){
-    // Auth delete may fail if user doesn't exist in auth system; proceed to clean profiles anyway
-    console.warn('Auth delete warning:',e.message);
-  }
-  // 2. Delete from profiles
-  var {error}=await sb.from('profiles').delete().eq('user_id',userId);
-  if(error){alert('删除失败: '+error.message);return}
-  // 3. Remove from local list
-  adminUserList=adminUserList.filter(function(u){return u.user_id!==userId});
-  allUsers=allUsers.filter(function(u){return u.user_id!==userId});
-  renderAdminUsers();
+    var r=await callAdmin('auth_delete_user','',{userId:userId});
+    if(r.error){alert('删除失败: '+(r.error.message||'未知错误'));return}
+    adminUserList=adminUserList.filter(function(u){return u.user_id!==userId});
+    allUsers=allUsers.filter(function(u){return u.user_id!==userId});
+    renderAdminUsers();
+    showToast('用户已删除');
+  }catch(e){alert('删除失败: '+e.message)}
 }
 
 function openUserDeptSelect(userId,currentDept){
@@ -7300,9 +7297,12 @@ function closeResetPwdForm(){
 async function doResetPassword(){
   var pwd=document.getElementById('reset-pwd-input').value.trim();
   if(!pwd||pwd.length<6){showToast('密码至少6位');return}
-  // SUPABASE_SERVICE_KEY removed - password reset migrated to admin-proxy
-  // FIXME: callAdmin does not support auth API; needs admin-proxy Edge Function with password reset endpoint
-  showToast('Password reset migrated to admin-proxy; contact Super Admin');
+  try{
+    var r=await callAdmin('auth_reset_password','',{userId:_resetPwdUserId,password:pwd});
+    if(r.error){showToast('重置失败: '+(r.error.message||'未知错误'));return}
+    showToast('密码已重置');
+    closeResetPwdForm();
+  }catch(e){showToast('重置失败: '+e.message)}
 }
 
 
