@@ -1539,8 +1539,10 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
   <div id="invite-modal" class="modal-overlay" style="display:none"><div class="modal" style="max-width:420px">
    <div class="modal-header"><span>邀请入职</span><button class="modal-close" onclick="closeInviteModal()">&times;</button></div>
    <div style="padding:16px">
-    <label style="font-size:13px;color:var(--muted);margin-bottom:8px;display:block">输入员工邮箱地址，发送入职邀请</label>
+    <label style="font-size:13px;color:var(--muted);margin-bottom:4px;display:block">输入员工邮箱地址</label>
     <input id="invite-email" type="email" placeholder="employee@example.com" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);font-size:14px;background:var(--card);color:var(--text)">
+    <label style="font-size:13px;color:var(--muted);margin-top:12px;margin-bottom:4px;display:block">邀请消息（可选）</label>
+    <textarea id="invite-msg" rows="3" placeholder="自定义邀请信息，如：欢迎加入XX团队..." style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);font-size:13px;background:var(--card);color:var(--text);resize:vertical"></textarea>
     <div id="invite-err" style="display:none;color:var(--danger);font-size:12px;margin-top:8px"></div>
     <button class="btn-save" style="width:100%;margin-top:12px;padding:10px;font-size:14px" onclick="sendInvitationByEmail()">发送邀请</button>
    </div>
@@ -12033,6 +12035,7 @@ async function renderAdminEmployees(){
 // === Email Invitation ===
 function openInviteModal(){
   document.getElementById('invite-email').value='';
+  document.getElementById('invite-msg').value='';
   document.getElementById('invite-err').style.display='none';
   document.getElementById('invite-modal').style.display='flex';
 }
@@ -12041,20 +12044,19 @@ function closeInviteModal(){
 }
 async function sendInvitationByEmail(){
   var email=document.getElementById('invite-email').value.trim();
+  var msgEl=document.getElementById('invite-msg');
+  var message=(msgEl&&msgEl.value?msgEl.value.trim():'');
   if(!email){document.getElementById('invite-err').textContent='请输入邮箱地址';document.getElementById('invite-err').style.display='block';return}
   if(!/^[^@]+@[^@]+$/.test(email)){document.getElementById('invite-err').textContent='邮箱格式不正确';document.getElementById('invite-err').style.display='block';return}
   try{
-    // Check if already invited
     var check=await callAdmin('select','invitations',{query:'*',filters:[{col:'to_email',op:'eq',val:email},{col:'from_company_id',op:'eq',val:currentCompanyId},{col:'status',op:'eq',val:'pending'}]});
     if(check&&check.data){var existing=check.data;if(existing&&existing.length>0){document.getElementById('invite-err').textContent='该邮箱已有待处理的邀请';document.getElementById('invite-err').style.display='block';return}}
-    // Check user exists
     var userCheck=await callAdmin('select','profiles',{query:'user_id,company_id',filters:[{col:'email',op:'eq',val:email}]});
     var userData=null;if(userCheck&&userCheck.data){var ua=userCheck.data;if(ua&&ua.length>0)userData=ua[0]}
-    // Create invitation
-    var r=await callAdmin('insert','invitations',{payload:{from_company_id:currentCompanyId,to_email:email}});
+    var r=await callAdmin('insert','invitations',{payload:{from_company_id:currentCompanyId,to_email:email,message:message||null}});
     if(r&&r.error){var j=r.error.catch(function(){});document.getElementById('invite-err').textContent='发送失败: '+(j&&j.message||r.statusText);document.getElementById('invite-err').style.display='block';return}
     closeInviteModal();
-    var msg=userData&&userData.company_id?'该用户当前在职，但已发送邀请（需先离职才能接受）。':'邀请已发送，用户将在\'我的\'页面看到邀请。';
+    var msg=userData&&userData.company_id?'该用户当前在职，但已发送邀请（需先离职才能接受）。':'邀请已发送，用户将在通知面板看到邀请。';
     if(!userData)msg='邀请已发送。该邮箱尚未注册，用户注册后将自动看到邀请。';
     showToast(msg);
   }catch(e){document.getElementById('invite-err').textContent='发送失败: '+e.message;document.getElementById('invite-err').style.display='block'}
