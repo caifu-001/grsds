@@ -1178,6 +1178,50 @@ input,select,textarea,button{font-family:inherit}
 </div>
 
 <!-- Main -->
+<div id="company-reg-screen" class="hidden">
+  <div class="reg-box">
+   <h2>注册公司</h2>
+   <p class="sub">创建您的公司账户，审核通过后即可使用</p>
+   <div class="reg-field">
+    <label>公司名称</label>
+    <input id="cr-name" placeholder="请输入公司全称">
+   </div>
+   <div class="reg-field">
+    <label>统一社会信用代码 / 税号</label>
+    <input id="cr-tax-id" placeholder="请输入18位信用代码">
+   </div>
+   <div class="reg-field">
+    <label>管理员邮箱</label>
+    <input id="cr-email" placeholder="请输入管理员邮箱（默认当前账号）">
+   </div>
+   <div id="cr-err" class="err-msg" style="display:none"></div>
+   <button class="btn-primary" onclick="submitCompanyReg()" style="width:100%;margin-top:6px">提交审核</button>
+   <button class="btn-outline" onclick="logout()" style="width:100%;margin-top:8px">退出登录</button>
+   </div>
+ </div>
+
+ <!-- Invitation Dialog -->
+ <div id="invitation-screen" class="hidden">
+  <div class="reg-box">
+   <h2>📨 入职邀请</h2>
+   <p class="sub" id="invitation-company-name"></p>
+   <p style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:16px">该公司邀请您加入，接受后将自动入职</p>
+   <div id="invitation-err" class="err-msg" style="display:none"></div>
+   <button class="btn-primary" onclick="acceptInvitation()" style="width:100%;margin-bottom:8px">✅ 接受邀请</button>
+   <button class="btn-outline" onclick="rejectInvitation()" style="width:100%">❌ 拒绝</button>
+  </div>
+ </div>
+
+ <!-- Pending Approval -->
+ <div id="pending-screen" class="hidden">
+  <div class="reg-box">
+   <h2>&#9203; 等待管理员审核</h2>
+   <p class="sub" id="pending-company-name"></p>
+   <p style="color:var(--text3);font-size:13px;margin:12px 0">您的公司注册申请已提交，管理员审核通过后即可开始使用。</p>
+   <button class="btn-outline" onclick="checkPendingCompany()" style="width:100%;margin-top:6px">刷新状态</button>
+   <button class="btn-outline" onclick="logout()" style="width:100%;margin-top:8px;color:var(--danger)">退出登录</button>
+  </div>
+ </div>
 <div id="main-screen" class="hidden">
  <div class="topbar">
   <span id="topbar-title">客户管理</span>
@@ -1312,50 +1356,7 @@ input,select,textarea,button{font-family:inherit}
   </div>
  </div>
 
- <div id="company-reg-screen" class="hidden">
-  <div class="reg-box">
-   <h2>注册公司</h2>
-   <p class="sub">创建您的公司账户，审核通过后即可使用</p>
-   <div class="reg-field">
-    <label>公司名称</label>
-    <input id="cr-name" placeholder="请输入公司全称">
-   </div>
-   <div class="reg-field">
-    <label>统一社会信用代码 / 税号</label>
-    <input id="cr-tax-id" placeholder="请输入18位信用代码">
-   </div>
-   <div class="reg-field">
-    <label>管理员邮箱</label>
-    <input id="cr-email" placeholder="请输入管理员邮箱（默认当前账号）">
-   </div>
-   <div id="cr-err" class="err-msg" style="display:none"></div>
-   <button class="btn-primary" onclick="submitCompanyReg()" style="width:100%;margin-top:6px">提交审核</button>
-   <button class="btn-outline" onclick="logout()" style="width:100%;margin-top:8px">退出登录</button>
-   </div>
- </div>
-
- <!-- Invitation Dialog -->
- <div id="invitation-screen" class="hidden">
-  <div class="reg-box">
-   <h2>📨 入职邀请</h2>
-   <p class="sub" id="invitation-company-name"></p>
-   <p style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:16px">该公司邀请您加入，接受后将自动入职</p>
-   <div id="invitation-err" class="err-msg" style="display:none"></div>
-   <button class="btn-primary" onclick="acceptInvitation()" style="width:100%;margin-bottom:8px">✅ 接受邀请</button>
-   <button class="btn-outline" onclick="rejectInvitation()" style="width:100%">❌ 拒绝</button>
-  </div>
- </div>
-
- <!-- Pending Approval -->
- <div id="pending-screen" class="hidden">
-  <div class="reg-box">
-   <h2>&#9203; 等待管理员审核</h2>
-   <p class="sub" id="pending-company-name"></p>
-   <p style="color:var(--text3);font-size:13px;margin:12px 0">您的公司注册申请已提交，管理员审核通过后即可开始使用。</p>
-   <button class="btn-outline" onclick="checkPendingCompany()" style="width:100%;margin-top:6px">刷新状态</button>
-   <button class="btn-outline" onclick="logout()" style="width:100%;margin-top:8px;color:var(--danger)">退出登录</button>
-  </div>
- </div>
+ 
 
 <!-- Performance View -->
  <div id="performance-view" class="hidden">
