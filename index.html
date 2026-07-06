@@ -2657,6 +2657,11 @@ input,select,textarea,button{font-family:inherit}
   <div style="background:#ffeb3b;padding:8px 12px;margin-bottom:8px;border-radius:4px;font-size:13px;font-weight:700">DIAG: panel visible - JS will replace</div>
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
    <h3 style="font-size:16px;font-weight:700;margin:0">项目管理</h3>
+   <div class="pd-status-tabs" style="display:flex;gap:2px;background:var(--bg);border-radius:6px;padding:2px;margin:0 12px">
+    <button class="pd-status-tab" data-status="todo" onclick="filterProjectsByState('todo')">待办</button>
+    <button class="pd-status-tab active" data-status="doing" onclick="filterProjectsByState('doing')">在办</button>
+    <button class="pd-status-tab" data-status="done" onclick="filterProjectsByState('done')">办结</button>
+   </div>
    <button class="btn-sm btn-sm-primary" onclick="openProjectForm()">+ 新建项目</button>
   </div>
   <div id="pm-project-list" style="display:flex;flex-direction:column;gap:8px"><div style="text-align:center;padding:40px;color:var(--text2)">加载中...</div></div>
@@ -13091,7 +13096,7 @@ function editForm(id){showToast('表单编辑功能暂未开放')}
 
 
 // ====== Project Management ======
-var allProjects=[],allStages=[],allBiddings=[],allDeliveries=[],allPayments=[],allTemplates=[],curProjectId=null,curProjectName='';
+var allProjects=[],allStages=[],allBiddings=[],allDeliveries=[],allPayments=[],allTemplates=[],curProjectId=null,curProjectName='',projectStateFilter='doing';
 var pStageEditId=null,pBiddingEditId=null,pDeliveryEditId=null,pPaymentEditId=null;
 
 // ---- Workflow Data ----
@@ -14347,30 +14352,39 @@ async function loadProjects(){
 function renderProjects(){
   var list=document.getElementById('pm-project-list');
   if(!allProjects.length){list.innerHTML='<div style="text-align:center;padding:40px;color:var(--text2)">无项目，可从销售管道线索中立项创建</div>';return}
+  // Filter by current_state
+  var filtered=allProjects;
+  if(projectStateFilter){filtered=allProjects.filter(function(p){return (p.current_state||'doing')===projectStateFilter})}
+  if(!filtered.length){list.innerHTML='<div style="text-align:center;padding:40px;color:var(--text2)">'+({todo:'无待办项目',doing:'无在办项目',done:'无办结项目'}[projectStateFilter]||'无项目')+'</div>';return}
   var s='';
   var statusMap={planning:'规划中',in_progress:'进行中',completed:'已完成',suspended:'已暂停'};
-  for(var i=0;i<allProjects.length;i++){
-    var p=allProjects[i];
+  var stateMap={todo:'⏳ 待办',doing:'🔄 在办',done:'✅ 办结'};
+  for(var i=0;i<filtered.length;i++){
+    var p=filtered[i];
     var client=allClients.find(function(c){return c.id===p.client_id});
     var cn=client?client.name:'未关联';
-    // Bus ID display
+    var cs=p.current_state||'doing';
     if(p.bus_id)s+='<span style="font-size:11px;color:var(--text3)">⌖ '+h(p.bus_id)+'</span>';
-    // Count workflow progress for preview
     var wfDone=0,wfTotal=46;
     try{var wf=JSON.parse(p.workflow||'{}');for(var k in wf){if(wf[k]&&wf[k].done)wfDone++}}catch(e){}
     var wfPct=wfTotal>0?Math.round(wfDone/wfTotal*100):0;
     s+='<div class="project-card" onclick="renderProjectDetail(\''+p.id+'\')">';
-    s+='<div class="project-card-header"><span class="project-card-name">'+h(p.name)+'</span><span class="project-card-status status-'+p.status+'">'+(statusMap[p.status]||p.status)+'</span></div>';
+    s+='<div class="project-card-header"><span class="project-card-name">'+h(p.name)+'</span><span class="project-card-status status-'+p.status+'">'+(statusMap[p.status]||p.status)+'</span><span style="font-size:11px;color:var(--text2);margin-left:4px">'+(stateMap[cs]||cs)+'</span></div>';
     s+='<div class="project-card-meta"><span>&#127970; '+h(cn)+'</span><span>&#128176; '+(p.budget?formatMoney(p.budget):'-')+'</span>';
     if(p.start_date)s+='<span>&#128197; '+p.start_date+'</span>';
     if(p.end_date)s+='<span>&rarr; '+p.end_date+'</span>';
     s+='<span style="color:var(--primary);font-weight:600">流程 '+wfPct+'%</span>';
     s+='</div>';
-    // Mini progress bar
     s+='<div style="height:3px;background:var(--border);border-radius:1px;margin-top:6px"><div style="height:100%;width:'+wfPct+'%;background:var(--primary);border-radius:1px"></div></div>';
     s+='</div>';
   }
   list.innerHTML=s;
+}
+
+function filterProjectsByState(state){
+  projectStateFilter=state;
+  document.querySelectorAll('#project-list-panel .pd-status-tab').forEach(function(b){b.classList.toggle('active',b.dataset.status===state)});
+  renderProjects();
 }
 
 // ---- Stage / Bidding / Contract / Delivery / Payment keepers (called from workbench) ----
