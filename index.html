@@ -5867,7 +5867,7 @@ async function loadNotifs(){
   var el=document.getElementById('notif-list');
   el.innerHTML='<div class="empty-state">加载中...</div>';
   if(!currentUser)return;
-  var {data:notifs}=await sb.from('notifications').select('*').eq('company_id',currentCompanyId).order('created_at',{ascending:false}).limit(50);
+  var {data:notifs}=await sb.from('notifications').select('*').eq('user_id',currentUser.id).order('created_at',{ascending:false}).limit(50);
   var unread=0;
   if(notifs&&notifs.length){
     var h='';
@@ -5897,7 +5897,8 @@ async function openNotif(id,link){
   updateBellBadge();
   loadNotifs();
   toggleNotifPanel();
-  if(link){var parts=link.split('/');if(parts[0])switchTab(parts[0])}
+  if(link==='invitations'){switchNotifTab('invitations')}
+  else if(link){var parts=link.split('/');if(parts[0])switchTab(parts[0])}
 }
 
 function updateBellBadge(){
