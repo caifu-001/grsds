@@ -6495,6 +6495,7 @@ sb.auth.getSession().then(async function(res){
     buildStageGrid();
     await loadClients();
     loadCompanies();
+    loadNotifs();
   }else document.getElementById('login-screen').classList.remove('hidden');
 }).catch(function(){document.getElementById('login-screen').classList.remove('hidden')});
 
