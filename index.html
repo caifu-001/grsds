@@ -6934,7 +6934,7 @@ async function deleteRole(id){
   showToast('角色已删除');
   await loadAdminData();
   renderAdminRoles();
-  renderAdminUsers();
+  if(typeof renderAdminEmployees==="function")renderAdminEmployees();
 }
 
 async function switchBizTab(sub){
@@ -7172,7 +7172,7 @@ async function setUserRole(userId,role){
   var {error}=await sb.from('profiles').upsert({user_id:userId,role:role},{onConflict:'user_id'});
   if(error){alert('操作失败: '+error.message);return}
   for(var i=0;i<adminUserList.length;i++){if(adminUserList[i].user_id===userId){adminUserList[i].role=role;break;}}
-  renderAdminUsers();
+  if(typeof renderAdminEmployees==="function")renderAdminEmployees();
 }
 
 async function deleteUser(userId){
@@ -7182,7 +7182,7 @@ async function deleteUser(userId){
     if(r.error){alert('删除失败: '+(r.error.message||'未知错误'));return}
     adminUserList=adminUserList.filter(function(u){return u.user_id!==userId});
     allUsers=allUsers.filter(function(u){return u.user_id!==userId});
-    renderAdminUsers();
+    if(typeof renderAdminEmployees==="function")renderAdminEmployees();
     showToast('用户已删除');
   }catch(e){alert('删除失败: '+e.message)}
 }
@@ -7265,7 +7265,8 @@ async function saveUserEdit(userId){
     break;
   }}
   closeUserEditForm();
-  renderAdminUsers();
+  // 刷新员工管理列表
+  if(typeof renderAdminEmployees==='function')renderAdminEmployees();
 }
 
 
@@ -7365,7 +7366,7 @@ function formatDateTime(iso){if(!iso)return'';try{var d=new Date(iso);var y=d.ge
 function escHtml(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function closeUserDeptModal(){var m=document.getElementById('user-dept-modal');if(m)m.remove();}
 function commitUserDept(){var m=document.getElementById('user-dept-modal');var uid=m?m._userId:null;var deptId=parseInt(document.getElementById('user-dept-select').value)||null;if(uid)doSetUserDeptCommit(uid,deptId);}
-async function doSetUserDeptCommit(userId,deptId){var tu=adminUserList.find(function(u){return u.user_id===userId;});if(!isSuperAdmin&&currentUserRole==='admin'&&tu&&tu.company_id!==currentCompanyId){showToast('权限不足');return;}var{error}=await sb.from('profiles').update({department_id:deptId}).eq('user_id',userId);if(error){alert('操作失败: '+error.message);return}for(var i=0;i<adminUserList.length;i++){if(adminUserList[i].user_id===userId){adminUserList[i].department_id=deptId;break;}}var m=document.getElementById('user-dept-modal');if(m)m.remove();renderAdminUsers();}
+async function doSetUserDeptCommit(userId,deptId){var tu=adminUserList.find(function(u){return u.user_id===userId;});if(!isSuperAdmin&&currentUserRole==='admin'&&tu&&tu.company_id!==currentCompanyId){showToast('权限不足');return;}var{error}=await sb.from('profiles').update({department_id:deptId}).eq('user_id',userId);if(error){alert('操作失败: '+error.message);return}for(var i=0;i<adminUserList.length;i++){if(adminUserList[i].user_id===userId){adminUserList[i].department_id=deptId;break;}}var m=document.getElementById('user-dept-modal');if(m)m.remove();if(typeof renderAdminEmployees==="function")renderAdminEmployees();}
 function closeDeptFormModal(){var m=document.getElementById('dept-form-modal');if(m)m.remove();}
 function delDeptById(id){var dept=null;for(var i=0;i<allDepartments.length;i++){if(allDepartments[i].id===id){dept=allDepartments[i];break;}}if(dept)deleteDept(id,dept.name);}
 
@@ -7425,7 +7426,7 @@ async function saveNewUser(){
   closeAddUserForm();
   showToast('用户创建成功');
   await loadAdminData();
-  renderAdminUsers();
+  if(typeof renderAdminEmployees==="function")renderAdminEmployees();
 }
 
 
