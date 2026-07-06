@@ -5928,7 +5928,10 @@ async function loadMyInvitations(){
   var el=document.getElementById('invitation-list');
   el.innerHTML='<div class="empty-state">加载中...</div>';
   if(!currentUser)return;
-  var {data:invites}=await sb.from('invitations').select('*,companies:from_company_id(name)').eq('to_email',currentUser.email).eq('status','pending').order('created_at',{ascending:false});
+  console.log('loadMyInvitations: email=',currentUser.email);
+  var resp=await sb.from('invitations').select('*,companies:from_company_id(name)').eq('to_email',currentUser.email).eq('status','pending').order('created_at',{ascending:false});
+  console.log('invitations resp:',resp);
+  var invites=resp.data;
   if(invites&&invites.length){
     var h='';
     for(var i=0;i<invites.length;i++){
@@ -12054,65 +12057,7 @@ async function sendInvitationByEmail(){
 }
 
 // === Employee side: load my invitations ===
-var myInvitations=[];
-async function loadMyInvitations(){
-  if(!currentUser||!currentUser.email)return;
-  try{
-    var r=await callAdmin('select','invitations',{query:'*',filters:[{col:'to_email',op:'eq',val:currentUser.email},{col:'status',op:'eq',val:'pending'},{col:'',op:'order',val:'created_at.desc'}]});
-    if(r&&r.data){myInvitations=r.data}else{myInvitations=[]}
-  }catch(e){myInvitations=[];console.error('loadMyInvitations',e)}
-}
-function renderMyInvitations(){
-  var el=document.getElementById('my-invitation-list');
-  if(!el)return;
-  if(myInvitations.length===0){el.innerHTML='';return}
-  var h='<div style="margin-top:16px"><div style="font-weight:600;font-size:14px;margin-bottom:8px">入职邀请</div>';
-  for(var i=0;i<myInvitations.length;i++){
-    var inv=myInvitations[i];
-    var companyName='公司 #'+inv.from_company_id;
-    if(allCompanies)for(var j=0;j<allCompanies.length;j++){if(allCompanies[j].id===inv.from_company_id){companyName=allCompanies[j].name;break}}
-    h+='<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">';
-    h+='<div><div style="font-weight:600;font-size:14px">'+escHtml(companyName)+'</div><div style="font-size:12px;color:var(--muted)">发送于 '+new Date(inv.created_at).toLocaleDateString('zh-CN')+'</div></div>';
-    h+='<div style="display:flex;gap:6px"><button class="btn-save" style="padding:6px 14px;font-size:12px" onclick="acceptMyInvitation('+inv.id+')">接受</button><button class="btn-cancel" style="padding:6px 14px;font-size:12px" onclick="rejectMyInvitation('+inv.id+')">拒绝</button></div>';
-    h+='</div>';
-  }
-  h+='</div>';
-  el.innerHTML=h;
-}
-async function acceptMyInvitation(invId){
-  if(!confirm('确认加入该公司？'))return;
-  try{
-    var inv=null;for(var i=0;i<myInvitations.length;i++){if(myInvitations[i].id===invId){inv=myInvitations[i];break}}
-    if(!inv){showToast('邀请不存在');return}
-    // Set company on profile
-    var r=await callAdmin('update','profiles',{payload:{company_id:inv.from_company_id,role:'user',status:'active',department_id:null},filters:[{col:'user_id',op:'eq',val:currentUser.id}],query:'*'});
-    if(r&&r.error){var j=r.error.catch(function(){});showToast('入职失败: '+(j&&j.message||r.statusText));return}
-    // Mark invitation accepted
-    await callAdmin('update','invitations',{payload:{status:'accepted',accepted_at:new Date().toISOString()},filters:[{col:'id',op:'eq',val:invId}],query:'*'});
-    var data=r.data;
-    if(data&&data.length>0){currentCompanyId=data[0].company_id;currentUserRole=data[0].role||'user';isSuperAdmin=data[0].role==='super_admin'}
-    myInvitations=[];renderMyInvitations();
-    document.getElementById('my-invitation-section').style.display='none';
-    showToast('入职成功');
-    await loadCustomTypes();buildFilterSelect();buildTypeGrid();buildStageGrid();
-    await loadClients();await loadCompanies();
-    document.getElementById('my-screen').style.display='none';
-    document.getElementById('main-screen').classList.remove('hidden');
-    if(isSuperAdmin||currentUserRole==='admin')document.getElementById('tab-admin').classList.remove('hidden');
-    if(isSuperAdmin){document.getElementById('admin-tab-companies-manage').classList.remove('hidden');document.getElementById('admin-tab-companies').classList.remove('hidden');document.getElementById('admin-tab-freeagents').classList.remove('hidden')}
-    pollNotifications();
-    writeOpLog('login','auth',currentUser.id,currentUser.email,'通过邀请入职');
-    switchTab('analytics');
-  }catch(e){showToast('入职失败: '+e.message)}
-}
-async function rejectMyInvitation(invId){
-  if(!confirm('确认拒绝该邀请？'))return;
-  try{
-    await callAdmin('update','invitations',{payload:{status:'rejected',rejected_at:new Date().toISOString()},filters:[{col:'id',op:'eq',val:invId}],query:'*'});
-    myInvitations=myInvitations.filter(function(inv){return inv.id!==invId});
-    renderMyInvitations();
-  }catch(e){showToast('操作失败: '+e.message)}
-}
+
 
 // === Free Agent Pool ===
 var allFreeAgents=[];
