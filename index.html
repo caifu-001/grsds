@@ -1445,7 +1445,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
    <button class="admin-subtab hidden" id="admin-tab-companies-manage" onclick="switchAdminTab('companies_manage')">公司管理</button>
    <button class="admin-subtab hidden" id="admin-tab-companies" onclick="switchAdminTab('companies')">
   <datalist id="admin-company-list"></datalist>公司审核</button>
-   <button class="admin-subtab" id="admin-tab-employees" onclick="switchAdminTab('employees')">员工管理</button>
+   <button class="admin-subtab" class="admin-subtab active" id="admin-tab-employees" onclick="switchAdminTab('employees')">员工管理</button>
    <button class="admin-subtab hidden" id="admin-tab-freeagents" onclick="switchAdminTab('freeagents')">自由员工池</button>
    <button class="admin-subtab" id="admin-tab-resignations" onclick="switchAdminTab('resignations')">离职审批</button>
    <button class="admin-subtab" id="admin-tab-logs" onclick="switchAdminTab('logs')">操作日志</button>
@@ -1456,13 +1456,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
   </div>
 
   <!-- User Management -->
-  <div id="admin-users" class="admin-panel">
-   <div class="toolbar" style="margin-bottom:10px">
-    <div class="search-wrap"><input id="admin-user-search" placeholder="搜索用户..." oninput="renderAdminUsers()"></div>
-    <button class="btn-save" style="padding:8px 16px;font-size:13px" onclick="openAddUserForm()">+ 创建用户</button>
-   </div>
-   <div id="admin-user-list"></div>
-  </div>
+  
 
   <!-- Department Management -->
   <div id="admin-depts" class="admin-panel hidden">
@@ -1511,21 +1505,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
    </div>
    <div id="admin-emp-list"></div>
    <!-- Employee form modal (inline) -->
-   <div id="emp-form-modal" class="modal-overlay" style="display:none"><div class="modal" style="max-width:500px">
-    <div class="modal-header"><span id="emp-form-title">添加员工</span><button class="modal-close" onclick="closeEmployeeForm()">&times;</button></div>
-    <div class="modal-body">
-     <label style="font-size:13px;color:var(--text2);margin-bottom:4px;display:block">姓名</label><input id="ef-name" placeholder="员工姓名" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:12px">
-     <label style="font-size:13px;color:var(--text2);margin-bottom:4px;display:block">邮箱</label><input id="ef-email" placeholder="登录邮箱" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:12px">
-     <label style="font-size:13px;color:var(--text2);margin-bottom:4px;display:block">角色</label><select id="ef-role" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:12px;background:var(--card);color:var(--text)"></select>
-     <label style="font-size:13px;color:var(--text2);margin-bottom:4px;display:block">部门</label><select id="ef-dept" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:12px;background:var(--card);color:var(--text)"><option value="">未分配</option></select>
-     <label style="font-size:13px;color:var(--text2);margin-bottom:4px;display:block">数据权限</label><select id="ef-data-scope" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:12px;background:var(--card);color:var(--text)"><option value="all">全部数据</option><option value="dept">本部门</option><option value="own">仅自己</option></select>
-     <label style="font-size:13px;color:var(--text2);margin-bottom:4px;display:block">状态</label><select id="ef-status" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;margin-bottom:12px;background:var(--card);color:var(--text)"><option value="active">在职</option><option value="inactive">离职</option></select>
-     <div id="ef-reassign-row" style="display:none;margin-bottom:12px">
-      <label style="font-size:13px;color:var(--text2);margin-bottom:4px;display:block">客户交接给</label><select id="ef-reassign" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;background:var(--card);color:var(--text)"><option value="">回收公共池</option></select>
-     </div>
-     <div class="btns"><button class="btn-cancel" onclick="closeEmployeeForm()">取消</button><button class="btn-confirm" onclick="saveEmployee()">保存</button></div>
-    </div>
-   </div></div>
+   
   </div>
   <!-- Invite by email modal -->
   <div id="invite-modal" class="modal-overlay" style="display:none"><div class="modal" style="max-width:420px">
@@ -7054,7 +7034,7 @@ async function switchAdminTab(tab){
   var wf=document.getElementById('admin-workflows');if(wf)wf.classList.add('hidden');
   var gr=document.getElementById('admin-grants');if(gr)gr.classList.add('hidden');
   for(var i=0;i<subs.length;i++)subs[i].classList.remove('active');
-  if(tab==='users'){ut.classList.remove('hidden');subs[0].classList.add('active');await loadAdminData();renderAdminUsers();}
+  
   else if(tab==='depts'){dt.classList.remove('hidden');subs[1].classList.add('active');await loadAdminData();renderAdminDepts();}
   else if(tab==='roles'){rt.classList.remove('hidden');subs[2].classList.add('active');await loadAdminData();renderAdminRoles();}
   else if(tab==='perms'){pt.classList.remove('hidden');subs[3].classList.add('active');await loadAdminData();renderAdminPerms();}
@@ -12099,7 +12079,6 @@ function showBirthdayReminder(contacts){
 }
 
 /* ===== EMPLOYEE MANAGEMENT ===== */
-var empEditId=null;
 async function renderAdminEmployees(){
   var el=document.getElementById('admin-emp-list');if(!el)return;
   var q=(document.getElementById('admin-emp-search').value||'').toLowerCase();
@@ -12116,14 +12095,14 @@ async function renderAdminEmployees(){
   });
   if(df)list=list.filter(function(u){return u.dept_id==df;});
   if(sf)list=list.filter(function(u){return u.status===sf;});
-  if(q)list=list.filter(function(u){return (u.display_name||'').toLowerCase().indexOf(q)>=0||(u.email||'').toLowerCase().indexOf(q)>=0;});
-  var h='<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="border-bottom:2px solid var(--border)"><th style="padding:10px 8px;text-align:left">姓名</th><th style="padding:10px 8px;text-align:left">邮箱</th><th style="padding:10px 8px;text-align:left">角色</th><th style="padding:10px 8px;text-align:left">部门</th><th style="padding:10px 8px;text-align:left">数据范围</th><th style="padding:10px 8px;text-align:left">状态</th><th style="padding:10px 8px;text-align:left">最后登录</th><th style="padding:10px 8px;text-align:center">操作</th></tr></thead><tbody>';
+  if(q)list=list.filter(function(u){return (u.display_name||'').toLowerCase().indexOf(q)>=0||(u.email||'').toLowerCase().indexOf(q)>=0||(u.position||'').toLowerCase().indexOf(q)>=0;});
+  var h='<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="border-bottom:2px solid var(--border)"><th style="padding:10px 8px;text-align:left">姓名</th><th style="padding:10px 8px;text-align:left">邮箱</th><th style="padding:10px 8px;text-align:left">公司</th><th style="padding:10px 8px;text-align:left">手机</th><th style="padding:10px 8px;text-align:left">岗位</th><th style="padding:10px 8px;text-align:left">角色</th><th style="padding:10px 8px;text-align:left">部门</th><th style="padding:10px 8px;text-align:left">状态</th><th style="padding:10px 8px;text-align:left">最后登录</th><th style="padding:10px 8px;text-align:center">操作</th></tr></thead><tbody>';
   for(var j=0;j<list.length;j++){
     var u=list[j];var dn=u.display_name||'';var em=u.email||'';var rn=u.role||'';var did=u.dept_id||'';
     var deptName='';for(var k=0;k<(allDepartments||[]).length;k++){if(allDepartments[k].id==did){deptName=allDepartments[k].name;break;}}
-    var scopes={own:'仅自己',dept:'本部门',all:'全部'};var dsLabel=scopes[u.data_scope]||'全部';
+    var companyName='-';var cab2=typeof allAdminCompanies!=='undefined'?allAdminCompanies:allCompanies||[];for(var ci=0;ci<cab2.length;ci++){if(cab2[ci].id===u.company_id){companyName=cab2[ci].name;break}}
     var statusLabel=u.status==='inactive'?'<span style="color:#ef4444">离职</span>':'<span style="color:#10b981">在职</span>';
-    h+='<tr style="border-bottom:1px solid var(--border)"><td style="padding:8px">'+escHtml(dn)+'</td><td style="padding:8px">'+escHtml(em)+'</td><td style="padding:8px">'+escHtml(rn)+'</td><td style="padding:8px">'+escHtml(deptName)+'</td><td style="padding:8px;font-size:12px;color:var(--text3)">'+dsLabel+'</td><td style="padding:8px">'+statusLabel+'</td><td style="padding:8px;font-size:12px;color:var(--text3)">'+escHtml(u.last_login_at?formatDateTime(u.last_login_at):'从未登录')+'</td><td style="padding:8px;text-align:center"> <a href="javascript:void(0)" style="font-size:11px;margin-left:6px" onclick="toggleEmpStatus(\''+u.user_id+'\',\''+(u.status==='active'?'inactive':'active')+'\')">'+(u.status==='active'?'设为离职':'设为在职')+'</a></td><td style="padding:8px;text-align:center"><a href="javascript:void(0)" onclick="editEmployee(\''+u.user_id+'\')" style="color:var(--primary);font-size:13px">编辑</a></td></tr>';
+    h+='<tr style="border-bottom:1px solid var(--border)"><td style="padding:8px">'+escHtml(dn)+'</td><td style="padding:8px">'+escHtml(em)+'</td><td style="padding:8px">'+escHtml(companyName)+'</td><td style="padding:8px">'+escHtml(u.phone||'-')+'</td><td style="padding:8px">'+escHtml(u.position||'-')+'</td><td style="padding:8px">'+escHtml(rn)+'</td><td style="padding:8px">'+escHtml(deptName)+'</td><td style="padding:8px">'+statusLabel+'</td><td style="padding:8px;font-size:12px;color:var(--text3)">'+escHtml(u.last_login_at?formatDateTime(u.last_login_at):'从未登录')+'</td><td style="padding:8px;text-align:center"><a href="javascript:void(0)" onclick="openUserEditForm(\''+u.user_id+'\')" style="color:var(--primary);font-size:13px">编辑</a></td></tr>';
   }
   h+='</tbody></table>';
   if(list.length===0)h='<div style="text-align:center;padding:40px;color:var(--text3)">暂无匹配员工</div>';
@@ -12278,78 +12257,6 @@ async function rejectResignation(uid){
   }catch(e){showToast('操作失败: '+e.message)}
 }
 
-function openEmployeeForm(){
-  empEditId=null;document.getElementById('emp-form-title').textContent='添加员工';
-  document.getElementById('ef-name').value='';document.getElementById('ef-email').value='';
-  document.getElementById('ef-status').value='active';document.getElementById('ef-data-scope').value='all';
-  document.getElementById('ef-reassign-row').style.display='none';
-  // Populate roles
-  var rs=document.getElementById('ef-role');rs.innerHTML='';
-  for(var i=0;i<allRoles.length;i++)rs.innerHTML+='<option value="'+escHtml(allRoles[i].name)+'">'+escHtml(allRoles[i].name)+'</option>';
-  // Populate depts
-  var ds=document.getElementById('ef-dept');ds.innerHTML='<option value="">未分配</option>';
-  if(allDepartments)for(var j=0;j<allDepartments.length;j++)ds.innerHTML+='<option value="'+allDepartments[j].id+'">'+escHtml(allDepartments[j].name)+'</option>';
-  // Populate reassign
-  var rs2=document.getElementById('ef-reassign');rs2.innerHTML='<option value="">回收公共池</option>';
-  if(allUsers)for(var k=0;k<allUsers.length;k++)rs2.innerHTML+='<option value="'+allUsers[k].user_id+'">'+escHtml(allUsers[k].display_name||allUsers[k].email)+'</option>';
-  document.getElementById('emp-form-modal').style.display='flex';
-}
-function closeEmployeeForm(){document.getElementById('emp-form-modal').style.display='none';}
-async function editEmployee(uid){
-  var u=null;if(allUsers)for(var i=0;i<allUsers.length;i++){if(allUsers[i].user_id===uid){u=allUsers[i];break;}}
-  if(!u){showToast('员工不存在');return}
-  empEditId=uid;document.getElementById('emp-form-title').textContent='编辑员工';
-  document.getElementById('ef-name').value=u.display_name||'';document.getElementById('ef-email').value=u.email||'';
-  document.getElementById('ef-status').value=u.status||'active';document.getElementById('ef-data-scope').value=u.data_scope||'all';
-  // Populate role
-  var rs=document.getElementById('ef-role');rs.innerHTML='';
-  for(var j=0;j<allRoles.length;j++){rs.innerHTML+='<option value="'+escHtml(allRoles[j].name)+'"'+(allRoles[j].name===u.role?' selected':'')+'>'+escHtml(allRoles[j].name)+'</option>';}
-  // Populate depts
-  var ds=document.getElementById('ef-dept');ds.innerHTML='<option value="">未分配</option>';
-  if(allDepartments)for(var k=0;k<allDepartments.length;k++){ds.innerHTML+='<option value="'+allDepartments[k].id+'"'+(allDepartments[k].id==u.dept_id?' selected':'')+'>'+escHtml(allDepartments[k].name)+'</option>';}
-  // Reassign row
-  var rs2=document.getElementById('ef-reassign');rs2.innerHTML='<option value="">回收公共池</option>';
-  if(allUsers)for(var m=0;m<allUsers.length;m++){if(allUsers[m].user_id!==uid)rs2.innerHTML+='<option value="'+allUsers[m].user_id+'">'+escHtml(allUsers[m].display_name||allUsers[m].email)+'</option>';}
-  if(u.status==='inactive'){document.getElementById('ef-reassign-row').style.display='block';}
-  else{document.getElementById('ef-reassign-row').style.display='none';}
-  document.getElementById('emp-form-modal').style.display='flex';
-}
-async function saveEmployee(){
-  var name=document.getElementById('ef-name').value.trim();if(!name){showToast('请输入姓名');return}
-  var email=document.getElementById('ef-email').value.trim();if(!email){showToast('请输入邮箱');return}
-  var role=document.getElementById('ef-role').value;
-  var deptId=document.getElementById('ef-dept').value||null;
-  var status=document.getElementById('ef-status').value;
-  var dataScope=document.getElementById('ef-data-scope').value;
-  var reassignTo=document.getElementById('ef-reassign').value||null;
-  // Update via SERVICE_KEY
-  var body={display_name:name,email:email,role:role,department_id:deptId,status:status,data_scope:dataScope};
-  if(empEditId){
-    var resp=await callAdmin('update','profiles',{payload:body,filters:[{col:'user_id',op:'eq',val:empEditId}],query:'*'});
-    if(resp&&resp.data){
-      if(status==='inactive'){await callAdmin('rpc','reassign_clients_on_deactivate',{payload:{p_user_id:empEditId,p_company_id:currentCompanyId,p_reassign_to:reassignTo||null}});showToast('员工已更新，客户已交接');}
-      else showToast('员工已更新');
-      closeEmployeeForm();await loadAdminData();renderAdminEmployees();
-    }else{showToast('更新失败')}
-  }else{showToast('新建员工请使用"添加用户"功能')}
-}
-async function toggleEmpStatus(uid,newStatus){
-  if(!isSuperAdmin&&currentUserRole!=='admin'){showToast('权限不足');return;}
-  if(!isSuperAdmin&&uid===currentUser.id&&newStatus==='inactive'){showToast('不能将自己设为离职，请联系其他管理员操作');return;}
-  if(!confirm('确认将员工设为'+(newStatus==='inactive'?'离职':'在职')+'？'))return;
-  if(newStatus==='inactive'){
-    var reassign=prompt('输入交接员工ID（留空回收公共池）:','');
-    var body2={status:newStatus,data_scope:'own',company_id:null,department_id:null};
-    await callAdmin('update','profiles',{payload:body2,filters:[{col:'user_id',op:'eq',val:uid}],query:'*'});
-    if(reassign)await callAdmin('rpc','reassign_clients_on_deactivate',{payload:{p_user_id:uid,p_company_id:currentCompanyId,p_reassign_to:reassign||null}});
-    else await callAdmin('rpc','reassign_clients_on_deactivate',{payload:{p_user_id:uid,p_company_id:currentCompanyId,p_reassign_to:null}});
-    showToast('员工已设为离职，客户已回收');
-  }else{
-    await callAdmin('update','profiles',{payload:{status:newStatus},filters:[{col:'user_id',op:'eq',val:uid}],query:'*'});
-    showToast('员工已设为在职');
-  }
-  await loadAdminData();renderAdminEmployees();
-}
 
 /* ===== OPERATION LOGS ===== */
 var allOpLogs=[];var logsError=null;
