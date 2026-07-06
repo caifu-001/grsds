@@ -17035,6 +17035,9 @@ async function pdAction(action){
     if(!confirm('确认退回？'))return;
     await sb.from('projects').update({current_state:'todo'}).eq('id',curDetailId);
     showToast('已退回待办','info');
+    closeProjectDetail();
+    loadProjects();
+    return;
   }else if(action==='complete'){
     if(!confirm('确认办理完毕？此操作将项目状态置为办结'))return;
     await sb.from('projects').update({current_state:'done'}).eq('id',curDetailId);
