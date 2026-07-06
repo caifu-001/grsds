@@ -5960,10 +5960,26 @@ async function loadMyInvitations(){
 
 async function acceptInvitation(id){
   try{
-    console.log('acceptInvitation called, id=',id);
-    var r=await sb.rpc('handle_invitation',{p_invitation_id:id,p_action:'accept'});
-    console.log('handle_invitation response:',r);
-    if(r.error){showToast(r.error.message||'操作失败');return}
+    console.log('acceptInvitation id=',id);
+    // get invitation
+    var invs=await callAdmin('select','invitations',{query:'*',filters:[{col:'id',op:'eq',val:id}]});
+    var inv=(invs&&invs.data&&invs.data.length>0)?invs.data[0]:null;
+    console.log('inv found:',inv);
+    if(!inv){showToast('邀请不存在');return}
+    // check already member
+    var mems=await callAdmin('select','company_memberships',{query:'*',filters:[{col:'user_id',op:'eq',val:currentUser.id},{col:'company_id',op:'eq',val:inv.from_company_id}]});
+    if(mems&&mems.data&&mems.data.length>0&&mems.data[0].status==='active'){
+      await callAdmin('update','invitations',{filters:[{col:'id',op:'eq',val:id}],payload:{status:'accepted'}});
+      showToast('已是该公司成员，刷新中...');setTimeout(function(){location.reload()},800);return;
+    }
+    // insert membership
+    var mr=await callAdmin('insert','company_memberships',{payload:{user_id:currentUser.id,company_id:inv.from_company_id,role:inv.role||'member',status:'active'}});
+    console.log('membership insert:',mr);
+    if(mr&&mr.error&&mr.error.code!=='23505'){showToast('加入失败: '+(mr.error.message||''));return}
+    // update profiles
+    await callAdmin('update','profiles',{filters:[{col:'user_id',op:'eq',val:currentUser.id}],payload:{company_id:inv.from_company_id}});
+    // mark accepted
+    await callAdmin('update','invitations',{filters:[{col:'id',op:'eq',val:id}],payload:{status:'accepted'}});
     showToast('已加入公司！刷新中...');
     setTimeout(function(){location.reload()},800);
   }catch(e){console.error('acceptInvitation error:',e);showToast('操作失败: '+(e.message||e.toString()))}
@@ -5971,11 +5987,10 @@ async function acceptInvitation(id){
 
 async function rejectInvitation(id){
   try{
-    var r=await sb.rpc('handle_invitation',{p_invitation_id:id,p_action:'reject'});
-    if(r.error){showToast(r.error.message||'操作失败');return}
+    await callAdmin('update','invitations',{filters:[{col:'id',op:'eq',val:id},{col:'to_email',op:'eq',val:currentUser.email}],payload:{status:'rejected'}});
     showToast('已拒绝');
     loadMyInvitations();
-  }catch(e){showToast('操作失败: '+(e.message||e.toString()))}
+  }catch(e){console.error('rejectInvitation error:',e);showToast('操作失败: '+(e.message||e.toString()))}
 }
 
 async function loadActivityLogs(){
