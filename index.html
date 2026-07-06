@@ -12323,7 +12323,7 @@ async function saveEmployee(){
   var dataScope=document.getElementById('ef-data-scope').value;
   var reassignTo=document.getElementById('ef-reassign').value||null;
   // Update via SERVICE_KEY
-  var body={display_name:name,email:email,role:role,dept_id:deptId,status:status,data_scope:dataScope};
+  var body={display_name:name,email:email,role:role,department_id:deptId,status:status,data_scope:dataScope};
   if(empEditId){
     var resp=await callAdmin('update','profiles',{payload:body,filters:[{col:'user_id',op:'eq',val:empEditId}],query:'*'});
     if(resp&&resp.data){
@@ -12335,14 +12335,14 @@ async function saveEmployee(){
 }
 async function toggleEmpStatus(uid,newStatus){
   if(!isSuperAdmin&&currentUserRole!=='admin'){showToast('权限不足');return;}
-  if(!isSuperAdmin&&uid===currentUser.user.id&&newStatus==='inactive'){showToast('不能将自己设为离职，请联系其他管理员操作');return;}
+  if(!isSuperAdmin&&uid===currentUser.id&&newStatus==='inactive'){showToast('不能将自己设为离职，请联系其他管理员操作');return;}
   if(!confirm('确认将员工设为'+(newStatus==='inactive'?'离职':'在职')+'？'))return;
   if(newStatus==='inactive'){
     var reassign=prompt('输入交接员工ID（留空回收公共池）:','');
     var body2={status:newStatus,data_scope:'own',company_id:null,department_id:null};
     await callAdmin('update','profiles',{payload:body2,filters:[{col:'user_id',op:'eq',val:uid}],query:'*'});
-    if(reassign)await callAdmin('rpc','reassign_clients_on_deactivate',{payload:{p_user_id:empEditId,p_company_id:currentCompanyId,p_reassign_to:reassignTo||null}});
-    else await callAdmin('rpc','reassign_clients_on_deactivate',{payload:{p_user_id:empEditId,p_company_id:currentCompanyId,p_reassign_to:reassignTo||null}});
+    if(reassign)await callAdmin('rpc','reassign_clients_on_deactivate',{payload:{p_user_id:uid,p_company_id:currentCompanyId,p_reassign_to:reassign||null}});
+    else await callAdmin('rpc','reassign_clients_on_deactivate',{payload:{p_user_id:uid,p_company_id:currentCompanyId,p_reassign_to:null}});
     showToast('员工已设为离职，客户已回收');
   }else{
     await callAdmin('update','profiles',{payload:{status:newStatus},filters:[{col:'user_id',op:'eq',val:uid}],query:'*'});
