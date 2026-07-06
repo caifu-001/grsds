@@ -5646,7 +5646,7 @@ function addDashboardCard(){
   ];
   var type=prompt('选择图表类型：\n1.销售漏斗  2.赢单率  3.新增客户\n4.回款趋势  5.订单统计  6.获客渠道\n7.区域分布  8.合同统计\n\n请输入编号(1-8)：','1');
   var idx=parseInt(type)-1;
-  if(idx<0||idx>=cardTypes.length)return;
+  if(isNaN(idx)||idx<0||idx>=cardTypes.length)return;
   var ct=cardTypes[idx];
   var title=prompt('卡片标题：',ct.title)||ct.title;
   var card={type:ct.type,title:title,chart:ct.chart,desc:ct.desc};
