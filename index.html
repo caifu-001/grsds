@@ -7105,8 +7105,8 @@ async function saveMemberGrants(){
   document.querySelectorAll('#admin-grants-list input[type="checkbox"]:checked').forEach(function(cb){ids.push(parseInt(cb.value))});
   
   try{
-    var r=await callAdmin('rpc','batch_grant_resources',{p_user_id:user_id,p_company_id:currentCompanyId,p_resource_type:type,p_resource_ids:ids});
-    if(r.error){showToast('授权失败: '+r.error.message);return}
+    var r=await callAdmin('rpc','batch_grant_resources',{payload:{p_user_id:user_id,p_company_id:currentCompanyId,p_resource_type:type,p_resource_ids:ids}});
+    if(r.error){showToast('授权失败: '+(r.error.message||JSON.stringify(r.error)));return}
     showToast('✅ 授权已保存');
   }catch(e){showToast('授权失败: '+(e.message||e))}
 }
