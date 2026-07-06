@@ -74,11 +74,10 @@ BEGIN
 END;
 $$;
 
--- 5. 超管 RLS 豁免兜底
-DROP FUNCTION IF EXISTS is_super_admin();
+-- 5. 确保 is_super_admin 存在（CREATE OR REPLACE 不删依赖）
 CREATE OR REPLACE FUNCTION is_super_admin()
 RETURNS BOOLEAN
-LANGUAGE plpgsql STABLE SECURITY DEFINER
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = 'public'
 AS $$
 BEGIN
   RETURN EXISTS (SELECT 1 FROM profiles WHERE user_id = auth.uid() AND role = 'super_admin');
