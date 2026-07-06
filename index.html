@@ -1438,21 +1438,20 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
 
  <div id="admin-view" class="hidden">
   <div class="admin-tabs">
-   <button class="admin-subtab active" onclick="switchAdminTab('users')">账号管理</button>
    <button class="admin-subtab" onclick="switchAdminTab('depts')">部门管理</button>
    <button class="admin-subtab" onclick="switchAdminTab('roles')">角色管理</button>
    <button class="admin-subtab" id="admin-tab-perms" onclick="switchAdminTab('perms')">权限矩阵</button>
    <button class="admin-subtab hidden" id="admin-tab-companies-manage" onclick="switchAdminTab('companies_manage')">公司管理</button>
    <button class="admin-subtab hidden" id="admin-tab-companies" onclick="switchAdminTab('companies')">
   <datalist id="admin-company-list"></datalist>公司审核</button>
-   <button class="admin-subtab" class="admin-subtab active" id="admin-tab-employees" onclick="switchAdminTab('employees')">员工管理</button>
+   <button class="admin-subtab active" id="admin-tab-employees" onclick="switchAdminTab('employees')">员工管理</button>
    <button class="admin-subtab hidden" id="admin-tab-freeagents" onclick="switchAdminTab('freeagents')">自由员工池</button>
    <button class="admin-subtab" id="admin-tab-resignations" onclick="switchAdminTab('resignations')">离职审批</button>
    <button class="admin-subtab" id="admin-tab-logs" onclick="switchAdminTab('logs')">操作日志</button>
    <button class="admin-subtab" id="admin-tab-config" onclick="switchAdminTab('config')">系统配置</button>
    <button class="admin-subtab" id="admin-tab-security" onclick="switchAdminTab('security')">数据安全</button>
    <button class="admin-subtab" id="admin-tab-workflows" onclick="switchAdminTab('workflows')">流程模板</button>
-   <button class="admin-subtab hidden" id="admin-tab-grants" onclick="switchAdminTab('grants')">🔐 授权管理</button>
+   <button class="admin-subtab" id="admin-tab-grants" onclick="switchAdminTab('grants')">🔐 授权管理</button>
   </div>
 
   <!-- User Management -->
@@ -7034,20 +7033,19 @@ async function switchAdminTab(tab){
   var gr=document.getElementById('admin-grants');if(gr)gr.classList.add('hidden');
   for(var i=0;i<subs.length;i++)subs[i].classList.remove('active');
   
-  if(tab==='depts'){dt.classList.remove('hidden');subs[1].classList.add('active');await loadAdminData();renderAdminDepts();}
-  else if(tab==='roles'){rt.classList.remove('hidden');subs[2].classList.add('active');await loadAdminData();renderAdminRoles();}
-  else if(tab==='perms'){pt.classList.remove('hidden');subs[3].classList.add('active');await loadAdminData();renderAdminPerms();}
-  else if(tab==='companies_manage'){cm.classList.remove('hidden');subs[4].classList.add('active');await loadAdminCompanies();renderAdminCompanies();}
-  else if(tab==='companies'){ct.classList.remove('hidden');subs[5].classList.add('active');loadPendingCompanies();}
-  else if(tab==='employees'){var ep=document.getElementById('admin-employees');ep.classList.remove('hidden');subs[6].classList.add('active');await loadAdminData();renderAdminEmployees();}
-  else if(tab==='freeagents'){var fa=document.getElementById('admin-freeagents');fa.classList.remove('hidden');subs[7].classList.add('active');await loadFreeAgents();renderFreeAgents();}
-  else if(tab==='resignations'){var ra=document.getElementById('admin-resignations');ra.classList.remove('hidden');subs[8].classList.add('active');await loadResignations();renderResignations();}
-  else if(tab==='logs'){var lp=document.getElementById('admin-logs');lp.classList.remove('hidden');subs[9].classList.add('active');await loadOperationLogs();renderOperationLogs();}
-  else if(tab==='config'){var cp=document.getElementById('admin-config');cp.classList.remove('hidden');subs[10].classList.add('active');switchConfigTab('fields');}
-  else if(tab==='security'){var sp=document.getElementById('admin-security');sp.classList.remove('hidden');subs[11].classList.add('active');renderSecurityPanel();}
-  else if(tab==='workflows'){(async function(){var wf=document.getElementById('admin-workflows');wf.classList.remove('hidden');subs[12].classList.add('active');if(!allRoles||!allRoles.length||!allDepartments||!allDepartments.length)await loadAdminData();renderWorkflowTemplates();})();}
-  else if(tab==='grants'){var gr=document.getElementById('admin-grants');gr.classList.remove('hidden');subs[13].classList.add('active');renderGrantsPanel();}
-  else if(tab==='grants'){var gr=document.getElementById('admin-grants');gr.classList.remove('hidden');subs[13].classList.add('active');renderGrantsPanel();}
+  if(tab==='depts'){dt.classList.remove('hidden');subs[0].classList.add('active');await loadAdminData();renderAdminDepts();}
+  else if(tab==='roles'){rt.classList.remove('hidden');subs[1].classList.add('active');await loadAdminData();renderAdminRoles();}
+  else if(tab==='perms'){pt.classList.remove('hidden');subs[2].classList.add('active');await loadAdminData();renderAdminPerms();}
+  else if(tab==='companies_manage'){cm.classList.remove('hidden');subs[3].classList.add('active');await loadAdminCompanies();renderAdminCompanies();}
+  else if(tab==='companies'){ct.classList.remove('hidden');subs[4].classList.add('active');loadPendingCompanies();}
+  else if(tab==='employees'){var ep=document.getElementById('admin-employees');ep.classList.remove('hidden');subs[5].classList.add('active');await loadAdminData();renderAdminEmployees();}
+  else if(tab==='freeagents'){var fa=document.getElementById('admin-freeagents');fa.classList.remove('hidden');subs[6].classList.add('active');await loadFreeAgents();renderFreeAgents();}
+  else if(tab==='resignations'){var ra=document.getElementById('admin-resignations');ra.classList.remove('hidden');subs[7].classList.add('active');await loadResignations();renderResignations();}
+  else if(tab==='logs'){var lp=document.getElementById('admin-logs');lp.classList.remove('hidden');subs[8].classList.add('active');await loadOperationLogs();renderOperationLogs();}
+  else if(tab==='config'){var cp=document.getElementById('admin-config');cp.classList.remove('hidden');subs[9].classList.add('active');switchConfigTab('fields');}
+  else if(tab==='security'){var sp=document.getElementById('admin-security');sp.classList.remove('hidden');subs[10].classList.add('active');renderSecurityPanel();}
+  else if(tab==='workflows'){(async function(){var wf=document.getElementById('admin-workflows');wf.classList.remove('hidden');subs[11].classList.add('active');if(!allRoles||!allRoles.length||!allDepartments||!allDepartments.length)await loadAdminData();renderWorkflowTemplates();})();}
+  else if(tab==='grants'){var gr=document.getElementById('admin-grants');gr.classList.remove('hidden');subs[12].classList.add('active');renderGrantsPanel();}
 }
 function renderGrantsPanel(){
   var panel=document.getElementById('admin-grants');
