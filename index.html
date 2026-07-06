@@ -16791,8 +16791,8 @@ function pdEditStep(blockKey){
   }catch(e){}
   // 加载已有覆盖值
   var overrides={};
-  sb.from('project_step_assignees').select('step_config').eq('project_id',curDetailId).eq('step_key',blockKey).maybeSingle().then(function(r){
-    if(r.data&&r.data.step_config)overrides=r.data.step_config;
+  sb.from('project_step_assignees').select('*').eq('project_id',curDetailId).eq('step_key',blockKey).maybeSingle().then(function(r){
+    if(r.data){ overrides = { label: r.data.step_label || b.label || '' }; }
     showPdEditModal(b,blockKey,overrides,tplStep);
   }).catch(function(){
     showPdEditModal(b,blockKey,{},tplStep);
