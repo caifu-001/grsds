@@ -7017,14 +7017,13 @@ function closeMoreMenu(){
   if(overlay)overlay.classList.remove('show');
 }
 async function switchAdminTab(tab){
-  var ut=document.getElementById('admin-users');
   var dt=document.getElementById('admin-depts');
   var rt=document.getElementById('admin-roles');
   var pt=document.getElementById('admin-perms');
   var ct=document.getElementById('admin-companies');
   var cm=document.getElementById('admin-companies-manage');
   var subs=document.querySelectorAll('.admin-subtab');
-  ut.classList.add('hidden');dt.classList.add('hidden');rt.classList.add('hidden');if(pt)pt.classList.add('hidden');ct.classList.add('hidden');if(cm)cm.classList.add('hidden');
+  dt.classList.add('hidden');rt.classList.add('hidden');if(pt)pt.classList.add('hidden');ct.classList.add('hidden');if(cm)cm.classList.add('hidden');
   var ep=document.getElementById('admin-employees');if(ep)ep.classList.add('hidden');
   var fa=document.getElementById('admin-freeagents');if(fa)fa.classList.add('hidden');
   var ra=document.getElementById('admin-resignations');if(ra)ra.classList.add('hidden');
@@ -7035,7 +7034,7 @@ async function switchAdminTab(tab){
   var gr=document.getElementById('admin-grants');if(gr)gr.classList.add('hidden');
   for(var i=0;i<subs.length;i++)subs[i].classList.remove('active');
   
-  else if(tab==='depts'){dt.classList.remove('hidden');subs[1].classList.add('active');await loadAdminData();renderAdminDepts();}
+  if(tab==='depts'){dt.classList.remove('hidden');subs[1].classList.add('active');await loadAdminData();renderAdminDepts();}
   else if(tab==='roles'){rt.classList.remove('hidden');subs[2].classList.add('active');await loadAdminData();renderAdminRoles();}
   else if(tab==='perms'){pt.classList.remove('hidden');subs[3].classList.add('active');await loadAdminData();renderAdminPerms();}
   else if(tab==='companies_manage'){cm.classList.remove('hidden');subs[4].classList.add('active');await loadAdminCompanies();renderAdminCompanies();}
