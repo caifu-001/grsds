@@ -3276,6 +3276,8 @@ let currentCompanyId=null,currentCompanyRole='member',currentCompanyName='',allM
 let memberGrants={clients:[],products:[],suppliers:[]};
 async function loadMemberGrants(){
   if(isSuperAdmin){memberGrants={clients:'all',products:'all',suppliers:'all'};return}
+  // admin 看全部，其余按授权过滤
+  console.log('[loadMemberGrants] role:',currentCompanyRole,'isSuperAdmin:',isSuperAdmin,'currentCompanyId:',currentCompanyId);
   if(currentCompanyRole==='admin'){memberGrants={clients:'all',products:'all',suppliers:'all'};return}
   console.log('[loadMemberGrants] loading for user:',currentUser.id,'company:',currentCompanyId);
   try{
@@ -3285,14 +3287,17 @@ async function loadMemberGrants(){
       // sb.rpc returns {data: [...], error: ...}
       if(d&&d.error){console.error('[loadMemberGrants] '+t+' rpc error:',d.error);memberGrants[t]=[];continue}
       memberGrants[t]=(d&&d.data?d.data.map(function(r){return r.resource_id}):[]);
-      console.log('[loadMemberGrants] '+t+' granted ids:',memberGrants[t]);
+      console.log('[loadMemberGrants] '+t+' granted ids:',JSON.stringify(memberGrants[t]));
     }
   }catch(e){console.error('[loadMemberGrants] exception:',e)}
+  console.log('[loadMemberGrants] final memberGrants:',JSON.stringify(memberGrants));
 }
 function canAccess(type,id){
   if(isSuperAdmin)return true;
   if(currentCompanyRole==='admin')return true;
-  return memberGrants[type]&&memberGrants[type].indexOf(id)>=0;
+  var ok=memberGrants[type]&&memberGrants[type].indexOf(id)>=0;
+  if(!ok)console.log('[canAccess] DENY:',type,id,'memberGrants['+type+']=',JSON.stringify(memberGrants[type]||[]));
+  return ok;
 }
 let allUsers=[];
 let editId=null,deleteId=null,formContacts=[],pendingImport=null;
@@ -3983,7 +3988,12 @@ async function loadClients(){
     var {data,error}=await sb.from('clients').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
     if(error){grid.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div>加载失败<br><span style="font-size:12px;color:var(--text3)">'+h(error.message)+'</span></div>';statsBar.innerHTML='';return}
     allClients=(data||[]);
-    if(currentCompanyRole==='member'&&!isSuperAdmin){allClients=allClients.filter(function(cl){return canAccess('clients',cl.id)})}
+    console.log('[loadClients] fetched '+allClients.length+' clients, currentCompanyRole='+currentCompanyRole+' isSuperAdmin='+isSuperAdmin);
+    if(currentCompanyRole!=='admin'&&!isSuperAdmin){
+      console.log('[loadClients] filtering by grants, memberGrants.clients=',JSON.stringify(memberGrants.clients));
+      allClients=allClients.filter(function(cl){return canAccess('clients',cl.id)});
+      console.log('[loadClients] after filter: '+allClients.length+' clients');
+    }
     var {data:cd}=await sb.from('contacts').select('*').eq('company_id',currentCompanyId);
     allContacts=(cd||[]);
     await loadOrders();
@@ -9105,7 +9115,7 @@ async function loadProducts(){
   var r=await q;
   if(r.error){console.error(r.error);return}
   allProducts=r.data||[];
-  if(currentCompanyRole==='member'&&!isSuperAdmin){allProducts=allProducts.filter(function(p){return canAccess('products',p.id)})}
+  if(currentCompanyRole!=='admin'&&!isSuperAdmin){allProducts=allProducts.filter(function(p){return canAccess('products',p.id)})}
   await loadStockBalances();
   renderProducts();
 }
@@ -10488,7 +10498,7 @@ async function loadSuppliers(){
   var q=sb.from('suppliers').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
   var r=await q;
   allSuppliers=r.data||[];
-  if(currentCompanyRole==='member'&&!isSuperAdmin){allSuppliers=allSuppliers.filter(function(s){return canAccess('suppliers',s.id)})}
+  if(currentCompanyRole!=='admin'&&!isSuperAdmin){allSuppliers=allSuppliers.filter(function(s){return canAccess('suppliers',s.id)})}
   var clientMap={};
   for(var i=0;i<allClients.length;i++)clientMap[allClients[i].id]=allClients[i].name;
   // Resolve company directory names for suppliers
