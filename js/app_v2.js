@@ -7605,6 +7605,8 @@ async function saveSupplier(){
     linked_client_id:supLinkedClientId||null,
     updated_at:new Date().toISOString()
   };
+  // attachments 列如果不存在就跳过（需执行 add_supplier_attachments.sql）
+  if(supAttachments.length){obj.attachments=JSON.stringify(supAttachments)}
   if(supplierEditId){
     if(currentCompanyRole!=='admin'&&!isSuperAdmin){
       await callAdmin('update','suppliers',{payload:obj,filters:[{col:'id',op:'eq',val:supplierEditId}]});
@@ -7619,8 +7621,12 @@ async function saveSupplier(){
     }else{supRes=await sb.from('suppliers').insert([obj]).select('id')}
   }
   var newSid=null;
+  var insertErr=null;
   if(supRes&&supRes.data&&supRes.data[0])newSid=supRes.data[0].id;
   else if(supRes&&supRes.payload&&supRes.payload.id)newSid=supRes.payload.id;
+  else if(supRes&&supRes.error)insertErr=supRes.error;
+  
+  if(insertErr){showToast('保存失败: '+(typeof insertErr==='string'?insertErr:insertErr.message||JSON.stringify(insertErr)),'error');console.error('[saveSupplier] insert error:',insertErr);return}
   // 非管理员自动给自己授权
   if(!supplierEditId&&newSid&&currentCompanyRole!=='admin'&&!isSuperAdmin){
     var grRes=await callAdmin('insert','resource_grants',{payload:{user_id:currentUser.id,company_id:currentCompanyId,resource_type:'suppliers',resource_id:newSid,granted_by:currentUser.id}});
