@@ -1,0 +1,12 @@
+<!-- Scouting Panel -->
+  <div class="inv-panel active" id="inv-scouting">
+   <div class="inv-toolbar" style="flex-wrap:wrap;gap:6px">
+    <span style="font-weight:700;font-size:16px">选品调研</span>
+    <input id="sc-filter-product" placeholder="搜索产品..." style="width:140px" oninput="renderScouting()">
+    <input id="sc-filter-supplier" placeholder="搜索供应商..." style="width:140px" oninput="renderScouting()">
+    <select id="sc-filter-channel" onchange="renderScouting()" style="width:110px"><option value="">全部渠道</option></select>
+    <select id="sc-filter-status" onchange="renderScouting()" style="width:100px"><option value="">全部状态</option><option value="pending">待评估</option><option value="approved">已通过</option><option value="rejected">已否决</option><option value="ordered">已采购</option></select>
+    <div style="flex:1"></div>
+    <button class="btn-sm btn-sm-primary" onclick="openScoutingForm()">＋ 添加选品</button>
+   </div>
+   <div id="scouting-stats" style="display:flex;gap:16px;padding:8px 0;flex-wrap:wrap;font-size:13px;color:var(--text-secondary)"></div>

@@ -1,0 +1,196 @@
+﻿
+> index.html:11656:function wfShowProps(idx){
+  index.html:11657:  var panel=document.getElementById('wf-props-panel');
+  index.html:11658:  if(!panel)return;
+  index.html:11659:  // 后台加载部门/角色（fire-and-forget），加载完自动重渲染
+  index.html:11660:  if(!allDepartments||!allDepartments.length){
+  index.html:11661:    sb.from('departments').select('*').eq('company_id',currentCompanyId).order('name').then(function
+(d){if(!d.error){allDepartments=d.data||[];wfShowProps(idx);}});
+  index.html:11662:  }
+  index.html:11663:  if(!allRoles||!allRoles.length){
+  index.html:11664:    sb.from('roles').select('*').eq('company_id',currentCompanyId).order('name').then(function(d){if
+(!d.error){allRoles=d.data||[];wfShowProps(idx);}});
+  index.html:11665:  }
+  index.html:11666:
+  index.html:11667:  if(idx<0||idx>=wfEditorSteps.length){
+  index.html:11668:    panel.innerHTML='<h4>节点属性</h4><p style="font-size:12px;color:var(--text2)">点击画布中的节点进行编辑</p>';
+  index.html:11669:    return;
+  index.html:11670:  }
+  index.html:11671:  var s=wfEditorSteps[idx];
+  index.html:11672:  var h='<h4>节点 #'+s.seq+' 属性</h4>';
+  index.html:11673:  h+='<label>序号</label><input type="number" value="'+s.seq+'" onchange="wfSetProp('+idx+',\'seq\',pa
+rseInt(this.value))">';
+  index.html:11674:  h+='<label>阶段</label><input value="'+escHtml(s.phase||'')+'" onchange="wfSetProp('+idx+',\'phase\'
+,this.value)" placeholder="如：线索、商机">';
+  index.html:11675:  h+='<label>Key（唯一标识）</label><input value="'+escHtml(s.key||'')+'" onchange="wfSetProp('+idx+',\'ke
+y\',this.value)" placeholder="如：gather">';
+  index.html:11676:  h+='<label>名称</label><input value="'+escHtml(s.name||'')+'" onchange="wfSetProp('+idx+',\'name\',t
+his.value)">';
+  index.html:11677:  h+='<label>图标</label><input value="'+escHtml(s.icon||'')+'" onchange="wfSetProp('+idx+',\'icon\',t
+his.value)" placeholder="emoji 如 🔍">';
+  index.html:11678:  h+='<label>面板类型</label><select onchange="wfSetProp('+idx+',\'panel\',this.value)"><option value=""
+>无</option>'+
+  index.html:11679:    ['','competitor','training','communication','bidding','contract','delivery','payment'].map(funct
+ion(v){
+  index.html:11680:      return '<option value="'+v+'"'+(s.panel===v?' selected':'')+'>'+v+'</option>'
+  index.html:11681:    }).join('')+'</select>';
+  index.html:11682:  if(s.decision){
+  index.html:11683:    h+='<div style="margin-top:8px;padding:8px;background:#fff3e0;border-radius:6px">';
+  index.html:11684:    h+='<label>判断问题</label><input value="'+escHtml(s.decisionAsk||'')+'" onchange="wfSetProp('+idx+'
+,\'decisionAsk\',this.value)">';
+  index.html:11685:    h+='<label>✓ 是 → 跳转到步骤</label><input type="number" value="'+escHtml(s.decisionYes||'')+'" onchan
+ge="wfSetProp('+idx+',\'decisionYes\',String(this.value))">';
+  index.html:11686:    h+='<label>✗ 否 → 跳转到步骤</label><input type="number" value="'+escHtml(s.decisionNo||'')+'" onchang
+e="wfSetProp('+idx+',\'decisionNo\',String(this.value))">';
+  index.html:11687:    h+='</div>';
+  index.html:11688:  }
+  index.html:11689:  h+='<div style="margin-top:10px"><label>提示文字</label><input value="'+escHtml(s.tip||'')+'" onchange
+="wfSetProp('+idx+',\'tip\',this.value)"></div>';
+  index.html:11690:  // Custom params
+  index.html:11691:  var params=s.params||[];
+  index.html:11692:  h+='<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px"><label style=
+"font-weight:600;margin-bottom:6px">⚙️ 自定义参数</label>';
+  index.html:11693:  h+='<div id="wf-params-'+idx+'">';
+  index.html:11694:  for(var pi=0;pi<params.length;pi++){h+=wfBuildParamRow(idx,pi,params[pi]);}
+  index.html:11695:  h+='</div>';
+  index.html:11696:  h+='<button onclick="wfAddParam('+idx+')" style="margin-top:6px;font-size:11px;padding:4px 10px;ba
+ckground:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer">+ 添加参数</button></div>';
+  index.html:11697:  // ── 审批设置 ──
+  index.html:11698:  var appr=s.approval||{enabled:false,approverRole:'',onReject:'stay'};
+  index.html:11699:  if(window.__wfDiag)console.log('[wfShowProps] idx='+idx,'approval=',JSON.stringify(appr),'s.key='+
+s.key);
+  index.html:11700:  h+='<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:8px">';
+  index.html:11701:  h+='<div onclick="var n=this.nextElementSibling;n.style.display=n.style.display===\'none\'?\'block
+\':\'none\'" style="cursor:pointer;font-weight:600;font-size:12px;padding:4px 0;display:flex;align-items:center;gap:4px
+">🔒 审批设置 <span style="font-size:10px;color:var(--text3)">'+(appr.enabled?'已启用':'未启用')+'</span></div>';
+  index.html:11702:  h+='<div style="padding:6px 0;display:none">';
+  index.html:11703:  h+='<label style="display:flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" '
++(appr.enabled?'checked':'')+' onchange="wfSetApproval('+idx+',\'enabled\',this.checked)"> 启用审批</label>';
+  index.html:11704:  h+='<label>审批人角色</label><select onchange="wfSetApproval('+idx+',\'approverRole\',this.value)"><opt
+ion value="">无</option>';
+  index.html:11705:  for(var ri=0;ri<(allRoles||[]).length;ri++){h+='<option value="'+escHtml(allRoles[ri].name)+'"'+(a
+ppr.approverRole===allRoles[ri].name?' selected':'')+'>'+escHtml(allRoles[ri].name)+'</option>';}
+  index.html:11706:  h+='</select>';
+  index.html:11707:  h+='<label>驳回行为</label><select onchange="wfSetApproval('+idx+',\'onReject\',this.value)"><option v
+alue="stay"'+(appr.onReject==='stay'?' selected':'')+'>停留在当前步骤</option></select>';
+  index.html:11708:  h+='</div></div>';
+  index.html:11709:  // ── 负责人设置 ──
+  index.html:11710:  var asg=s.assignee||{enabled:false,type:'dept',value:''};
+  index.html:11711:  h+='<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">';
+  index.html:11712:  h+='<div onclick="var n=this.nextElementSibling;n.style.display=n.style.display===\'none\'?\'block
+\':\'none\'" style="cursor:pointer;font-weight:600;font-size:12px;padding:4px 0;display:flex;align-items:center;gap:4px
+">👤 负责人设置 <span style="font-size:10px;color:var(--text3)">'+(asg.enabled?'已启用':'未启用')+'</span></div>';
+  index.html:11713:  h+='<div style="padding:6px 0;display:none">';
+  index.html:11714:  h+='<label style="display:flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" '
++(asg.enabled?'checked':'')+' onchange="wfSetAssignee('+idx+',\'enabled\',this.checked)"> 指定负责人</label>';
+  index.html:11715:  h+='<label>授权部门</label><select onchange="wfSetAssignee('+idx+',\'value\',this.value)"><option valu
+e="">无</option>';
+  index.html:11716:  for(var di=0;di<(allDepartments||[]).length;di++){h+='<option value="'+escHtml(allDepartments[di].
+id)+'"'+(asg.value===allDepartments[di].id?' selected':'')+'>'+escHtml(allDepartments[di].name)+'</option>';}
+  index.html:11717:  h+='</select>';
+  index.html:11718:  h+='<label>鎸囧畾鍛樺伐</label><select id="wf-staff-dd-'+idx+'" onchange="wfSetAssignee('+idx+',\'staffI
+d\',this.value)"><option value="">--</option>';
+  index.html:11719:  var selDept=asg.value||'';var selStaff=asg.staffId||'';
+  index.html:11720:  if(selDept&&allUsers){for(var ui=0;ui<allUsers.length;ui++){if(String(allUsers[ui].department_id)=
+==String(selDept)){h+='<option value="'+escHtml(allUsers[ui].user_id)+''+(selStaff===allUsers[ui].user_id?' selected':'
+')+'>'+escHtml(allUsers[ui].display_name||allUsers[ui].email)+'</option>';}}}
+  index.html:11721:  h+='</select>';
+  index.html:11722:  h+='</div></div>';
+  index.html:11723:  // 编辑权限设置 ──
+  index.html:11724:  var perm=s.permissions||{editFields:[],editableBy:['admin']};
+  index.html:11725:  h+='<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">';
+  index.html:11726:  h+='<div onclick="var n=this.nextElementSibling;n.style.display=n.style.display===\'none\'?\'block
+\':\'none\'" style="cursor:pointer;font-weight:600;font-size:12px;padding:4px 0">✏️ 编辑权限</div>';
+  index.html:11727:  h+='<div style="padding:6px 0;display:none">';
+  index.html:11728:  h+='<label>可编辑字段（逗号分隔）</label><input value="'+escHtml((perm.editFields||[]).join(','))+'" onchange
+="wfSetPermField('+idx+',\'editFields\',this.value)" placeholder="空=全部可编辑">';
+  index.html:11729:  var ebRoles=['assignee','approver','admin'];
+  index.html:11730:  h+='<label>谁可编辑</label><div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">';
+  index.html:11731:  for(var ebi=0;ebi<ebRoles.length;ebi++){
+  index.html:11732:    var er=ebRoles[ebi];var checked=(perm.editableBy||[]).indexOf(er)>=0;
+  index.html:11733:    h+='<label style="font-size:11px;display:flex;align-items:center;gap:3px;padding:2px 6px;backgro
+und:var(--bg);border-radius:4px;cursor:pointer"><input type="checkbox" '+(checked?'checked':'')+' onchange="wfToggleEdi
+tableBy('+idx+',\''+er+'\',this.checked)"> '+er+'</label>';
+  index.html:11734:  }
+  index.html:11735:  h+='</div></div></div>';
+  index.html:11736:  panel.innerHTML=h;
+  index.html:11737:}
+  index.html:11738:function wfSetApproval(idx,key,val){
+  index.html:11739:  try{
+  index.html:11740:    if(!wfEditorSteps||idx<0||idx>=wfEditorSteps.length)return;
+  index.html:11741:    if(!wfEditorSteps[idx].approval)wfEditorSteps[idx].approval={enabled:false,approverRole:'',onRej
+ect:'stay'};
+  index.html:11742:    wfEditorSteps[idx].approval[key]=val;
+  index.html:11743:    wfShowProps(idx);
+  index.html:11744:  }catch(e){console.error('[wfSetApproval]',e)}
+  index.html:11745:}
+  index.html:11746:function wfSetAssignee(idx,key,val){
+  index.html:11747:  try{
+  index.html:11748:    if(!wfEditorSteps||idx<0||idx>=wfEditorSteps.length)return;
+  index.html:11749:    if(!wfEditorSteps[idx].assignee)wfEditorSteps[idx].assignee={enabled:false,type:'dept',value:''}
+;
+  index.html:11750:    wfEditorSteps[idx].assignee[key]=val;
+  index.html:11751:    wfShowProps(idx);
+  index.html:11752:  }catch(e){console.error('[wfSetAssignee]',e)}
+  index.html:11753:}
+  index.html:11754:function wfSetPermField(idx,key,val){
+  index.html:11755:  if(idx<0||idx>=wfEditorSteps.length)return;
+  index.html:11756:  if(!wfEditorSteps[idx].permissions)wfEditorSteps[idx].permissions={editFields:[],editableBy:['admi
+n']};
+  index.html:11757:  wfEditorSteps[idx].permissions.editFields=(val||'').split(',').map(function(x){return x.trim()}).f
+ilter(function(x){return x});
+  index.html:11758:  wfShowProps(idx);
+  index.html:11759:}
+  index.html:11760:function wfToggleEditableBy(idx,role,checked){
+  index.html:11761:  if(idx<0||idx>=wfEditorSteps.length)return;
+  index.html:11762:  if(!wfEditorSteps[idx].permissions)wfEditorSteps[idx].permissions={editFields:[],editableBy:['admi
+n']};
+  index.html:11763:  var arr=wfEditorSteps[idx].permissions.editableBy||[];
+  index.html:11764:  if(checked){if(arr.indexOf(role)<0)arr.push(role)}
+  index.html:11765:  else{var pos=arr.indexOf(role);if(pos>=0)arr.splice(pos,1)}
+  index.html:11766:  wfEditorSteps[idx].permissions.editableBy=arr;
+  index.html:11767:}
+  index.html:11768:function wfSetProp(idx,key,value){
+  index.html:11769:  try{
+  index.html:11770:    if(!wfEditorSteps||idx<0||idx>=wfEditorSteps.length)return;
+  index.html:11771:    wfEditorSteps[idx][key]=value;
+  index.html:11772:    wfRenderAll();
+  index.html:11773:    wfShowProps(idx);  // always re-render panel so select/input show new values
+  index.html:11774:  }catch(e){console.error('[wfSetProp]',e)}
+  index.html:11775:}
+  index.html:11776:function wfDeleteStep(idx){
+  index.html:11777:  if(idx<0||idx>=wfEditorSteps.length)return;
+  index.html:11778:  if(!confirm('删除步骤 #'+wfEditorSteps[idx].seq+' '+wfEditorSteps[idx].name+'？'))return;
+  index.html:11779:  wfEditorSteps.splice(idx,1);
+  index.html:11780:  wfSelectedIdx=-1;
+  index.html:11781:  wfRenderAll();
+  index.html:11782:  wfShowProps(-1);
+  index.html:11783:}
+  index.html:11784:function wfCanvasClick(e){
+  index.html:11785:  if(e.target.id==='wf-canvas'||e.target.id==='wf-canvas-wrap'){
+  index.html:11786:    wfSelectedIdx=-1;
+  index.html:11787:    wfRenderAll();
+  index.html:11788:    wfShowProps(-1);
+  index.html:11789:  }
+  index.html:11790:}
+  index.html:11791:
+  index.html:11792:// Custom params for workflow node
+  index.html:11793:function wfBuildParamRow(nodeIdx,paramIdx,p){
+  index.html:11794:  var k=escHtml(p.key||''),v=escHtml(p.value||'');
+  index.html:11795:  return '<div style="display:flex;gap:4px;align-items:center;margin-top:4px">'+
+  index.html:11796:    '<input value="'+k+'" placeholder="参数名" onchange="wfSetParam('+nodeIdx+','+paramIdx+',\'key\',th
+is.value)" style="flex:1;padding:4px 6px;font-size:11px">'+
+  index.html:11797:    '<input value="'+v+'" placeholder="参数值" onchange="wfSetParam('+nodeIdx+','+paramIdx+',\'value\',
+this.value)" style="flex:2;padding:4px 6px;font-size:11px">'+
+  index.html:11798:    '<button onclick="wfRemoveParam('+nodeIdx+','+paramIdx+')" style="background:none;border:none;co
+lor:#f44336;font-size:14px;cursor:pointer;padding:0 4px">&times;</button>'+
+  index.html:11799:    '</div>';
+  index.html:11800:}
+  index.html:11801:function wfAddParam(nodeIdx){
+  index.html:11802:  if(!wfEditorSteps[nodeIdx].params)wfEditorSteps[nodeIdx].params=[];
+  index.html:11803:  wfEditorSteps[nodeIdx].params.push({key:'',value:''});
+  index.html:11804:  wfShowProps(nodeIdx);
+  index.html:11805:}
+  index.html:11806:function wfSetParam(nodeIdx,paramIdx,field,value){
+
+

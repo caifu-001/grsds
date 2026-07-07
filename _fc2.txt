@@ -1,7 +1,0 @@
-﻿lf-credit-code HTML at 784258
-v>
-   <div class="form-group"><label>缁熶竴绀句細淇＄敤浠ｇ爜</label><input id="lf-credit-code" placeholder="B2B瀹㈡埛濉啓" readonly style="background:var(--bg2);color:var(--text3)"></div><div class="form-group"><label>瀹㈡埛鍦板潃</label><input id="lf-address" placeholder="閫夋嫨瀹㈡埛鍚庤嚜鍔ㄥ～鍏? read
-
-=== saveLead credit_code ===
-credit_code IS in saveLead payload
-saveLead length: 3063

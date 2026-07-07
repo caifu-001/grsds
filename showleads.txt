@@ -1,0 +1,30 @@
+﻿
+> index.html:3643:async function showLeads(){
+  index.html:3644:  closeMoreMenu();
+  index.html:3645:  document.getElementById('settings-screen').style.display='none';
+  index.html:3646:  document.getElementById('my-screen').style.display='none';
+  index.html:3647:  var allViews=document.querySelectorAll('#main-screen > div[id$="-view"]');
+  index.html:3648:  for(var i=0;i<allViews.length;i++)allViews[i].classList.add('hidden');
+  index.html:3649:  document.getElementById('home-view').classList.add('hidden');
+  index.html:3650:  var lv=document.getElementById('leads-view');
+  index.html:3651:  if(lv)lv.classList.remove('hidden');
+  index.html:3652:  document.getElementById('topbar-title').textContent='线索公海';
+  index.html:3653:  document.getElementById('main-fab').classList.add('hidden');
+  index.html:3654:  await loadPoolLeads();
+  index.html:3655:}
+  index.html:3656:function closeDir(){
+  index.html:3657:  var ds=document.getElementById('dir-screen');
+  index.html:3658:  ds.classList.add('hidden');ds.style.position='';ds.style.top='';ds.style.left='';ds.style.width='';
+ds.style.height='';ds.style.zIndex='';ds.style.overflow='';ds.style.background='';
+  index.html:3659:  document.getElementById('main-screen').appendChild(ds);
+  index.html:3660:}
+  index.html:3661:function renderDir(){
+  index.html:3662:  var q=(document.getElementById('dir-search').value||'').trim().toLowerCase();
+  index.html:3663:  var cat=document.getElementById('dir-filter').value;
+  index.html:3664:  var list=allCompanies;
+  index.html:3665:  if(q) list=list.filter(function(c){return(c.name||'').toLowerCase().indexOf(q)>=0});
+  index.html:3666:  if(cat!=='all') list=list.filter(function(c){return(c.base||'')===cat});
+  index.html:3667:  // Stats
+  index.html:3668:  var cats={},total=list.length;
+
+

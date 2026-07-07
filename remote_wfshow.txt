@@ -1,0 +1,20 @@
+﻿=== Remote wfShowProps (first 1000 chars) ===
+function wfShowProps(idx){
+  var panel=document.getElementById('wf-props-panel');
+  if(!panel)return;
+  // 后台加载部门/角色（fire-and-forget），加载完自动重渲染
+  if(!allDepartments||!allDepartments.length){
+    sb.from('departments').select('*').eq('company_id',currentCompanyId).order('name').then(function(d){if(!d.error){allDepartments=d.data||[];wfShowProps(idx);}});
+  }
+  if(!allRoles||!allRoles.length){
+    sb.from('roles').select('*').eq('company_id',currentCompanyId).order('name').then(function(d){if(!d.error){allRoles=d.data||[];wfShowProps(idx);}});
+  }
+
+  if(idx<0||idx>=wfEditorSteps.length){
+    panel.innerHTML='<h4>节点属性</h4><p style="font-size:12px;color:var(--text2)">点击画布中的节点进行编辑</p>';
+    return;
+  }
+  var s=wfEditorSteps[idx];
+  var h='<h4>节点 #'+s.seq+' 属性</h4>';
+  h+='<label>序号</label><input type="number" value="'+s.seq+'" onchange="wfSetProp('+idx+',\'seq\',parseInt(this.value))">';
+  h+='<label>阶段</label><input value="'+escHtml(s.phase||'')+'" onchange="wfSetProp('+idx+',\'phase\',this

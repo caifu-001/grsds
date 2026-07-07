@@ -1,0 +1,108 @@
+﻿=== wfShowProps FULL ===
+function wfShowProps(idx){
+  var panel=document.getElementById('wf-props-panel');
+  if(!panel)return;
+  // 鍚庡彴鍔犺浇閮ㄩ棬/瑙掕壊锛坒ire-and-forget锛夛紝鍔犺浇瀹岃嚜鍔ㄩ噸娓叉煋
+  if(!allDepartments||!allDepartments.length){
+    sb.from('departments').select('*').eq('company_id',currentCompanyId).order('name').then(function(d){if(!d.error){allDepartments=d.data||[];wfShowProps(idx);}});
+  }
+  if(!allRoles||!allRoles.length){
+    sb.from('roles').select('*').eq('company_id',currentCompanyId).order('name').then(function(d){if(!d.error){allRoles=d.data||[];wfShowProps(idx);}});
+  }
+
+  if(idx<0||idx>=wfEditorSteps.length){
+    panel.innerHTML='<h4>鑺傜偣灞炴€?/h4><p style="font-size:12px;color:var(--text2)">鐐瑰嚮鐢诲竷涓殑鑺傜偣杩涜缂栬緫</p>';
+    return;
+  }
+  var s=wfEditorSteps[idx];
+  var h='<h4>鑺傜偣 #'+s.seq+' 灞炴€?/h4>';
+  h+='<label>搴忓彿</label><input type="number" value="'+s.seq+'" onchange="wfSetProp('+idx+',\'seq\',parseInt(this.value))">';
+  h+='<label>闃舵</label><input value="'+escHtml(s.phase||'')+'" onchange="wfSetProp('+idx+',\'phase\',this.value)" placeholder="濡傦細绾跨储銆佸晢鏈?>';
+  h+='<label>Key锛堝敮涓€鏍囪瘑锛?/label><input value="'+escHtml(s.key||'')+'" onchange="wfSetProp('+idx+',\'key\',this.value)" placeholder="濡傦細gather">';
+  h+='<label>鍚嶇О</label><input value="'+escHtml(s.name||'')+'" onchange="wfSetProp('+idx+',\'name\',this.value)">';
+  h+='<label>鍥炬爣</label><input value="'+escHtml(s.icon||'')+'" onchange="wfSetProp('+idx+',\'icon\',this.value)" placeholder="emoji 濡?馃攳">';
+  h+='<label>闈㈡澘绫诲瀷</label><select onchange="wfSetProp('+idx+',\'panel\',this.value)"><option value="">鏃?/option>'+
+    ['','competitor','training','communication','bidding','contract','delivery','payment'].map(function(v){
+      return '<option value="'+v+'"'+(s.panel===v?' selected':'')+'>'+v+'</option>'
+    }).join('')+'</select>';
+  if(s.decision){
+    h+='<div style="margin-top:8px;padding:8px;background:#fff3e0;border-radius:6px">';
+    h+='<label>鍒ゆ柇闂</label><input value="'+escHtml(s.decisionAsk||'')+'" onchange="wfSetProp('+idx+',\'decisionAsk\',this.value)">';
+    h+='<label>鉁?鏄?鈫?璺宠浆鍒版楠?/label><input type="number" value="'+escHtml(s.decisionYes||'')+'" onchange="wfSetProp('+idx+',\'decisionYes\',String(this.value))">';
+    h+='<label>鉁?鍚?鈫?璺宠浆鍒版楠?/label><input type="number" value="'+escHtml(s.decisionNo||'')+'" onchange="wfSetProp('+idx+',\'decisionNo\',String(this.value))">';
+    h+='</div>';
+  }
+  h+='<div style="margin-top:10px"><label>鎻愮ず鏂囧瓧</label><input value="'+escHtml(s.tip||'')+'" onchange="wfSetProp('+idx+',\'tip\',this.value)"></div>';
+  // Custom params
+  var params=s.params||[];
+  h+='<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px"><label style="font-weight:600;margin-bottom:6px">鈿欙笍 鑷畾涔夊弬鏁?/label>';
+  h+='<div id="wf-params-'+idx+'">';
+  for(var pi=0;pi<params.length;pi++){h+=wfBuildParamRow(idx,pi,params[pi]);}
+  h+='</div>';
+  h+='<button onclick="wfAddParam('+idx+')" style="margin-top:6px;font-size:11px;padding:4px 10px;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer">+ 娣诲姞鍙傛暟</button></div>';
+  // 鈹€鈹€ 瀹℃壒璁剧疆 鈹€鈹€
+  var appr=s.approval||{enabled:false,approverRole:'',onReject:'stay'};
+  h+='<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:8px">';
+  h+='<div onclick="var n=this.nextElementSibling;n.style.display=n.style.display===\'none\'?\'block\':\'none\'" style="cursor:pointer;font-weight:600;font-size:12px;padding:4px 0;display:flex;align-items:center;gap:4px">馃敀 瀹℃壒璁剧疆 <span style="font-size:10px;color:var(--text3)">'+(appr.enabled?'宸插惎鐢?:'鏈惎鐢?)+'</span></div>';
+  h+='<div style="padding:6px 0;display:none">';
+  h+='<label style="display:flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" '+(appr.enabled?'checked':'')+' onchange="wfSetApproval('+idx+',\'enabled\',this.checked)"> 鍚敤瀹℃壒</label>';
+  h+='<label>瀹℃壒浜鸿鑹?/label><select onchange="wfSetApproval('+idx+',\'approverRole\',this.value)"><option value="">鏃?/option>';
+  for(var ri=0;ri<(allRoles||[]).length;ri++){h+='<option value="'+escHtml(allRoles[ri].name)+'"'+(appr.approverRole===allRoles[ri].name?' selected':'')+'>'+escHtml(allRoles[ri].name)+'</option>';}
+  h+='</select>';
+  h+='<label>椹冲洖琛屼负</label><select onchange="wfSetApproval('+idx+',\'onReject\',this.value)"><option value="stay"'+(appr.onReject==='stay'?' selected':'')+'>鍋滅暀鍦ㄥ綋鍓嶆楠?/option></select>';
+  h+='</div></div>';
+  // 鈹€鈹€ 璐熻矗浜鸿缃?鈹€鈹€
+  var asg=s.assignee||{enabled:false,type:'dept',value:''};
+  h+='<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">';
+  h+='<div onclick="var n=this.nextElementSibling;n.style.display=n.style.display===\'none\'?\'block\':\'none\'" style="cursor:pointer;font-weight:600;font-size:12px;padding:4px 0;display:flex;align-items:center;gap:4px">馃懁 璐熻矗浜鸿缃?<span style="font-size:10px;color:var(--text3)">'+(asg.enabled?'宸插惎鐢?:'鏈惎鐢?)+'</span></div>';
+  h+='<div style="padding:6px 0;display:none">';
+  h+='<label style="display:flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" '+(asg.enabled?'checked':'')+' onchange="wfSetAssignee('+idx+',\'enabled\',this.checked)"> 鎸囧畾璐熻矗浜?/label>';
+  h+='<label>鎺堟潈閮ㄩ棬</label><select onchange="wfSetAssignee('+idx+',\'value\',this.value)"><option value="">鏃?/option>';
+  for(var di=0;di<(allDepartments||[]).length;di++){h+='<option value="'+escHtml(allDepartments[di].id)+'"'+(asg.value===allDepartments[di].id?' selected':'')+'>'+escHtml(allDepartments[di].name)+'</option>';}
+  h+='</select>';
+  h+='<label>閹稿洤鐣鹃崨妯轰紣</label><select id="wf-staff-dd-'+idx+'" onchange="wfSetAssignee('+idx+',\'staffId\',this.value)"><option value="">--</option>';
+  var selDept=asg.value||'';var selStaff=asg.staffId||'';
+  if(selDept&&allUsers){for(var ui=0;ui<allUsers.length;ui++){if(String(allUsers[ui].department_id)===String(selDept)){h+='<option value="'+escHtml(allUsers[ui].user_id)+''+(selStaff===allUsers[ui].user_id?' selected':'')+'>'+escHtml(allUsers[ui].display_name||allUsers[ui].email)+'</option>';}}}
+  h+='</select>';
+  h+='</div></div>';
+  // 缂栬緫鏉冮檺璁剧疆 鈹€鈹€
+  var perm=s.permissions||{editFields:[],editableBy:['admin']};
+  h+='<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">';
+  h+='<div onclick="var n=this.nextElementSibling;n.style.display=n.style.display===\'none\'?\'block\':\'none\'" style="cursor:pointer;font-weight:600;font-size:12px;padding:4px 0">鉁忥笍 缂栬緫鏉冮檺</div>';
+  h+='<div style="padding:6px 0;display:none">';
+  h+='<label>鍙紪杈戝瓧娈碉紙閫楀彿鍒嗛殧锛?/label><input value="'+escHtml((perm.editFields||[]).join(','))+'" onchange="wfSetPermField('+idx+',\'editFields\',this.value)" placeholder="绌?鍏ㄩ儴鍙紪杈?>';
+  var ebRoles=['assignee','approver','admin'];
+  h+='<label>璋佸彲缂栬緫</label><div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">';
+  for(var ebi=0;ebi<ebRoles.length;ebi++){
+    var er=ebRoles[ebi];var checked=(perm.editableBy||[]).indexOf(er)>=0;
+    h+='<label style="font-size:11px;display:flex;align-items:center;gap:3px;padding:2px 6px;background:var(--bg);border-radius:4px;cursor:pointer"><input type="checkbox" '+(checked?'checked':'')+' onchange="wfToggleEditableBy('+idx+',\''+er+'\',this.checked)"> '+er+'</label>';
+  }
+  h+='</div></div></div>';
+  panel.innerHTML=h;
+}
+function wfSetApproval(idx,key,val){
+  if(idx<0||idx>=wfEditorSteps.length)return;
+  if(!wfEditorSteps[idx].approval)wfEditorSteps[idx].approval={enabled:false,approverRole:'',onReject:'stay'};
+  wfEditorSteps[idx].approval[key]=val;
+  wfShowProps(idx);
+}
+function wfSetAssignee(idx,key,val){
+  if(idx<0||idx>=wfEditorSteps.length)return;
+  if(!wfEditorSteps[idx].assignee)wfEditorSteps[idx].assignee={enabled:false,type:'dept',value:''};
+  wfEditorSteps[idx].assignee[key]=val;
+  wfShowProps(idx);
+}
+function wfSetPermField(idx,key,val){
+  if(idx<0||idx>=wfEditorSteps.length)return;
+  if(!wfEditorSteps[idx].permissions)wfEditorSteps[idx].permissions={editFields:[],editableBy:['admin']};
+  wfEditorSteps[idx].permissions.editFields=(val||'').split(',').map(function(x){return x.trim()}).filter(function(x){return x});
+  wfShowProps(idx);
+}
+function wfToggleEditableBy(idx,role,checked){
+  if(idx<0||idx>=wfEditorSteps.length)return;
+  if(!wfEditorSteps[idx].permissions)wfEditorSteps[idx].permissions={editFields:[],editableBy:['admin']};
+  var arr=wfEditorSteps[idx].permissions.editableBy||[];
+  if(checked){if(arr.indexOf(role)<0)arr.push(role)}
+  else{var pos=arr.indexOf(role);if(pos>=0)arr.splice(pos,1)}
+  wfEditorSteps[idx].permissions.editableBy=arr;
+}

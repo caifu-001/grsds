@@ -1,0 +1,8 @@
+﻿=== document mousemove: NOT FOUND ===
+
+=== document mouseup: NOT FOUND ===
+
+=== document mousedown: NOT FOUND ===
+
+=== document click: NOT FOUND ===
+

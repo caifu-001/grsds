@@ -1,0 +1,29 @@
+   <!-- Analytics Dashboard -->
+   <div style="margin-top:24px">
+    <h3 style="margin-bottom:12px;display:flex;align-items:center;gap:8px">
+     📊 选品数据分析
+     <button class="btn-sm" style="background:var(--surface);border:1px solid var(--border);color:var(--text)" onclick="refreshScoutingCompare()">刷新</button>
+    </h3>
+    <div id="scouting-summary-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px"></div>
+    <div style="background:var(--card);border-radius:12px;padding:16px;margin-bottom:16px">
+     <h4 style="margin:0 0 12px;font-size:14px">📈 各产品供应商报价对比</h4>
+     <div style="overflow-x:auto">
+      <table class="check-table" id="scouting-compare-table">
+       <thead id="scouting-compare-head"></thead>
+       <tbody id="scouting-compare-body"></tbody>
+      </table>
+     </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px" id="scouting-charts-row">
+     <div style="background:var(--card);border-radius:12px;padding:16px">
+      <h4 style="margin:0 0 12px;font-size:14px">🏪 渠道分布</h4>
+      <div id="sc-channel-chart" style="display:flex;flex-direction:column;gap:8px"></div>
+     </div>
+     <div style="background:var(--card);border-radius:12px;padding:16px">
+      <h4 style="margin:0 0 12px;font-size:14px">📋 状态统计</h4>
+      <div id="sc-status-chart" style="display:flex;flex-direction:column;gap:8px"></div>
+     </div>
+    </div>
+   </div>
+  </div>
+

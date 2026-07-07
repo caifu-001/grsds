@@ -1,0 +1,25 @@
+﻿=== mousedown listeners ===
+tem').forEach(function(el){el.addEventListener('mousedown',function(e){e.preventDefault();selectCompany(items[+el.dataset.idx]);});});
+  }
+  function renderActive(){dd.querySelectorAll('.company-ac-item').forEach(function(el,i){el
+---
+
+=== click listeners ===
+to close suggestions
+document.addEventListener('click',function(e){
+  var ddSup=document.getElementById('sup-name-suggestions');
+  if(ddSup&&!ddSup.classList.contains('hidden')&&!e.target.closest("#supplier-modal"))ddSup.classList
+---
+>',{width:200});
+          mk.addEventListener('click',function(){map.openInfoWindow(info,baiduPt)});
+          map.addOverlay(mk);
+          return baiduPt;
+        });
+      })).then(function(results){
+        if(results.length>
+---
+
+=== document.body / document onX ===
+onmousedown=: 5
+
+=== Looking for wfShowProps( calls in event handlers ===

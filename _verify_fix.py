@@ -1,46 +1,43 @@
-import sys, re
-sys.stdout.reconfigure(encoding='utf-8')
-h = open(r'D:\1kaifa\grsds\index.html', encoding='utf-8').read()
-parts = re.split(r'</?script[^>]*>', h, flags=re.IGNORECASE)
-ho = ''
-for i, p in enumerate(parts):
-    if i % 2 == 0: ho += p
-o = len(re.findall(r'<div(?:\s|>)', ho))
-c = len(re.findall(r'</div', ho))
-print('Pure HTML divs: %d open, %d close, net=%d' % (o, c, o-c))
+import sys, io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-av = ho.find('id="admin-view"')
-ds = ho.rfind('<div', 0, av)
-d = 1; i = ds + 4; ac = 0
-while i < len(ho) and d > 0:
-    if ho[i:i+4] == '<div' and ho[i+4] in (' ', '>'): d += 1
-    elif ho[i:i+6] == '</div>': d -= 1
-    if d == 0: ac = i + 6; break
-    i += 1
+p = r"D:\1kaifa\grsds\index.html"
+with open(p, "r", encoding="utf-8-sig") as f:
+    c = f.read().replace("\r\n", "\n")
 
-wf = ho.find('id="admin-workflows"')
-print('admin-workflows inside admin-view: %s (wf=%d, av_close=%d)' % (wf < ac, wf, ac))
+# Verify: scan inventory-view and find its closing
+iv_key = 'id="inventory-view"'
+iv_idx = c.find(iv_key)
+gt_idx = c.find(">", iv_idx) + 1
+i = gt_idx
+depth = 0
+while i < len(c):
+    if c[i:i+4] == "<div":
+        depth += 1; i += 4
+    elif c[i:i+6] == "</div>":
+        if depth == 0:
+            print(f"✅ inventory-view closes at char {i}, line {c[:i].count(chr(10))+1}")
+            iv_close = i + 6
+            break
+        depth -= 1; i += 6
+    elif c[i:i+4] == "<!--":
+        ce = c.find("-->", i)
+        i = ce + 3 if ce > 0 else i + 1
+    else:
+        i += 1
 
-# Check switchAdminTab
-sw = h.find('function switchAdminTab(')
-d2 = 0; s_flag = False; sw_end = 0
-for i in range(sw, len(h)):
-    if h[i] == '{': d2 += 1; s_flag = True
-    elif h[i] == '}': d2 -= 1
-    if s_flag and d2 == 0: sw_end = i + 1; break
-sw_body = h[sw:sw_end]
-panels_ref = set(re.findall(r"getElementById\('(admin-[^']+)'\)", sw_body))
-print('switchAdminTab references:')
-for p in sorted(panels_ref):
-    print('  %s' % p)
-print('TOTAL: %d panels' % len(panels_ref))
+# Check each view position vs inventory-view close
+for v in ["collab-view", "service-view", "projects-view", "analytics-view", "reports-view"]:
+    vidx = c.find(f'id="{v}"')
+    status = "✅ OUTSIDE" if vidx > iv_close else "❌ INSIDE"
+    print(f"  {v}: {status} inventory-view (view at {vidx}, iv-close at {iv_close}, delta={vidx-iv_close})")
 
-# Also check JS syntax
-tg = h.find('>', h.find('<script>'))
-s2 = h.rfind('</script>')
-js = h[tg+1:s2]
-try:
-    compile(js, 'index.html', 'exec')
-    print('\nJS syntax: OK')
-except SyntaxError as e:
-    print('\nJS syntax: ERROR line %d - %s' % (e.lineno, e.msg))
+# Also run node syntax check
+print("\n--- Node syntax check ---")
+import subprocess
+result = subprocess.run(["node", "--check", p], capture_output=True, text=True)
+if result.returncode == 0:
+    print("✅ Syntax OK")
+else:
+    print("❌ Syntax error:")
+    print(result.stderr[:500])

@@ -1,0 +1,16 @@
+async function approveScouting(id){
+  var s=allScouting.find(function(x){return x.id===id});if(!s)return;
+  // Set status to approved
+  await sb.from('product_scouting').update({status:'approved',updated_at:new Date().toISOString()}).eq('id',id);
+  showToast('\u9009\u54c1\u5df2\u901a\u8fc7\uff0c\u53ef\u8f6c\u5165\u4ea7\u54c1\u5e93');
+  await loadScouting();
+  // Offer to add to products
+  if(confirm('\u662f\u5426\u5c06\u201c'+s.product_name+'\u201d\u6dfb\u52a0\u5230\u4ea7\u54c1\u5e93\uff1f')){
+    openProductForm();
+    document.getElementById('pfm-name').value=s.product_name||'';
+    document.getElementById('pfm-cost').value=s.purchase_price||'';
+    document.getElementById('pfm-price').value=s.selling_price||'';
+    document.getElementById('pfm-desc').value='\u4f9b\u5e94\u5546:'+(s.supplier_name||'')+' | MOQ:'+(s.moq||'-')+' | \u6e20\u9053:'+(s.channel||'');
+    document.getElementById('pfm-commission-rate').value=s.influencer_commission||'';
+  }
+}

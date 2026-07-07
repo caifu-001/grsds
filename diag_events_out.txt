@@ -1,0 +1,41 @@
+﻿=== document.addEventListener ===
+  event: click
+  event: DOMContentLoaded
+  event: mousemove
+  event: mouseup
+=== window.addEventListener ===
+  event: resize
+  event: unhandledrejection
+  event: error
+  event: unhandledrejection
+
+=== All addEventListener events (top-level) ===
+  DOMContentLoaded
+  blur
+  click
+  error
+  input
+  keydown
+  mousedown
+  mousemove
+  mouseup
+  resize
+  unhandledrejection
+
+=== onclick handlers that touch panel ===
+
+=== Looking for stopPropagation / preventDefault on panel ===
+  pos 741596: ...wfShowProps] idx='+idx,'approval=',JSON.stringify(appr),'s.key='+s.key);
+  h+='<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:8px">';
+  h+='<div onclick="var n=this.nextEle...
+
+  pos 748971: ...wfShowProps(nodeIdx);
+}
+
+// Drag nodes on canvas
+var wfDragNode=null,wfDragOffX=0,wfDragOffY=0;
+function wfNodeDragStart(e,idx){
+  e.stopPropagation();
+  wfDragNode=idx;
+  var node=document.getElement...
+

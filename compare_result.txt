@@ -1,0 +1,15 @@
+﻿wfShowProps: same=True  local_len=7142  remote_len=7142
+wfSetApproval: same=True  local_len=255  remote_len=255
+wfSetAssignee: same=True  local_len=244  remote_len=244
+renderWorkflowTemplates: same=True  local_len=2025  remote_len=2025
+callAdmin: same=True  local_len=700  remote_len=700
+saveWtVisual: same=False  local_len=1581  remote_len=1446
+  First diff at char 250:
+    local:  ...fore saving
+  var steps=[];
+  console.log("saveWtVisual: saving",wfEditorSteps.length,"steps");
+  for(var i=0;...
+    remote: ...fore saving
+  var steps=[];
+  for(var i=0;i<wfEditorSteps.length;i++){
+    var s=Object.assign({},wfEditorStep...

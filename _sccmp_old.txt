@@ -1,0 +1,15 @@
+   <!-- Comparison Table -->
+   <div style="margin-top:24px">
+    <h3 style="margin-bottom:12px;display:flex;align-items:center;gap:8px">
+     📊 供应商对比分析
+     <button class="btn-sm" style="background:var(--surface);border:1px solid var(--border);color:var(--text)" onclick="refreshScoutingCompare()">刷新对比</button>
+    </h3>
+    <div style="overflow-x:auto">
+     <table class="check-table" id="scouting-compare-table">
+      <thead id="scouting-compare-head"></thead>
+      <tbody id="scouting-compare-body"></tbody>
+     </table>
+    </div>
+   </div>
+  </div>
+

@@ -1,0 +1,69 @@
+function renderScouting(){
+  var tbody=document.getElementById('scouting-tbody');
+  if(!tbody)return;
+  // Apply filters
+  var fp=(document.getElementById('sc-filter-product')||{}).value||'';
+  var fs=(document.getElementById('sc-filter-supplier')||{}).value||'';
+  var fc=(document.getElementById('sc-filter-channel')||{}).value||'';
+  var fst=(document.getElementById('sc-filter-status')||{}).value||'';
+  fp=fp.trim().toLowerCase();fs=fs.trim().toLowerCase();
+  var filtered=[];
+  for(var i=0;i<allScouting.length;i++){
+    var s=allScouting[i];
+    if(fp&&(s.product_name||'').toLowerCase().indexOf(fp)<0)continue;
+    if(fs&&(s.supplier_name||'').toLowerCase().indexOf(fs)<0)continue;
+    if(fc&&s.channel!==fc)continue;
+    if(fst&&s.status!==fst)continue;
+    filtered.push(s);
+  }
+  // Update stats bar
+  var stats=document.getElementById('scouting-stats');
+  if(stats){
+    var total=allScouting.length;
+    var approved=0,pending=0,rejected=0;
+    var totalPrice=0,priceCount=0;
+    for(var si=0;si<allScouting.length;si++){
+      var ss=allScouting[si];
+      if(ss.status==='approved')approved++;else if(ss.status==='rejected')rejected++;else if(ss.status==='pending')pending++;
+      if(parseFloat(ss.purchase_price)>0){totalPrice+=parseFloat(ss.purchase_price);priceCount++;}
+    }
+    var avgPrice=priceCount>0?'￥'+fmtNum(totalPrice/priceCount):'-';
+    stats.innerHTML='<span>📦 共<b>'+total+'</b>条选品</span><span class="tag tag-success">✅ 已通过 '+approved+'</span><span class="tag tag-warning">⏳ 待评估 '+pending+'</span><span class="tag tag-danger">❌ 已否决 '+rejected+'</span><span>💰 均价 '+avgPrice+'</span>';
+    if(filtered.length!==total)stats.innerHTML+='<span style="color:var(--primary)">🔍 筛选: '+filtered.length+' 条</span>';
+  }
+  // Update channel filter dropdown
+  var chSel=document.getElementById('sc-filter-channel');
+  if(chSel){
+    var chs={},prev=chSel.value;
+    for(var ci=0;ci<allScouting.length;ci++){var ch=allScouting[ci].channel;if(ch&&!chs[ch])chs[ch]=1;}
+    var copt='<option value="">全部渠道</option>';
+    var chkeys=Object.keys(chs).sort();
+    for(var ck=0;ck<chkeys.length;ck++)copt+='<option value="'+escHtml(chkeys[ck])+'">'+escHtml(chkeys[ck])+'</option>';
+    chSel.innerHTML=copt;chSel.value=prev;
+  }
+  // Render table
+  if(!filtered.length){
+    tbody.innerHTML='<tr><td colspan="13" style="text-align:center;padding:24px;color:var(--text-secondary)">暂无匹配数据</td></tr>';
+    refreshScoutingCompare();
+    return;
+  }
+  var h='';
+  for(var fi=0;fi<filtered.length;fi++){
+    var s=filtered[fi];
+    var params=s.product_params;
+    try{if(typeof params==='string')params=JSON.parse(params)}catch(e){params={}}
+    var paramsStr='';
+    if(params&&typeof params==='object'){
+      var keys=Object.keys(params);
+      for(var k=0;k<Math.min(keys.length,3);k++)paramsStr+=escHtml(keys[k])+':'+escHtml(params[keys[k]])+(k<Math.min(keys.length,3)-1?'<br>':'');
+      if(keys.length>3)paramsStr+='<br><span style="color:var(--text-secondary)">...+'+(keys.length-3)+'\u9879</span>';
+    }
+    var statusMap={pending:'\u5f85\u8bc4\u4f30',approved:'\u5df2\u901a\u8fc7',rejected:'\u5df2\u5426\u51b3',ordered:'\u5df2\u91c7\u8d2d'};
+    var statusCls={pending:'tag-warning',approved:'tag-success',rejected:'tag-danger',ordered:'tag-primary'};
+    var status=s.status||'pending';
+    h+='<tr><td>'+escHtml(s.channel||'')+'</td><td><b>'+escHtml(s.product_name||'')+'</b></td><td>'+escHtml(s.product_category||'')+'</td><td>'+escHtml(s.supplier_name||'')+'</td><td>'+fmtNum(s.purchase_price)+'</td><td>'+fmtNum(s.selling_price)+'</td><td>'+(parseFloat(s.influencer_commission)||0)+'%</td><td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escHtml(s.compliance_requirements||'')+'">'+escHtml(s.compliance_requirements||'-')+'</td><td style="font-size:12px">'+paramsStr+'</td><td>'+(s.moq||'-')+'</td><td>'+(s.has_sample?'\u2705':'\\u274c')+'</td><td><span class="tag '+statusCls[status]+'">'+statusMap[status]+'</span></td><td><button class="btn-xs" style="color:var(--primary);cursor:pointer" onclick="editScouting('+s.id+')">\u7f16\u8f91</button> <button class="btn-xs" style="color:var(--success);cursor:pointer" onclick="approveScouting('+s.id+')">\u5165\u5e93</button></td></tr>';
+  }
+  tbody.innerHTML=h;
+  // Refresh analytics
+  refreshScoutingCompare();
+}

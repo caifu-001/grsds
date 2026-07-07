@@ -1,0 +1,9 @@
+﻿=== Remote wfSetProp ===
+function wfSetProp(idx,key,value){
+  try{
+    if(!wfEditorSteps||idx<0||idx>=wfEditorSteps.length)return;
+    wfEditorSteps[idx][key]=value;
+    wfRenderAll();
+    wfShowProps(idx);  // always re-render panel so select/input show new values
+  }catch(e){console.error('[wfSetProp]',e)}
+}

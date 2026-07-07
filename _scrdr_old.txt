@@ -1,0 +1,25 @@
+function renderScouting(){
+  var tbody=document.getElementById('scouting-tbody');
+  if(!tbody)return;
+  if(!allScouting.length){
+    tbody.innerHTML='<tr><td colspan="13" style="text-align:center;padding:24px;color:var(--text-secondary)">\u6682\u65e0\u9009\u54c1\u6570\u636e\uff0c\u70b9\u51fb\u201c\uff0b \u6dfb\u52a0\u9009\u54c1\u201d\u5f00\u59cb</td></tr>';
+    return;
+  }
+  var h='';
+  for(var i=0;i<allScouting.length;i++){
+    var s=allScouting[i];
+    var params=s.product_params;
+    try{if(typeof params==='string')params=JSON.parse(params)}catch(e){params={}}
+    var paramsStr='';
+    if(params&&typeof params==='object'){
+      var keys=Object.keys(params);
+      for(var k=0;k<Math.min(keys.length,3);k++)paramsStr+=escHtml(keys[k])+':'+escHtml(params[keys[k]])+(k<Math.min(keys.length,3)-1?'<br>':'');
+      if(keys.length>3)paramsStr+='<br><span style="color:var(--text-secondary)">...+'+(keys.length-3)+'\u9879</span>';
+    }
+    var statusMap={pending:'\u5f85\u8bc4\u4f30',approved:'\u5df2\u901a\u8fc7',rejected:'\u5df2\u5426\u51b3',ordered:'\u5df2\u91c7\u8d2d'};
+    var statusCls={pending:'tag-warning',approved:'tag-success',rejected:'tag-danger',ordered:'tag-primary'};
+    var status=s.status||'pending';
+    h+='<tr><td>'+escHtml(s.channel||'')+'</td><td><b>'+escHtml(s.product_name||'')+'</b></td><td>'+escHtml(s.product_category||'')+'</td><td>'+escHtml(s.supplier_name||'')+'</td><td>'+fmtNum(s.purchase_price)+'</td><td>'+fmtNum(s.selling_price)+'</td><td>'+(parseFloat(s.influencer_commission)||0)+'%</td><td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escHtml(s.compliance_requirements||'')+'">'+escHtml(s.compliance_requirements||'-')+'</td><td style="font-size:12px">'+paramsStr+'</td><td>'+(s.moq||'-')+'</td><td>'+(s.has_sample?'\u2705':'\\u274c')+'</td><td><span class="tag '+statusCls[status]+'">'+statusMap[status]+'</span></td><td><button class="btn-xs" style="color:var(--primary);cursor:pointer" onclick="editScouting('+s.id+')">\u7f16\u8f91</button> <button class="btn-xs" style="color:var(--success);cursor:pointer" onclick="approveScouting('+s.id+')">\u901a\u8fc7</button></td></tr>';
+  }
+  tbody.innerHTML=h;
+}

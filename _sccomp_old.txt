@@ -1,0 +1,64 @@
+function refreshScoutingCompare(){
+  var head=document.getElementById('scouting-compare-head');
+  var body=document.getElementById('scouting-compare-body');
+  if(!head||!body)return;
+  if(!allScouting.length){
+    head.innerHTML='';body.innerHTML='<tr><td style="text-align:center;padding:24px;color:var(--text-secondary)">\u6682\u65e0\u9009\u54c1\u53ef\u5bf9\u6bd4</td></tr>';
+    return;
+  }
+  // Group by product_name
+  var groups={};
+  for(var i=0;i<allScouting.length;i++){
+    var s=allScouting[i];
+    var key=(s.product_name||'').trim().toLowerCase();
+    if(!key)key='__unnamed__';
+    if(!groups[key])groups[key]={name:s.product_name||'\u672a\u547d\u540d',items:[]};
+    groups[key].items.push(s);
+  }
+  var gkeys=Object.keys(groups);
+  // Build header: 产品名 | 供应商1 | 供应商2 | ...
+  var maxSuppliers=0;
+  for(var g=0;g<gkeys.length;g++){
+    if(groups[gkeys[g]].items.length>maxSuppliers)maxSuppliers=groups[gkeys[g]].items.length;
+  }
+  var headHtml='<tr><th>\u4ea7\u54c1</th>';
+  for(var s=0;s<maxSuppliers;s++){
+    if(s===0)headHtml+='<th>\u4f9b\u5e94\u5546\uff06\u6e20\u9053</th><th>\u91c7\u8d2d\u4ef7</th><th>MOQ</th><th>\u53c2\u6570</th><th>\u5408\u89c4</th><th>\u4f63\u91d1</th><th>\u6837\u54c1</th>';
+    else headHtml+='<th colspan="6" style="text-align:center;background:var(--primary-light)">\u5bf9\u6bd4\u4f9b\u5e94\u5546 '+(s+1)+'</th>';
+  }
+  headHtml+='</tr>';
+  // For the first supplier row, show product name; for others, show supplier details
+  // Actually better: one row per product, with columns for each supplier
+  // Redesign: rows = products, columns = suppliers (with sub-columns)
+  head.innerHTML=headHtml;
+
+  var bodyHtml='';
+  for(var g=0;g<gkeys.length;g++){
+    var prod=groups[gkeys[g]].items;
+    // Sort by purchase_price ascending
+    prod.sort(function(a,b){return parseFloat(a.purchase_price||0)-parseFloat(b.purchase_price||0)});
+    bodyHtml+='<tr><td><b>'+escHtml(groups[gkeys[g]].name)+'</b></td>';
+    for(var p=0;p<maxSuppliers;p++){
+      if(p<prod.length){
+        var it=prod[p];
+        var params=it.product_params;
+        try{if(typeof params==='string')params=JSON.parse(params)}catch(e){params={}}
+        var pstr='';
+        if(params&&typeof params==='object'){var ks=Object.keys(params);for(var k=0;k<Math.min(ks.length,2);k++)pstr+=escHtml(ks[k])+':'+escHtml(params[ks[k]])+'; ';}
+        // Highlight cheapest
+        var cheapest=p===0&&prod.length>1;
+        bodyHtml+='<td'+(cheapest?' style="background:#e8f5e9"':'')+'><b>'+escHtml(it.supplier_name||'-')+'</b><br><span style="font-size:11px;color:var(--text-secondary)">'+escHtml(it.channel||'')+'</span></td>';
+        bodyHtml+='<td'+(cheapest?' style="background:#e8f5e9;font-weight:700;color:var(--success)"':'')+'>'+fmtNum(it.purchase_price)+'</td>';
+        bodyHtml+='<td'+(cheapest?' style="background:#e8f5e9"':'')+'>'+(it.moq||'-')+'</td>';
+        bodyHtml+='<td style="font-size:12px'+(cheapest?';background:#e8f5e9"':'')+'">'+pstr+'</td>';
+        bodyHtml+='<td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'+(cheapest?';background:#e8f5e9"':'')+'">'+escHtml((it.compliance_requirements||'-').substring(0,30))+'</td>';
+        bodyHtml+='<td'+(cheapest?' style="background:#e8f5e9"':'')+'>'+(parseFloat(it.influencer_commission)||0)+'%</td>';
+        bodyHtml+='<td'+(cheapest?' style="background:#e8f5e9"':'')+'>'+(it.has_sample?'\u2705':'\\u274c')+'</td>';
+      }else{
+        bodyHtml+='<td colspan="6" style="color:var(--text-secondary);text-align:center">-</td>';
+      }
+    }
+    bodyHtml+='</tr>';
+  }
+  body.innerHTML=bodyHtml;
+}

@@ -1,0 +1,29 @@
+async function approveScouting(id){
+  var s=allScouting.find(function(x){return x.id===id});if(!s)return;
+  await sb.from('product_scouting').update({status:'approved',updated_at:new Date().toISOString()}).eq('id',id);
+  showToast('\u9009\u54c1\u5df2\u901a\u8fc7');
+  await loadScouting();
+  if(!confirm('\u662f\u5426\u4e00\u952e\u5165\u5e93\uff1f\n\n\u8fd9\u5c06\uff1a\n1. \u6dfb\u52a0\u4ea7\u54c1\u5230\u4ea7\u54c1\u5e93\n2. \u6dfb\u52a0\u4f9b\u5e94\u5546\u5230\u4f9b\u5e94\u5546\u5e93\n3. \u521b\u5efa\u91c7\u8d2d\u5355'))return;
+  var hasError=false;
+  // 1. Add product
+  var prodExists=null;
+  for(var j=0;j<allProducts.length;j++){if((allProducts[j].name||'').trim().toLowerCase()===s.product_name.trim().toLowerCase()){prodExists=allProducts[j];break;}}
+  if(!prodExists){
+    var prodObj={company_id:currentCompanyId,name:s.product_name||'',code:null,category_id:null,unit:'\u4e2a',cost_price:parseFloat(s.purchase_price)||0,selling_price:parseFloat(s.selling_price)||0,description:'\u4f9b\u5e94\u5546:'+(s.supplier_name||'')+' | MOQ:'+(s.moq||'-')+' | \u6e20\u9053:'+(s.channel||''),specs:s.product_params||'{}',images:'[]',commission_rate:parseFloat(s.influencer_commission)||0,updated_at:new Date().toISOString()};
+    var pr=await sb.from('products').insert([prodObj]);
+    if(pr.error){showToast('\u6dfb\u52a0\u4ea7\u54c1\u5931\u8d25:'+pr.error.message);hasError=true;}else{showToast('\u2705 \u4ea7\u54c1\u5df2\u5165\u5e93: '+s.product_name);}
+  }else{showToast('\u2705 \u4ea7\u54c1\u5df2\u5b58\u5728: '+s.product_name);}
+  // 2. Add supplier
+  var supExists=null;
+  if(s.supplier_name){for(var kk=0;kk<allSuppliers.length;kk++){if((allSuppliers[kk].name||'').trim().toLowerCase()===s.supplier_name.trim().toLowerCase()){supExists=allSuppliers[kk];break;}}}
+  if(s.supplier_name&&!supExists){
+    var supObj={company_id:currentCompanyId,name:s.supplier_name,contact_name:null,contact_phone:'[]',products:'[]',category:s.product_category||null,cooperation_count:1,cooperation_level:'C',defect_rate:0,notes:'\u6765\u81ea\u9009\u54c1\u8c03\u7814 | \u4ea7\u54c1:'+s.product_name,compliance_requirements:s.compliance_requirements||null,updated_at:new Date().toISOString()};
+    var sr=await sb.from('suppliers').insert([supObj]);
+    if(sr.error){showToast('\u6dfb\u52a0\u4f9b\u5e94\u5546\u5931\u8d25:'+sr.error.message);hasError=true;}else{showToast('\u2705 \u4f9b\u5e94\u5546\u5df2\u5165\u5e93: '+s.supplier_name);}
+  }else if(supExists){showToast('\u2705 \u4f9b\u5e94\u5546\u5df2\u5b58\u5728: '+s.supplier_name);}
+  // 3. Mark as ordered
+  await sb.from('product_scouting').update({status:'ordered',updated_at:new Date().toISOString()}).eq('id',id);
+  showToast('\u2705 \u91c7\u8d2d\u6d41\u7a0b\u5df2\u542f\u52a8: '+s.product_name);
+  await loadScouting();
+  if(!hasError){await loadSuppliers();await loadProducts();}
+}

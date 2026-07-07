@@ -1,0 +1,12 @@
+﻿=== wfShowProps approval section (raw hex) ===
+python.exe : Traceback (most recent call last):
+所在位置 行:1 字符: 21
++ ... aifa\grsds; & "C:\Users\yinsu\AppData\Local\Programs\Python\Python311 ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Traceback (most recent call last)::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  File "D:\1kaifa\grsds\check_encoding.py", line 12, in <module>
+    print(f'  {ord(ch):#06x} {repr(chr(ch))}')
+                                   ^^^^^^^
+TypeError: 'str' object cannot be interpreted as an integer

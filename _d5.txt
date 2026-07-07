@@ -1,8 +1,0 @@
-﻿onLeadTypeChange() IS called from selectLeadCompany
-
-=== openProjectFormFromLead ===
-function openProjectFormFromLeadIdx(idx){
-  var entry=_leadProjectCache[idx];
-  if(!entry){showToast('绾跨储鏁版嵁涓㈠け');return}
-  openProjectFormFromLead(entry.id,entry.projectName,entry.companyName,entry.clientId);
-}

@@ -1,38 +1,70 @@
-import sys
-sys.stdout.reconfigure(encoding='utf-8')
-with open(r'D:\1kaifa\grsds\index.html','r',encoding='utf-8') as f:
-    h = f.read()
+import sys, io, re
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-# 1. Check if onLeadTypeChange() call is present at end of selectLeadCompany
-i = h.find('function selectLeadCompany')
-d = 0; s = False; j = i
-while j < len(h):
-    if h[j] == '{': d += 1; s = True
-    elif h[j] == '}': d -= 1
-    if s and d == 0: break
-    j += 1
-fn = h[i:j+1]
-if 'onLeadTypeChange()' in fn:
-    print("onLeadTypeChange() IS called from selectLeadCompany")
+p = r"D:\1kaifa\grsds\index.html"
+with open(p, "r", encoding="utf-8-sig") as f:
+    c = f.read().replace("\r\n", "\n")
+
+# Extract full refreshScoutingCompare function
+idx = c.find("function refreshScoutingCompare")
+# Find the function end by tracking braces
+depth = 0
+started = False
+end = idx
+for i in range(idx, len(c)):
+    ch = c[i]
+    if ch == "\n":
+        continue
+    if ch == "{":
+        depth += 1
+        started = True
+    elif ch == "}":
+        depth -= 1
+        if started and depth == 0:
+            end = i + 1
+            break
+
+fn = c[idx:end]
+print(f"Function length: {len(fn)} chars")
+
+# Check key variables
+checks = ["filtered", "allScouting", "cmpContainer", "containerHtml"]
+for var in checks:
+    count = fn.count(var)
+    print(f"'{var}' mentions: {count}")
+
+# Check if filtered is defined (var filtered = ...)
+if "var filtered" in fn or "let filtered" in fn or "const filtered" in fn:
+    print("OK: filtered is locally defined")
 else:
-    print("onLeadTypeChange() NOT called from selectLeadCompany!")
-    print("Last 200 chars:", repr(fn[-200:]))
+    # Check if filtered comes from outer scope
+    print("filtered NOT locally defined - must come from outer scope")
+    # Find where filtered was originally defined
+    prev = c[:idx]
+    last_def = prev.rfind("filtered")
+    if last_def > 0:
+        ctx = c[last_def-50:last_def+50]
+        print(f"Last mention before function: ...{ctx}...")
 
-# 2. Show openProjectFormFromLead full function
-opf = h.find('function openProjectFormFromLead')
-d = 0; s = False; j = opf
-while j < len(h):
-    if h[j] == '{': d += 1; s = True
-    elif h[j] == '}': d -= 1
-    if s and d == 0: break
-    j += 1
-print("\n=== openProjectFormFromLead ===")
-print(h[opf:j+1])
-
-# 3. Check the contacts query that 400s
-# The error mentions: contacts?select=name%2Ctitle%2Cphone%2Cemail&client_id=eq.xxx
-# 'title' column may not exist in contacts table
-# Find all contacts queries with 'title'
-for m in re.finditer(r'contacts.*title', h):
-    pos = m.start()
-    print(f"\ncontacts+title at {pos}: {h[max(0,pos-20):pos+120]}")
+# Also check the renderScouting function for similar issues
+rsc_idx = c.find("function renderScouting(")
+if rsc_idx > 0:
+    depth = 0
+    started = False
+    end2 = rsc_idx
+    for i in range(rsc_idx, len(c)):
+        ch = c[i]
+        if ch == "\n":
+            continue
+        if ch == "{":
+            depth += 1
+            started = True
+        elif ch == "}":
+            depth -= 1
+            if started and depth == 0:
+                end2 = i + 1
+                break
+    rsc_fn = c[rsc_idx:end2]
+    print(f"\nrenderScouting length: {len(rsc_fn)} chars")
+    for var in ["filtered", "allScouting", "scoutingList"]:
+        print(f"'{var}' mentions: {rsc_fn.count(var)}")

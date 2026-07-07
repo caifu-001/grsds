@@ -1,0 +1,21 @@
+﻿Count of escaped quote in wfShowProps body: 54
+
+Sample wfSetProp onchange strings:
+  onchange="wfSetProp('+idx+',\'seq\',parseInt(this.value))"
+
+  onchange="wfSetProp('+idx+',\'phase\',this.value)"
+
+  onchange="wfSetProp('+idx+',\'key\',this.value)"
+
+  onchange="wfSetProp('+idx+',\'name\',this.value)"
+
+  onchange="wfSetProp('+idx+',\'icon\',this.value)"
+
+---
+Sample wfSetApproval onchange strings:
+  onchange="wfSetApproval('+idx+',\'enabled\',this.checked)"
+
+  onchange="wfSetApproval('+idx+',\'approverRole\',this.value)"
+
+  onchange="wfSetApproval('+idx+',\'onReject\',this.value)"
+
