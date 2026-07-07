@@ -7571,6 +7571,8 @@ function closeSupplierForm(){
 }
 
 async function saveSupplier(){
+  console.log('[saveSupplier] called, role:',currentCompanyRole,'editId:',supplierEditId);
+  try{
   var name=document.getElementById('sup-name').value.trim();
   if(!name){showToast('\u8bf7\u8f93\u5165\u4f9b\u5e94\u5546\u540d\u79f0');return}
   var dirId=null;var dk=name.toLowerCase();if(allCompaniesMap&&allCompaniesMap[dk])dirId=allCompaniesMap[dk].id;
@@ -7611,7 +7613,9 @@ async function saveSupplier(){
   else {
     var supRes;
     if(currentCompanyRole!=='admin'&&!isSuperAdmin){
+      console.log('[saveSupplier] callAdmin insert via edge function...');
       supRes=await callAdmin('insert','suppliers',{payload:{...obj,id:crypto.randomUUID()}});
+      console.log('[saveSupplier] callAdmin insert result:',JSON.stringify(supRes));
     }else{supRes=await sb.from('suppliers').insert([obj]).select('id')}
   }
   var newSid=null;
@@ -7626,6 +7630,8 @@ async function saveSupplier(){
   }
   closeSupplierForm();
   await loadSuppliers();
+  showToast('供应商已保存');
+  }catch(e){console.error('[saveSupplier] exception:',e);showToast('保存失败: '+e.message)}
 }
 
 async function deleteSupplier(id){
