@@ -6128,6 +6128,8 @@ function switchTab(tab){
   var allViews=[cv,ov,rv,av,sv,iv];if(spv)allViews.push(spv);if(pv)allViews.push(pv);if(lv)allViews.push(lv);var colv2=document.getElementById('collab-view');if(colv2)allViews.push(colv2);var sv2=document.getElementById('service-view');if(sv2)allViews.push(sv2);if(purchv)allViews.push(purchv);var pjv=document.getElementById('projects-view');if(pjv)allViews.push(pjv);if(anv)allViews.push(anv);
   var fwv=document.getElementById('fieldwork-view');if(fwv)allViews.push(fwv);
   for(var i=0;i<allViews.length;i++)if(allViews[i]){allViews[i].classList.add('hidden');allViews[i].style.display='';allViews[i].style.visibility='';}
+  // Admin sub-panels outside admin-view must also hide
+  var ag=document.getElementById('admin-grants');if(ag)ag.classList.add('hidden');
   // Deactivate all tabs
   var tr=document.getElementById('tab-reports');var tan=document.getElementById('tab-analytics');
   var allTabs=[tc,to,document.getElementById('tab-service'),document.getElementById('tab-collab'),document.getElementById('tab-projects'),tr,ta,ti];if(tan)allTabs.push(tan);var tfw=document.getElementById('tab-fieldwork');if(tfw)allTabs.push(tfw);for(var j=0;j<allTabs.length;j++)if(allTabs[j])allTabs[j].classList.remove('active');
@@ -12116,7 +12118,7 @@ async function renderAdminEmployees(){
   if(q)list=list.filter(function(u){return (u.display_name||'').toLowerCase().indexOf(q)>=0||(u.email||'').toLowerCase().indexOf(q)>=0||(u.position||'').toLowerCase().indexOf(q)>=0;});
   var h='<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="border-bottom:2px solid var(--border)"><th style="padding:10px 8px;text-align:left">姓名</th><th style="padding:10px 8px;text-align:left">邮箱</th><th style="padding:10px 8px;text-align:left">公司</th><th style="padding:10px 8px;text-align:left">手机</th><th style="padding:10px 8px;text-align:left">岗位</th><th style="padding:10px 8px;text-align:left">角色</th><th style="padding:10px 8px;text-align:left">部门</th><th style="padding:10px 8px;text-align:left">状态</th><th style="padding:10px 8px;text-align:left">最后登录</th><th style="padding:10px 8px;text-align:center">操作</th></tr></thead><tbody>';
   for(var j=0;j<list.length;j++){
-    var u=list[j];var dn=u.display_name||'';var em=u.email||'';var rn=u.role||'';var did=u.dept_id||'';
+    var u=list[j];var dn=u.display_name||'';var em=u.email||'';var rn=u.role||'';var did=u.department_id||u.dept_id||'';
     var deptName='';for(var k=0;k<(allDepartments||[]).length;k++){if(allDepartments[k].id==did){deptName=allDepartments[k].name;break;}}
     var companyName='-';var cab2=typeof allAdminCompanies!=='undefined'?allAdminCompanies:allCompanies||[];for(var ci=0;ci<cab2.length;ci++){if(cab2[ci].id===u.company_id){companyName=cab2[ci].name;break}}
     var statusLabel=u.status==='inactive'?'<span style="color:#ef4444">离职</span>':'<span style="color:#10b981">在职</span>';
