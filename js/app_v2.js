@@ -58,8 +58,10 @@ async function loadMemberGrants(){
 function canAccess(type,id){
   if(isSuperAdmin)return true;
   if(currentCompanyRole==='admin')return true;
-  var ok=memberGrants[type]&&memberGrants[type].indexOf((id||'').toLowerCase())>=0;
-  if(!ok)console.log('[canAccess] DENY:',type,id,'memberGrants['+type+']=',JSON.stringify(memberGrants[type]||[]));
+  if(memberGrants[type]==='all')return true;
+  var grants=memberGrants[type];if(!grants||!Array.isArray(grants))return false;
+  var ok=grants.indexOf((id||'').toLowerCase())>=0;
+  if(!ok)console.log('[canAccess] DENY:',type,id,'grants count:',grants.length);
   return ok;
 }
 let allUsers=[];
