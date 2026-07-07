@@ -4651,6 +4651,13 @@ async function saveClient(){
     var {data:nd,error}=await sb.from('clients').insert(client).select('id');
     if(error){showToast('添加失败: '+error.message);return}
     clientId=nd[0].id;
+    // 非管理员自动给自己授权（能看见自己建的客户）
+    if(currentCompanyRole!=='admin'&&!isSuperAdmin){
+      callAdmin('insert','resource_grants',{payload:{user_id:currentUser.id,resource_type:'clients',resource_id:clientId,granted_by:currentUser.id}}).then(function(gr){console.log('[saveClient] self-grant result:',gr)});
+      // 同步更新本地缓存，避免 loadClients 过滤
+      if(!memberGrants.clients||memberGrants.clients==='all')memberGrants.clients=[];
+      memberGrants.clients.push(clientId.toLowerCase());
+    }
   }else{
     client.company_id=currentCompanyId;
     var{error}=await sb.from('clients').update(client).eq('id',editId);
@@ -9267,8 +9274,15 @@ async function saveProduct(){
     updated_at:new Date().toISOString()
   };
   var r;
-  if(productEditId){r=await sb.from('products').update(data).eq('id',productEditId)}else{r=await sb.from('products').insert(data)}
+  if(productEditId){r=await sb.from('products').update(data).eq('id',productEditId)}else{r=await sb.from('products').insert(data).select('id')}
   if(r.error){showToast('保存失败:'+r.error.message);return}
+  // 非管理员自动给自己授权
+  if(!productEditId&&currentCompanyRole!=='admin'&&!isSuperAdmin&&r.data&&r.data[0]){
+    var newPid=r.data[0].id;
+    callAdmin('insert','resource_grants',{payload:{user_id:currentUser.id,resource_type:'products',resource_id:newPid,granted_by:currentUser.id}}).then(function(gr){console.log('[saveProduct] self-grant result:',gr)});
+    if(!memberGrants.products||memberGrants.products==='all')memberGrants.products=[];
+    memberGrants.products.push(newPid.toLowerCase());
+  }
   showToast(productEditId?'已更新':'已添加');
   closeProductForm();
   await loadProducts();
@@ -10815,7 +10829,14 @@ async function saveSupplier(){
     updated_at:new Date().toISOString()
   };
   if(supplierEditId){await sb.from('suppliers').update(obj).eq('id',supplierEditId)}
-  else {await sb.from('suppliers').insert([obj])}
+  else {var supRes=await sb.from('suppliers').insert([obj]).select('id')}
+  // 非管理员自动给自己授权
+  if(!supplierEditId&&currentCompanyRole!=='admin'&&!isSuperAdmin&&supRes&&supRes.data&&supRes.data[0]){
+    var newSid=supRes.data[0].id;
+    callAdmin('insert','resource_grants',{payload:{user_id:currentUser.id,resource_type:'suppliers',resource_id:newSid,granted_by:currentUser.id}}).then(function(gr){console.log('[saveSupplier] self-grant result:',gr)});
+    if(!memberGrants.suppliers||memberGrants.suppliers==='all')memberGrants.suppliers=[];
+    memberGrants.suppliers.push(newSid.toLowerCase());
+  }
   closeSupplierForm();
   await loadSuppliers();
 }
