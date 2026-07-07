@@ -18,16 +18,12 @@ WHERE c.user_id IS NOT NULL
       AND rg.resource_type = 'clients' 
       AND rg.resource_id = c.id::TEXT
   )
-  -- 排除管理员（管理员不依赖 resource_grants）
+  -- 排除管理员（管理员不依赖 resource_grants，超管前端 isSuperAdmin 绕过）
   AND NOT EXISTS (
     SELECT 1 FROM company_memberships cm 
     WHERE cm.user_id = c.user_id 
       AND cm.company_id = c.company_id 
       AND cm.role = 'admin'
-  )
-  AND NOT EXISTS (
-    SELECT 1 FROM profiles p 
-    WHERE p.id = c.user_id AND p.role = 'super_admin'
   );
 
 -- 2. 回填 products 自授权
@@ -52,10 +48,6 @@ WHERE p.user_id IS NOT NULL
     WHERE cm.user_id = p.user_id 
       AND cm.company_id = p.company_id 
       AND cm.role = 'admin'
-  )
-  AND NOT EXISTS (
-    SELECT 1 FROM profiles pf 
-    WHERE pf.id = p.user_id AND pf.role = 'super_admin'
   );
 
 -- 3. 回填 suppliers 自授权
@@ -80,10 +72,6 @@ WHERE s.user_id IS NOT NULL
     WHERE cm.user_id = s.user_id 
       AND cm.company_id = s.company_id 
       AND cm.role = 'admin'
-  )
-  AND NOT EXISTS (
-    SELECT 1 FROM profiles pf 
-    WHERE pf.id = s.user_id AND pf.role = 'super_admin'
   );
 
 -- 4. 验证：查看回填了多少条
