@@ -41,14 +41,18 @@ async function loadMemberGrants(){
       filters:[{col:'user_id',op:'eq',val:currentUser.id},{col:'company_id',op:'eq',val:currentCompanyId},{col:'',op:'limit',val:'50000'}]
     });
     var rows=r&&r.data||[];
-    memberGrants={clients:[],products:[],suppliers:[]};
-    for(var i=0;i<rows.length;i++){
-      var row=rows[i];
-      if(memberGrants[row.resource_type]!==undefined){
-        memberGrants[row.resource_type].push((row.resource_id||'').toLowerCase());
+    console.log('[loadMemberGrants] rows:',rows.length);
+    // 表里没数据 = 授权系统未启用，保持默认 'all'
+    if(rows.length>0){
+      memberGrants={clients:[],products:[],suppliers:[]};
+      for(var i=0;i<rows.length;i++){
+        var row=rows[i];
+        if(memberGrants[row.resource_type]!==undefined){
+          memberGrants[row.resource_type].push((row.resource_id||'').toLowerCase());
+        }
       }
     }
-    console.log('[loadMemberGrants] clients:',memberGrants.clients.length,'products:',memberGrants.products.length,'suppliers:',memberGrants.suppliers.length);
+    console.log('[loadMemberGrants] clients:',Array.isArray(memberGrants.clients)?memberGrants.clients.length:memberGrants.clients,'products:',Array.isArray(memberGrants.products)?memberGrants.products.length:memberGrants.products,'suppliers:',Array.isArray(memberGrants.suppliers)?memberGrants.suppliers.length:memberGrants.suppliers);
   }catch(e){console.error('[loadMemberGrants] exception:',e)}
 }
 function canAccess(type,id){
