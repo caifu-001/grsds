@@ -3991,7 +3991,8 @@ async function loadClients(){
     console.log('[loadClients] fetched '+allClients.length+' clients, currentCompanyRole='+currentCompanyRole+' isSuperAdmin='+isSuperAdmin);
     if(currentCompanyRole!=='admin'&&!isSuperAdmin){
       console.log('[loadClients] filtering by grants, memberGrants.clients=',JSON.stringify(memberGrants.clients));
-      allClients=allClients.filter(function(cl){return canAccess('clients',cl.id)});
+      if(allClients.length>0)console.log('[loadClients] sample client id:',JSON.stringify(allClients[0].id),' grant sample:',JSON.stringify(memberGrants.clients&&memberGrants.clients[0]));
+      allClients=allClients.filter(function(cl){var ok=canAccess('clients',cl.id);if(!ok)console.log('[loadClients] DENY client '+cl.id+' not in grants (case check: '+JSON.stringify(memberGrants.clients)+')');return ok});
       console.log('[loadClients] after filter: '+allClients.length+' clients');
     }
     var {data:cd}=await sb.from('contacts').select('*').eq('company_id',currentCompanyId);
