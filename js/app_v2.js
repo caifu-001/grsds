@@ -1427,7 +1427,7 @@ async function saveClient(){
       console.log('[saveClient] self-grant result:',grRes);
       // 同步更新本地缓存，避免 loadClients 过滤
       if(!memberGrants.clients||memberGrants.clients==='all')memberGrants.clients=[];
-      memberGrants.clients.push(clientId.toLowerCase());
+      memberGrants.clients.push(String(clientId).toLowerCase());
     }
   }else{
     client.company_id=currentCompanyId;
@@ -6053,7 +6053,7 @@ async function saveProduct(){
     var grRes=await callAdmin('insert','resource_grants',{payload:{user_id:currentUser.id,company_id:currentCompanyId,resource_type:'products',resource_id:newPid,granted_by:currentUser.id}});
     console.log('[saveProduct] self-grant result:',grRes);
     if(!memberGrants.products||memberGrants.products==='all')memberGrants.products=[];
-    memberGrants.products.push(newPid.toLowerCase());
+    memberGrants.products.push(String(newPid).toLowerCase());
   }
   showToast(productEditId?'已更新':'已添加');
   closeProductForm();
@@ -7630,7 +7630,7 @@ async function saveSupplier(){
     var grRes=await callAdmin('insert','resource_grants',{payload:{user_id:currentUser.id,company_id:currentCompanyId,resource_type:'suppliers',resource_id:newSid,granted_by:currentUser.id}});
     console.log('[saveSupplier] self-grant result:',grRes);
     if(!memberGrants.suppliers||memberGrants.suppliers==='all')memberGrants.suppliers=[];
-    memberGrants.suppliers.push(newSid.toLowerCase());
+    memberGrants.suppliers.push(String(newSid).toLowerCase());
   }
   closeSupplierForm();
   await loadSuppliers();
