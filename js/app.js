@@ -7641,8 +7641,9 @@ async function handleSupAttachFile(input){
   var bucket='supplier-files';
   for(var i=0;i<files.length;i++){
     var f=files[i];
-    var safeName=f.name.replace(/[^a-zA-Z0-9._\u4e00-\u9fff-]/g,'_');
-    var filePath=currentCompanyId+'/'+Date.now()+'_'+safeName;
+    var ext='';var dot=f.name.lastIndexOf('.');if(dot>0)ext=f.name.substring(dot);
+    var safeName=Date.now()+'_'+Math.random().toString(36).substring(2,8)+ext;
+    var filePath=currentCompanyId+'/'+safeName;
     try{
       var {data,error}=await sb.storage.from(bucket).upload(filePath,f,{cacheControl:'3600',upsert:false});
       if(error){showToast('上传失败: '+error.message);continue}
