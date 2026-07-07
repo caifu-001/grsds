@@ -6762,7 +6762,10 @@ var adminUserList=[];
 var currentAdminTab='users';
 var deptExpanded={};
 
-async function loadAdminData(){
+var adminDataLoaded=false;
+async function loadAdminData(force){
+  if(adminDataLoaded&&!force){console.log('[loadAdminData] cached, skip');return}
+  console.log('[loadAdminData] fetching...');
   // Load departments
   var {data:depts,error}=await sb.from('departments').select('*').eq('company_id',currentCompanyId).order('name');
   if(!error)allDepartments=depts||[];
@@ -6778,6 +6781,7 @@ async function loadAdminData(){
       try{var ur=await callAdmin('select','profiles',{query:'*',filters:[{col:'company_id',op:'eq',val:currentCompanyId}]});if(ur&&ur.data){adminUserList=ur.data;allUsers=adminUserList.slice();populatePerfSelects();}else{console.warn('loadAdminData profiles:',ur)}}catch(e){console.error('loadAdminData users:',e)}
     }
   }
+  adminDataLoaded=true;
 }
 
 /* ── Roles ── */
@@ -6921,7 +6925,7 @@ async function saveRole(id){
   else{var {error}=await sb.from('roles').insert(data);if(error){showToast('创建失败: '+error.message);return}}
   showToast(id?'角色已更新':'角色已创建');
   closeRoleForm();
-  await loadAdminData();
+  await loadAdminData(true);
   renderAdminRoles();
 }
 
@@ -6932,7 +6936,7 @@ async function deleteRole(id){
   var {error}=await sb.from('roles').delete().eq('id',id);
   if(error){showToast('删除失败: '+error.message);return}
   showToast('角色已删除');
-  await loadAdminData();
+  await loadAdminData(true);
   renderAdminRoles();
   if(typeof renderAdminEmployees==="function")renderAdminEmployees();
 }
@@ -7301,7 +7305,7 @@ async function saveDept(){
     else{var{error}=await sb.from('departments').insert(payload);if(error){alert('创建失败: '+error.message);return}}
   }
   document.getElementById('dept-form-modal').remove();
-  await loadAdminData();renderAdminDepts();
+  await loadAdminData(true);renderAdminDepts();
 }
 
 async function deleteDept(id,name){
@@ -7317,7 +7321,7 @@ async function deleteDept(id,name){
     var res=await sb.from('departments').delete().eq('id',id);error=res.error;
   }
   if(error){alert('删除失败: '+error.message);return}
-  await loadAdminData();renderAdminDepts();
+  await loadAdminData(true);renderAdminDepts();
 }
 
 function expandDept(id){
@@ -7422,7 +7426,7 @@ async function saveNewUser(){
   if(!res.ok){var txt=await res.text();console.error('Profile write failed:',res.status,txt);showToast('Profile write failed: HTTP '+res.status);return}
   closeAddUserForm();
   showToast('用户创建成功');
-  await loadAdminData();
+  await loadAdminData(true);
   if(typeof renderAdminEmployees==="function")renderAdminEmployees();
 }
 
