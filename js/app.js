@@ -735,7 +735,10 @@ async function doRefresh(){
   catch(e){showToast('刷新失败')}
   finally{setTimeout(function(){btn.classList.remove('refreshing')},300)}
 }
+let _loadClientsBusy=false;
 async function loadClients(){
+  if(_loadClientsBusy){console.log('[loadClients] skipped (busy)');return}
+  _loadClientsBusy=true;
   var grid=document.getElementById('client-grid');
   var statsBar=document.getElementById('stats-bar');
   grid.innerHTML='<div class="loading"><span class="spinner"></span>加载中...</div>';
@@ -767,6 +770,7 @@ async function loadClients(){
     _clientOrderCache={};
     renderList();
   }catch(e){grid.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div>加载失败</div>';statsBar.innerHTML=''}
+  _loadClientsBusy=false;
 }
 
 // === Companies Directory ===
