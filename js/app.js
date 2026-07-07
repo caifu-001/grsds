@@ -29,7 +29,7 @@ let loginMode='login',currentUser=null,allClients=[],allContacts=[],allCompanies
 // === 多公司支持 ===
 let currentCompanyId=null,currentCompanyRole='member',currentCompanyName='',allMyCompanies=[];
 // === 资源授权缓存（member 只能看授权的资源）===
-let memberGrants={clients:[],products:[],suppliers:[]};
+let memberGrants={clients:'all',products:'all',suppliers:'all'};
 async function loadMemberGrants(){
   if(isSuperAdmin){memberGrants={clients:'all',products:'all',suppliers:'all'};return}
   if(currentCompanyRole==='admin'){memberGrants={clients:'all',products:'all',suppliers:'all'};return}
@@ -742,6 +742,7 @@ let _loadClientsBusy=false;
 async function loadClients(){
   if(_loadClientsBusy){console.log('[loadClients] skipped (busy)');return}
   _loadClientsBusy=true;
+  try{
   var grid=document.getElementById('client-grid');
   var statsBar=document.getElementById('stats-bar');
   grid.innerHTML='<div class="loading"><span class="spinner"></span>加载中...</div>';
@@ -773,7 +774,7 @@ async function loadClients(){
     _clientOrderCache={};
     renderList();
   }catch(e){grid.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div>加载失败</div>';statsBar.innerHTML=''}
-  _loadClientsBusy=false;
+  }finally{_loadClientsBusy=false;}
 }
 
 // === Companies Directory ===
