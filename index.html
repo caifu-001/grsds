@@ -3286,7 +3286,7 @@ async function loadMemberGrants(){
       console.log('[loadMemberGrants] '+t+' raw:',JSON.stringify(d));
       // sb.rpc returns {data: [...], error: ...}
       if(d&&d.error){console.error('[loadMemberGrants] '+t+' rpc error:',d.error);memberGrants[t]=[];continue}
-      memberGrants[t]=(d&&d.data?d.data.map(function(r){return r.resource_id}):[]);
+      memberGrants[t]=(d&&d.data?d.data.map(function(r){return (r.resource_id||'').toLowerCase()}):[]);
       console.log('[loadMemberGrants] '+t+' granted ids:',JSON.stringify(memberGrants[t]));
     }
   }catch(e){console.error('[loadMemberGrants] exception:',e)}
@@ -3295,7 +3295,7 @@ async function loadMemberGrants(){
 function canAccess(type,id){
   if(isSuperAdmin)return true;
   if(currentCompanyRole==='admin')return true;
-  var ok=memberGrants[type]&&memberGrants[type].indexOf(id)>=0;
+  var ok=memberGrants[type]&&memberGrants[type].indexOf((id||'').toLowerCase())>=0;
   if(!ok)console.log('[canAccess] DENY:',type,id,'memberGrants['+type+']=',JSON.stringify(memberGrants[type]||[]));
   return ok;
 }
