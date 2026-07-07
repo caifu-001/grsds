@@ -7614,7 +7614,7 @@ async function saveSupplier(){
     var supRes;
     if(currentCompanyRole!=='admin'&&!isSuperAdmin){
       console.log('[saveSupplier] callAdmin insert via edge function...');
-      supRes=await callAdmin('insert','suppliers',{payload:{...obj,id:crypto.randomUUID()}});
+      supRes=await callAdmin('insert','suppliers',{payload:{...obj}});
       console.log('[saveSupplier] callAdmin insert result:',JSON.stringify(supRes));
     }else{supRes=await sb.from('suppliers').insert([obj]).select('id')}
   }
