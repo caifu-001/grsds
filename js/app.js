@@ -32,21 +32,24 @@ let currentCompanyId=null,currentCompanyRole='member',currentCompanyName='',allM
 let memberGrants={clients:[],products:[],suppliers:[]};
 async function loadMemberGrants(){
   if(isSuperAdmin){memberGrants={clients:'all',products:'all',suppliers:'all'};return}
-  // admin 看全部，其余按授权过滤
-  console.log('[loadMemberGrants] role:',currentCompanyRole,'isSuperAdmin:',isSuperAdmin,'currentCompanyId:',currentCompanyId);
   if(currentCompanyRole==='admin'){memberGrants={clients:'all',products:'all',suppliers:'all'};return}
   console.log('[loadMemberGrants] loading for user:',currentUser.id,'company:',currentCompanyId);
   try{
-    for(var t of ['clients','products','suppliers']){
-      var d=await sb.rpc('get_member_grants',{p_user_id:currentUser.id,p_company_id:currentCompanyId,p_resource_type:t});
-      console.log('[loadMemberGrants] '+t+' raw:',JSON.stringify(d));
-      // sb.rpc returns {data: [...], error: ...}
-      if(d&&d.error){console.error('[loadMemberGrants] '+t+' rpc error:',d.error);memberGrants[t]=[];continue}
-      memberGrants[t]=(d&&d.data?d.data.map(function(r){return (r.resource_id||'').toLowerCase()}):[]);
-      console.log('[loadMemberGrants] '+t+' granted ids:',JSON.stringify(memberGrants[t]));
+    // 直接查 resource_grants 表（由创建者自授权写入），不用 RPC 避免 404
+    var r=await callAdmin('select','resource_grants',{
+      query:'resource_type,resource_id',
+      filters:[{col:'user_id',op:'eq',val:currentUser.id},{col:'company_id',op:'eq',val:currentCompanyId},{col:'',op:'limit',val:'50000'}]
+    });
+    var rows=r&&r.data||[];
+    memberGrants={clients:[],products:[],suppliers:[]};
+    for(var i=0;i<rows.length;i++){
+      var row=rows[i];
+      if(memberGrants[row.resource_type]!==undefined){
+        memberGrants[row.resource_type].push((row.resource_id||'').toLowerCase());
+      }
     }
+    console.log('[loadMemberGrants] clients:',memberGrants.clients.length,'products:',memberGrants.products.length,'suppliers:',memberGrants.suppliers.length);
   }catch(e){console.error('[loadMemberGrants] exception:',e)}
-  console.log('[loadMemberGrants] final memberGrants:',JSON.stringify(memberGrants));
 }
 function canAccess(type,id){
   if(isSuperAdmin)return true;
