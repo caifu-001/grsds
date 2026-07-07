@@ -7443,6 +7443,9 @@ function openSupplierForm(id){
     prEl.appendChild(row2);
   }
   document.getElementById('sup-btn-delete').classList.toggle('hidden',!sp);
+  // 附件
+  try{supAttachments=JSON.parse(sp?(sp.attachments||'[]'):'[]')}catch(e){supAttachments=[]}
+  renderSupAttachments();
   document.getElementById('supplier-modal').classList.remove('hidden');
 }
 
@@ -7580,7 +7583,7 @@ async function saveSupplier(){
     defect_rate:parseFloat(document.getElementById('sup-defect-rate').value)||0,
     notes:document.getElementById('sup-notes').value.trim()||null,
     compliance_requirements:document.getElementById('sup-compliance').value.trim()||null,
-    compliance_requirements:document.getElementById('sup-compliance').value.trim()||null,
+    attachments:supAttachments.length?JSON.stringify(supAttachments):null,
     linked_client_id:supLinkedClientId||null,
     updated_at:new Date().toISOString()
   };
@@ -7604,15 +7607,55 @@ async function deleteSupplier(id){
   await loadSuppliers();
 }
 
-var supplierEditId=null;
+var supplierEditId=null;var supAttachments=[];
 var supLinkedClientId=null;var supLinkedClientName='';
 
 // Modal injection
 (function(){
   var modals=document.createElement('div');
-  modals.innerHTML='<div class="modal-overlay hidden" id="supplier-modal" onclick="closeSupplierForm()"><div class="modal" onclick="event.stopPropagation()"><div class="modal-box" style="max-width:560px"><div class="modal-head"><span id="sup-modal-title">\u65b0\u5efa\u4f9b\u5e94\u5546</span><span class="modal-close" onclick="closeSupplierForm()">\u00d7</span></div><div class="modal-body"><div class="form-group"><label>\u4f9b\u5e94\u5546\u540d\u79f0 <span style="font-size:11px;color:var(--text-secondary);font-weight:400">\u2014 \u652f\u6301\u4f01\u4e1a\u540d\u5f55\u81ea\u52a8\u5339\u914d</span></label><div style="position:relative"><input id="sup-name" placeholder="\u5fc5\u586b" autocomplete="off" oninput="onSupNameInput()" onfocus="onSupNameInput()" onkeydown="onSupNameKeydown(event)"><div class="name-suggestions hidden" id="sup-name-suggestions"></div></div></div><div class="form-group"><label>\u8054\u7cfb\u4eba</label><input id="sup-contact-name" placeholder="\u8054\u7cfb\u4eba\u59d3\u540d"></div></div><div class="form-group"><label>\u5173\u8054\u5ba2\u6237</label><div style="position:relative"><input id="sup-link-client" placeholder="\u641c\u7d22\u5173\u8054\u5ba2\u6237..." autocomplete="off" oninput="searchSupplierLinkClient()" onkeydown="supLinkClientKeydown(event)"><div class="search-list hidden" id="sup-link-list"></div></div><div id="sup-link-selected" style="display:none;margin-top:4px;padding:6px 10px;background:var(--primary-light);border-radius:6px;font-size:13px"><span id="sup-link-client-name"></span><button class="btn-xs" style="color:var(--text-secondary);margin-left:8px;cursor:pointer" onclick="clearSupLinkClient()">\u00d7</button><button class="btn-xs" style="color:var(--primary);margin-left:8px;cursor:pointer" onclick="importClientContacts()">\u5bfc\u5165\u8054\u7cfb\u4eba</button><div class="search-list hidden" id="sup-contact-picker" style="margin-top:6px;max-height:160px;overflow-y:auto"></div></div><div class="form-group"><label>\u8054\u7cfb\u7535\u8bdd</label><div id="sup-phones"></div><button class="btn-sm" style="background:var(--surface);border:1px solid var(--border);margin-top:4px" onclick="addSupPhone()">\uff0b \u6dfb\u52a0\u7535\u8bdd</button></div><div class="form-group"><label>\u4ea7\u54c1\u6e05\u5355</label><div id="sup-products"></div><button class="btn-sm" style="background:var(--surface);border:1px solid var(--border);margin-top:4px" onclick="addSupProduct()">\uff0b \u6dfb\u52a0\u4ea7\u54c1</button></div><div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>\u7c7b\u522b</label><input id="sup-category" placeholder="\u5982\uff1a\u7535\u5b50\u5143\u4ef6" list="sup-cat-list"><datalist id="sup-cat-list"></datalist></div><div><label>\u5408\u4f5c\u6b21\u6570</label><input id="sup-cooperation-count" type="number" min="0"></div></div><div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>\u5408\u4f5c\u7ea7\u522b</label><select id="sup-cooperation-level"><option value="A">A\u7ea7</option><option value="B">B\u7ea7</option><option value="C" selected>C\u7ea7</option><option value="D">D\u7ea7</option><option value="E">E\u7ea7</option></select></div><div><label>\u6b21\u54c1\u7387 (%)</label><input id="sup-defect-rate" type="number" step="0.01" min="0" max="100" value="0"></div></div><div class="form-group"><label>\u5907\u6ce8</label><input id="sup-notes" placeholder="\u53ef\u9009"></div><div class="form-group"><label>\u5408\u89c4\u8981\u6c42</label><textarea id="sup-compliance" rows="2" placeholder="\u8d44\u8d28\u8bc1\u4e66\u3001\u73af\u4fdd\u6807\u51c6\u3001ISO\u8ba4\u8bc1\u7b49..."></textarea></div></div><div class="modal-actions"><button class="btn-cancel" onclick="closeSupplierForm()">\u53d6\u6d88</button><button class="btn-delete hidden" id="sup-btn-delete" onclick="deleteSupplier(supplierEditId)">\u5220\u9664</button><button class="btn-save" onclick="saveSupplier()">\u4fdd\u5b58</button></div></div></div></div>';
+  modals.innerHTML='<div class="modal-overlay hidden" id="supplier-modal" onclick="closeSupplierForm()"><div class="modal" onclick="event.stopPropagation()"><div class="modal-box" style="max-width:560px"><div class="modal-head"><span id="sup-modal-title">\u65b0\u5efa\u4f9b\u5e94\u5546</span><span class="modal-close" onclick="closeSupplierForm()">\u00d7</span></div><div class="modal-body"><div class="form-group"><label>\u4f9b\u5e94\u5546\u540d\u79f0 <span style="font-size:11px;color:var(--text-secondary);font-weight:400">\u2014 \u652f\u6301\u4f01\u4e1a\u540d\u5f55\u81ea\u52a8\u5339\u914d</span></label><div style="position:relative"><input id="sup-name" placeholder="\u5fc5\u586b" autocomplete="off" oninput="onSupNameInput()" onfocus="onSupNameInput()" onkeydown="onSupNameKeydown(event)"><div class="name-suggestions hidden" id="sup-name-suggestions"></div></div></div><div class="form-group"><label>\u8054\u7cfb\u4eba</label><input id="sup-contact-name" placeholder="\u8054\u7cfb\u4eba\u59d3\u540d"></div></div><div class="form-group"><label>\u5173\u8054\u5ba2\u6237</label><div style="position:relative"><input id="sup-link-client" placeholder="\u641c\u7d22\u5173\u8054\u5ba2\u6237..." autocomplete="off" oninput="searchSupplierLinkClient()" onkeydown="supLinkClientKeydown(event)"><div class="search-list hidden" id="sup-link-list"></div></div><div id="sup-link-selected" style="display:none;margin-top:4px;padding:6px 10px;background:var(--primary-light);border-radius:6px;font-size:13px"><span id="sup-link-client-name"></span><button class="btn-xs" style="color:var(--text-secondary);margin-left:8px;cursor:pointer" onclick="clearSupLinkClient()">\u00d7</button><button class="btn-xs" style="color:var(--primary);margin-left:8px;cursor:pointer" onclick="importClientContacts()">\u5bfc\u5165\u8054\u7cfb\u4eba</button><div class="search-list hidden" id="sup-contact-picker" style="margin-top:6px;max-height:160px;overflow-y:auto"></div></div><div class="form-group"><label>\u8054\u7cfb\u7535\u8bdd</label><div id="sup-phones"></div><button class="btn-sm" style="background:var(--surface);border:1px solid var(--border);margin-top:4px" onclick="addSupPhone()">\uff0b \u6dfb\u52a0\u7535\u8bdd</button></div><div class="form-group"><label>\u4ea7\u54c1\u6e05\u5355</label><div id="sup-products"></div><button class="btn-sm" style="background:var(--surface);border:1px solid var(--border);margin-top:4px" onclick="addSupProduct()">\uff0b \u6dfb\u52a0\u4ea7\u54c1</button></div><div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>\u7c7b\u522b</label><input id="sup-category" placeholder="\u5982\uff1a\u7535\u5b50\u5143\u4ef6" list="sup-cat-list"><datalist id="sup-cat-list"></datalist></div><div><label>\u5408\u4f5c\u6b21\u6570</label><input id="sup-cooperation-count" type="number" min="0"></div></div><div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>\u5408\u4f5c\u7ea7\u522b</label><select id="sup-cooperation-level"><option value="A">A\u7ea7</option><option value="B">B\u7ea7</option><option value="C" selected>C\u7ea7</option><option value="D">D\u7ea7</option><option value="E">E\u7ea7</option></select></div><div><label>\u6b21\u54c1\u7387 (%)</label><input id="sup-defect-rate" type="number" step="0.01" min="0" max="100" value="0"></div></div><div class="form-group"><label>\u5907\u6ce8</label><input id="sup-notes" placeholder="\u53ef\u9009"></div><div class="form-group"><label>\u5408\u89c4\u8981\u6c42</label><textarea id="sup-compliance" rows="2" placeholder="\u8d44\u8d28\u8bc1\u4e66\u3001\u73af\u4fdd\u6807\u51c6\u3001ISO\u8ba4\u8bc1\u7b49..."></textarea></div><div class="form-group"><label>\u9644\u4ef6 <span style="font-size:11px;color:var(--text-secondary);font-weight:400">\u2014 \u5408\u540c\u3001\u8d44\u8d28\u8bc1\u4e66\u3001\u62a5\u4ef7\u5355\u7b49</span></label><div id="sup-attachments"></div><label class="attach-btn" style="display:inline-block;margin-top:6px;padding:6px 14px;background:var(--primary-light);color:var(--primary);border-radius:6px;cursor:pointer;font-size:12px"><input type="file" multiple onchange="handleSupAttachFile(this)" style="display:none">\uff0b \u4e0a\u4f20\u9644\u4ef6</label></div></div><div class="modal-actions"><button class="btn-cancel" onclick="closeSupplierForm()">\u53d6\u6d88</button><button class="btn-delete hidden" id="sup-btn-delete" onclick="deleteSupplier(supplierEditId)">\u5220\u9664</button><button class="btn-save" onclick="saveSupplier()">\u4fdd\u5b58</button></div></div></div></div>';
   document.body.appendChild(modals);
 })();
+
+// === 供应商附件 ===
+function renderSupAttachments(){
+  var el=document.getElementById('sup-attachments');
+  if(!el)return;
+  var html='';
+  for(var i=0;i<supAttachments.length;i++){
+    var a=supAttachments[i];
+    var fn=a.name||a.file_name||('文件'+(i+1));
+    var dn=fn.length>30?fn.substring(0,27)+'...':fn;
+    html+='<div class="attach-item" style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;margin-bottom:4px;font-size:12px"><a href="'+escHtml(a.url||'#')+'" target="_blank" style="color:var(--primary);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1" title="'+escHtml(fn)+'">📎 '+escHtml(dn)+'</a><button style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:14px;margin-left:8px;flex-shrink:0" onclick="removeSupAttachment('+i+')">×</button></div>';
+  }
+  if(!html)html='<span style="font-size:11px;color:var(--text3)">暂无附件</span>';
+  el.innerHTML=html;
+}
+
+async function handleSupAttachFile(input){
+  var files=input.files;
+  if(!files||!files.length)return;
+  var bucket='supplier-files';
+  for(var i=0;i<files.length;i++){
+    var f=files[i];
+    var safeName=f.name.replace(/[^a-zA-Z0-9._\u4e00-\u9fff-]/g,'_');
+    var filePath=currentCompanyId+'/'+Date.now()+'_'+safeName;
+    try{
+      var {data,error}=await sb.storage.from(bucket).upload(filePath,f,{cacheControl:'3600',upsert:false});
+      if(error){showToast('上传失败: '+error.message);continue}
+      var {data:urlData}=sb.storage.from(bucket).getPublicUrl(filePath);
+      supAttachments.push({name:f.name,size:f.size,type:f.type,url:urlData.publicUrl,path:filePath});
+    }catch(e){showToast('上传异常: '+e.message)}
+  }
+  renderSupAttachments();
+  input.value='';
+}
+
+async function removeSupAttachment(idx){
+  var a=supAttachments[idx];
+  if(a&&a.path){try{await sb.storage.from('supplier-files').remove([a.path])}catch(e){}}
+  supAttachments.splice(idx,1);renderSupAttachments();
+}
 
 // === Client Name Autocomplete ===
 var nameSuggIdx=-1,nameSuggList=[];
