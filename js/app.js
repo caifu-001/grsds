@@ -7601,12 +7601,10 @@ async function saveSupplier(){
     defect_rate:parseFloat(document.getElementById('sup-defect-rate').value)||0,
     notes:document.getElementById('sup-notes').value.trim()||null,
     compliance_requirements:document.getElementById('sup-compliance').value.trim()||null,
-    attachments:supAttachments.length?JSON.stringify(supAttachments):null,
     linked_client_id:supLinkedClientId||null,
     updated_at:new Date().toISOString()
   };
-  // attachments 列如果不存在就跳过（需执行 add_supplier_attachments.sql）
-  if(supAttachments.length){obj.attachments=JSON.stringify(supAttachments)}
+  if(supAttachments.length)obj.attachments=JSON.stringify(supAttachments);
   if(supplierEditId){
     if(currentCompanyRole!=='admin'&&!isSuperAdmin){
       await callAdmin('update','suppliers',{payload:obj,filters:[{col:'id',op:'eq',val:supplierEditId}]});
