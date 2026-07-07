@@ -1409,7 +1409,8 @@ async function saveClient(){
     clientId=nd[0].id;
     // 非管理员自动给自己授权（能看见自己建的客户）
     if(currentCompanyRole!=='admin'&&!isSuperAdmin){
-      callAdmin('insert','resource_grants',{payload:{user_id:currentUser.id,company_id:currentCompanyId,resource_type:'clients',resource_id:clientId,granted_by:currentUser.id}}).then(function(gr){console.log('[saveClient] self-grant result:',gr)});
+      var grRes=await callAdmin('insert','resource_grants',{payload:{user_id:currentUser.id,company_id:currentCompanyId,resource_type:'clients',resource_id:clientId,granted_by:currentUser.id}});
+      console.log('[saveClient] self-grant result:',grRes);
       // 同步更新本地缓存，避免 loadClients 过滤
       if(!memberGrants.clients||memberGrants.clients==='all')memberGrants.clients=[];
       memberGrants.clients.push(clientId.toLowerCase());
@@ -6035,7 +6036,8 @@ async function saveProduct(){
   // 非管理员自动给自己授权
   if(!productEditId&&currentCompanyRole!=='admin'&&!isSuperAdmin&&r.data&&r.data[0]){
     var newPid=r.data[0].id;
-    callAdmin('insert','resource_grants',{payload:{user_id:currentUser.id,company_id:currentCompanyId,resource_type:'products',resource_id:newPid,granted_by:currentUser.id}}).then(function(gr){console.log('[saveProduct] self-grant result:',gr)});
+    var grRes=await callAdmin('insert','resource_grants',{payload:{user_id:currentUser.id,company_id:currentCompanyId,resource_type:'products',resource_id:newPid,granted_by:currentUser.id}});
+    console.log('[saveProduct] self-grant result:',grRes);
     if(!memberGrants.products||memberGrants.products==='all')memberGrants.products=[];
     memberGrants.products.push(newPid.toLowerCase());
   }
@@ -7592,7 +7594,8 @@ async function saveSupplier(){
   // 非管理员自动给自己授权
   if(!supplierEditId&&currentCompanyRole!=='admin'&&!isSuperAdmin&&supRes&&supRes.data&&supRes.data[0]){
     var newSid=supRes.data[0].id;
-    callAdmin('insert','resource_grants',{payload:{user_id:currentUser.id,company_id:currentCompanyId,resource_type:'suppliers',resource_id:newSid,granted_by:currentUser.id}}).then(function(gr){console.log('[saveSupplier] self-grant result:',gr)});
+    var grRes=await callAdmin('insert','resource_grants',{payload:{user_id:currentUser.id,company_id:currentCompanyId,resource_type:'suppliers',resource_id:newSid,granted_by:currentUser.id}});
+    console.log('[saveSupplier] self-grant result:',grRes);
     if(!memberGrants.suppliers||memberGrants.suppliers==='all')memberGrants.suppliers=[];
     memberGrants.suppliers.push(newSid.toLowerCase());
   }
