@@ -54,8 +54,8 @@ WHERE p.user_id IS NOT NULL
       AND cm.role = 'admin'
   )
   AND NOT EXISTS (
-    SELECT 1 FROM profiles p2 
-    WHERE p2.id = p.user_id AND p2.role = 'super_admin'
+    SELECT 1 FROM profiles pf 
+    WHERE pf.id = p.user_id AND pf.role = 'super_admin'
   );
 
 -- 3. 回填 suppliers 自授权
@@ -82,8 +82,8 @@ WHERE s.user_id IS NOT NULL
       AND cm.role = 'admin'
   )
   AND NOT EXISTS (
-    SELECT 1 FROM profiles p 
-    WHERE p.id = s.user_id AND p.role = 'super_admin'
+    SELECT 1 FROM profiles pf 
+    WHERE pf.id = s.user_id AND pf.role = 'super_admin'
   );
 
 -- 4. 验证：查看回填了多少条
