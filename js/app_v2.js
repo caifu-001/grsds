@@ -42,14 +42,13 @@ async function loadMemberGrants(){
     });
     var rows=r&&r.data||[];
     console.log('[loadMemberGrants] rows:',rows.length);
-    // 表里没数据 = 授权系统未启用，保持默认 'all'
     if(rows.length>0){
-      memberGrants={clients:[],products:[],suppliers:[]};
+      // 只有对应类型有授权行才覆盖默认 'all'
       for(var i=0;i<rows.length;i++){
         var row=rows[i];
-        if(memberGrants[row.resource_type]!==undefined){
-          memberGrants[row.resource_type].push((row.resource_id||'').toLowerCase());
-        }
+        var type=row.resource_type;
+        if(memberGrants[type]==='all')memberGrants[type]=[];
+        memberGrants[type].push(String(row.resource_id||'').toLowerCase());
       }
     }
     console.log('[loadMemberGrants] clients:',Array.isArray(memberGrants.clients)?memberGrants.clients.length:memberGrants.clients,'products:',Array.isArray(memberGrants.products)?memberGrants.products.length:memberGrants.products,'suppliers:',Array.isArray(memberGrants.suppliers)?memberGrants.suppliers.length:memberGrants.suppliers);
@@ -60,7 +59,7 @@ function canAccess(type,id){
   if(currentCompanyRole==='admin')return true;
   if(memberGrants[type]==='all')return true;
   var grants=memberGrants[type];if(!grants||!Array.isArray(grants))return false;
-  var ok=grants.indexOf((id||'').toLowerCase())>=0;
+  var ok=grants.indexOf(String(id||'').toLowerCase())>=0;
   if(!ok)console.log('[canAccess] DENY:',type,id,'grants count:',grants.length);
   return ok;
 }
