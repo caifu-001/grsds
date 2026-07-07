@@ -3985,9 +3985,18 @@ async function loadClients(){
   grid.innerHTML='<div class="loading"><span class="spinner"></span>加载中...</div>';
   statsBar.innerHTML='';
   try{
-    var {data,error}=await sb.from('clients').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
-    if(error){grid.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div>加载失败<br><span style="font-size:12px;color:var(--text3)">'+h(error.message)+'</span></div>';statsBar.innerHTML='';return}
-    allClients=(data||[]);
+    var clientsData,clientsError;
+    // 非管理员用 callAdmin 绕过 RLS，再前端 canAccess 过滤
+    if(currentCompanyRole!=='admin'&&!isSuperAdmin){
+      var r=await callAdmin('select','clients',{query:'*',filters:[{col:'company_id',op:'eq',val:currentCompanyId},{col:'',op:'order',val:'updated_at.desc'},{col:'',op:'limit',val:'50000'}]});
+      clientsData=r&&r.data||[];clientsError=r&&r.error;
+      console.log('[loadClients] callAdmin for member, data:',(clientsData||[]).length,'error:',clientsError);
+    }else{
+      var res=await sb.from('clients').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
+      clientsData=res.data;clientsError=res.error;
+    }
+    if(clientsError){grid.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div>加载失败<br><span style="font-size:12px;color:var(--text3)">'+h(clientsError.message)+'</span></div>';statsBar.innerHTML='';return}
+    allClients=(clientsData||[]);
     console.log('[loadClients] fetched '+allClients.length+' clients, currentCompanyRole='+currentCompanyRole+' isSuperAdmin='+isSuperAdmin);
     if(currentCompanyRole!=='admin'&&!isSuperAdmin){
       console.log('[loadClients] filtering by grants, memberGrants.clients=',JSON.stringify(memberGrants.clients));
@@ -9113,9 +9122,15 @@ async function loadProducts(){
   var q=sb.from('products').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
   if(catId)q=q.eq('category_id',catId);
   if(search)q=q.or('name.ilike.%'+search+'%,code.ilike.%'+search+'%');
-  var r=await q;
-  if(r.error){console.error(r.error);return}
-  allProducts=r.data||[];
+  var r;
+  if(currentCompanyRole!=='admin'&&!isSuperAdmin){
+    r=await callAdmin('select','products',{query:'*',filters:[{col:'company_id',op:'eq',val:currentCompanyId},{col:'',op:'order',val:'updated_at.desc'},{col:'',op:'limit',val:'50000'}]});
+    allProducts=(r&&r.data?r.data:[]);
+  }else{
+    r=await q;
+    if(r.error){console.error(r.error);return}
+    allProducts=r.data||[];
+  }
   if(currentCompanyRole!=='admin'&&!isSuperAdmin){allProducts=allProducts.filter(function(p){return canAccess('products',p.id)})}
   await loadStockBalances();
   renderProducts();
@@ -10496,9 +10511,15 @@ var ruleEditId=null;
 // === Supplier Functions ===
 
 async function loadSuppliers(){
-  var q=sb.from('suppliers').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
-  var r=await q;
-  allSuppliers=r.data||[];
+  var r;
+  if(currentCompanyRole!=='admin'&&!isSuperAdmin){
+    r=await callAdmin('select','suppliers',{query:'*',filters:[{col:'company_id',op:'eq',val:currentCompanyId},{col:'',op:'order',val:'updated_at.desc'},{col:'',op:'limit',val:'50000'}]});
+    allSuppliers=(r&&r.data?r.data:[]);
+  }else{
+    var q=sb.from('suppliers').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
+    var res=await q;
+    allSuppliers=res.data||[];
+  }
   if(currentCompanyRole!=='admin'&&!isSuperAdmin){allSuppliers=allSuppliers.filter(function(s){return canAccess('suppliers',s.id)})}
   var clientMap={};
   for(var i=0;i<allClients.length;i++)clientMap[allClients[i].id]=allClients[i].name;
