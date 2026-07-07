@@ -7603,11 +7603,22 @@ async function saveSupplier(){
     linked_client_id:supLinkedClientId||null,
     updated_at:new Date().toISOString()
   };
-  if(supplierEditId){await sb.from('suppliers').update(obj).eq('id',supplierEditId)}
-  else {var supRes=await sb.from('suppliers').insert([obj]).select('id')}
+  if(supplierEditId){
+    if(currentCompanyRole!=='admin'&&!isSuperAdmin){
+      await callAdmin('update','suppliers',{payload:obj,filters:[{col:'id',op:'eq',val:supplierEditId}]});
+    }else{await sb.from('suppliers').update(obj).eq('id',supplierEditId)}
+  }
+  else {
+    var supRes;
+    if(currentCompanyRole!=='admin'&&!isSuperAdmin){
+      supRes=await callAdmin('insert','suppliers',{payload:{...obj,id:crypto.randomUUID()}});
+    }else{supRes=await sb.from('suppliers').insert([obj]).select('id')}
+  }
+  var newSid=null;
+  if(supRes&&supRes.data&&supRes.data[0])newSid=supRes.data[0].id;
+  else if(supRes&&supRes.payload&&supRes.payload.id)newSid=supRes.payload.id;
   // 非管理员自动给自己授权
-  if(!supplierEditId&&currentCompanyRole!=='admin'&&!isSuperAdmin&&supRes&&supRes.data&&supRes.data[0]){
-    var newSid=supRes.data[0].id;
+  if(!supplierEditId&&newSid&&currentCompanyRole!=='admin'&&!isSuperAdmin){
     var grRes=await callAdmin('insert','resource_grants',{payload:{user_id:currentUser.id,company_id:currentCompanyId,resource_type:'suppliers',resource_id:newSid,granted_by:currentUser.id}});
     console.log('[saveSupplier] self-grant result:',grRes);
     if(!memberGrants.suppliers||memberGrants.suppliers==='all')memberGrants.suppliers=[];
