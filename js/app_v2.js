@@ -998,8 +998,8 @@ function renderList(){
       if(projs.length===0)return '';
       var tags='<div class="card-projects">';
       for(var pi=0;pi<projs.length;pi++){
-        var p=projs[pi],pname=p.project_name||'',bd=p.bidder_name||'';
-        tags+='<span class="card-project-tag" title="'+(bd?'中标人:'+h(bd):'')+'">📋 '+h(pname)+(bd?' · '+h(bd):'')+'</span>';
+        var p=projs[pi],pname=p.project_name||'',bd=p.bidder_name||'',co=p.client_owner||'';
+        tags+='<span class="card-project-tag" title="'+(bd?'中标人:'+h(bd):'')+(co?' / 甲方负责人:'+h(co):'')+'">📋 '+h(pname)+(bd?' · '+h(bd):'')+(co?' · 👤'+h(co):'')+'</span>';
       }
       return tags+'</div>';
     })()+
@@ -1149,7 +1149,7 @@ async function openForm(id){
       var projs=[];
       try{projs=JSON.parse(c.projects||'[]');if(!Array.isArray(projs))projs=[];}catch(e){projs=[]}
       if(projs.length===0&&(c.project||c.bidding_date)){
-        projs=[{project_name:c.project||'',bidding_date:c.bidding_date||'',bidder_name:'',bidder_phone:'',bidder_company:'',bid_amount:''}];
+        projs=[{project_name:c.project||'',bidding_date:c.bidding_date||'',bidder_name:'',bidder_phone:'',bidder_company:'',bid_amount:'',client_owner:''}];
       }
       formProjects=projs;
       for(var pi=0;pi<projs.length;pi++)addProjectEntry(projs[pi]);
@@ -1283,6 +1283,10 @@ function addProjectEntry(prefill){
     '<div class="form-row">'+
       '<div class="form-group"><label>中标公司</label><input class="pe-bidder-company" placeholder="中标公司" value="'+h(prefill.bidder_company||'')+'"></div>'+
       '<div class="form-group"><label>中标金额</label><input class="pe-bid-amount" placeholder="中标金额" value="'+h(prefill.bid_amount||'')+'"></div>'+
+    '</div>'+
+    '<div class="form-row">'+
+      '<div class="form-group"><label>甲方负责人</label><input class="pe-client-owner" placeholder="甲方负责人姓名" value="'+h(prefill.client_owner||'')+'"></div>'+
+      '<div class="form-group"></div>'+
     '</div>';
   list.appendChild(div);
   renumberProjects();
@@ -1382,7 +1386,8 @@ async function saveClient(){
     var pbp=(e.querySelector('.pe-bidder-phone')||{}).value||'';
     var pbc=(e.querySelector('.pe-bidder-company')||{}).value||'';
     var pba=(e.querySelector('.pe-bid-amount')||{}).value||'';
-    if(pn||pb)projectsArr.push({project_name:pn,bidding_date:pd,bidder_name:pb,bidder_phone:pbp,bidder_company:pbc,bid_amount:pba});
+    var pco=(e.querySelector('.pe-client-owner')||{}).value||'';
+    if(pn||pb)projectsArr.push({project_name:pn,bidding_date:pd,bidder_name:pb,bidder_phone:pbp,bidder_company:pbc,bid_amount:pba,client_owner:pco});
   }
   var fp=projectsArr.length>0?projectsArr[0].project_name:'';
   // Collect new fields
