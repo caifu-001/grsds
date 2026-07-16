@@ -1286,7 +1286,7 @@ function addProjectEntry(prefill){
     '</div>'+
     '<div class="form-row">'+
       '<div class="form-group"><label>甲方负责人</label><input class="pe-client-owner" placeholder="甲方负责人姓名" value="'+h(prefill.client_owner||'')+'"></div>'+
-      '<div class="form-group"></div>'+
+      '<div class="form-group"><label>备注</label><input class="pe-notes" placeholder="项目备注" value="'+h(prefill.notes||'')+'"></div>'+
     '</div>';
   list.appendChild(div);
   renumberProjects();
@@ -1387,7 +1387,8 @@ async function saveClient(){
     var pbc=(e.querySelector('.pe-bidder-company')||{}).value||'';
     var pba=(e.querySelector('.pe-bid-amount')||{}).value||'';
     var pco=(e.querySelector('.pe-client-owner')||{}).value||'';
-    if(pn||pb)projectsArr.push({project_name:pn,bidding_date:pd,bidder_name:pb,bidder_phone:pbp,bidder_company:pbc,bid_amount:pba,client_owner:pco});
+    var pnotes=(e.querySelector('.pe-notes')||{}).value||'';
+    if(pn||pb)projectsArr.push({project_name:pn,bidding_date:pd,bidder_name:pb,bidder_phone:pbp,bidder_company:pbc,bid_amount:pba,client_owner:pco,notes:pnotes});
   }
   var fp=projectsArr.length>0?projectsArr[0].project_name:'';
   // Collect new fields
