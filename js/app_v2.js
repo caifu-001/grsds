@@ -10144,6 +10144,126 @@ async function saveWorkflow(){
   if(proj){proj.workflow=JSON.stringify(curWorkflow);proj.current_step=curStep;proj.workflow_state=JSON.stringify(curWorkflowState)}
 }
 
+// ==== 项目步骤审批（对接 project_step_assignees / project_step_approvals 表）====
+var projectAssignees={};   // step_key -> assignee 配置行
+var projectMembers=[];     // 项目成员 [{user_id,business_role,project_role}]
+var projectApprovals=[];   // 审批历史
+var seqToStepKey={};       // seq -> step_key（从步骤数组索引推导）
+
+function wfBuildSeqToKey(){
+  seqToStepKey={};
+  try{
+    var steps=safeGetSteps();
+    for(var i=0;i<steps.length;i++){
+      var seq=steps[i].seq!=null?steps[i].seq:(i+1);
+      // project_step_assignees 用 'step_'+索引 作为 step_key
+      seqToStepKey[seq]='step_'+i;
+    }
+  }catch(e){}
+}
+
+async function loadProjectApprovalCfg(){
+  projectAssignees={};projectMembers=[];projectApprovals=[];
+  wfBuildSeqToKey();
+  if(!curProjectId)return;
+  try{
+    var ra=await sb.from('project_step_assignees').select('*').eq('project_id',curProjectId);
+    var rows=ra.data||[];
+    for(var i=0;i<rows.length;i++){projectAssignees[rows[i].step_key]=rows[i];}
+    var rm=await sb.from('project_assignments').select('*').eq('project_id',curProjectId);
+    projectMembers=rm.data||[];
+    var rh=await sb.from('project_step_approvals').select('*').eq('project_id',curProjectId).order('created_at',{ascending:true});
+    projectApprovals=rh.data||[];
+  }catch(e){console.error('[loadProjectApprovalCfg]',e)}
+  renderWorkbench();
+}
+function wfStepKeyForSeq(seq){
+  // 1) 优先用 seq -> 索引映射
+  if(seqToStepKey[seq]&&projectAssignees[seqToStepKey[seq]])return seqToStepKey[seq];
+  // 2) 回退：直接猜 'step_'+(seq-1) / 'step_'+seq
+  if(projectAssignees['step_'+(seq-1)])return 'step_'+(seq-1);
+  if(projectAssignees['step_'+seq])return 'step_'+seq;
+  // 3) 用模板 step.key 匹配
+  var step=WFLookup[seq];
+  if(step&&step.key&&projectAssignees[step.key])return step.key;
+  // 4) 返回映射默认值（无配置行也返回 step_key，供写审批历史用）
+  if(seqToStepKey[seq])return seqToStepKey[seq];
+  var st2=WFLookup[seq];
+  if(st2&&st2.key)return st2.key;
+  return 'step_'+(seq-1);
+}
+function wfAssigneeForSeq(seq){
+  var key=wfStepKeyForSeq(seq);
+  return projectAssignees[key]||null;
+}
+function wfApproverList(seq){
+  var asg=wfAssigneeForSeq(seq);
+  if(!asg)return[];
+  if(asg.assignee_type==='user'&&asg.assignee_user_id)return [String(asg.assignee_user_id).toLowerCase()];
+  if(asg.assignee_type==='role'&&asg.assignee_role){
+    var list=[];
+    for(var i=0;i<projectMembers.length;i++){
+      if(projectMembers[i].business_role===asg.assignee_role&&projectMembers[i].user_id){
+        var uid=String(projectMembers[i].user_id).toLowerCase();
+        if(list.indexOf(uid)<0)list.push(uid);
+      }
+    }
+    return list;
+  }
+  return[];
+}
+function wfAllApproved(seq){
+  var approvers=wfApproverList(seq);
+  if(!approvers.length)return true;
+  var wst=curWorkflowState[seq]||{};
+  var rec=wst.approvals||{};
+  for(var i=0;i<approvers.length;i++){
+    if(!rec[approvers[i]]||rec[approvers[i]].action!=='approve')return false;
+  }
+  return true;
+}
+function wfPrevSeq(seq){
+  var prev=seq-1;
+  while(prev>=1){
+    if(stepStatus(prev)!=='skipped')return prev;
+    prev--;
+  }
+  return seq;
+}
+function wfApproverNames(seq){
+  var ids=wfApproverList(seq);
+  if(!ids.length)return'';
+  var names=[];
+  for(var i=0;i<ids.length;i++){
+    var n=ids[i];
+    for(var j=0;j<(allUsers||[]).length;j++){if(String(allUsers[j].user_id)===ids[i]){n=allUsers[j].display_name||allUsers[j].email||ids[i];break}}
+    names.push(n);
+  }
+  return names.join('、');
+}
+async function wfLogApproval(seq,action,actorId,comment){
+  if(!curProjectId)return;
+  var asg=wfAssigneeForSeq(seq);
+  var step=WFLookup[seq];
+  var rec={
+    project_id:curProjectId,
+    step_key:wfStepKeyForSeq(seq),
+    step_label:step?step.name:'',
+    assignee_type:asg?asg.assignee_type:null,
+    assignee_role:asg?asg.assignee_role:null,
+    assignee_id:(asg&&asg.assignee_type==='user')?asg.assignee_user_id:null,
+    actor_id:actorId,
+    actor_email:currentUser?currentUser.email:'',
+    action:action,
+    comment:comment||null,
+    created_at:new Date().toISOString()
+  };
+  try{
+    var r=await sb.from('project_step_approvals').insert(rec);
+    if(!r.error){projectApprovals.push(rec);}
+  }catch(e){console.error('[wfLogApproval]',e)}
+}
+
 function stepDone(seq){var s=curWorkflow[seq];return s?s.done:false}
 function stepStatus(seq){
   if(seq===curStep)return'active';
@@ -10156,6 +10276,7 @@ function stepStatus(seq){
 function openProjectWorkbench(pid,pname){
   curProjectId=pid;curProjectName=pname;
   loadWorkflow();
+  loadProjectApprovalCfg();
   document.getElementById('wb-project-name').textContent=pname;
   document.getElementById('project-list-panel').classList.add('hidden');
   var wb=document.getElementById('project-workbench');
@@ -10352,17 +10473,18 @@ function closeDecisionPopup(){
 function markStepDone(){
   if(!curStep)return;
   var step=WFLookup[curStep];
-  // Check if this step requires approval
-  if(step&&step.approval&&step.approval.enabled){
-    // Need approval - check if already submitted
-    var wst=curWorkflowState[curStep]||{};
-    if(wst.status==='pending_approval'){showToast('⚠️ 已提交审批，请等待审批人处理');return}
+  // 判断节点：直接走决策，不审批
+  if(step&&step.decision)return;
+  var wst=curWorkflowState[curStep]||{};
+  if(wst.status==='pending_approval'){showToast('⚠️ 已提交审批，请等待审批人处理');return}
+  // 该节点是否配置了审批人（来自 project_step_assignees 表）
+  var approvers=wfApproverList(curStep);
+  if(approvers.length>0){
     if(wst.status==='done'){showToast('✓ 审批已通过');return}
-    // Submit for approval
     wfSubmitApproval(curStep);
     return;
   }
-  // No approval needed - mark directly
+  // 未配置审批人：直接完成
   wfDoMarkStepDone(curStep);
 }
 function wfDoMarkStepDone(seq){
@@ -10385,36 +10507,64 @@ function wfSubmitApproval(seq){
   curWorkflowState[seq]=curWorkflowState[seq]||{status:'active'};
   curWorkflowState[seq].status='pending_approval';
   curWorkflowState[seq].submittedAt=new Date().toISOString();
+  curWorkflowState[seq].submittedBy=currentUser?currentUser.id:null;
+  curWorkflowState[seq].approvals=curWorkflowState[seq].approvals||{};
   saveWorkflow();
+  wfLogApproval(seq,'submit',currentUser?currentUser.id:null,null);
   renderWorkbench();
   showStepPanel(seq);
   showToast('📨 已提交审批，等待审批人处理');
   console.log('[wfSubmitApproval] step',seq,'submitted for approval');
 }
 function wfApprove(seq){
-  curWorkflowState[seq]=curWorkflowState[seq]||{status:'pending_approval'};
-  curWorkflowState[seq].approvedBy=currentUser.id;
-  curWorkflowState[seq].approvedAt=new Date().toISOString();
-  curWorkflowState[seq].status='approved';
-  // Now mark done
-  wfDoMarkStepDone(seq);
-  showToast('✓ 审批通过');
+  // 会签：记录当前审批人的通过，全部通过才流转
+  var wst=curWorkflowState[seq]=curWorkflowState[seq]||{status:'pending_approval'};
+  wst.approvals=wst.approvals||{};
+  var myId=String(currentUser.id).toLowerCase();
+  wst.approvals[myId]={action:'approve',at:new Date().toISOString()};
+  wst.approvedBy=currentUser.id;
+  wst.approvedAt=new Date().toISOString();
+  wfLogApproval(seq,'approve',currentUser.id,null);
+  if(wfAllApproved(seq)){
+    wst.status='approved';
+    wfDoMarkStepDone(seq);
+    showToast('✓ 审批通过');
+  }else{
+    saveWorkflow();
+    renderWorkbench();
+    showStepPanel(seq);
+    showToast('✓ 已通过，等待其余审批人（会签）');
+  }
   console.log('[wfApprove] step',seq,'approved by',currentUser.id);
 }
 function wfReject(seq){
-  curWorkflowState[seq]=curWorkflowState[seq]||{status:'pending_approval'};
-  curWorkflowState[seq].approvedBy=currentUser.id;
-  curWorkflowState[seq].approvedAt=new Date().toISOString();
-  curWorkflowState[seq].status='active'; // back to active
+  var wst=curWorkflowState[seq]=curWorkflowState[seq]||{status:'pending_approval'};
+  wst.approvals=wst.approvals||{};
+  var myId=String(currentUser.id).toLowerCase();
+  wst.approvals[myId]={action:'reject',at:new Date().toISOString()};
+  wst.approvedBy=currentUser.id;
+  wst.approvedAt=new Date().toISOString();
+  wst.status='active'; // back to active
+  wfLogApproval(seq,'reject',currentUser.id,null);
+  // 退回上一个节点：当前节点标记未完成，回到上一节点
+  curWorkflow[seq]=curWorkflow[seq]||{done:false,note:'',data:{}};
+  curWorkflow[seq].done=false;
+  var prev=wfPrevSeq(seq);
+  curStep=prev;
+  var pw=curWorkflowState[prev]=curWorkflowState[prev]||{status:'active'};
+  pw.status='active';
+  curWorkflow[prev]=curWorkflow[prev]||{done:false,note:'',data:{}};
+  curWorkflow[prev].done=false;
   saveWorkflow();
   renderWorkbench();
-  showStepPanel(seq);
-  showToast('↩️ 审批驳回，请修改后重新提交');
+  showStepPanel(prev);
+  showToast('↩️ 审批驳回，已退回上一个节点，请修改后重新提交');
   console.log('[wfReject] step',seq,'rejected by',currentUser.id);
 }
 function wfActivateStep(seq){
   curWorkflowState[seq]=curWorkflowState[seq]||{status:'pending',assignedTo:null,approvedBy:null,approvedAt:null};
   curWorkflowState[seq].status='active';
+  curWorkflowState[seq].approvals=curWorkflowState[seq].approvals||{};
   // Check if step has assignee configured
   var step=WFLookup[seq];
   if(step&&step.assignee&&step.assignee.enabled&&step.assignee.value){
@@ -10437,10 +10587,7 @@ function wfCanEditStep(seq){
   var wst=curWorkflowState[seq]||{};
   var isAssignee=wst.assignedTo===currentUser.id;
   // Check if currentUser is the approver for this step
-  var isApprover=false;
-  if(step.approval&&step.approval.enabled&&step.approval.approverRole){
-    isApprover=(currentUserRole===step.approval.approverRole);
-  }
+  var isApprover=wfIsApprover(seq);
   // Check against editableBy list
   if(editableBy.indexOf('admin')>=0){return true}
   if(editableBy.indexOf('assignee')>=0&&isAssignee)return true;
@@ -11108,6 +11255,7 @@ function wfRenderActionButtons(seq,step){
   var isDone=curWorkflow[seq]?curWorkflow[seq].done:false;
   var hasPerm=wfCanEditStep(seq);
   var isApprover=wfIsApprover(seq);
+  var approvers=wfApproverList(seq);
   var html='';
 
   // Show current status badge
@@ -11125,7 +11273,16 @@ function wfRenderActionButtons(seq,step){
     html+='<span style="font-size:11px;color:var(--text3);margin-right:8px">👤 '+h(assigneeName)+'</span>';
   }
 
+  // 审批人信息（会签进度）
+  if(approvers.length>0){
+    var rec=wst.approvals||{};
+    var doneCount=0;
+    for(var ai=0;ai<approvers.length;ai++){if(rec[approvers[ai]]&&rec[approvers[ai]].action==='approve')doneCount++}
+    html+='<span style="font-size:11px;color:#3b82f6;margin-right:8px">🔒 审批人：'+h(wfApproverNames(seq))+'（'+doneCount+'/'+approvers.length+' 已通过）</span>';
+  }
+
   // Action buttons based on status
+  var showApproverActions = (!isDone && status==='pending_approval' && isApprover);
   if(!isDone&&hasPerm){
     if(status==='pending_approval'){
       // Pending approval - show approver buttons if current user is approver
@@ -11138,12 +11295,16 @@ function wfRenderActionButtons(seq,step){
     }else{
       // Active - show submit/save and mark-done buttons
       html+='<button class="btn-sm btn-sm-primary" onclick="saveStepNote()">💾 保存备注</button>';
-      if(step&&step.approval&&step.approval.enabled){
+      if(approvers.length>0){
         html+='<button class="btn-save" onclick="markStepDone()">📨 提交审批</button>';
       }else{
         html+='<button class="btn-save" onclick="markStepDone()">✓ 标记完成</button>';
       }
     }
+  }else if(showApproverActions){
+    // 审批人（非编辑权限）在待审批状态：显示审批按钮
+    html+='<button class="btn-save" onclick="wfApprove('+seq+')">✅ 通过</button>';
+    html+='<button class="btn-save" style="background:#f44336" onclick="wfReject('+seq+')">↩️ 驳回</button>';
   }else if(!isDone&&!hasPerm){
     html+='<span style="font-size:11px;color:var(--text3)">🔒 仅可查看</span>';
   }
@@ -11151,12 +11312,10 @@ function wfRenderActionButtons(seq,step){
   container.innerHTML=html;
 }
 function wfIsApprover(seq){
-  if(isSuperAdmin)return true;
-  var step=WFLookup[seq];if(!step)return false;
-  if(step.approval&&step.approval.enabled&&step.approval.approverRole){
-    return currentUserRole===step.approval.approverRole;
-  }
-  return false;
+  if(isSuperAdmin||currentUserRole==='admin')return true;
+  var approvers=wfApproverList(seq);
+  if(!approvers.length)return false;
+  return approvers.indexOf(String(currentUser.id).toLowerCase())>=0;
 }
 
 // ---- Bridge: load module data into workbench sub-containers ----
