@@ -1138,6 +1138,7 @@ async function openForm(id){
   document.getElementById('type-err').textContent='';
   document.getElementById('f-name').value='';
   document.getElementById('f-address').value='';formProjects=[];document.getElementById('pm-project-list').innerHTML='';
+  var _pl=document.getElementById('project-list');if(_pl)_pl.innerHTML='';
   document.getElementById('f-notes').value='';
   formContacts=[];
 
