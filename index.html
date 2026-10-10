@@ -866,6 +866,19 @@
  </div>
 </div>
 
+
+<!-- 通用输入弹窗（替代原生 prompt） -->
+<div class="confirm-overlay hidden" id="prompt-dialog">
+ <div class="confirm-box" style="text-align:left">
+  <p id="prompt-msg" style="margin-bottom:12px"></p>
+  <input id="prompt-input" autocomplete="off" style="width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:16px;background:var(--bg);color:var(--text);box-sizing:border-box;margin-bottom:16px;outline:none">
+  <div class="btns">
+   <button style="background:var(--border);color:var(--text)" onclick="cancelPromptDialog()">取消</button>
+   <button style="background:var(--primary);color:#fff" id="prompt-ok-btn">确定</button>
+  </div>
+ </div>
+</div>
+
 <!-- Inventory View -->
  <div id="reports-view" class="hidden">
   <div class="dashboard-grid" style="margin-bottom:4px">

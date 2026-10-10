@@ -372,7 +372,7 @@ async function loadCompanyMembersForAdmin(){
 }
 
 async function promoteMember(userId){
-  if(!confirm('确认提升该成员为管理员？'))return;
+  if(!await uiConfirm('确认提升该成员为管理员？'))return;
   try{
     var r=await sb.from('company_memberships').update({role:'admin'}).eq('user_id',userId).eq('company_id',currentCompanyId);
     if(r.error){showToast(r.error.message);return}
@@ -382,7 +382,7 @@ async function promoteMember(userId){
 }
 
 async function removeMemberFromCompany(userId){
-  if(!confirm('确认移除该成员？该成员将失去对该公司数据的访问权限。'))return;
+  if(!await uiConfirm('确认移除该成员？该成员将失去对该公司数据的访问权限。'))return;
   try{
     var r=await sb.rpc('remove_member',{p_company_id:currentCompanyId,p_user_id:userId});
     if(r.error){showToast(r.error.message);return}
@@ -624,10 +624,10 @@ function startMyEdit(e){
     for(var i=0;i<roles.length;i++){
       sel.innerHTML+='<option value="'+roles[i].v+'"'+(roles[i].v===currentUserRole?' selected':'')+'>'+roles[i].l+'</option>';
     }
-    sel.onchange=function(){
+    sel.onchange=async function(){
       if(sel.value===currentUserRole){t.innerHTML=roleMap[sel.value]||sel.value;recallMyEdit(t);return;}
       if(currentUserRole==='super_admin'&&sel.value!=='super_admin'){
-        if(!confirm('确认将【超级管理员】改为【'+(roleMap[sel.value]||sel.value)+'】？\n\n降级后可能无法访问管理后台，需其他管理员协助恢复。')){
+        if(!await uiConfirm('确认将【超级管理员】改为【'+(roleMap[sel.value]||sel.value)+'】？\n\n降级后可能无法访问管理后台，需其他管理员协助恢复。')){
           sel.value=currentUserRole;
         }
       }
@@ -664,7 +664,7 @@ async function saveMyField(col, val, elId){
     upd.company_id=val;isCompany=true;
   }else{upd[col]=val;}
   var {error}=await sb.from('profiles').update(upd).eq('user_id',currentUser.id);
-  if(error){alert('保存失败: '+error.message);return;}
+  if(error){showToast('保存失败: '+error.message,'error');return;}
   if(isCompany){
     currentCompanyId=val;
     localStorage.setItem('gr_company_id',val);
@@ -1243,7 +1243,7 @@ function searchMoveTarget(){
 async function doMove(targetId,targetName){
   var co=moveContactObj;
   if(!co)return;
-  if(!confirm('确认将联系人「'+(co.name||co.contact_name||'')+'」转移到「'+targetName+'」？')) return;
+  if(!await uiConfirm('确认将联系人「'+(co.name||co.contact_name||'')+'」转移到「'+targetName+'」？')) return;
   if(!co._new&&co.id){
     var {error}=await sb.from('contacts').update({client_id:targetId}).eq('id',co.id);
     if(error){showToast('转移失败');return}
@@ -1520,10 +1520,94 @@ async function saveClient(){
 }
 
 // === Delete ===
-function confirmDelete(){deleteId=editId;document.getElementById('confirm-msg').textContent='确定要删除该客户及所有联系人吗？';document.getElementById('confirm-ok-btn').onclick=doDelete;document.getElementById('confirm-dialog').classList.remove('hidden')}
-var _confirmCallback=null,_confirmResolve=null;
-function confirmDialog(msg,cb){document.getElementById("confirm-msg").textContent=msg;_confirmCallback=cb;return new Promise(function(resolve){_confirmResolve=resolve;document.getElementById("confirm-ok-btn").onclick=function(){if(_confirmCallback)_confirmCallback();document.getElementById("confirm-dialog").classList.add("hidden");_confirmCallback=null;_confirmResolve=null;resolve(true)};document.getElementById("confirm-dialog").classList.remove("hidden")})}
-function cancelConfirmDialog(){document.getElementById('confirm-dialog').classList.add('hidden');deleteId=null;if(_confirmResolve){_confirmResolve(false);_confirmResolve=null}_confirmCallback=null}
+/* ==============================================================
+   统一反馈组件：uiConfirm / uiAlert / uiPrompt
+   替代浏览器原生弹窗（原生弹窗在 iOS 上样式割裂、阻塞事件循环、
+   且无法自定义按钮文案与危险色）。
+   uiConfirm 返回 Promise<boolean>，uiPrompt 返回 Promise<string|null>。
+   ============================================================== */
+var _uiConfirmResolve=null,_uiPromptResolve=null;
+
+function uiConfirm(msg,opts){
+  opts=opts||{};
+  var ov=document.getElementById("confirm-dialog");
+  var msgEl=document.getElementById("confirm-msg"),okBtn=document.getElementById("confirm-ok-btn");
+  if(!ov||!msgEl||!okBtn)return Promise.resolve(false);
+  var btns=ov.querySelector(".btns"),cancelBtn=btns?btns.querySelector("button"):null;
+  // 上一个弹窗若未决，先按取消收尾，避免 Promise 悬挂
+  if(_uiConfirmResolve){var prev=_uiConfirmResolve;_uiConfirmResolve=null;prev(false)}
+  msgEl.textContent=msg==null?"":String(msg);
+  okBtn.textContent=opts.okText||"确定";
+  okBtn.style.background=opts.danger===false?"var(--primary)":"var(--danger)";
+  if(cancelBtn){cancelBtn.textContent=opts.cancelText||"取消";cancelBtn.style.display=opts.hideCancel?"none":""}
+  function settle(v){
+    ov.classList.add("hidden");ov.onclick=null;
+    if(_uiConfirmResolve){var r=_uiConfirmResolve;_uiConfirmResolve=null;r(v)}
+  }
+  okBtn.onclick=function(){settle(true)};
+  if(cancelBtn&&!opts.hideCancel)cancelBtn.onclick=function(){settle(false)};
+  ov.onclick=function(e){if(e.target===ov)settle(false)};
+  ov.classList.remove("hidden");
+  return new Promise(function(resolve){_uiConfirmResolve=resolve});
+}
+
+/* 单按钮提示（用于需要阅读确认的长文本） */
+function uiAlert(msg){return uiConfirm(msg,{hideCancel:true,okText:"知道了",danger:false})}
+
+/* 兼容旧调用：confirmDialog(消息, 回调) */
+function confirmDialog(msg,cb){
+  return uiConfirm(msg).then(function(ok){
+    if(ok&&typeof cb==="function")cb();
+    return ok;
+  });
+}
+function cancelConfirmDialog(){
+  var ov=document.getElementById("confirm-dialog");if(ov)ov.classList.add("hidden");
+  deleteId=null;
+  if(_uiConfirmResolve){var r=_uiConfirmResolve;_uiConfirmResolve=null;r(false)}
+}
+
+/* 通用输入弹窗 */
+function uiPrompt(msg,def,opts){
+  opts=opts||{};
+  var ov=document.getElementById("prompt-dialog");
+  var msgEl=document.getElementById("prompt-msg"),inp=document.getElementById("prompt-input"),okBtn=document.getElementById("prompt-ok-btn");
+  if(!ov||!msgEl||!inp||!okBtn)return Promise.resolve(null);
+  var btns=ov.querySelector(".btns"),cancelBtn=btns?btns.querySelector("button"):null;
+  if(_uiPromptResolve){var prev=_uiPromptResolve;_uiPromptResolve=null;prev(null)}
+  msgEl.textContent=msg==null?"":String(msg);
+  inp.value=def==null?"":String(def);
+  inp.type=opts.inputType||"text";
+  okBtn.textContent=opts.okText||"确定";
+  function settle(v){
+    ov.classList.add("hidden");ov.onclick=null;inp.onkeydown=null;
+    if(_uiPromptResolve){var r=_uiPromptResolve;_uiPromptResolve=null;r(v)}
+  }
+  function ok(){
+    var v=inp.value;
+    if(opts.required&&!String(v).trim()){inp.focus();return}
+    settle(v);
+  }
+  okBtn.onclick=ok;
+  if(cancelBtn)cancelBtn.onclick=function(){settle(null)};
+  inp.onkeydown=function(e){if(e.key==="Enter"){e.preventDefault();ok()}else if(e.key==="Escape"){settle(null)}};
+  ov.onclick=function(e){if(e.target===ov)settle(null)};
+  ov.classList.remove("hidden");
+  setTimeout(function(){try{inp.focus();inp.select()}catch(e){}},60);
+  return new Promise(function(resolve){_uiPromptResolve=resolve});
+}
+function cancelPromptDialog(){
+  var ov=document.getElementById("prompt-dialog");if(ov)ov.classList.add("hidden");
+  if(_uiPromptResolve){var r=_uiPromptResolve;_uiPromptResolve=null;r(null)}
+}
+
+/* 删除客户：走统一确认弹窗 */
+function confirmDelete(){
+  deleteId=editId;
+  uiConfirm("确定要删除该客户及所有联系人吗？",{okText:"删除"}).then(function(ok){
+    if(ok)doDelete();else deleteId=null;
+  });
+}
 async function doDelete(){
   if(!deleteId)return;
   var _delErr=(await sb.from('contacts').delete().eq('client_id',deleteId)).error;if(_delErr){showToast('删除失败: '+_delErr.message);return}
@@ -2510,12 +2594,12 @@ async function saveDashboardLayout(){
       var r=await sb.from('custom_dashboards').insert({company_id:currentCompanyId,user_id:currentUser.id,title:title,layout:layout,scope:scope}).select('id').single();
       if(r.data){_currentDashboardId=r.data.id;}
     }
-    alert('仪表盘已保存');
+    showToast('仪表盘已保存','success');
     loadDashboardList();
-  }catch(e){console.warn('saveDashboardLayout failed:',e);alert('保存失败：'+e.message);}
+  }catch(e){console.warn('saveDashboardLayout failed:',e);showToast('保存失败：'+e.message,'error');}
 }
 
-function addDashboardCard(){
+async function addDashboardCard(){
   var cardTypes=[
     {type:'salesFunnel',title:'销售漏斗',chart:'bar',desc:'线索状态分布'},
     {type:'winRate',title:'赢单率趋势',chart:'line',desc:'月度赢单率变化'},
@@ -2526,11 +2610,11 @@ function addDashboardCard(){
     {type:'regionalDist',title:'区域分布',chart:'doughnut',desc:'客户地域分布'},
     {type:'contractStats',title:'合同统计',chart:'bar',desc:'合同金额对比'}
   ];
-  var type=prompt('选择图表类型：\n1.销售漏斗  2.赢单率  3.新增客户\n4.回款趋势  5.订单统计  6.获客渠道\n7.区域分布  8.合同统计\n\n请输入编号(1-8)：','1');
+  var type=await uiPrompt('选择图表类型：\n1.销售漏斗  2.赢单率  3.新增客户\n4.回款趋势  5.订单统计  6.获客渠道\n7.区域分布  8.合同统计\n\n请输入编号(1-8)：','1');
   var idx=parseInt(type)-1;
   if(isNaN(idx)||idx<0||idx>=cardTypes.length)return;
   var ct=cardTypes[idx];
-  var title=prompt('卡片标题：',ct.title)||ct.title;
+  var title=await uiPrompt('卡片标题：',ct.title)||ct.title;
   var card={type:ct.type,title:title,chart:ct.chart,desc:ct.desc};
   _currentDashboardCards.push(card);
   // 创建新卡片DOM
@@ -3416,30 +3500,30 @@ async function saveCompany(){
   var province=document.getElementById('co-province').value.trim();
   var address=document.getElementById('co-address').value.trim();
   var scope=document.getElementById('co-business-scope').value.trim();
-  if(!name){alert('请输入公司名称');return}
+  if(!name){showToast('请输入公司名称','warning');return}
   var payload={name:name,tax_id:tax||null,legal_person:legal||null,reg_capital:capital||null,established:established||null,city:city||null,province:province||null,address:address||null,business_scope:scope||null,status:'approved'};
   try{
     if(_companyFormId){
       var r=await callAdmin('update','companies',{payload:payload,filters:[{col:'id',op:'eq',val:_companyFormId}],query:'*'});
-      if(r&&r.error){var t=await r.text();alert('更新失败: '+t);return}
+      if(r&&r.error){var t=await r.text();showToast('更新失败: '+t,'error');return}
     }else{
       var r=await callAdmin('insert','companies',{payload:payload});
-      if(r&&r.error){var t=await r.text();alert('创建失败: '+t);return}
+      if(r&&r.error){var t=await r.text();showToast('创建失败: '+t,'error');return}
     }
     closeCompanyFormModal();
     await loadAdminCompanies();renderAdminCompanies();
     showToast(_companyFormId?'公司已更新':'公司已创建');
-  }catch(e){alert('操作失败: '+e.message);}
+  }catch(e){showToast('操作失败: '+e.message,'error');}
 }
 function delCompanyById(id){var co=allAdminCompanies.find(function(c){return c.id===id;});if(co)deleteCompany(id,co.name);}
 async function deleteCompany(id,name){
-  if(!confirm('确定删除公司「'+name+'」？此操作不可恢复！'))return;
+  if(!await uiConfirm('确定删除公司「'+name+'」？此操作不可恢复！'))return;
   try{
     var r=await callAdmin('delete','companies',{filters:[{col:'id',op:'eq',val:id}]});
-    if(r&&r.error){var t=await r.text();alert('删除失败: '+t);return}
+    if(r&&r.error){var t=await r.text();showToast('删除失败: '+t,'error');return}
     await loadAdminCompanies();renderAdminCompanies();
     showToast('公司已删除');
-  }catch(e){alert('删除失败: '+e.message);}
+  }catch(e){showToast('删除失败: '+e.message,'error');}
 }
 
 async function submitCompanyReg(){
@@ -3503,7 +3587,7 @@ function renderCompanyRow(c){
 async function approveCompany(id){
   var _ses=(await sb.auth.getSession()).data.session;
   var {error}=await sb.from('companies').update({status:'approved',approved_by:_ses&&_ses.user?_ses.user.id:null,approved_at:new Date().toISOString()}).eq('id',id);
-  if(error){alert('操作失败: '+error.message);return}
+  if(error){showToast('操作失败: '+error.message,'error');return}
   // Set the creator as admin
   var {data:comp}=await sb.from('companies').select('created_by').eq('id',id).single();
   if(comp){
@@ -3514,7 +3598,7 @@ async function approveCompany(id){
 }
 
 async function rejectCompany(id){
-  if(!confirm('确定拒绝该公司的注册申请吗?'))return;
+  if(!await uiConfirm('确定拒绝该公司的注册申请吗?'))return;
   await sb.from('companies').update({status:'rejected'}).eq('id',id);
   loadPendingCompanies();
 }
@@ -3697,7 +3781,7 @@ async function saveRole(id){
 }
 
 async function deleteRole(id){
-  if(!confirm('确定删除此角色？'))return;
+  if(!await uiConfirm('确定删除此角色？'))return;
   // Unset role_id for users assigned to this role
   await sb.from('profiles').update({role_id:null,role:'user'}).eq('role_id',id);
   var {error}=await sb.from('roles').delete().eq('id',id);
@@ -3938,21 +4022,21 @@ function renderAdminUsers(){
 
 async function setUserRole(userId,role){
   var {error}=await sb.from('profiles').upsert({user_id:userId,role:role},{onConflict:'user_id'});
-  if(error){alert('操作失败: '+error.message);return}
+  if(error){showToast('操作失败: '+error.message,'error');return}
   for(var i=0;i<adminUserList.length;i++){if(adminUserList[i].user_id===userId){adminUserList[i].role=role;break;}}
   if(typeof renderAdminEmployees==="function")renderAdminEmployees();
 }
 
 async function deleteUser(userId){
-  if(!confirm('确定要删除该员工账号吗？此操作不可撤销，将同时清除其所有关联数据。'))return;
+  if(!await uiConfirm('确定要删除该员工账号吗？此操作不可撤销，将同时清除其所有关联数据。'))return;
   try{
     var r=await callAdmin('auth_delete_user','',{userId:userId});
-    if(r.error){alert('删除失败: '+(r.error.message||'未知错误'));return}
+    if(r.error){showToast('删除失败: '+(r.error.message||'未知错误'),'error');return}
     adminUserList=adminUserList.filter(function(u){return u.user_id!==userId});
     allUsers=allUsers.filter(function(u){return u.user_id!==userId});
     if(typeof renderAdminEmployees==="function")renderAdminEmployees();
     showToast('用户已删除');
-  }catch(e){alert('删除失败: '+e.message)}
+  }catch(e){showToast('删除失败: '+e.message,'error')}
 }
 
 function openUserDeptSelect(userId,currentDept){
@@ -4059,24 +4143,24 @@ function openDeptForm(id){
 
 async function saveDept(){
   var name=document.getElementById('dept-name').value.trim();
-  if(!name){alert('请输入部门名称');return}
+  if(!name){showToast('请输入部门名称','warning');return}
   var parentId=parseInt(document.getElementById('dept-parent').value)||null;
   var selCid=isSuperAdmin?document.getElementById('dept-company'):null;
   var payload={name:name,parent_id:parentId,company_id:selCid&&selCid.value?parseInt(selCid.value):currentCompanyId};
   if(isSuperAdmin||currentUserRole==='admin'){
     try{var dr;if(deptFormId){dr=await callAdmin('update','departments',{payload:payload,filters:[{col:'id',op:'eq',val:deptFormId}],query:'*'});}else{dr=await callAdmin('insert','departments',{payload:payload});}
-    if(dr.error){alert('保存失败: '+dr.error.message);return}}
-    catch(e){alert('网络错误: '+e.message);return}
+    if(dr.error){showToast('保存失败: '+dr.error.message,'error');return}}
+    catch(e){showToast('网络错误: '+e.message,'error');return}
   }else{
-    if(deptFormId){var{error}=await sb.from('departments').update(payload).eq('id',deptFormId);if(error){alert('保存失败: '+error.message);return}}
-    else{var{error}=await sb.from('departments').insert(payload);if(error){alert('创建失败: '+error.message);return}}
+    if(deptFormId){var{error}=await sb.from('departments').update(payload).eq('id',deptFormId);if(error){showToast('保存失败: '+error.message,'error');return}}
+    else{var{error}=await sb.from('departments').insert(payload);if(error){showToast('创建失败: '+error.message,'error');return}}
   }
   document.getElementById('dept-form-modal').remove();
   await loadAdminData(true);renderAdminDepts();
 }
 
 async function deleteDept(id,name){
-  if(!confirm('确定删除部门「'+name+'」？下属用户将变为无部门。'))return;
+  if(!await uiConfirm('确定删除部门「'+name+'」？下属用户将变为无部门。'))return;
   // Unlink users first
   await sb.from('profiles').update({department_id:null}).eq('department_id',id);
   var error=null;
@@ -4087,7 +4171,7 @@ async function deleteDept(id,name){
   }else{
     var res=await sb.from('departments').delete().eq('id',id);error=res.error;
   }
-  if(error){alert('删除失败: '+error.message);return}
+  if(error){showToast('删除失败: '+error.message,'error');return}
   await loadAdminData(true);renderAdminDepts();
 }
 
@@ -4134,7 +4218,7 @@ function formatDateTime(iso){if(!iso)return'';try{var d=new Date(iso);var y=d.ge
 function escHtml(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function closeUserDeptModal(){var m=document.getElementById('user-dept-modal');if(m)m.remove();}
 function commitUserDept(){var m=document.getElementById('user-dept-modal');var uid=m?m._userId:null;var deptId=parseInt(document.getElementById('user-dept-select').value)||null;if(uid)doSetUserDeptCommit(uid,deptId);}
-async function doSetUserDeptCommit(userId,deptId){var tu=adminUserList.find(function(u){return u.user_id===userId;});if(!isSuperAdmin&&currentUserRole==='admin'&&tu&&tu.company_id!==currentCompanyId){showToast('权限不足');return;}var{error}=await sb.from('profiles').update({department_id:deptId}).eq('user_id',userId);if(error){alert('操作失败: '+error.message);return}for(var i=0;i<adminUserList.length;i++){if(adminUserList[i].user_id===userId){adminUserList[i].department_id=deptId;break;}}var m=document.getElementById('user-dept-modal');if(m)m.remove();if(typeof renderAdminEmployees==="function")renderAdminEmployees();}
+async function doSetUserDeptCommit(userId,deptId){var tu=adminUserList.find(function(u){return u.user_id===userId;});if(!isSuperAdmin&&currentUserRole==='admin'&&tu&&tu.company_id!==currentCompanyId){showToast('权限不足');return;}var{error}=await sb.from('profiles').update({department_id:deptId}).eq('user_id',userId);if(error){showToast('操作失败: '+error.message,'error');return}for(var i=0;i<adminUserList.length;i++){if(adminUserList[i].user_id===userId){adminUserList[i].department_id=deptId;break;}}var m=document.getElementById('user-dept-modal');if(m)m.remove();if(typeof renderAdminEmployees==="function")renderAdminEmployees();}
 function closeDeptFormModal(){var m=document.getElementById('dept-form-modal');if(m)m.remove();}
 function delDeptById(id){var dept=null;for(var i=0;i<allDepartments.length;i++){if(allDepartments[i].id===id){dept=allDepartments[i];break;}}if(dept)deleteDept(id,dept.name);}
 
@@ -4347,7 +4431,7 @@ function applyQfTemplate(){
   updateQfTotals();
 }
 function removeContractFile(){document.getElementById('cf-file').value='';document.getElementById('cf-file-info').classList.add('hidden');document.getElementById('cf-file-link').href='#';}
-function saveContractTemplate(){var n=prompt('模板名称:');if(!n)return;
+async function saveContractTemplate(){var n=await uiPrompt('模板名称:');if(!n)return;
   var items=[];for(var i=0;i<qfItems.length;i++)items.push({name:qfItems[i].name||'',spec:qfItems[i].spec||'',unit:qfItems[i].unit||'',qty:qfItems[i].qty||1,price:qfItems[i].price||0});
   var dr=parseFloat(document.getElementById('qf-discount-rate').value)||0;
   var tr=parseFloat(document.getElementById('qf-tax-rate').value)||0;
@@ -4846,15 +4930,15 @@ async function loadVisitTasks(){
   var ab=document.getElementById('visit-tasks-alert');
   if(visitTasks.length){ab.style.display='block';ab.innerHTML='📅 <b>待办回访任务:</b> '+visitTasks.filter(function(x){return x.status==='pending'}).length+' 个待处理';ab.onclick=function(){showVisitTaskList()}}else ab.style.display='none';
 }
-function openVisitTaskForm(){var n=document.getElementById('vf-title').value||'';var c=prompt('回访任务标题:',n);if(!c)return;
-  var date=prompt('计划日期 (YYYY-MM-DD):',new Date().toISOString().split('T')[0]);if(!date)return;
+async function openVisitTaskForm(){var n=document.getElementById('vf-title').value||'';var c=await uiPrompt('回访任务标题:',n);if(!c)return;
+  var date=await uiPrompt('计划日期 (YYYY-MM-DD):',new Date().toISOString().split('T')[0]);if(!date)return;
   sb.from('visit_tasks').insert([{company_id:currentCompanyId,title:c,task_type:'care',scheduled_date:date,status:'pending',created_at:new Date().toISOString()}]).then(function(r){
     if(r.error)showToast('创建失败: '+r.error.message);else{loadVisitTasks();showToast('回访任务已创建')}
   });
 }
 function showVisitTaskList(){
   var rows=visitTasks.map(function(t){return '• '+t.title+' ['+t.scheduled_date+'] '+(t.status==='pending'?'待处理':'已完成')}).join('\n');
-  alert('回访任务列表:\n\n'+rows);
+  uiAlert('回访任务列表:\n\n'+rows);
 }
 
 // ── Warranties ──
@@ -5460,7 +5544,7 @@ function toggleAllCompare(){
 }
 
 async function deleteScouting(id){
-  if(!confirm('\u786e\u5b9a\u5220\u9664\u6b64\u9009\u54c1\u9879\uff1f'))return;
+  if(!await uiConfirm('\u786e\u5b9a\u5220\u9664\u6b64\u9009\u54c1\u9879\uff1f'))return;
   var _delErr=(await sb.from('product_scouting').delete().eq('id',id)).error;if(_delErr){showToast('删除失败: '+_delErr.message);return}
   showToast('\u5df2\u5220\u9664');
   closeScoutingForm();
@@ -5735,7 +5819,7 @@ async function approveScouting(id){
   await sb.from('product_scouting').update({status:'approved',updated_at:new Date().toISOString()}).eq('id',id);
   showToast('\u9009\u54c1\u5df2\u901a\u8fc7');
   await loadScouting();
-  if(!confirm('\u662f\u5426\u4e00\u952e\u5165\u5e93\uff1f\n\n\u8fd9\u5c06\uff1a\n1. \u6dfb\u52a0\u4ea7\u54c1\u5230\u4ea7\u54c1\u5e93\n2. \u6dfb\u52a0\u4f9b\u5e94\u5546\u5230\u4f9b\u5e94\u5546\u5e93\n3. \u521b\u5efa\u91c7\u8d2d\u5355'))return;
+  if(!await uiConfirm('\u662f\u5426\u4e00\u952e\u5165\u5e93\uff1f\n\n\u8fd9\u5c06\uff1a\n1. \u6dfb\u52a0\u4ea7\u54c1\u5230\u4ea7\u54c1\u5e93\n2. \u6dfb\u52a0\u4f9b\u5e94\u5546\u5230\u4f9b\u5e94\u5546\u5e93\n3. \u521b\u5efa\u91c7\u8d2d\u5355'))return;
   var hasError=false;
   // 1. Add product
   var prodExists=null;
@@ -5842,7 +5926,7 @@ async function saveCategory(){
 }
 
 async function deleteCategory(id){
-  if(!confirm('确定删除此分类？'))return;
+  if(!await uiConfirm('确定删除此分类？'))return;
   var _delErr=(await sb.from('product_categories').delete().eq('id',id)).error;if(_delErr){showToast('删除失败: '+_delErr.message);return}
   showToast('已删除');
   await loadCategories();
@@ -6019,7 +6103,7 @@ async function saveProduct(){
 }
 
 async function deleteProduct(){
-  if(!confirm('确定删除此产品？'))return;
+  if(!await uiConfirm('确定删除此产品？'))return;
   var r=await sb.from('products').delete().eq('id',productEditId);
   if(r.error){showToast('删除失败: '+r.error.message);return}
   showToast('已删除');
@@ -6087,7 +6171,7 @@ async function saveWarehouse(){
 
 async function deleteWarehouse(){await deleteWarehouseById(warehouseEditId);closeWarehouseForm()}
 async function deleteWarehouseById(id){
-  if(!confirm('确定删除此仓库？'))return;
+  if(!await uiConfirm('确定删除此仓库？'))return;
   var _delErr=(await sb.from('warehouses').delete().eq('id',id)).error;if(_delErr){showToast('删除失败: '+_delErr.message);return}
   showToast('已删除');
   await loadWarehouses();
@@ -6276,7 +6360,7 @@ async function saveAlert(){
 
 async function deleteAlert(){await deleteAlertById(alertEditId);closeAlertForm()}
 async function deleteAlertById(id){
-  if(!confirm('确定删除此预警？'))return;
+  if(!await uiConfirm('确定删除此预警？'))return;
   var _delErr=(await sb.from('stock_alerts').delete().eq('id',id)).error;if(_delErr){showToast('删除失败: '+_delErr.message);return}
   showToast('已删除');
   await loadStockAlerts();
@@ -6414,7 +6498,7 @@ async function saveCheck(){
 
 async function deleteCheck(){await deleteCheckById(checkEditId);closeCheckForm();document.getElementById('chm-warehouse').disabled=false}
 async function deleteCheckById(id){
-  if(!confirm('确定删除此盘点？'))return;
+  if(!await uiConfirm('确定删除此盘点？'))return;
   var _delErr=(await sb.from('stock_checks').delete().eq('id',id)).error;if(_delErr){showToast('删除失败: '+_delErr.message);return}
   showToast('已删除');
   await loadStockChecks();
@@ -6561,7 +6645,7 @@ async function rollbackStockRecords(ids){
 }
 async function deleteTransfer(){await deleteTransferById(transferEditId);closeTransferForm()}
 async function deleteTransferById(id){
-  if(!confirm('确定删除此调拨单？'))return;
+  if(!await uiConfirm('确定删除此调拨单？'))return;
   var r1=await sb.from('stock_transfer_items').delete().eq('transfer_id',id);
   if(r1.error){showToast('删除失败: '+r1.error.message);return}
   var r2=await sb.from('stock_transfers').delete().eq('id',id);
@@ -6801,7 +6885,7 @@ async function receivePO(){
 }
 async function deletePurchaseOrder(){await deletePOById(poEditId);closePOForm()}
 async function deletePOById(id){
-  if(!confirm('确定删除此采购单？'))return;
+  if(!await uiConfirm('确定删除此采购单？'))return;
   var _delErr=(await sb.from('purchase_order_items').delete().eq('po_id',id)).error;if(_delErr){showToast('删除失败: '+_delErr.message);return}
   var _delErr2=(await sb.from('purchase_orders').delete().eq('id',id)).error;if(_delErr2){showToast('删除失败: '+_delErr2.message);return}
   showToast('已删除');
@@ -6880,7 +6964,7 @@ async function saveSettlement(){
   if(typeof renderSupplierDetail==='function')renderSupplierDetail();
 }
 async function deleteSettlement(){
-  if(!confirm('确定删除此结算记录？'))return;
+  if(!await uiConfirm('确定删除此结算记录？'))return;
   var _delErr=(await sb.from('supplier_settlements').delete().eq('id',settlementEditId)).error;if(_delErr){showToast('删除失败: '+_delErr.message);return}
   showToast('已删除');
   closeSettlementForm();
@@ -9093,7 +9177,7 @@ function renderFreeAgents(){
   el.innerHTML=h;
 }
 async function inviteFreeAgent(uid,email){
-  if(!confirm('确认邀请 '+email+' 入职本公司？'))return;
+  if(!await uiConfirm('确认邀请 '+email+' 入职本公司？'))return;
   try{
     var r=await callAdmin('update','profiles',{payload:{invited_company_id:currentCompanyId,invited_at:new Date().toISOString()},filters:[{col:'user_id',op:'eq',val:uid}],query:'*'});
     if(r&&r.error){var j=r.error.catch(function(){});showToast('邀请失败: '+(j&&j.message||r.statusText));return}
@@ -9158,7 +9242,7 @@ function renderResignations(){
   el.innerHTML=h;
 }
 async function approveResignation(uid){
-  if(!confirm('确认通过该离职申请？'))return;
+  if(!await uiConfirm('确认通过该离职申请？'))return;
   try{
     var r=await callAdmin('update','profiles',{payload:{resignation_status:'approved'},filters:[{col:'user_id',op:'eq',val:uid}],query:'*'});
     if(r&&r.error){var j=r.error.catch(function(){});showToast('操作失败: '+(j&&j.message||r.statusText));return}
@@ -9167,7 +9251,7 @@ async function approveResignation(uid){
   }catch(e){showToast('操作失败: '+e.message)}
 }
 async function rejectResignation(uid){
-  if(!confirm('确认拒绝该离职申请？'))return;
+  if(!await uiConfirm('确认拒绝该离职申请？'))return;
   try{
     var r=await callAdmin('update','profiles',{payload:{resignation_status:'rejected'},filters:[{col:'user_id',op:'eq',val:uid}],query:'*'});
     if(r&&r.error){var j=r.error.catch(function(){});showToast('操作失败: '+(j&&j.message||r.statusText));return}
@@ -9305,7 +9389,7 @@ async function saveField(){
   else{showToast('保存失败')}
 }
 async function deleteField(id){
-  if(!confirm('确认删除此字段？'))return;
+  if(!await uiConfirm('确认删除此字段？'))return;
   var resp=await callAdmin('delete','custom_field_defs',{filters:[{col:'id',op:'eq',val:id}]});
   if(resp&&resp.data){showToast('已删除');renderCustomFields();}else{showToast('删除失败')}
 }
@@ -9324,13 +9408,13 @@ async function renderCustomForms(){
   if(allCustomForms.length===0)h='<div style="text-align:center;padding:40px;color:var(--text3)">暂无自定义表单</div>';
   el.innerHTML=h;
 }
-function openFormBuilder(){
-  var name=prompt('请输入表单名称:');if(!name)return;
-  var et=prompt('实体类型(client/order/lead):','client');if(!et)return;
+async function openFormBuilder(){
+  var name=await uiPrompt('请输入表单名称:');if(!name)return;
+  var et=await uiPrompt('实体类型(client/order/lead):','client');if(!et)return;
   // Simple: create with empty fields
   callAdmin('insert','custom_forms',{payload:{company_id:currentCompanyId,form_name:name,entity_type:et,fields:[],created_at:new Date().toISOString()}}).then(function(r){if(r.data){showToast('Form created');renderCustomForms();}}).catch(function(){showToast('Create failed');});
 }
-async function deleteForm(id){if(!confirm('确认删除？'))return;await callAdmin('delete','custom_forms',{filters:[{col:'id',op:'eq',val:id}]});renderCustomForms();showToast('已删除');}
+async function deleteForm(id){if(!await uiConfirm('确认删除？'))return;await callAdmin('delete','custom_forms',{filters:[{col:'id',op:'eq',val:id}]});renderCustomForms();showToast('已删除');}
 
 /* Sales Stages */
 var allSalesStages=[],stageEditId=null;
@@ -9375,7 +9459,7 @@ async function saveStage(){
   }
   if(resp&&resp.data){showToast('阶段已保存');closeStageForm();renderSalesStages();}else{showToast('保存失败')}
 }
-async function deleteStage(id){if(!confirm('确认删除？'))return;await callAdmin('delete','sales_stages_def',{filters:[{col:'id',op:'eq',val:id}]});renderSalesStages();showToast('已删除');}
+async function deleteStage(id){if(!await uiConfirm('确认删除？'))return;await callAdmin('delete','sales_stages_def',{filters:[{col:'id',op:'eq',val:id}]});renderSalesStages();showToast('已删除');}
 
 /* Custom Tags */
 var allCustomTags=[],tagEditId=null;
@@ -9416,7 +9500,7 @@ async function saveTag(){
   }
   if(resp&&resp.data){showToast('标签已保存');closeTagForm();renderCustomTags();}else{showToast('保存失败')}
 }
-async function deleteTag(id){if(!confirm('确认删除？'))return;await callAdmin('delete','custom_tags',{filters:[{col:'id',op:'eq',val:id}]});renderCustomTags();}
+async function deleteTag(id){if(!await uiConfirm('确认删除？'))return;await callAdmin('delete','custom_tags',{filters:[{col:'id',op:'eq',val:id}]});renderCustomTags();}
 
 /* Numbering Rules */
 var allNumRules=[],numEditId=null;
@@ -9462,7 +9546,7 @@ async function saveNumberRule(){
   }
   if(resp&&resp.data){showToast('规则已保存');closeNumberForm();renderNumberingRules();}else{showToast('保存失败')}
 }
-async function deleteNumRule(id){if(!confirm('确认删除？'))return;await callAdmin('delete','numbering_rules',{filters:[{col:'id',op:'eq',val:id}]});renderNumberingRules();}
+async function deleteNumRule(id){if(!await uiConfirm('确认删除？'))return;await callAdmin('delete','numbering_rules',{filters:[{col:'id',op:'eq',val:id}]});renderNumberingRules();}
 
 /* ===== DATA SECURITY ===== */
 async function renderSecurityPanel(){
@@ -9866,9 +9950,9 @@ function wfSetProp(idx,key,value){
     setTimeout(function(){wfShowProps(idx)},0);
   }catch(e){console.error('[wfSetProp]',e)}
 }
-function wfDeleteStep(idx){
+async function wfDeleteStep(idx){
   if(idx<0||idx>=wfEditorSteps.length)return;
-  if(!confirm('删除步骤 #'+wfEditorSteps[idx].seq+' '+wfEditorSteps[idx].name+'？'))return;
+  if(!await uiConfirm('删除步骤 #'+wfEditorSteps[idx].seq+' '+wfEditorSteps[idx].name+'？'))return;
   wfEditorSteps.splice(idx,1);
   wfSelectedIdx=-1;
   wfRenderAll();
@@ -9950,7 +10034,7 @@ function wfAutoLayout(){
 async function saveWtVisual(){
   var name=document.getElementById('wt-name').value.trim();
   var desc=document.getElementById('wt-desc').value.trim();
-  if(!name){alert('请输入模板名称');return}
+  if(!name){showToast('请输入模板名称','warning');return}
   // Clean up internal _x _y fields before saving
   var steps=[];
   for(var i=0;i<wfEditorSteps.length;i++){
@@ -9969,11 +10053,11 @@ async function saveWtVisual(){
     var url=SUPABASE_URL+'/rest/v1/workflow_templates'+(wtEditId?'?id=eq.'+wtEditId:'');
     var method=wtEditId?'PATCH':'POST';
     if(wtEditId){var r=await callAdmin('update','workflow_templates',{payload:body,filters:[{col:'id',op:'eq',val:wtEditId}],query:'*'});}else{var r=await callAdmin('insert','workflow_templates',{payload:body});};
-    if(r&&r.error){var t=await r.text();alert('保存失败: '+t);btn.disabled=false;btn.textContent='保存';return}
+    if(r&&r.error){var t=await r.text();showToast('保存失败: '+t,'error');btn.disabled=false;btn.textContent='保存';return}
     document.getElementById('wt-modal-overlay').remove();
     await renderWorkflowTemplates();
     showToast(wtEditId?'模板已更新':'模板已创建');
-  }catch(e){alert('保存异常: '+e.message);btn.disabled=false;btn.textContent='保存'}
+  }catch(e){showToast('保存异常: '+e.message,'error');btn.disabled=false;btn.textContent='保存'}
 }
 function saveWt(){saveWtVisual()}
 
@@ -9981,14 +10065,14 @@ function saveWt(){saveWtVisual()}
 async function deleteWt(id){
   var t=allTemplates.find(function(x){return x.id===id});
   if(!t)return;
-  if(!confirm('确定删除模板 "'+t.name+'"？'))return;
+  if(!await uiConfirm('确定删除模板 "'+t.name+'"？'))return;
   try{
     var url=SUPABASE_URL+'/rest/v1/workflow_templates?id=eq.'+id;
     var r=await callAdmin('delete','workflow_templates',{filters:[{col:'id',op:'eq',val:id}]});
-    if(r&&r.error){var e=await r.text();alert('删除失败: '+e);return}
+    if(r&&r.error){var e=await r.text();showToast('删除失败: '+e,'error');return}
     await renderWorkflowTemplates();
     showToast('模板已删除');
-  }catch(e){alert('删除异常: '+e.message)}
+  }catch(e){showToast('删除异常: '+e.message,'error')}
 }
 
 /* ===== EXTEND PERMISSION MATRIX ===== */
@@ -11241,8 +11325,8 @@ function saveOptimize(){
 }
 
 
-function resetWorkflow(){
-  if(!confirm('确定重置所有流程步骤？'))return;
+async function resetWorkflow(){
+  if(!await uiConfirm('确定重置所有流程步骤？'))return;
   initWorkflow();
   renderWorkbench();
   saveWorkflow();
@@ -12064,13 +12148,13 @@ async function wfSaveModuleForm(){
 }
 async function wfDeleteModuleRecord(){
   var def=WF_MODULE_DEFS[_wfModKind];if(!def||!_wfModEditId)return;
-  if(!confirm('确定删除这条'+def.label+'记录？'))return;
+  if(!await uiConfirm('确定删除这条'+def.label+'记录？'))return;
   var r=await sb.from(def.table).delete().eq('id',_wfModEditId);
   if(r.error){showToast('删除失败: '+r.error.message);return}
   wfCloseModuleForm();showToast('已删除');
   await wfReloadModule(_wfModKind);
 }
-function wfDeleteStage(id){if(confirm('确定删除？')){sb.from('project_stages').delete().eq('id',id).then(function(r){if(!r.error){loadStages();showToast('已删除')}else showToast(r.error.message)})}}
+async function wfDeleteStage(id){if(await uiConfirm('确定删除？')){sb.from('project_stages').delete().eq('id',id).then(function(r){if(!r.error){loadStages();showToast('已删除')}else showToast(r.error.message)})}}
 async function saveProject(){
   var name=document.getElementById('pf-name').value.trim();
   if(!name){showToast('请输入商机名称');return}
@@ -12162,7 +12246,7 @@ var _leadProjectCache=[];
 var oppEditId=null,oppLeadId=null;
 
 async function deleteOpp(){
-  if(!oppEditId||!confirm('确定删除该商机?'))return;
+  if(!oppEditId||!await uiConfirm('确定删除该商机?'))return;
   var {error}=await sb.from('projects').delete().eq('id',oppEditId);
   if(error){showToast(error.message);return}
   closeOppForm();
@@ -12171,9 +12255,9 @@ async function deleteOpp(){
 }
 // saveStage removed (duplicate empty stub overrides real impl at L9273)
 // saveBidding / saveDelivery / saveProjectContract 的旧空壳已移除 —— 统一走 wfSaveModuleForm()
-async function deleteBidding(id){if(confirm('确定删除？')){var {error}=await sb.from('project_biddings').delete().eq('id',id);if(error){showToast(error.message);return}loadBiddings();showToast('已删除')}}
-async function deleteDelivery(id){if(confirm('确定删除？')){var {error}=await sb.from('project_deliveries').delete().eq('id',id);if(error){showToast(error.message);return}loadDeliveries();showToast('已删除')}}
-async function deletePayment(id){if(confirm('确定删除？')){var {error}=await sb.from('project_payments').delete().eq('id',id);if(error){showToast(error.message);return}loadProjectPayments();showToast('已删除')}}
+async function deleteBidding(id){if(await uiConfirm('确定删除？')){var {error}=await sb.from('project_biddings').delete().eq('id',id);if(error){showToast(error.message);return}loadBiddings();showToast('已删除')}}
+async function deleteDelivery(id){if(await uiConfirm('确定删除？')){var {error}=await sb.from('project_deliveries').delete().eq('id',id);if(error){showToast(error.message);return}loadDeliveries();showToast('已删除')}}
+async function deletePayment(id){if(await uiConfirm('确定删除？')){var {error}=await sb.from('project_payments').delete().eq('id',id);if(error){showToast(error.message);return}loadProjectPayments();showToast('已删除')}}
 
 // ===== My Office =====
 var _moCurrentTab='overview';
@@ -12347,7 +12431,7 @@ async function toggleMoTaskDone(taskId,cb){
 }
 
 async function deleteMoTask(id){
-  if(!confirm('确定删除该任务?'))return;
+  if(!await uiConfirm('确定删除该任务?'))return;
   await sb.from('tasks').delete().eq('id',id);
   renderMyOfficeTodo(_moTaskFilter||'all');showToast('已删除');
   if(_moCurrentTab==='overview')renderMyOfficeOverview();
@@ -12386,7 +12470,7 @@ async function saveMoApproval(){
 }
 
 async function moApproveRequest(id,action){
-  var remark=prompt(action==='approved'?'通过备注 (可选):':'驳回原因:');
+  var remark=await uiPrompt(action==='approved'?'通过备注 (可选):':'驳回原因:');
   var newStatus=action==='approved'?'approved':'rejected';
   var {error}=await sb.from('approval_requests').update({status:newStatus,updated_at:new Date().toISOString()}).eq('id',id);
   if(error){showToast('操作失败: '+error.message);return}
@@ -12508,7 +12592,7 @@ async function saveMoDoc(id){
 }
 
 async function deleteMoDoc(id){
-  if(!confirm('确定删除该文档?'))return;
+  if(!await uiConfirm('确定删除该文档?'))return;
   var _delErr=(await sb.from('my_documents').delete().eq('id',id)).error;if(_delErr){showToast('删除失败: '+_delErr.message);return}
   renderMyOfficeDocs(_moDocFilter||'all');showToast('已删除');
 }
@@ -13461,7 +13545,7 @@ function closeFVisit(){
 }
 
 async function deleteVisit(id){
-  if(!confirm('确定删除该拜访记录？'))return;
+  if(!await uiConfirm('确定删除该拜访记录？'))return;
   try{
     var r=await sb.from('field_visits').delete().eq('id',id);
     if(r.error){showToast('删除失败: '+r.error.message);return}
@@ -13615,7 +13699,7 @@ async function renderProjectDetail(pid){
   if(main)main.style.display='none';
 
   var r=await sb.from('projects').select('*').eq('id',pid).single();
-  if(r.error||!r.data){alert('项目不存在');closeProjectDetail();return}
+  if(r.error||!r.data){showToast('项目不存在','error');closeProjectDetail();return}
   curDetailProject=r.data;
   document.getElementById('pd-pid-badge').textContent='#'+pid;
   document.getElementById('pd-title').textContent=r.data.name||'未命名项目';
@@ -14077,7 +14161,7 @@ async function pdSaveStepEdit(blockKey){
 async function saveProjectAsTemplate(){
   if(!curDetailId||!curDetailProject)return;
   if(!isAdmin()){showToast('⚠️ 仅管理员可操作');return;}
-  var name=prompt('新模板名称:',curDetailProject.name||'未命名项目');
+  var name=await uiPrompt('新模板名称:',curDetailProject.name||'未命名项目');
   if(!name||!name.trim())return;
   name=name.trim();
   try{
@@ -14129,7 +14213,7 @@ async function syncProjectToTemplate(){
   if(!isAdmin()){showToast('⚠️ 仅管理员可操作');return;}
   var tid=curDetailProject.template_id;
   if(!tid){showToast('⚠️ 该项目未关联模板');return;}
-  if(!confirm('确定将当前项目的步骤配置（字段+审批人）同步到原模板？\n这将覆盖模板的字段和审批人配置。'))return;
+  if(!await uiConfirm('确定将当前项目的步骤配置（字段+审批人）同步到原模板？\n这将覆盖模板的字段和审批人配置。'))return;
   try{
     // 1. 读取原模板
     var t=allTemplates.find(function(x){return x.id==tid});
@@ -14218,7 +14302,7 @@ async function saveProjectDetail(){
     }
   });
   var r=await sb.from('projects').update(merged).eq('id',curDetailId);
-  if(r.error){alert('保存失败: '+r.error.message);return}
+  if(r.error){showToast('保存失败: '+r.error.message,'error');return}
   showToast('已保存','success');
   renderProjectDetail(curDetailId);
 }
@@ -14226,14 +14310,14 @@ async function saveProjectDetail(){
 async function pdAction(action){
   if(!curDetailId)return;
   if(action==='return'){
-    if(!confirm('确认退回？'))return;
+    if(!await uiConfirm('确认退回？'))return;
     await sb.from('projects').update({current_state:'todo'}).eq('id',curDetailId);
     showToast('已退回待办','info');
     closeProjectDetail();
     loadProjects();
     return;
   }else if(action==='complete'){
-    if(!confirm('确认办理完毕？此操作将项目状态置为办结'))return;
+    if(!await uiConfirm('确认办理完毕？此操作将项目状态置为办结'))return;
     await sb.from('projects').update({current_state:'done'}).eq('id',curDetailId);
     showToast('已办结','success');
   }else if(action==='read'){
@@ -14367,7 +14451,7 @@ async function updateMemberRole(projectId,userId,role){
   try{var {error}=await sb.from('project_assignments').update({business_role:role||null}).eq('project_id',projectId).eq('user_id',userId);if(error)throw error;showToast('✅ 角色已更新');loadPAMembers(projectId);loadPASteps(projectId);}catch(e){showToast('❌ 更新失败: '+e.message);}
 }
 async function removeMember(projectId,userId){
-  if(!confirm('确定移除该成员？'))return;
+  if(!await uiConfirm('确定移除该成员？'))return;
   try{var {error}=await sb.from('project_assignments').delete().eq('project_id',projectId).eq('user_id',userId);if(error)throw error;showToast('✅ 成员已移除');loadPAMembers(projectId);loadPASteps(projectId);}catch(e){showToast('❌ 移除失败: '+e.message);}
 }
 async function addMember(projectId){
@@ -14445,7 +14529,7 @@ async function updateFieldCollabMode(fieldId,mode){
 }
 async function deleteStepField(fieldId){
   if(!isAdmin()){showToast('⚠️ 仅管理员可删除字段');return;}
-  if(!confirm('确定删除此字段？'))return;
+  if(!await uiConfirm('确定删除此字段？'))return;
   try{var {error}=await sb.from('project_step_fields').delete().eq('id',fieldId);if(error)throw error;showToast('✅ 字段已删除');var projectId=document.getElementById('project-assignment-modal').dataset.projectId;loadPAFields(projectId);}catch(e){showToast('❌ 删除失败: '+e.message);}
 }
 function isAdmin(){

@@ -159,8 +159,8 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
 .btn-delete:hover{background:#DC2626}
 
 .confirm-overlay{position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:400;display:flex;align-items:center;justify-content:center;animation:fadeIn .2s ease}
-.confirm-box{background:var(--card);width:90%;max-width:340px;border-radius:var(--radius-lg);padding:28px 24px 24px;text-align:center;box-shadow:var(--shadow-xl)}
-.confirm-box p{font-size:15px;margin-bottom:20px;color:var(--text);line-height:1.5}
+.confirm-box{background:var(--card);width:90%;max-width:340px;border-radius:var(--radius-lg);padding:28px 24px 24px;text-align:center;box-shadow:var(--shadow-xl);box-sizing:border-box;max-height:80vh;overflow-y:auto}
+.confirm-box p{font-size:15px;margin-bottom:20px;color:var(--text);line-height:1.5;white-space:pre-line;word-break:break-word;text-align:center}
 .confirm-box .btns{display:flex;gap:10px}
 .confirm-box .btns button{flex:1;padding:11px;border-radius:var(--radius);font-size:14px;font-weight:600;cursor:pointer;border:none;transition:all var(--transition)}
 .confirm-box .btns button:hover{transform:translateY(-1px);box-shadow:var(--shadow-sm)}
