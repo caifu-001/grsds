@@ -104,7 +104,7 @@ function openQuoteForm(id){
   qm.style.display='flex';qm.style.position='fixed';qm.style.zIndex='9999';qm.style.opacity='1';qm.style.visibility='visible';qm.style.top='0';qm.style.right='0';qm.style.bottom='0';qm.style.left='0';
   var cs=getComputedStyle(qm);
   var rect=qm.getBoundingClientRect();
-  }catch(e){console.error('[DEBUG] openQuoteForm error:',e.message,e.stack);showToast('报价表单加载失败: '+e.message)}
+  }catch(e){console.error('openQuoteForm error:',e.message,e.stack);showToast('报价表单加载失败: '+e.message)}
 }
 function updateQfTotals(){
   var subtotal=0;for(var i=0;i<qfItems.length;i++)subtotal+=(qfItems[i].qty||0)*(qfItems[i].price||0);
@@ -195,7 +195,7 @@ async function saveQuote(){
   else{data.created_at=new Date().toISOString();var r2=await sb.from('quotations').insert(data);error=r2.error}
   if(error){showToast('保存失败: '+error.message);return}
   closeQuoteForm();await loadQuotations();showToast(qeditId?'报价已更新':'报价已创建');
-  }catch(e){console.error('[DEBUG] saveQuote error:',e);showToast('保存报价失败: '+e.message)}
+  }catch(e){console.error('saveQuote error:',e);showToast('保存报价失败: '+e.message)}
 }
 
 async function confirmDeleteQuote(){if(qeditId)confirmDialog('确定删除该报价？',async function(){await sb.from('quotations').delete().eq('id',qeditId);closeQuoteForm();loadQuotations();showToast('报价已删除')})}
@@ -313,7 +313,7 @@ function openContractForm(id){
   cm.style.display='flex';cm.style.position='fixed';cm.style.zIndex='9999';cm.style.opacity='1';cm.style.visibility='visible';cm.style.top='0';cm.style.right='0';cm.style.bottom='0';cm.style.left='0';
   var cs=getComputedStyle(cm);
   var rect=cm.getBoundingClientRect();
-  }catch(e){console.error('[DEBUG] openContractForm error:',e.message,e.stack);showToast('合同表单加载失败: '+e.message)}
+  }catch(e){console.error('openContractForm error:',e.message,e.stack);showToast('合同表单加载失败: '+e.message)}
 }
 function closeContractForm(){document.getElementById('contract-modal').classList.add('hidden');ceditId=null}
 
@@ -430,7 +430,7 @@ function openPaymentForm(id){
   pm.classList.remove('hidden');
   pm.style.display='flex';pm.style.position='fixed';pm.style.zIndex='9999';pm.style.opacity='1';pm.style.visibility='visible';pm.style.top='0';pm.style.right='0';pm.style.bottom='0';pm.style.left='0';
   var cs=getComputedStyle(pm);
-  }catch(e){console.error('[DEBUG] openPaymentForm error:',e.message,e.stack);showToast('回款表单加载失败: '+e.message)}
+  }catch(e){console.error('openPaymentForm error:',e.message,e.stack);showToast('回款表单加载失败: '+e.message)}
 }
 function closePaymentForm(){document.getElementById('payment-modal').classList.add('hidden');peditId=null}
 

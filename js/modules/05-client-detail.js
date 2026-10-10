@@ -561,12 +561,15 @@ function renderList(){
       try{projs=JSON.parse(c.projects||'[]');if(!Array.isArray(projs))projs=[];}catch(e){projs=[]}
       if(projs.length===0&&c.project)projs=[{project_name:c.project,bidding_date:c.bidding_date||''}];
       if(projs.length===0)return '';
-      var tags='<div class="card-projects">';
+      var tags='',_tagN=0;
       for(var pi=0;pi<projs.length;pi++){
         var p=projs[pi],pname=p.project_name||'',bd=p.bidder_name||'',co=p.client_owner||'';
-        tags+='<span class="card-project-tag" title="'+(bd?'中标人:'+h(bd):'')+(co?' / 甲方负责人:'+h(co):'')+'">📋 '+h(pname)+(bd?' · '+h(bd):'')+(co?' · 👤'+h(co):'')+'</span>';
+        if(!pname&&!bd&&!co)continue; // 三项全空时跳过，避免渲染出只有图标的空白气泡
+        tags+='<span class="card-project-tag" title="'+(bd?'中标人:'+h(bd):'')+(co?' / 甲方负责人:'+h(co):'')+'">📋 '+h(pname||'未命名项目')+(bd?' · '+h(bd):'')+(co?' · 👤'+h(co):'')+'</span>';
+        _tagN++;
       }
-      return tags+'</div>';
+      if(!_tagN)return '';
+      return '<div class="card-projects">'+tags+'</div>';
     })()+
         (contactHtml?'<div class="card-contact">'+contactHtml+'</div>':'');
       var osum=getClientOrderSummary(c.id);

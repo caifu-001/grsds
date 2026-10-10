@@ -1241,7 +1241,7 @@ function switchTab(tab){
     loadReportSummary();switchReportsTab('sales');
   }else if(tab==='service'){
     var sv2=document.getElementById('service-view');
-    if(sv2){sv2.classList.remove('hidden');dbg('[DEBUG switchTab] service-view display:',getComputedStyle(sv2).display,'innerHTML len:',sv2.innerHTML.length);}
+    if(sv2)sv2.classList.remove('hidden');
     switchServiceTab('tickets');return}
   if(tab==='analytics'){
     var anv=document.getElementById('analytics-view');

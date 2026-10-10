@@ -59,8 +59,10 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
 
 /* ── Topbar ── */
 .topbar{position:sticky;top:0;z-index:100;background:linear-gradient(135deg,#6366F1 0%,#8B5CF6 100%);color:#fff;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;font-size:16px;font-weight:700;box-shadow:0 2px 20px rgba(99,102,241,.25);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
-.topbar-btns{display:flex;gap:4px;align-items:center}
-.topbar-btn{font-size:16px;cursor:pointer;background:none;border:none;color:#fff;padding:6px 12px;border-radius:var(--radius);transition:background var(--transition)}
+#topbar-title{white-space:nowrap;flex-shrink:0;letter-spacing:.2px;overflow:hidden;text-overflow:ellipsis}
+.topbar-btns{display:flex;gap:2px;align-items:center;flex-shrink:0}
+.topbar-company{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.topbar-btn{font-size:16px;cursor:pointer;background:none;border:none;color:#fff;padding:6px 10px;border-radius:var(--radius);transition:background var(--transition)}
 .topbar-btn:hover{background:rgba(255,255,255,.12)}
 .topbar-btn:active{background:rgba(255,255,255,.2);transform:scale(.95)}
 .topbar-btn.refreshing{animation:spin .8s linear infinite}
@@ -77,7 +79,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
 /* ── Stats Bar ── */
 .stats-bar{display:flex;gap:10px;padding:10px 16px 6px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .stats-bar::-webkit-scrollbar{display:none}
-.stat-card{flex:1;min-width:90px;background:var(--card);border-radius:var(--radius-lg);padding:14px 16px;text-align:center;box-shadow:var(--shadow);border:1px solid var(--border);transition:transform var(--transition),box-shadow var(--transition);cursor:pointer}
+.stat-card{flex:1 1 0;min-width:96px;max-width:200px;background:var(--card);border-radius:var(--radius-lg);padding:14px 16px;text-align:center;box-shadow:var(--shadow);border:1px solid var(--border);transition:transform var(--transition),box-shadow var(--transition);cursor:pointer}
 .stat-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
 .stat-card:active{transform:scale(.97)}
 .stat-card .stat-num{font-size:28px;font-weight:800;color:var(--primary);line-height:1.1;margin-bottom:4px;letter-spacing:-.5px}
@@ -246,11 +248,24 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
 .ci-field .ci-input:focus{outline:none;border-color:var(--primary)}
 .ci-source{font-size:11px;color:var(--success);margin-top:6px}
 /* ── Topbar Tabs ── */
-.topbar-tabs{display:flex;gap:2px;margin:0 8px;overflow-x:auto;white-space:nowrap;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.topbar-tabs{display:flex;gap:2px;margin:0 8px;overflow-x:auto;white-space:nowrap;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex:1 1 0;min-width:0;justify-content:center}
 .topbar-tabs::-webkit-scrollbar{display:none}
 .topbar-tab{padding:6px 14px;border-radius:16px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:rgba(255,255,255,.15);color:rgba(255,255,255,.7);transition:all .2s}
 .topbar-tab.active{background:#fff;color:var(--primary)}
 .topbar-tab:active{opacity:.8}
+/* 窄屏：顶栏折成两行 —— 第一行标题 + 图标 + 公司，第二行 tab 横向滚动
+   （修复：tabs 无收缩约束时会把标题挤成竖排文字） */
+@media(max-width:768px){
+  .topbar{flex-wrap:wrap;padding:8px 12px;gap:4px;row-gap:8px}
+  #topbar-title{font-size:15px;max-width:40vw}
+  .topbar-tabs{order:4;flex:1 1 100%;width:100%;margin:0;justify-content:flex-start;padding-bottom:2px}
+  .topbar-btns{gap:0;margin-left:auto}
+  .topbar-btn{padding:5px 7px;font-size:15px}
+  .topbar-company{gap:6px;padding-right:0!important}
+  #current-company-badge{max-width:104px;font-size:12px;padding:4px 9px}
+  #btn-members{padding:4px 8px;font-size:12px}
+  .topbar-tab{padding:5px 11px;font-size:12px}
+}
 
 /* ── Business / Resource sub-tabs ── */
 .biz-tabs{display:flex;gap:4px;padding:8px 16px;background:var(--bg);position:sticky;top:48px;z-index:98;border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none}
@@ -1279,4 +1294,35 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
 .cf-row .cf-v{flex:1;font-size:13px;word-break:break-word}
 .tag-suggestion{cursor:pointer}
 .tag-suggestion.tag-cfg{background:var(--primary-light);color:var(--primary);border-color:var(--primary)}
+
+/* ══════════════════════════════════════════════════════════
+   细节打磨（UI 优化轮）
+   ══════════════════════════════════════════════════════════ */
+
+/* 空状态：图标加浅色圆底，比裸 emoji 更精致、更聚焦 */
+.empty-icon{width:104px;height:104px;font-size:44px;margin:0 auto 18px;border-radius:50%;background:var(--primary-light);opacity:1;display:flex;align-items:center;justify-content:center;transition:transform var(--transition)}
+.empty:hover .empty-icon{transform:scale(1.04)}
+
+/* iOS 刘海屏 / 底部指示条安全区：浮动按钮与底部弹层不贴边 */
+@supports(padding:max(0px)){
+  .fab{bottom:calc(28px + env(safe-area-inset-bottom,0px))}
+  .modal-sheet{padding-bottom:calc(36px + env(safe-area-inset-bottom,0px))}
+  .modal{padding-bottom:calc(36px + env(safe-area-inset-bottom,0px))}
+}
+
+/* 尊重系统「减弱动态效果」偏好（前庭敏感用户） */
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+}
+
+/* 键盘可达性：非 button 的可点击元素也给清晰焦点环 */
+[role="button"]:focus-visible,.card-check:focus-visible,.gs-item:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+
+/* 表单占位符统一色，避免各浏览器默认灰过浅 */
+::placeholder{color:var(--text3);opacity:1}
+
+@media(max-width:768px){
+  .empty{padding:56px 20px}
+  .empty-icon{width:88px;height:88px;font-size:38px;margin-bottom:14px}
+}
 

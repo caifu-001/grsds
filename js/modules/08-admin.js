@@ -484,8 +484,8 @@ async function switchBizTab(sub){
   }else if(sub==='sales'){
     tabs[1].classList.add('active');
     sv.classList.remove('hidden');
-    fab.classList.remove('hidden');fab.textContent='+';fab.onclick=function(){dbg('[DEBUG] FAB onclick fires');openSalesForm();};
-    if(!allClients.length){dbg('[DEBUG] loading clients then calling switchSalesTab');loadClients().then(function(){dbg('[DEBUG] clients loaded, calling switchSalesTab leads');switchSalesTab('leads')});}else{dbg('[DEBUG] clients already cached, direct switchSalesTab');switchSalesTab('leads');}
+    fab.classList.remove('hidden');fab.textContent='+';fab.onclick=function(){openSalesForm();};
+    if(!allClients.length){loadClients().then(function(){switchSalesTab('leads')});}else{switchSalesTab('leads');}
   }else if(sub==='performance'){
     tabs[2].classList.add('active');
     pv.classList.remove('hidden');

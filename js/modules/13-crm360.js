@@ -605,7 +605,7 @@ async function saveLead(){
     try{var {data:cnt}=await sb.from('lead_pool').select('lead_id',{count:'exact',head:true}).like('lead_id',datePrefix+'%');var seq=(cnt||0)+1;lead.lead_id=datePrefix+String(seq).padStart(3,'0');}catch(e){lead.lead_id=datePrefix+'001';}
     if(leadFormSource==='sales'){lead.assigned_to=currentUser.id;lead.status='assigned';lead.assigned_at=new Date().toISOString();}
     var {error}=await sb.from('lead_pool').insert(lead);
-    if(error){console.error('[DEBUG saveLead] error:',error.message,'details:',error.details,'hint:',error.hint,'code:',error.code);showToast('创建失败: '+error.message);return}
+    if(error){console.error('[saveLead] error:',error.message,'details:',error.details,'hint:',error.hint,'code:',error.code);showToast('创建失败: '+error.message);return}
   }else{
     var {error}=await sb.from('lead_pool').update(lead).eq('id',leadEditId);
     if(error){showToast('更新失败: '+error.message);return}
@@ -870,7 +870,7 @@ function switchCollabTab(tab){  // Hide all non-mo collab panels when showing mo
 
 // === 1. Schedules ===
 async function loadSchedules(){
-  if(!currentCompanyId){dbg('[DEBUG loadSchedules] NO currentCompanyId, returning');return;}
+  if(!currentCompanyId){dbg('[loadSchedules] NO currentCompanyId, returning');return;}
   var today=new Date().toISOString().slice(0,10);
   var {data}=await sb.from('schedules').select('*').eq('company_id',currentCompanyId).gte('start_time',today).order('start_time');
   var list=document.getElementById('schedule-list');
