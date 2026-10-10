@@ -8,12 +8,10 @@
 <title>客户管理系统</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👔</text></svg>">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <link rel="stylesheet" href="css/app.css">
 
-
-<script src="https://api.map.baidu.com/api?v=3.0&ak=We6WBochlQEAiMK0DuQGyaN9Qz7yB4SU"></script>
+<!-- 百度地图改为按需加载（见 js/app_v2.js 的 ensureBaiduMap），避免首屏同步阻塞 -->
 </head>
 <body>
 
@@ -28,6 +26,7 @@
  <!-- 业绩看板入口已在业务管理子tab中，更多菜单不再重复 -->
  <!-- 供应商入口已移至库存页面 -->
  
+ <button class="more-item" onclick="closeMoreMenu();openGlobalSearch()"><span class="mi-icon">🔍</span> 全局搜索 <span style="font-size:11px;color:var(--text3);margin-left:auto">Ctrl+K</span></button>
  <div class="more-divider"></div>
  <button class="more-item" onclick="closeMoreMenu();showCompanies()"><span class="mi-icon">📂</span> 公司名录</button>
  <button class="more-item" onclick="closeMoreMenu();showLeads()"><span class="mi-icon">🎯</span> 线索公海</button>
@@ -121,6 +120,7 @@
   </div>
  
   <div class="topbar-btns">
+   <button class="topbar-btn" onclick="openGlobalSearch()" title="全局搜索 (Ctrl+K)">🔍</button>
    <button class="topbar-btn" onclick="openMy()" title="我的">👤</button>
    <button class="topbar-btn" id="btn-more" onclick="toggleMoreMenu()" title="更多">☰</button>
   </div>
@@ -152,10 +152,13 @@
  <div id="client-view" class="hidden">
   <div class="toolbar">
    <select id="filter-select" onchange="onFilterChange()"><option value="all">全部类型</option></select>
-   <div class="search-wrap"><input id="search-input" placeholder="搜索客户..." oninput="renderList()"></div>
+   <div class="search-wrap"><input id="search-input" placeholder="搜索客户..." oninput="clientSearchInput()"></div>
+   <button class="bulk-toggle-btn" id="client-bulk-toggle" onclick="toggleBulkMode()" title="多选模式">☑ 多选</button>
   </div>
+  <div class="bulk-selbar hidden" id="client-selbar"></div>
   <div class="stats-bar" id="stats-bar"></div>
   <div class="client-grid" id="client-grid"></div>
+  <div id="client-pager" class="pager hidden"></div>
   <div class="empty hidden" id="empty-state"><div class="empty-icon">📭</div>暂无客户数据<br><span style="font-size:12px;color:var(--text3)">点击右下角 ＋ 开始添加</span></div>
  </div>
  <div id="order-view" class="hidden">
@@ -166,10 +169,11 @@
   </div>
   <div class="toolbar">
    <select id="order-stage-filter" onchange="renderOrders()"><option value="all">全部阶段</option><option value="谈判中">谈判中</option><option value="已签约">已签约</option><option value="执行中">执行中</option><option value="已完成">已完成</option><option value="已取消">已取消</option></select>
-   <div class="search-wrap"><input id="order-search" placeholder="搜索订单/客户/项目..." oninput="renderOrders()"></div>
+   <div class="search-wrap"><input id="order-search" placeholder="搜索订单/客户/项目..." oninput="orderSearchInput()"></div>
   </div>
   <div class="order-stats" id="order-stats"></div>
   <div class="client-grid" id="order-grid"></div>
+  <div id="order-pager" class="pager hidden"></div>
   <div class="empty hidden" id="order-empty"><div class="empty-icon">📭</div>暂无订单<br><span style="font-size:12px;color:var(--text3)">点击右下角 ＋ 创建订单</span></div>
  </div>
  <!-- Company Registration -->
@@ -2758,5 +2762,18 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
    </div>
    <div id="admin-grants-list"></div>
   </div>
+
+<!-- 全局搜索（Ctrl/Cmd+K） -->
+<div id="gs-overlay" class="gs-overlay hidden">
+  <div class="gs-panel">
+    <div class="gs-head">
+      <span class="gs-icon">🔍</span>
+      <input id="gs-input" placeholder="搜索客户 / 联系人 / 订单 / 项目…" autocomplete="off" oninput="gsRun()">
+      <button class="gs-close" onclick="closeGlobalSearch()" title="关闭 (Esc)">✕</button>
+    </div>
+    <div id="gs-results" class="gs-results"></div>
+    <div class="gs-foot"><span><b>↑</b><b>↓</b> 选择</span><span><b>Enter</b> 打开</span><span><b>Esc</b> 关闭</span></div>
+  </div>
+</div>
 </body>
 </html>

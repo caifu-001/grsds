@@ -1,0 +1,7 @@
+# 本地工具与运行产物
+.workbuddy/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
