@@ -1,0 +1,20 @@
+[
+  "js/modules/01-core.js",
+  "js/modules/02-auth.js",
+  "js/modules/03-settings.js",
+  "js/modules/04-client-list.js",
+  "js/modules/05-client-detail.js",
+  "js/modules/06-client-tools.js",
+  "js/modules/07-orders.js",
+  "js/modules/08-admin.js",
+  "js/modules/09-sales.js",
+  "js/modules/10-charts.js",
+  "js/modules/11-inventory.js",
+  "js/modules/12-performance.js",
+  "js/modules/13-crm360.js",
+  "js/modules/14-hr-config.js",
+  "js/modules/15-workflow.js",
+  "js/modules/16-projects.js",
+  "js/modules/17-workbench.js",
+  "js/modules/18-templates.js"
+]

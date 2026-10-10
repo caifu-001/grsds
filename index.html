@@ -2119,7 +2119,26 @@ const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
  const SUPAFUNC_BASE='https://jyefbatmmbelrhhzsgva.supabase.co/functions/v1/admin-proxy';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 </script>
-<script src="js/app_v2.js"></script>
+<!-- grsds · 模块化加载（传统脚本，按序执行、共享同一全局作用域，onclick 内联调用照常可用） -->
+<!-- 由原 js/app_v2.js 机械拆分而来，共 18 个模块，顺序不可调整 -->
+<script src="js/modules/01-core.js"></script>
+<script src="js/modules/02-auth.js"></script>
+<script src="js/modules/03-settings.js"></script>
+<script src="js/modules/04-client-list.js"></script>
+<script src="js/modules/05-client-detail.js"></script>
+<script src="js/modules/06-client-tools.js"></script>
+<script src="js/modules/07-orders.js"></script>
+<script src="js/modules/08-admin.js"></script>
+<script src="js/modules/09-sales.js"></script>
+<script src="js/modules/10-charts.js"></script>
+<script src="js/modules/11-inventory.js"></script>
+<script src="js/modules/12-performance.js"></script>
+<script src="js/modules/13-crm360.js"></script>
+<script src="js/modules/14-hr-config.js"></script>
+<script src="js/modules/15-workflow.js"></script>
+<script src="js/modules/16-projects.js"></script>
+<script src="js/modules/17-workbench.js"></script>
+<script src="js/modules/18-templates.js"></script>
 
 
 <!-- ===== END service-view ===== -->
