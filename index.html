@@ -729,7 +729,7 @@
       <div id="tag-chips"></div>
       <input id="tag-input" placeholder="输入标签后回车..." onkeydown="if(event.key==='Enter'){event.preventDefault();addTag(this.value.trim());this.value=''}">
     </div>
-    <div class="tag-suggestions">
+    <div class="tag-suggestions" id="tag-suggestions-box">
       <span class="tag-suggestion" onclick="addTag('重点客户')">重点客户</span>
       <span class="tag-suggestion" onclick="addTag('长期合作')">长期合作</span>
       <span class="tag-suggestion" onclick="addTag('新开发')">新开发</span>
@@ -767,6 +767,11 @@
   <div class="section-title">👤 联系人</div>
   <div id="contacts-container"></div>
   <button class="add-phone-btn" style="margin-top:8px;margin-bottom:12px" onclick="addContact()">＋ 添加联系人</button>
+
+  <div id="cf-client-section" style="display:none">
+   <div class="section-title">⚙ 自定义字段</div>
+   <div id="cf-client-fields"></div>
+  </div>
 
   <div class="modal-actions">
    <button class="btn-sm btn-sm-muted hidden" onclick="toggleLeadFrozen()">冻结</button>

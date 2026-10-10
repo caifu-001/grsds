@@ -1267,3 +1267,16 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
   .gs-overlay{padding:5vh 10px 10px}
   .gs-panel{max-height:82vh}
 }
+
+/* ==== 批次E：字段级校验 / 自定义字段 ==== */
+.field-error>input,.field-error>select,.field-error>textarea,[class*="form"] .field-error input,.field-error .ci-input{border-color:var(--danger)!important;box-shadow:0 0 0 3px rgba(239,68,68,.13)!important}
+.field-err-msg{font-size:12px;color:var(--danger);margin-top:5px;line-height:1.4;text-align:left}
+.field-err-msg::before{content:'⚠ '}
+.cf-req{color:var(--danger);margin-left:2px}
+.cf-value{font-size:13px;color:var(--text);word-break:break-word}
+.cf-row{display:flex;gap:10px;padding:7px 0;border-bottom:1px dashed var(--border-light)}
+.cf-row .cf-k{color:var(--text3);min-width:88px;flex:0 0 auto;font-size:13px}
+.cf-row .cf-v{flex:1;font-size:13px;word-break:break-word}
+.tag-suggestion{cursor:pointer}
+.tag-suggestion.tag-cfg{background:var(--primary-light);color:var(--primary);border-color:var(--primary)}
+

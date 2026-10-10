@@ -774,7 +774,7 @@ function parseTypes(raw){
 // ============================================================
 // 批次D：回收站（软删除）+ 客户查重合并
 // ============================================================
-var allDeletedClients=[],allDeletedContacts=[],_softDeleteReady=false;
+var allDeletedClients=[],allDeletedContacts=[],_softDeleteReady=false,_customDataReady=false;
 
 // 软删除一批客户（自动探测 deleted_at 列；缺列时回退物理删除）
 async function softDeleteClients(ids){
@@ -1006,6 +1006,214 @@ function mergeDuplicateGroup(gi){
 }
 function openDedupeDialog(){openDedupeMerge()}
 
+// ============================================================
+// 批次E：表单字段级校验 + 配置中心打通
+// ============================================================
+// ── E1 字段级校验 ──
+function vfGroup(el){
+  if(!el)return null;
+  var p=el.parentNode;
+  for(var i=0;i<4&&p;i++){if(p.classList&&p.classList.contains('form-group'))return p;p=p.parentNode}
+  return el.parentNode;
+}
+function vfMark(el,msg){
+  if(!el)return false;
+  var g=vfGroup(el);if(!g)return false;
+  g.classList.add('field-error');
+  var m=g.querySelector('.field-err-msg');
+  if(!m){m=document.createElement('div');m.className='field-err-msg';g.appendChild(m)}
+  m.textContent=msg;
+  return false;
+}
+function vfClearAll(scope){
+  var s=scope||document,els=s.querySelectorAll('.field-error');
+  for(var i=0;i<els.length;i++)els[i].classList.remove('field-error');
+}
+function vfScrollToError(){
+  var e=document.querySelector('.field-error');
+  if(!e)return;
+  try{e.scrollIntoView({block:'center',behavior:'smooth'})}catch(err){try{e.scrollIntoView()}catch(e2){}}
+}
+// 用户一输入就自动消掉红框
+document.addEventListener('input',function(e){
+  var t=e.target;
+  if(t&&t.closest){var g=t.closest('.field-error');if(g)g.classList.remove('field-error')}
+},true);
+document.addEventListener('change',function(e){
+  var t=e.target;
+  if(t&&t.closest){var g=t.closest('.field-error');if(g)g.classList.remove('field-error')}
+},true);
+
+// ── E2 配置中心：统一加载 ──
+var cfgStages=[],cfgTags=[],cfgNumRules=[],cfgClientFields=[],_cfgLoaded=false,_cfgPromise=null;
+function loadConfigCenter(force){
+  if(_cfgLoaded&&!force)return Promise.resolve();
+  if(_cfgPromise)return _cfgPromise;
+  if(!currentCompanyId)return Promise.resolve();
+  _cfgPromise=(function(){
+    var fl=function(extra){
+      var a=[{col:'company_id',op:'eq',val:currentCompanyId}];
+      (extra||[]).forEach(function(x){a.push(x)});
+      return a;
+    };
+    return Promise.all([
+      callAdmin('select','sales_stages_def',{query:'*',filters:fl([{col:'',op:'order',val:'sort_order.asc'}])}),
+      callAdmin('select','custom_tags',{query:'*',filters:fl([{col:'',op:'order',val:'sort_order.asc'}])}),
+      callAdmin('select','numbering_rules',{query:'*',filters:fl([])}),
+      callAdmin('select','custom_field_defs',{query:'*',filters:fl([{col:'entity_type',op:'eq',val:'client'},{col:'',op:'order',val:'sort_order.asc'}])})
+    ]).then(function(res){
+      cfgStages=(res[0]&&res[0].data)||[];
+      cfgTags=(res[1]&&res[1].data)||[];
+      cfgNumRules=(res[2]&&res[2].data)||[];
+      cfgClientFields=(res[3]&&res[3].data)||[];
+      _cfgLoaded=true;
+      try{buildOrderStageFilter()}catch(e){console.error(e)}
+    }).catch(function(e){console.error('loadConfigCenter:',e)}).then(function(){_cfgPromise=null});
+  })();
+  return _cfgPromise;
+}
+
+// ── E3 销售阶段：订单表单 + 阶段筛选 ──
+function orderStageList(){
+  if(cfgStages&&cfgStages.length){
+    var a=[];
+    for(var i=0;i<cfgStages.length;i++){var n=cfgStages[i]&&cfgStages[i].stage_name;if(n&&a.indexOf(n)<0)a.push(n)}
+    if(a.length)return a;
+  }
+  return ORDER_STAGES;
+}
+function buildOrderStageFilter(){
+  var sel=document.getElementById('order-stage-filter');if(!sel)return;
+  var cur=sel.value||'all',list=orderStageList();
+  var html='<option value="all">全部阶段</option>';
+  for(var i=0;i<list.length;i++)html+='<option value="'+h(list[i])+'">'+h(list[i])+'</option>';
+  sel.innerHTML=html;
+  sel.value=(cur&&(cur==='all'||list.indexOf(cur)>=0))?cur:'all';
+}
+
+// ── E4 自定义标签：客户表单快捷标签 ──
+var DEFAULT_TAG_SUGGESTIONS=['重点客户','长期合作','新开发','高利润','需维护','战略伙伴','年框','潜在'];
+function tagSuggestionList(){
+  if(cfgTags&&cfgTags.length){
+    var a=[];
+    for(var i=0;i<cfgTags.length;i++){
+      var t=cfgTags[i],n=t&&(t.tag_name||t.name);
+      if(n&&a.indexOf(n)<0)a.push(n);
+    }
+    if(a.length)return a;
+  }
+  return DEFAULT_TAG_SUGGESTIONS;
+}
+function renderTagSuggestions(){
+  var box=document.getElementById('tag-suggestions-box');if(!box)return;
+  var list=tagSuggestionList(),isCfg=!!(cfgTags&&cfgTags.length),html='';
+  for(var i=0;i<list.length;i++){
+    html+='<span class="tag-suggestion'+(isCfg?' tag-cfg':'')+'" onclick="addTag(\''+jsStr(list[i])+'\')">'+h(list[i])+'</span>';
+  }
+  box.innerHTML=html;
+}
+
+// ── E5 自定义字段：客户表单 ──
+function cfFieldKey(f,i){return String((f&&(f.field_key||f.key))||('cf'+i))}
+function cfFieldLabel(f,i){return String((f&&(f.label||f.field_label))||cfFieldKey(f,i))}
+function cfFieldType(f){return String((f&&(f.field_type||f.type))||'text')}
+function cfFieldRequired(f){return !!(f&&(f.required||f.is_required||f.is_required===1))}
+function cfFieldOptions(f){
+  var o=f&&f.options;
+  if(typeof o==='string'){try{o=JSON.parse(o)}catch(e){o=String(o).split(',')}}
+  if(!Array.isArray(o))o=[];
+  return o.filter(function(x){return x!==null&&x!==undefined&&String(x).trim()!==''});
+}
+function renderClientCustomFields(data){
+  var sec=document.getElementById('cf-client-section'),box=document.getElementById('cf-client-fields');
+  if(!sec||!box)return;
+  if(!cfgClientFields||!cfgClientFields.length){sec.style.display='none';box.innerHTML='';return}
+  sec.style.display='';
+  var html='';
+  for(var i=0;i<cfgClientFields.length;i++){
+    var f=cfgClientFields[i],key=cfFieldKey(f,i),label=cfFieldLabel(f,i),type=cfFieldType(f);
+    var val=(data&&data[key]!=null)?data[key]:'';
+    var req=cfFieldRequired(f)?'<span class="cf-req">*</span>':'';
+    html+='<div class="form-group"><label>'+h(label)+req+'</label>';
+    if(type==='select'){
+      html+='<select class="cf-input" data-cfkey="'+h(key)+'"><option value="">请选择</option>';
+      var opts=cfFieldOptions(f);
+      for(var k=0;k<opts.length;k++)html+='<option value="'+h(opts[k])+'"'+(String(val)===String(opts[k])?' selected':'')+'>'+h(opts[k])+'</option>';
+      html+='</select>';
+    }else if(type==='textarea'){
+      html+='<textarea class="cf-input" data-cfkey="'+h(key)+'">'+h(val)+'</textarea>';
+    }else{
+      var t=type==='number'?'number':(type==='date'?'date':'text');
+      html+='<input class="cf-input" type="'+t+'" data-cfkey="'+h(key)+'" value="'+h(val)+'">';
+    }
+    html+='</div>';
+  }
+  if(!_customDataReady){
+    html+='<div style="font-size:12px;color:var(--warning);line-height:1.5;padding:4px 0">⚠ 尚未启用自定义字段存储，保存时不会写入。请在 Supabase 执行 sql/custom_fields_values.sql。</div>';
+  }
+  box.innerHTML=html;
+}
+function collectClientCustomFields(){
+  var out={},box=document.getElementById('cf-client-fields');
+  if(!box)return out;
+  var els=box.querySelectorAll('.cf-input');
+  for(var i=0;i<els.length;i++)out[els[i].getAttribute('data-cfkey')]=String(els[i].value||'').trim();
+  return out;
+}
+function validateClientCustomFields(){
+  var box=document.getElementById('cf-client-fields');if(!box)return true;
+  var ok=true;
+  for(var i=0;i<cfgClientFields.length;i++){
+    if(!cfFieldRequired(cfgClientFields[i]))continue;
+    var el=box.querySelector('.cf-input[data-cfkey="'+cfFieldKey(cfgClientFields[i],i)+'"]');
+    if(el&&!String(el.value||'').trim()){vfMark(el,'此项为必填');ok=false}
+  }
+  return ok;
+}
+function renderClientCustomValues(container,data){
+  if(!container)return;
+  if(!cfgClientFields||!cfgClientFields.length){container.innerHTML='';return}
+  var rows='',any=false;
+  for(var i=0;i<cfgClientFields.length;i++){
+    var key=cfFieldKey(cfgClientFields[i],i);
+    var v=data&&data[key];
+    if(v===null||v===undefined||String(v).trim()==='')continue;
+    any=true;
+    rows+='<div class="cf-row"><span class="cf-k">'+h(cfFieldLabel(cfgClientFields[i],i))+'</span><span class="cf-v">'+h(v)+'</span></div>';
+  }
+  container.innerHTML=any?rows:'<div style="color:var(--text3);font-size:13px">暂无自定义字段内容</div>';
+}
+
+// ── E6 编号规则：新建订单自动编号 ──
+function numRuleFor(entity){
+  for(var i=0;i<cfgNumRules.length;i++){var r=cfgNumRules[i];if(r&&r.entity_type===entity)return r}
+  return null;
+}
+function numRuleFormat(r,seq){
+  if(!r)return '';
+  var s=String(seq).padStart(parseInt(r.seq_length,10)||4,'0');
+  var d='';
+  if(r.date_format&&r.date_format!=='none'){
+    var dt=new Date();
+    var y=String(dt.getFullYear()),m=String(dt.getMonth()+1).padStart(2,'0'),dd=String(dt.getDate()).padStart(2,'0');
+    if(r.date_format==='YYYY')d=y;
+    else if(r.date_format==='YYYYMM')d=y+m;
+    else d=y+m+dd;
+  }
+  return String(r.prefix||'')+(d?'-'+d:'')+'-'+s;
+}
+async function autoFillOrderNumber(){
+  var el=document.getElementById('of-number');
+  if(!el||el.value.trim())return;
+  var r=numRuleFor('order');
+  if(!r)return;
+  var next=(parseInt(r.current_seq,10)||0)+1;
+  el.value=numRuleFormat(r,next);
+  var res=await callAdmin('update','numbering_rules',{payload:{current_seq:next},filters:[{col:'id',op:'eq',val:r.id}]});
+  if(res&&res.error)console.error('[编号规则] 递增序号失败:',res.error);
+  else r.current_seq=next;
+}
+
 // === Clients ===
 async function doRefresh(){
   var btn=document.querySelector('.topbar-btn');btn.classList.add('refreshing');
@@ -1045,8 +1253,13 @@ async function loadClients(){
     var {data:cd}=await sb.from('contacts').select('*').eq('company_id',currentCompanyId);
     allContacts=(cd||[]);
     // 回收站：把软删除的客户分离出来，其余逻辑完全不受影响
-    _softDeleteReady=false;
-    for(var _di=0;_di<allClients.length;_di++){if(allClients[_di]&&allClients[_di].deleted_at!==undefined){_softDeleteReady=true;break}}
+    _softDeleteReady=false;_customDataReady=false;
+    for(var _di=0;_di<allClients.length;_di++){
+      if(!allClients[_di])continue;
+      if(allClients[_di].deleted_at!==undefined)_softDeleteReady=true;
+      if(allClients[_di].custom_data!==undefined)_customDataReady=true;
+      if(_softDeleteReady&&_customDataReady)break;
+    }
     if(_softDeleteReady){
       var _alive=[],_trash=[];
       for(var _dj=0;_dj<allClients.length;_dj++){var _c=allClients[_dj];if(_c&&_c.deleted_at)_trash.push(_c);else _alive.push(_c)}
@@ -1768,6 +1981,7 @@ async function removeAttachment(idx){
 
 async function openForm(id){
   editId=id||null;
+  var _cfData={};
   document.getElementById('form-title').textContent=id?'编辑客户':'添加客户';
   document.getElementById('btn-delete').classList.toggle('hidden',!id);
   document.getElementById('type-err').textContent='';
@@ -1814,6 +2028,13 @@ async function openForm(id){
       var ciStr=c.company_info||'{}';
       try{var ci=JSON.parse(ciStr);displayCompanyInfo(ci);}
       catch(e){displayCompanyInfo({});}
+      // 自定义字段值：jsonb 可能回传对象，也可能（历史数据）是字符串
+      try{
+        var _cd=c.custom_data;
+        if(_cd&&typeof _cd==='string')_cfData=JSON.parse(_cd)||{};
+        else if(_cd&&typeof _cd==='object')_cfData=_cd;
+        else _cfData={};
+      }catch(e){_cfData={};}
     }else{
       setSelectedTypes([]);
     }
@@ -1846,6 +2067,11 @@ async function openForm(id){
     var fLifecycle=document.getElementById('f-lifecycle-stage');if(fLifecycle)fLifecycle.value='prospect';
   }
   refCt();
+  vfClearAll(document.getElementById('form-modal'));
+  loadConfigCenter().then(function(){
+    renderClientCustomFields(_cfData);
+    renderTagSuggestions();
+  });
   document.getElementById('form-modal').classList.remove('hidden');
 }
 function closeForm(){document.getElementById('form-modal').classList.add('hidden');editId=null;formContacts=[];selTypes=[]}
@@ -1963,9 +2189,12 @@ function sortProjectEntriesByBiddingDate(){
 }
 
 async function saveClient(){
+  vfClearAll(document.getElementById('form-modal'));
   if(!selTypes.length){document.getElementById('type-err').textContent='请选择至少一个客户属性';setTimeout(function(){document.getElementById('type-err').textContent=''},3000);return}
-  var name=document.getElementById('f-name').value.trim();
-  if(!name){showToast('请输入客户名称');return}
+  var nameEl=document.getElementById('f-name');
+  var name=nameEl.value.trim();
+  if(!name){vfMark(nameEl,'请填写客户名称');vfScrollToError();return}
+  if(!validateClientCustomFields()){vfScrollToError();return}
   // FK: match company directory
   var dirId=null;var dk=name.toLowerCase();if(allCompaniesMap&&allCompaniesMap[dk])dirId=allCompaniesMap[dk].id;
   // Company name uniqueness check
@@ -2075,12 +2304,15 @@ async function saveClient(){
     grade:fGrade?fGrade.value:'',
     lifecycle_stage:(function(){var ls=document.getElementById('f-lifecycle-stage');return ls?ls.value:'prospect'})(),
     tags:JSON.stringify(clientTags||[]),
+    custom_data:collectClientCustomFields(),
     attachments:JSON.stringify(clientAttachments||[]),
     company_info:JSON.stringify(ci),
     contact_count:formContacts.length,
     projects:JSON.stringify(projectsArr),
     updated_at:new Date().toISOString()
   };
+  // 未执行 custom_fields_values.sql 时不发送该字段，避免整条保存失败
+  if(!_customDataReady)delete client.custom_data;
 
   var clientId=editId;
   if(!editId){
@@ -3728,7 +3960,16 @@ async function openOrderForm(id){
       if(cl){orderClientName=cl.name;cs.style.display='block';cs.textContent='已选择: '+cl.name}
     }
   }else{
-    document.getElementById('of-number').value='ORD-'+Date.now().toString(36).toUpperCase();
+    document.getElementById('of-number').value='';
+    loadConfigCenter().then(function(){
+      buildStageGrid();
+      if(orderEditId)return;
+      autoFillOrderNumber().then(function(){
+        if(!document.getElementById('of-number').value.trim()){
+          document.getElementById('of-number').value='ORD-'+Date.now().toString(36).toUpperCase();
+        }
+      });
+    });
   }
   document.getElementById('order-form-modal').classList.remove('hidden');
 }
@@ -3740,11 +3981,14 @@ function closeOrderForm(){
 
 function buildStageGrid(){
   var g=document.getElementById('order-stage-grid');
-  var h='';
-  for(var i=0;i<ORDER_STAGES.length;i++){
-    h+='<div class="order-stage-opt'+(ORDER_STAGES[i]===orderStage?' selected':'')+'" onclick="selOrderStage(\''+ORDER_STAGES[i]+'\')">'+ORDER_STAGES[i]+'</div>';
+  if(!g)return;
+  var list=orderStageList();
+  if(list.indexOf(orderStage)<0)orderStage=list[0]||orderStage;
+  var out='';
+  for(var i=0;i<list.length;i++){
+    out+='<div class="order-stage-opt'+(list[i]===orderStage?' selected':'')+'" onclick="selOrderStage(\''+jsStr(list[i])+'\')">'+h(list[i])+'</div>';
   }
-  g.innerHTML=h;
+  g.innerHTML=out;
 }
 
 function selOrderStage(stage){
@@ -3776,10 +4020,13 @@ function pickOrderClient(id,name){
 // === Save Order ===
 async function saveOrder(){
   dbg('[saveOrder] start',{orderEditId,orderClientId,orderStage,currentCompanyId});
-  if(!orderClientId){showToast('请选择关联客户');return}
-  var number=document.getElementById('of-number').value.trim();if(!number){showToast('请输入订单编号');return}
-  var amountStr=document.getElementById('of-amount').value.trim();
-  if(!amountStr||isNaN(parseFloat(amountStr))||parseFloat(amountStr)<0){showToast('请输入有效金额');return}
+  vfClearAll(document.getElementById('order-form-modal'));
+  if(!orderClientId){vfMark(document.getElementById('of-client-search'),'请先选择关联客户');vfScrollToError();showToast('请选择关联客户');return}
+  var numEl=document.getElementById('of-number');
+  var number=numEl.value.trim();if(!number){vfMark(numEl,'请填写订单编号');vfScrollToError();return}
+  var amtEl=document.getElementById('of-amount');
+  var amountStr=amtEl.value.trim();
+  if(!amountStr||isNaN(parseFloat(amountStr))||parseFloat(amountStr)<0){vfMark(amtEl,'请填写有效金额（不小于 0）');vfScrollToError();return}
   var amount=parseFloat(amountStr);
   var amountEnc=await encryptAmount(amount.toFixed(2));
 
@@ -3816,6 +4063,7 @@ async function saveOrder(){
 
 async function loadOrders(){
   try{
+    if(currentCompanyId)loadConfigCenter();
     var {data,error}=await sb.from('orders').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
     if(error){console.error('loadOrders:',error);return}
     allOrders=(data||[]);
