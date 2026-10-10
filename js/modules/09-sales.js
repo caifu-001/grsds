@@ -202,7 +202,7 @@ async function confirmDeleteQuote(){if(qeditId)confirmDialog('确定删除该报
 
 // ── Contracts ──
 async function loadContracts(){
-  var grid=document.getElementById('contract-grid');grid.innerHTML='<div class="loading"><span class="spinner"></span>加载中...</div>';
+  var grid=document.getElementById('contract-grid');grid.innerHTML=skCards(4);
   var {data,error}=await sb.from('contracts').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
   if(error){grid.innerHTML='<div class="empty">加载失败</div>';return}
   allContracts=data||[];
@@ -360,7 +360,7 @@ async function confirmDeleteContract(){if(ceditId)confirmDialog('确定删除该
 
 // ── Payments ──
 async function loadPayments(){
-  var grid=document.getElementById('payment-grid');grid.innerHTML='<div class="loading"><span class="spinner"></span>加载中...</div>';
+  var grid=document.getElementById('payment-grid');grid.innerHTML=skCards(4);
   var {data,error}=await sb.from('payments').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
   if(error){grid.innerHTML='<div class="empty">加载失败</div>';return}
   allPayments=data||[];
@@ -485,7 +485,7 @@ function switchServiceTab(sub){
 
 // ── Tickets ──
 async function loadTickets(){
-  var grid=document.getElementById('ticket-grid');grid.innerHTML='<div class="loading"><span class="spinner"></span>加载中...</div>';
+  var grid=document.getElementById('ticket-grid');grid.innerHTML=skCards(4);
   var{data,error}=await sb.from('service_tickets').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
   if(error){grid.innerHTML='<div class="empty">加载失败: '+h(error.message)+'</div>';return}
   allTickets=data||[];renderTickets();

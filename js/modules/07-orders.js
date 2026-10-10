@@ -1001,7 +1001,7 @@ function switchNotifTab(sub){
 
 async function loadNotifs(){
   var el=document.getElementById('notif-list');
-  el.innerHTML='<div class="empty-state">加载中...</div>';
+  el.innerHTML=skRows(5);
   if(!currentUser)return;
   var d1=Date.now();
   var {data:notifs,error}=await sb.from('notifications').select('*').eq('user_id',currentUser.id).order('created_at',{ascending:false}).limit(50);
@@ -1064,7 +1064,7 @@ async function logActivity(action,entityType,entityId,entityName,details){
 
 async function loadMyInvitations(){
   var el=document.getElementById('invitation-list');
-  el.innerHTML='<div class="empty-state">加载中...</div>';
+  el.innerHTML=skRows(5);
   if(!currentUser)return;
   dbg('loadMyInvitations: email=',currentUser.email);
   var resp=await sb.from('invitations').select('*').eq('to_email',currentUser.email).eq('status','pending').order('created_at',{ascending:false});
@@ -1129,7 +1129,7 @@ async function rejectInvitation(id){
 
 async function loadActivityLogs(){
   var el=document.getElementById('activity-list');
-  el.innerHTML='<div class="empty-state">加载中...</div>';
+  el.innerHTML=skRows(5);
   if(!currentUser)return;
   var {data:logs}=await sb.from('activity_logs').select('*').eq('company_id',currentCompanyId).order('created_at',{ascending:false}).limit(80);
   if(logs&&logs.length){

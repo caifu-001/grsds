@@ -470,8 +470,8 @@ async function loadClients(){
   try{
   var grid=document.getElementById('client-grid');
   var statsBar=document.getElementById('stats-bar');
-  grid.innerHTML='<div class="loading"><span class="spinner"></span>加载中...</div>';
-  statsBar.innerHTML='';
+  grid.innerHTML=skCards(6);
+  statsBar.innerHTML=skStatCards(3);
   try{
     var clientsData,clientsError;
     // 非管理员用 callAdmin 绕过 RLS，再前端 canAccess 过滤

@@ -40,3 +40,46 @@ let loginMode='login',currentUser=null,allClients=[],allContacts=[],allCompanies
 let currentCompanyId=null,currentCompanyRole='member',currentCompanyName='',allMyCompanies=[];
 // 显式声明：原先为隐式全局变量，登录前被读取会抛 ReferenceError
 var isSuperAdmin=false;
+
+// === 加载占位：骨架屏 ===
+// 统一各列表的「加载中...」纯文字占位为骨架屏。返回的是可直接塞进已有网格/列表容器的 HTML 片段。
+function skCards(n){
+  var s='';
+  for(var i=0;i<n;i++){
+    s+='<div class="sk-card">'
+      +'<div class="sk sk-line" style="width:34%"></div>'
+      +'<div class="sk sk-line" style="width:72%;height:16px;margin-top:14px"></div>'
+      +'<div class="sk sk-line" style="width:56%"></div>'
+      +'<div class="sk sk-line" style="width:90%"></div>'
+      +'<div class="sk sk-line" style="width:66%"></div>'
+      +'<div class="sk sk-line" style="width:78%"></div>'
+      +'<div class="sk sk-line" style="width:44%"></div>'
+      +'</div>';
+  }
+  return s;
+}
+function skStatCards(n){
+  var s='';
+  for(var i=0;i<n;i++){
+    s+='<div class="stat-card sk-stat">'
+      +'<div class="sk sk-line" style="width:46px;height:24px;margin:2px auto 9px"></div>'
+      +'<div class="sk sk-line" style="width:58px;margin:0 auto"></div>'
+      +'</div>';
+  }
+  return s;
+}
+function skRows(n){
+  var s='';
+  for(var i=0;i<n;i++){
+    s+='<div class="sk-row"><div class="sk sk-avatar"></div><div class="sk-grow">'
+      +'<div class="sk sk-line" style="width:40%"></div>'
+      +'<div class="sk sk-line" style="width:68%"></div></div>'
+      +'<div class="sk sk-line sk-tail"></div></div>';
+  }
+  return s;
+}
+function skLines(n,widths){
+  var s='';
+  for(var i=0;i<n;i++){s+='<div class="sk sk-line" style="width:'+((widths&&widths[i])||'100%')+'"></div>'}
+  return s;
+}

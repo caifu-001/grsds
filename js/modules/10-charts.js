@@ -738,7 +738,7 @@ async function loadStockAlerts(){
 async function renderAlerts(){
   var el=document.getElementById('alert-list');if(!el)return;
   if(allAlerts.length===0){el.innerHTML='<div class="empty-state">暂无预警设置</div>';return}
-  el.innerHTML='<div class="loading"><span class="spinner"></span>加载中...</div>';
+  el.innerHTML=skRows(5);
   // 一次性取全部库存流水，取代「逐条预警 × 逐个仓库」的 N+1 查询
   var balMap={};
   try{

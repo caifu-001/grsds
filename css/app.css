@@ -195,6 +195,29 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
 .empty-icon{font-size:52px;margin-bottom:16px;opacity:.35;transition:opacity var(--transition)}
 .loading{display:flex;align-items:center;justify-content:center;padding:40px;color:var(--text3);font-size:14px}
 .loading .spinner{width:22px;height:22px;border:2.5px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite;margin-right:8px}
+
+/* ── 骨架屏（加载态统一形态） ──────────────────────────────
+   替代纯文字「加载中...」，让首屏在数据返回前就呈现最终布局的轮廓，
+   避免白屏与布局跳动。所有类名以 .sk 前缀，互不冲突。 */
+.sk{position:relative;overflow:hidden;background:var(--border-light);border-radius:var(--radius-sm)}
+.sk::after{content:'';position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.9),transparent);animation:skShimmer 1.5s ease-in-out infinite}
+@keyframes skShimmer{100%{transform:translateX(100%)}}
+.sk-line{height:11px;border-radius:var(--radius-full)}
+.sk-line+.sk-line{margin-top:9px}
+.sk-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;box-shadow:var(--shadow)}
+.sk-row{display:flex;align-items:center;gap:12px;padding:13px 2px;border-bottom:1px solid var(--border-light)}
+.sk-row:last-child{border-bottom:none}
+.sk-avatar{width:38px;height:38px;border-radius:50%;flex-shrink:0}
+.sk-grow{flex:1;min-width:0}
+.sk-tail{width:52px;flex-shrink:0}
+.stat-card.sk-stat{cursor:default;pointer-events:none}
+/* 总览页：数据未就绪时不留大片空白 */
+.an-kpi-row:empty{min-height:96px;border:1px solid var(--border);background:var(--card);border-radius:var(--radius-lg);display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:13px}
+.an-kpi-row:empty::after{content:'数据加载中…'}
+.an-chart-wrap:has(>canvas:not([width])){display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:13px}
+.an-chart-wrap:has(>canvas:not([width]))>canvas{display:none}
+.an-chart-wrap:has(>canvas:not([width]))::after{content:'数据加载中…'}
+@media(prefers-reduced-motion:reduce){.sk::after{animation:none;background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent)}}
 .hidden{display:none !important}
 .back-row{padding:8px 16px;background:#fff;border-bottom:1px solid var(--border)}
 #admin-view.hidden{display:block!important;position:static!important;height:0!important;overflow:visible!important}#admin-view.hidden>.admin-tabs{display:none!important}#admin-view.hidden>.admin-panel{display:none!important}
