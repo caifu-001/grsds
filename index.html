@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
 
   <script>(function(){var w=window.innerWidth,d=document.documentElement;d.setAttribute("data-device",w<768?"mobile":w<1024?"tablet":"desktop");window.addEventListener("resize",function(){var w2=window.innerWidth;d.setAttribute("data-device",w2<768?"mobile":w2<1024?"tablet":"desktop")})})();</script>
 <title>客户管理系统</title>
@@ -17,8 +17,9 @@
 </head>
 <body>
 
+<!-- 全局错误捕获：生产环境只写控制台，仅本地调试才显示横幅（避免把 JS 报错原文暴露给终端用户） -->
 <div id="global-error-banner" style="display:none;background:#e74c3c;color:#fff;padding:10px 16px;font-size:13px;position:fixed;top:0;left:0;right:0;z-index:99999;text-align:center;white-space:pre-wrap;line-height:1.4"></div>
-<script>(function(){var el=document.getElementById('global-error-banner');window.onerror=function(m,u,l,c,e){el.style.display='block';el.innerHTML='🔴 JS ERROR: '+(m||'')+'<br><small>line '+l+':'+c+' | '+(u||'').slice(((u||'').lastIndexOf('/')+1))+'</small>';if(e&&e.stack)el.innerHTML+='<br><small>'+h(e.stack.split('\n').slice(0,3).join('<br>'))+'</small>'};window.addEventListener('unhandledrejection',function(ev){el.style.display='block';el.innerHTML='🔴 PROMISE REJECTION: '+h(ev.reason)});console.error=function(){el.style.display='block';el.innerHTML='🔴 console.error: '+h(Array.from(arguments).join(' '))}})();</script>
+<script>(function(){var el=document.getElementById('global-error-banner');var DEBUG=location.protocol==='file:'||/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);function show(kind,txt){if(!DEBUG||!el)return;el.style.display='block';el.innerHTML='🔴 '+kind+': '+String(txt);}window.onerror=function(m,u,l,c){show('JS ERROR',(m||'')+' <small>line '+l+':'+c+'</small>');return false;};window.addEventListener('unhandledrejection',function(ev){show('PROMISE REJECTION',(ev&&ev.reason&&ev.reason.message)||ev.reason||'');});})();</script>
 
 <!-- Login -->
 <!-- 更多下拉菜单 -->
@@ -336,7 +337,7 @@
     <div class="search-wrap"><input id="admin-emp-search" placeholder="搜索员工..." oninput="renderAdminEmployees()"></div>
     <select id="emp-dept-filter" onchange="renderAdminEmployees()" style="padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:13px;background:var(--card);color:var(--text)"><option value="">全部部门</option></select>
     <select id="emp-status-filter" onchange="renderAdminEmployees()" style="padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:13px;background:var(--card);color:var(--text)"><option value="">全部状态</option><option value="active">在职</option><option value="inactive">离职</option></select>
-    <button class="btn-save" style="padding:8px 16px;font-size:13px" onclick="openEmployeeForm()">+ 添加员工</button>
+    <button class="btn-save" style="padding:8px 16px;font-size:13px" onclick="openAddUserForm()">+ 添加员工</button>
     <button class="btn-save" style="padding:8px 16px;font-size:13px;background:var(--accent2,var(--accent))" onclick="openInviteModal()">✉ 邀请入职</button>
    </div>
    <div id="admin-emp-list"></div>
@@ -1353,7 +1354,7 @@
     <option value="all">全部状态</option><option value="planned">计划中</option><option value="completed">已完成</option><option value="cancelled">已取消</option>
    </select>
    <div class="search-wrap"><input id="visit-search" placeholder="搜索回访..." oninput="renderVisits()"></div>
-   <button class="btn-save" style="padding:8px 16px;font-size:13px" onclick="openVisitForm()">+ 新建回访</button>
+   <button class="btn-save" style="padding:8px 16px;font-size:13px" onclick="openSalesVisitForm()">+ 新建回访</button>
    <button class="btn-sm" style="background:#fff;border:1px solid var(--border)" onclick="openVisitTaskForm()">📅 回访任务</button>
   </div>
   <!-- Visit tasks alert bar -->
@@ -1499,7 +1500,6 @@
 <!-- ===== Projects View ===== -->
 <div id="projects-view" class="hidden">
  <div id="project-list-panel" class="project-panel">
-  <div style="background:#ffeb3b;padding:8px 12px;margin-bottom:8px;border-radius:4px;font-size:13px;font-weight:700">DIAG: panel visible - JS will replace</div>
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
    <h3 style="font-size:16px;font-weight:700;margin:0">项目管理</h3>
    <div class="pd-status-tabs" style="display:flex;gap:2px;background:var(--bg);border-radius:6px;padding:2px;margin:0 12px">
@@ -1686,7 +1686,7 @@
     <div id="wb-panel-payment" class="hidden">
      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
       <h3 style="font-size:16px;font-weight:700;margin:0">💰 项目收款</h3>
-      <button class="btn-sm btn-sm-primary" onclick="openPaymentForm()">+ 新建收款</button>
+      <button class="btn-sm btn-sm-primary" onclick="wfOpenPaymentForm()">+ 新建收款</button>
      </div>
      <div id="wb-payment-list" style="display:flex;flex-direction:column;gap:8px"></div>
     </div>
@@ -1971,6 +1971,14 @@
 
   <!-- ── 经营总览 ── -->
   <div id="an-overview" class="an-panel">
+    <div id="birthday-section" class="an-table-card" style="display:none;margin-bottom:14px">
+      <h4>🎂 近期生日提醒（7 天内）</h4>
+      <div id="birthday-reminders"></div>
+    </div>
+    <div class="an-table-card" style="margin-bottom:14px">
+      <h4>⏰ 合同到期提醒</h4>
+      <div id="dash-reminders"><div class="empty-state">加载中...</div></div>
+    </div>
     <div class="an-kpi-row" id="an-ov-kpi"></div>
     <div class="an-chart-row">
       <div class="an-chart-card"><h4>📈 近12个月收入趋势</h4><div class="an-chart-wrap"><canvas id="an-ov-revenue-trend"></canvas></div></div>
@@ -2073,7 +2081,6 @@
   </div>
 </div>
 
-<div id="script-loaded-check" style="padding:10px 16px;background:#2ecc71;color:#fff;font-size:13px;position:fixed;bottom:0;left:0;right:0;z-index:99998;text-align:center">✅ 主脚本未加载或已崩溃 — 此横幅应该被 JS 移除</div>
 <script>
 // Supabase
 const SUPABASE_URL='https://jyefbatmmbelrhhzsgva.supabase.co';
@@ -2091,8 +2098,19 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 <button class="fab" id="main-fab" onclick="handleFab()">+</button>
 
 <div id="leads-view" class="hidden">
- <div class="stats-bar" id="leads-stats-bar"></div>
+  <div class="stats-bar" id="leads-stats-bar"></div>
+  <div class="toolbar" style="position:static">
+    <select id="lead-pool-filter" onchange="renderPoolLeads()"><option value="all">全部状态</option><option value="new">新线索</option><option value="assigned">已分配</option><option value="contacted">已联系</option><option value="converted">已转化</option><option value="recycled">已回收</option><option value="junk">无效</option></select>
+    <div class="search-wrap"><input id="lead-pool-search" placeholder="搜索线索..." oninput="renderPoolLeads()"></div>
   </div>
+  <div style="display:flex;gap:6px;padding:6px 16px 10px">
+    <button class="btn-sm btn-sm-primary" onclick="leadFormSource='pool';openLeadForm()">＋ 新线索</button>
+    <button class="btn-sm" style="background:#fff;color:var(--text);border:1px solid var(--border)" onclick="openLeadImport()">📥 批量导入</button>
+    <button class="btn-sm" style="background:#fff;color:var(--danger);border:1px solid var(--danger)" onclick="recycleStale()">♻ 回收超时</button>
+  </div>
+  <div class="client-grid" id="lead-grid"></div>
+  <div class="empty hidden" id="lead-empty"><div class="empty-icon">🎯</div>暂无线索<br><span style="font-size:12px;color:var(--text3)">点击「+ 新线索」开始添加</span></div>
+</div>
 <!-- ══════════ 外勤管理 ══════════ -->
   <div id="fieldwork-view" class="hidden">
 
@@ -2205,17 +2223,6 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
   
   
   
- <div class="toolbar" style="position:static">
-  <select id="lead-pool-filter" onchange="renderPoolLeads()"><option value="all">全部状态</option><option value="new">新线索</option><option value="assigned">已分配</option><option value="contacted">已联系</option><option value="converted">已转化</option><option value="recycled">已回收</option><option value="junk">无效</option></select>
-  <div class="search-wrap"><input id="lead-pool-search" placeholder="搜索线索..." oninput="renderPoolLeads()"></div>
- </div>
- <div style="display:flex;gap:6px;padding:6px 16px 10px">
-  <button class="btn-sm btn-sm-primary" onclick="leadFormSource='pool';openLeadForm()">＋ 新线索</button>
-  <button class="btn-sm" style="background:#fff;color:var(--text);border:1px solid var(--border)" onclick="openLeadImport()">📥 批量导入</button>
-  <button class="btn-sm" style="background:#fff;color:var(--danger);border:1px solid var(--danger)" onclick="recycleStale()">♻ 回收超时</button>
- </div>
- <div class="client-grid" id="lead-grid"></div>
- <div class="empty hidden" id="lead-empty"><div class="empty-icon">🎯</div>暂无线索<br><span style="font-size:12px;color:var(--text3)">点击「+ 新线索」开始添加</span></div>
 </div>
 
 
@@ -2634,11 +2641,11 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
   </div>
   <div class="form-row">
    <div class="form-group"><label>预算金额</label><input type="number" id="pf-budget" placeholder="万元" step="0.01"></div>
-   <div class="form-group"><label>状态</label><select id="pf-status"><option value="planning">规划中</option><option value="in_progress">进行中</option><option value="completed">已完成</option><option value="suspended">已暂停</option></select></div>
+   <div class="form-group"><label>状态</label><select id="pjf-status"><option value="planning">规划中</option><option value="in_progress">进行中</option><option value="completed">已完成</option><option value="suspended">已暂停</option></select></div>
   </div>
   <div class="form-group"><label>结论 *</label><select id="pf-conclusion" onchange="onConclusionChange()"><option value="">请选择</option><option value="approved">✓ 认可商机，进入下一步</option><option value="rejected">✗ 不认可，转步骤46结束</option></select></div>
   <div class="form-group" id="pf-conclusion-notes-group" style="display:none"><label>结论说明</label><textarea id="pf-conclusion-notes" placeholder="决策层分析验证详情，为什么认可/不认可..." rows="3"></textarea></div>
-  <div class="form-group"><label>备注</label><textarea id="pf-notes" placeholder="备注信息..." rows="2"></textarea></div>
+  <div class="form-group"><label>备注</label><textarea id="pjf-notes" placeholder="备注信息..." rows="2"></textarea></div>
   <div class="modal-actions">
    <button class="btn-delete hidden" id="opp-btn-delete" onclick="deleteOpp()">删除商机</button>
    <button class="btn-cancel" onclick="closeOppForm()">取消</button>
