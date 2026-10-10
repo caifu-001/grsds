@@ -1044,6 +1044,10 @@ function refCt(){
         <div class="form-group"><label>职务</label><input value="'+h(co.position||'')+'" oninput="upCt('+i+',\'position\',this.value)" placeholder="职位"></div>\
         <div class="form-group"><label>办公室房号</label><input value="'+h(co.room||'')+'" oninput="upCt('+i+',\'room\',this.value)" placeholder="办公室房号"></div>\
       </div>\
+      <div class="form-row">\
+        <div class="form-group"><label>录入时间</label><input type="date" value="'+h(co.entered_date||'')+'" oninput="upCt('+i+',\'entered_date\',this.value)"></div>\
+        <div class="form-group"></div>\
+      </div>\
       <div class="form-group"><label>手机</label>'+ph+'</div>\
       <div class="form-group"><label>座机</label>'+ll+'</div>\
       <div class="form-group"><label>邮箱</label>'+em+'</div>\
@@ -1054,7 +1058,7 @@ function refCt(){
   for(var j=0;j<pis.length;j++)pis[j].addEventListener('input',function(){this.value=this.value.replace(/\s+/g,'')});
 }
 // global helpers for onclick
-var addContact=function(){formContacts.push({id:'t'+Date.now()+Math.random().toString(36).slice(2,6),name:'',dept:'',position:'',phones:[''],landlines:[''],emails:[''],room:'',_new:true});refCt()};
+var addContact=function(){formContacts.push({id:'t'+Date.now()+Math.random().toString(36).slice(2,6),name:'',dept:'',position:'',phones:[''],landlines:[''],emails:[''],room:'',entered_date:todayLocalStr(),_new:true});refCt()};
 var rmCt=function(i){formContacts.splice(i,1);refCt()};
 var upCt=function(i,f,v){if(i>=0&&i<formContacts.length)formContacts[i][f]=v};
 var upCtPh=function(i,p,v){if(formContacts[i]&&formContacts[i].phones)formContacts[i].phones[p]=(v||'').replace(/\s+/g,'')};
@@ -1154,6 +1158,7 @@ async function openForm(id){
       }
       formProjects=projs;
       for(var pi=0;pi<projs.length;pi++)addProjectEntry(projs[pi]);
+      sortProjectEntriesByBiddingDate();
       document.getElementById('f-address').value=c.address||'';
       document.getElementById('f-notes').value=c.notes||'';
       setSelectedTypes(parseTypes(c.type));
@@ -1301,6 +1306,30 @@ function renumberProjects(){
   var entries=document.querySelectorAll('#project-list .project-entry');
   for(var i=0;i<entries.length;i++)entries[i].querySelector('.pe-num').textContent='项目 '+(i+1);
 }
+// === 招标日期排序 / 录入时间辅助 ===
+function todayLocalStr(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+// 招标日期倒序：日期越新越靠前；空日期排最后；两者都空保持原序
+function cmpBiddingDateDesc(a,b){
+  var da=(a||'').toString().trim(),db=(b||'').toString().trim();
+  if(!da&&!db)return 0;
+  if(!da)return 1;
+  if(!db)return -1;
+  return db<da?-1:(db>da?1:0);
+}
+// 把「近期项目」录入框按招标日期倒序重排
+function sortProjectEntriesByBiddingDate(){
+  var list=document.getElementById('project-list');
+  if(!list)return;
+  var entries=[].slice.call(list.querySelectorAll('.project-entry'));
+  if(entries.length<2)return;
+  entries.sort(function(x,y){
+    var dx=(x.querySelector('.pe-bidding-date')||{}).value||'';
+    var dy=(y.querySelector('.pe-bidding-date')||{}).value||'';
+    return cmpBiddingDateDesc(dx,dy);
+  });
+  for(var i=0;i<entries.length;i++)list.appendChild(entries[i]);
+  renumberProjects();
+}
 
 async function saveClient(){
   if(!selTypes.length){document.getElementById('type-err').textContent='请选择至少一个客户属性';setTimeout(function(){document.getElementById('type-err').textContent=''},3000);return}
@@ -1391,6 +1420,8 @@ async function saveClient(){
     var pnotes=(e.querySelector('.pe-notes')||{}).value||'';
     if(pn||pb)projectsArr.push({project_name:pn,bidding_date:pd,bidder_name:pb,bidder_phone:pbp,bidder_company:pbc,bid_amount:pba,client_owner:pco,notes:pnotes});
   }
+  // 统一按招标日期倒序落库，保证表单/卡片/详情顺序一致（日期越新越靠前）
+  projectsArr.sort(function(x,y){return cmpBiddingDateDesc(x.bidding_date,y.bidding_date)});
   var fp=projectsArr.length>0?projectsArr[0].project_name:'';
   // Collect new fields
   var fIndustry=document.getElementById('f-industry');
@@ -1455,7 +1486,8 @@ async function saveClient(){
     var cd={
       client_id:clientId,
       name:co.name||'',dept:co.dept||'',position:co.position||'',
-      phone:JSON.stringify(phones.length?phones:['']),room:co.room||'',email:JSON.stringify(emails.length?emails:[''])
+      phone:JSON.stringify(phones.length?phones:['']),room:co.room||'',email:JSON.stringify(emails.length?emails:['']),
+      entered_date:co.entered_date||null
     };
     if(co._new)cd.user_id=currentUser.id;
     if(landlines.length>0)cd.landline=JSON.stringify(landlines);
@@ -1463,11 +1495,14 @@ async function saveClient(){
     if(co._new){
       cd.company_id=currentCompanyId;
       var {data:nc,error}=await sb.from('contacts').insert(cd).select('id');
+      // 容错：若数据库尚未新增 entered_date 列，去掉该字段重试一次，避免联系人保存被阻断
+      if(error&&/entered_date/.test(error.message||'')){console.warn('[save contact] entered_date 列缺失，已降级保存');delete cd.entered_date;var _r2=await sb.from('contacts').insert(cd).select('id');nc=_r2.data;error=_r2.error;}
       if(error){showToast('新增联系人失败: '+error.message);console.error('contact insert:',error);return}
       if(nc&&nc.length) savedIds.push(nc[0].id); else {showToast('新增联系人异常(无返回ID)');console.error('contact insert empty data:',nc);return}
     }else{
       cd.client_id=clientId; // ensure contact stays with this client
       var {error:upErr}=await sb.from('contacts').update(cd).eq('id',co.id);
+      if(upErr&&/entered_date/.test(upErr.message||'')){console.warn('[save contact] entered_date 列缺失，已降级保存');delete cd.entered_date;upErr=(await sb.from('contacts').update(cd).eq('id',co.id)).error;}
       if(upErr){showToast('更新联系人失败: '+upErr.message);console.error('contact update:',upErr,'id:',co.id);return}
       savedIds.push(co.id);
     }
@@ -8001,7 +8036,8 @@ function renderClient360Contacts(c){
       if(phs.length&&phs[0])html+='<span>📞 '+h(phs.join(' / '))+'</span>';
       if(lls.length&&lls[0])html+='<span>🖥 '+h(lls.join(' / '))+'</span>';
       if(ems.length&&ems[0])html+='<span>📧 '+h(ems.join(' / '))+'</span>';
-      html+='</div><div class="c360-contact-badges">'+bd+rel+'</div></div>';
+      var ed=co.entered_date?'<span style="font-size:11px;color:var(--text3)">📝 录入时间: '+h(String(co.entered_date).slice(0,10))+'</span>':'';
+      html+='</div><div class="c360-contact-badges">'+bd+rel+ed+'</div></div>';
     }
   }
   document.getElementById('c360-body').innerHTML=html;

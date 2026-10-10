@@ -660,7 +660,7 @@
   <div class="section-title">📝 客户信息</div>
   <div class="form-group" style="position:relative"><label>客户名称 *</label><input id="f-name" placeholder="公司/单位名称" autocomplete="off" oninput="onClientNameInput()" onfocus="onClientNameInput()" onblur="setTimeout(function(){document.getElementById('name-suggestions').classList.add('hidden')},200)" onkeydown="onNameKeydown(event)"><div class="name-suggestions hidden" id="name-suggestions"></div></div>
   <div class="projects-section">
-   <div class="ps-header"><label>近期项目</label><button type="button" class="btn-add-project" onclick="addProjectEntry()">+ 添加项目</button></div>
+   <div class="ps-header"><label>近期项目</label><span style="display:flex;gap:6px;align-items:center;flex-shrink:0"><button type="button" class="btn-add-project" onclick="sortProjectEntriesByBiddingDate()" title="按招标日期倒序（日期越新越靠前）">⇅ 按招标日期排序</button><button type="button" class="btn-add-project" onclick="addProjectEntry()">+ 添加项目</button></span></div>
    <div id="project-list"></div>
   </div>
   <div class="form-group"><label>客户地址</label><input id="f-address" placeholder="详细地址"></div>
