@@ -338,7 +338,7 @@ function bulkApplyAttrs(){
     var overlay=document.getElementById('bulk-type-overlay');if(overlay)overlay.remove();
     (async function(){
       showToast('正在更新 '+ids.length+' 个客户...');
-      var failed=0;
+      var failed=0,okCount=0,lastErr='';
       for(var i=0;i<ids.length;i++){
         var upd={};
         for(var k in scalar)upd[k]=scalar[k];
@@ -352,13 +352,24 @@ function bulkApplyAttrs(){
           upd.type=JSON.stringify(arr);
         }
         upd.updated_at=new Date().toISOString();
-        var res=await sb.from('clients').update(upd).eq('id',ids[i]);
-        if(res&&res.error)failed++;
+        // 直连写入受 RLS 行级策略约束：客户若非当前用户创建，update 会命中 0 行且不报错。
+        // 必须带 select('id') 取回真实受影响行，否则「静默 0 行」会被误判为成功。
+        var res=await sb.from('clients').update(upd).eq('id',ids[i]).select('id');
+        var hit=(res&&!res.error&&Array.isArray(res.data))?res.data.length:0;
+        if(!hit){
+          // 未命中：改用与读取链路一致的代理通道（非管理员的读取本就通过 callAdmin 绕过 RLS）。
+          // admin-proxy 会自动追加 company_id 过滤，不会跨公司越权。
+          var pr=await callAdmin('update','clients',{payload:upd,filters:[{col:'id',op:'eq',val:ids[i]}]});
+          if(pr&&!pr.error)hit=Array.isArray(pr.data)?pr.data.length:1;
+          else lastErr=(pr&&pr.error&&pr.error.message)||(res&&res.error&&res.error.message)||lastErr;
+        }
+        if(hit)okCount++;else failed++;
       }
       clientSel={};
       await loadClients();
-      showToast(failed?('完成，'+failed+' 个失败（'+(failed===ids.length?'权限或网络问题':'部分记录')+'）'):('已更新 '+ids.length+' 个客户'));
-      if(failed)console.error('[bulkApplyAttrs] failed rows:',failed);
+      if(failed)showToast('更新完成：成功 '+okCount+' / 失败 '+failed+(lastErr?'（'+lastErr+'）':''),'error');
+      else showToast('已更新 '+ids.length+' 个客户');
+      if(failed)console.error('[bulkApplyAttrs] failed '+failed+' of '+ids.length,lastErr);
     })();
   });
 }
