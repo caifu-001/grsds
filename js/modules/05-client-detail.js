@@ -233,32 +233,77 @@ function renderClientSelBar(){
     +'<button onclick="clientSelAllPage()">全选本页</button>'
     +'<button onclick="clientSelAllFiltered()">全选结果</button>'
     +'<button onclick="clientSelClear()" '+(n?'':'disabled')+'>清除</button>'
-    +'<button onclick="bulkSetClientType()" '+(n?'':'disabled')+'>批量改类型</button>'
+    +'<button onclick="bulkEditClientAttrs()" '+(n?'':'disabled')+'>批量改属性</button>'
     +'<button onclick="bulkExportClients()" '+(n?'':'disabled')+'>导出选中</button>'
     +'<button class="danger" onclick="bulkDeleteClients()" '+(n?'':'disabled')+'>批量删除</button>';
 }
 
-// 批量改类型（勾选式弹窗）
+// 批量修改客户属性（勾选式弹窗）
+// type 为数组型（追加/覆盖），其余为标量枚举；未勾选的属性一律保持原样。
 var _bulkTypes=[];
-function bulkSetClientType(){
-  if(!clientSelCount()){showToast('请先选择客户','error');return}
-  var types=allTypes();_bulkTypes=[];
-  var chips='';
+var _BULK_ATTRS=[
+  {key:'grade',label:'客户分级',opts:[['A','A 级'],['B','B 级'],['C','C 级']]},
+  {key:'industry',label:'行业',opts:['信息技术','制造业','建筑业','金融','教育','医疗','政府','能源','零售','物流','房地产','其他']},
+  {key:'scale',label:'规模',opts:['小微企业','中小企业','中型企业','大型企业','集团企业']},
+  {key:'source',label:'来源',opts:['自主开发','客户介绍','展会','网络推广','电话营销','合作伙伴','线索转化','其他']},
+  {key:'credit_rating',label:'信用等级',opts:['AAA','AA','A','BBB','BB','B','C']}
+];
+function bulkEditClientAttrs(preselect){
+  var ids=Object.keys(clientSel);
+  if(!ids.length){showToast('请先选择客户','error');return}
+  _bulkTypes=[];
+  var types=allTypes(),chips='';
   for(var i=0;i<types.length;i++){
     chips+='<div class="type-chk" id="bt-'+i+'" onclick="bulkToggleType('+i+')">'+escHtml(types[i])+'</div>';
   }
+  var rows='';
+  rows+='<div class="bulk-row" id="brow-type">'
+    +'<label class="bulk-head"><input type="checkbox" id="bc-type" onchange="bulkRowToggle(\'type\')"> 客户类型</label>'
+    +'<div class="bulk-val">'
+    +'<div id="bulk-type-grid" class="bulk-chips disabled">'+chips+'</div>'
+    +'<div class="bulk-mode disabled" id="bulk-type-mode-box">'
+    +'<label><input type="radio" name="bulkTypeMode" value="append" checked disabled> 追加（保留原有类型）</label>'
+    +'<label><input type="radio" name="bulkTypeMode" value="replace" disabled> 覆盖（替换为所选类型）</label>'
+    +'</div></div></div>';
+  for(var a=0;a<_BULK_ATTRS.length;a++){
+    var f=_BULK_ATTRS[a],oh='<option value="">（清空）</option>';
+    for(var o=0;o<f.opts.length;o++){
+      var it=f.opts[o],v=Array.isArray(it)?it[0]:it,t=Array.isArray(it)?it[1]:it;
+      oh+='<option value="'+escHtml(v)+'">'+escHtml(t)+'</option>';
+    }
+    rows+='<div class="bulk-row" id="brow-'+f.key+'">'
+      +'<label class="bulk-head"><input type="checkbox" id="bc-'+f.key+'" onchange="bulkRowToggle(\''+f.key+'\')"> '+f.label+'</label>'
+      +'<div class="bulk-val"><select id="bv-'+f.key+'" disabled>'+oh+'</select></div>'
+      +'</div>';
+  }
   var old=document.getElementById('bulk-type-overlay');if(old)old.remove();
   var m=document.createElement('div');m.className='confirm-overlay';m.id='bulk-type-overlay';m.style.zIndex='11000';
-  m.innerHTML='<div class="confirm-box" style="max-width:440px;max-height:82vh;overflow-y:auto">'
-    +'<h3 style="margin:0 0 6px;font-size:16px">批量设置客户类型</h3>'
-    +'<p style="font-size:12px;color:var(--text3);margin:0 0 12px">已选 '+clientSelCount()+' 个客户。勾选类型后选择「追加」或「覆盖」。</p>'
-    +'<div id="bulk-type-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:8px">'+chips+'</div>'
+  m.innerHTML='<div class="confirm-box" style="max-width:540px;max-height:84vh;overflow-y:auto">'
+    +'<h3 style="margin:0 0 6px;font-size:16px">批量修改客户属性</h3>'
+    +'<p style="font-size:12px;color:var(--text3);margin:0 0 14px">已选 '+ids.length+' 个客户。勾选要修改的属性并设置新值，未勾选的属性保持原样。</p>'
+    +'<div class="bulk-rows">'+rows+'</div>'
     +'<div class="btns" style="margin-top:16px;display:flex;gap:10px">'
     +'<button style="flex:1;padding:11px;border:none;border-radius:var(--radius);font-size:14px;font-weight:600;cursor:pointer;background:var(--border);color:var(--text)" onclick="document.getElementById(\'bulk-type-overlay\').remove()">取消</button>'
-    +'<button style="flex:1;padding:11px;border:none;border-radius:var(--radius);font-size:14px;font-weight:600;cursor:pointer;background:var(--primary);color:#fff" onclick="bulkApplyClientTypes(false)">追加</button>'
-    +'<button style="flex:1;padding:11px;border:none;border-radius:var(--radius);font-size:14px;font-weight:600;cursor:pointer;background:var(--danger);color:#fff" onclick="bulkApplyClientTypes(true)">覆盖</button>'
+    +'<button style="flex:2;padding:11px;border:none;border-radius:var(--radius);font-size:14px;font-weight:600;cursor:pointer;background:var(--primary);color:#fff" onclick="bulkApplyAttrs()">应用修改</button>'
     +'</div></div>';
   document.body.appendChild(m);
+  if(preselect&&preselect.type){var cb=document.getElementById('bc-type');if(cb){cb.checked=true;bulkRowToggle('type')}}
+}
+// 兼容旧入口「批量改类型」：打开同一弹窗并预选类型行
+function bulkSetClientType(){bulkEditClientAttrs({type:true})}
+// 勾选/取消某一行属性，联动其值控件的可用状态
+function bulkRowToggle(key){
+  var cb=document.getElementById('bc-'+key);if(!cb)return;
+  var on=cb.checked,row=document.getElementById('brow-'+key);
+  if(row)row.classList.toggle('on',on);
+  if(key==='type'){
+    var grid=document.getElementById('bulk-type-grid');if(grid)grid.classList.toggle('disabled',!on);
+    var box=document.getElementById('bulk-type-mode-box');if(box)box.classList.toggle('disabled',!on);
+    var radios=document.getElementsByName('bulkTypeMode');
+    for(var i=0;i<radios.length;i++)radios[i].disabled=!on;
+  }else{
+    var sel=document.getElementById('bv-'+key);if(sel)sel.disabled=!on;
+  }
 }
 function bulkToggleType(i){
   var el=document.getElementById('bt-'+i);if(!el)return;
@@ -267,33 +312,53 @@ function bulkToggleType(i){
   if(idx>=0)_bulkTypes.splice(idx,1);else _bulkTypes.push(label);
   el.classList.toggle('checked',_bulkTypes.indexOf(label)>=0);
 }
-function bulkApplyClientTypes(overwrite){
-  var types=_bulkTypes.slice();
-  if(!types.length){showToast('请至少选择一种类型','error');return}
+function bulkApplyAttrs(){
   var ids=Object.keys(clientSel);
   if(!ids.length){showToast('请先选择客户','error');return}
-  uiConfirm((overwrite?'覆盖':'追加')+'设置 '+ids.length+' 个客户类型为「'+types.join('、')+'」？',{danger:false,okText:'确定'}).then(function(ok){
+  var scalar={},desc=[],typeCfg=null;
+  var tcb=document.getElementById('bc-type');
+  if(tcb&&tcb.checked){
+    if(!_bulkTypes.length){showToast('请至少选择一种客户类型','error');return}
+    var mr=document.querySelector('input[name="bulkTypeMode"]:checked');
+    var mode=mr?mr.value:'append';
+    typeCfg={mode:mode,vals:_bulkTypes.slice()};
+    desc.push('客户类型'+(mode==='replace'?'（覆盖）':'（追加）')+' → '+_bulkTypes.join('、'));
+  }
+  for(var a=0;a<_BULK_ATTRS.length;a++){
+    var f=_BULK_ATTRS[a],cb=document.getElementById('bc-'+f.key);
+    if(cb&&cb.checked){
+      var sel=document.getElementById('bv-'+f.key);
+      var v=sel?sel.value:'';
+      scalar[f.key]=v;desc.push(f.label+' → '+(v||'（清空）'));
+    }
+  }
+  if(!desc.length){showToast('请至少勾选一项要修改的属性','error');return}
+  uiConfirm('将把 '+ids.length+' 个客户的以下属性改为：'+desc.join('；')+'？',{danger:false,okText:'应用'}).then(function(ok){
     if(!ok)return;
     var overlay=document.getElementById('bulk-type-overlay');if(overlay)overlay.remove();
-    var updates=[];
-    for(var i=0;i<ids.length;i++){
-      var c=allClients.find(function(x){return x.id===ids[i]});if(!c)continue;
-      var cur=parseTypes(c.type);
-      var arr=overwrite?types.slice():cur.slice();
-      if(!overwrite){for(var k=0;k<types.length;k++){if(arr.indexOf(types[k])<0)arr.push(types[k])}}
-      updates.push({id:ids[i],type:JSON.stringify(arr)});
-    }
     (async function(){
-      showToast('正在更新 '+updates.length+' 个客户...');
+      showToast('正在更新 '+ids.length+' 个客户...');
       var failed=0;
-      for(var i=0;i<updates.length;i++){
-        var {error}=await sb.from('clients').update({type:updates[i].type}).eq('id',updates[i].id);
-        if(error)failed++;
+      for(var i=0;i<ids.length;i++){
+        var upd={};
+        for(var k in scalar)upd[k]=scalar[k];
+        if(typeCfg){
+          var c=null;
+          for(var ci=0;ci<allClients.length;ci++){if(allClients[ci]&&allClients[ci].id===ids[i]){c=allClients[ci];break}}
+          var arr=typeCfg.mode==='replace'?typeCfg.vals.slice():parseTypes(c?c.type:'[]');
+          if(typeCfg.mode!=='replace'){
+            for(var vi=0;vi<typeCfg.vals.length;vi++){if(arr.indexOf(typeCfg.vals[vi])<0)arr.push(typeCfg.vals[vi])}
+          }
+          upd.type=JSON.stringify(arr);
+        }
+        upd.updated_at=new Date().toISOString();
+        var res=await sb.from('clients').update(upd).eq('id',ids[i]);
+        if(res&&res.error)failed++;
       }
       clientSel={};
       await loadClients();
-      showToast(failed?('完成，'+failed+' 个失败（'+(failed===updates.length?'权限或网络问题':'部分记录')+'）'):('已更新 '+updates.length+' 个客户'));
-      if(failed)console.error('[bulkApplyClientTypes] failed rows:',failed);
+      showToast(failed?('完成，'+failed+' 个失败（'+(failed===ids.length?'权限或网络问题':'部分记录')+'）'):('已更新 '+ids.length+' 个客户'));
+      if(failed)console.error('[bulkApplyAttrs] failed rows:',failed);
     })();
   });
 }
