@@ -215,8 +215,8 @@ async function changeLifecycle(clientId,newStage){
   var c=allClients.find(function(x){return x.id===clientId});
   var fromStage=c?c.lifecycle_stage||'prospect':'prospect';
   if(fromStage===newStage){showToast('阶段未变化');return}
-  var {error}=await sb.from('clients').update({lifecycle_stage:newStage,updated_at:new Date().toISOString()}).eq('id',clientId);
-  if(error){showToast('变更失败: '+error.message);return}
+  var w=await safeWriteById('clients','update',{lifecycle_stage:newStage,updated_at:new Date().toISOString()},clientId);
+  if(w.hit===0){showToast('变更失败: '+(((w.error||{}).message)||'未命中任何行（可能无权修改该客户）'));return}
   await sb.from('lifecycle_logs').insert({company_id:currentCompanyId,client_id:clientId,from_stage:fromStage,to_stage:newStage,reason:reason||null,created_by:currentUser.id});
   // Update local data
   if(c){c.lifecycle_stage=newStage}
@@ -246,7 +246,7 @@ async function autoCheckLifecycle(clientId){
   }
   if(newStage!==(c.lifecycle_stage||'prospect')){
     var from=c.lifecycle_stage||'prospect';
-    await sb.from('clients').update({lifecycle_stage:newStage,updated_at:new Date().toISOString()}).eq('id',clientId);
+    await safeWriteById('clients','update',{lifecycle_stage:newStage,updated_at:new Date().toISOString()},clientId);
     await sb.from('lifecycle_logs').insert({company_id:currentCompanyId,client_id:clientId,from_stage:from,to_stage:newStage,reason:'自动检测',created_by:currentUser.id});
     c.lifecycle_stage=newStage;
   }
@@ -657,7 +657,7 @@ async function convertLeadToClient(id){
     if(l.industry&&!existing[0].industry)patch.industry=l.industry;
     if(l.scale)patch.scale=l.scale;
     if(l.source)patch.source=l.source;
-    if(Object.keys(patch).length>0){await sb.from('clients').update(patch).eq('id',clientId)}
+    if(Object.keys(patch).length>0){await safeWriteById('clients','update',patch,clientId)}
   }else{
     var client={name:l.name,type:'[]',address:'',notes:l.notes||'',industry:l.industry||'',scale:l.scale||'',source:l.source||'',lifecycle_stage:'prospect',user_id:currentUser.id,company_id:currentCompanyId};
     var {data:cd,error}=await sb.from('clients').insert(client).select('id');

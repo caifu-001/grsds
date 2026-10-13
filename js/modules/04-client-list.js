@@ -23,34 +23,36 @@ async function softDeleteClients(ids){
   ids=(ids||[]).filter(Boolean);
   if(!ids.length)return {ok:true,soft:true,count:0};
   var nowIso=new Date().toISOString();
-  var r=await sb.from('clients').update({deleted_at:nowIso}).in('id',ids);
-  if(r.error){
-    if(/deleted_at/i.test(r.error.message||'')){
-      var d=await sb.from('clients').delete().in('id',ids);
-      if(d.error)return {ok:false,soft:false,error:d.error};
+  var w=await safeWriteById('clients','update',{deleted_at:nowIso},ids);
+  if(w.hit===0){
+    // 疑似「无 deleted_at 列」（未执行 soft_delete_clients.sql）→ 回退物理删除
+    if(/deleted_at/i.test((w.error&&w.error.message)||'')){
+      var d=await safeWriteById('clients','delete',null,ids);
+      if(d.hit===0)return {ok:false,soft:false,error:d.error||{message:'物理删除未命中任何行'}};
       await sb.from('contacts').delete().in('client_id',ids);
-      return {ok:true,soft:false,count:ids.length};
+      return {ok:true,soft:false,count:d.hit};
     }
-    return {ok:false,soft:true,error:r.error};
+    // hit=0 且无「缺列」特征 —— 就是被 RLS 静默过滤了，必须如实上报失败
+    return {ok:false,soft:true,error:w.error||{message:'软删除未命中任何行（可能被行级策略过滤）'}};
   }
   var c=await sb.from('contacts').update({deleted_at:nowIso}).in('client_id',ids);
-  return {ok:true,soft:true,count:ids.length,contactError:c&&c.error};
+  return {ok:true,soft:true,count:w.hit,contactError:c&&c.error};
 }
 async function restoreClients(ids){
   ids=(ids||[]).filter(Boolean);
   if(!ids.length)return {ok:true};
-  var r=await sb.from('clients').update({deleted_at:null}).in('id',ids);
-  if(r.error)return {ok:false,error:r.error};
+  var w=await safeWriteById('clients','update',{deleted_at:null},ids);
+  if(w.hit===0)return {ok:false,error:w.error||{message:'恢复未命中任何行（可能被行级策略过滤）'}};
   await sb.from('contacts').update({deleted_at:null}).in('client_id',ids);
-  return {ok:true};
+  return {ok:true,count:w.hit};
 }
 async function purgeClients(ids){
   ids=(ids||[]).filter(Boolean);
   if(!ids.length)return {ok:true};
   await sb.from('contacts').delete().in('client_id',ids);
-  var r=await sb.from('clients').delete().in('id',ids);
-  if(r.error)return {ok:false,error:r.error};
-  return {ok:true};
+  var w=await safeWriteById('clients','delete',null,ids);
+  if(w.hit===0)return {ok:false,error:w.error||{message:'彻底删除未命中任何行（可能被行级策略过滤）'}};
+  return {ok:true,count:w.hit};
 }
 
 function updateRecycleBadge(){
@@ -235,8 +237,8 @@ function mergeDuplicateGroup(gi){
         if(d.created_at&&keep.created_at&&d.created_at<keep.created_at)keep.created_at=d.created_at;
       }
       var upd={projects:JSON.stringify(projs),type:JSON.stringify(types),notes:notes.filter(Boolean).join('\n')};
-      var ur=await sb.from('clients').update(upd).eq('id',keepId);
-      if(ur.error){showToast('合并失败(主客户): '+ur.error.message,'error');return}
+      var ur=await safeWriteById('clients','update',upd,keepId);
+      if(ur.hit===0){showToast('合并失败(主客户未写入): '+(((ur.error||{}).message)||'未命中任何行'),'error');return}
       // 3) 重复项进回收站（未启用软删除则物理删除）
       var delRes=await softDeleteClients(dupIds);
       if(!delRes.ok){showToast('合并部分完成：重复项移除失败 '+(delRes.error&&delRes.error.message||''),'error');await loadClients();return}

@@ -385,18 +385,12 @@ function bulkApplyAttrs(){
           upd.type=JSON.stringify(arr);
         }
         upd.updated_at=new Date().toISOString();
-        // 直连写入受 RLS 行级策略约束：客户若非当前用户创建，update 会命中 0 行且不报错。
-        // 必须带 select('id') 取回真实受影响行，否则「静默 0 行」会被误判为成功。
-        var res=await sb.from('clients').update(upd).eq('id',ids[i]).select('id');
-        var hit=(res&&!res.error&&Array.isArray(res.data))?res.data.length:0;
-        if(!hit){
-          // 未命中：改用与读取链路一致的代理通道（非管理员的读取本就通过 callAdmin 绕过 RLS）。
-          // admin-proxy 会自动追加 company_id 过滤，不会跨公司越权。
-          var pr=await callAdmin('update','clients',{payload:upd,filters:[{col:'id',op:'eq',val:ids[i]}]});
-          if(pr&&!pr.error)hit=Array.isArray(pr.data)?pr.data.length:1;
-          else lastErr=(pr&&pr.error&&pr.error.message)||(res&&res.error&&res.error.message)||lastErr;
-        }
-        if(hit)okCount++;else failed++;
+        // 统一写通道：直连写入受 RLS 行级策略约束，客户若非当前用户创建会命中 0 行
+        // 且不报错。safeWriteById 会用 select('id') 取回真实行数，0 行时自动回退
+        // 到与读取一致的代理通道（admin-proxy 自动追加 company_id 过滤）。
+        var w=await safeWriteById('clients','update',upd,ids[i]);
+        if(w.hit)okCount++;
+        else{failed++;lastErr=(w.error&&w.error.message)||lastErr;}
       }
       clientSel={};clientSelOnly=false;
       await loadClients();
@@ -969,7 +963,8 @@ function openMoveFrom360(contactObj){moveContactIdx=-1;moveContactObj=contactObj
 function transferFrom360(id){var co=allContacts.find(function(x){return x.id===id});if(co)openMoveFrom360(co);else showToast('联系人未找到')}
 async function updateContactCount(clientId){
   var {count,error}=await sb.from('contacts').select('*',{count:'exact',head:true}).eq('client_id',clientId);
-  if(!error) await sb.from('clients').update({contact_count:count||0}).eq('id',clientId);
+  // 计数同步同样走统一写通道：直连被 RLS 过滤时至少还能落到代理通道，避免计数器长期偏旧
+  if(!error) await safeWriteById('clients','update',{contact_count:count||0},clientId);
 }
 
 // === Save ===

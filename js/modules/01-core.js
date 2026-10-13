@@ -20,6 +20,38 @@ async function callAdmin(op,table,opts){
     return await r.json();
   }catch(e){console.error('callAdmin error:',e);return{data:null,error:{message:e.message||'Network error'}};}
 }
+// === 统一写通道（受 RLS 约束的表，如 clients）===
+// 背景：读链路走 admin-proxy（service_role，绕过 RLS）能读到全公司数据，
+// 写链路却是 anon key 直连、受 RLS 约束，两条链路权限不一致。当行级策略
+// （如 users can update own clients）不覆盖目标行时，PostgREST 的 update / delete
+// 会「命中 0 行却返回 200 且无 error」—— 静默失败：界面提示成功，数据实际没变。
+// 因此统一走本函数：先直连写入并带 select('id') 取回真实受影响行数；0 行则回退
+// 代理通道。admin-proxy 对非超管会自动注入 company_id 过滤，不会跨公司越权。
+// 返回 { hit:实际命中行数, via:'direct'|'proxy'|'none', error:null|{message} }
+// 注意：调用方必须判断 hit —— hit===0 即「没写进去」，不能再当成功。
+async function safeWriteById(table,op,payload,ids){
+  ids=Array.isArray(ids)?ids.filter(Boolean):(ids==null?[]:[ids]);
+  if(!ids.length)return{hit:0,via:'none',error:null};
+  var r=null;
+  try{
+    var qb=sb.from(table);
+    qb=op==='delete'?qb.delete():qb.update(payload);
+    qb=ids.length===1?qb.eq('id',ids[0]):qb.in('id',ids);
+    r=await qb.select('id');
+  }catch(e){r={error:{message:(e&&e.message)||String(e)}}}
+  if(r&&!r.error&&Array.isArray(r.data)&&r.data.length>0){
+    return{hit:r.data.length,via:'direct',error:null};
+  }
+  // 直连未命中（被 RLS 过滤）或报错 —— 回退到与读取一致的代理通道。
+  // 逐条 eq 而非 in：不依赖代理未验证过的 in 语法，成功/失败粒度也更清晰。
+  var lastErr=(r&&r.error)||null,hit=0;
+  for(var i=0;i<ids.length;i++){
+    var pr=await callAdmin(op,table,{payload:payload,filters:[{col:'id',op:'eq',val:ids[i]}]});
+    if(pr&&!pr.error)hit+=Array.isArray(pr.data)?pr.data.length:1;
+    else lastErr=(pr&&pr.error)||lastErr;
+  }
+  return{hit:hit,via:'proxy',error:hit?null:lastErr};
+}
 window.addEventListener('error',function(e){console.error('[global err]',e.message,e.filename,e.lineno)});
 window.addEventListener('unhandledrejection',function(e){console.error('[unhandled promise]',e.reason)});
 window.__wfDiag=false;  // 工作流诊断开关（生产默认关闭）

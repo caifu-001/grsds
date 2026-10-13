@@ -170,8 +170,10 @@ async function saveClient(){
     }
   }else{
     client.company_id=currentCompanyId;
-    var{error}=await sb.from('clients').update(client).eq('id',editId);
-    if(error){showToast('更新失败: '+error.message);return}
+    // 统一写通道：客户若非本人创建，直连 update 会被 RLS 静默过滤成 0 行，
+    // safeWriteById 会如实返回 hit=0 并自动改走代理通道。
+    var w=await safeWriteById('clients','update',client,editId);
+    if(w.hit===0){showToast('更新失败: '+(((w.error||{}).message)||'未命中任何行（可能无权修改该客户）'));return}
   }
 
   // Sync contacts
