@@ -516,6 +516,7 @@ async function loadClients(){
     await loadOrders();
     checkBirthdayReminders();
     _clientOrderCache={};
+    buildFilterSelect();  // 客户数据变了，刷新筛选下拉的计数
     renderList();
   }catch(e){grid.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div>加载失败</div>';statsBar.innerHTML=''}
   }finally{_loadClientsBusy=false;}

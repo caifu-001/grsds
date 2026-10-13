@@ -161,6 +161,11 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
 .bulk-mode{margin-top:10px;display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--text2)}
 .bulk-mode label{display:flex;align-items:center;gap:5px;cursor:pointer}
 .bulk-mode input{accent-color:var(--primary);cursor:pointer}
+.bulk-hint{margin:0 0 12px;padding:9px 11px;border-radius:var(--radius-sm);background:var(--primary-light);color:var(--primary);font-size:12px;line-height:1.6}
+/* 批量属性弹窗：内容区独立滚动，底栏固定 —— 行数多/带提示条时「取消·应用」始终可见 */
+.confirm-box.bulk-box{display:flex;flex-direction:column;max-width:540px;max-height:84vh;padding:0;overflow:hidden}
+.bulk-body{flex:1 1 auto;overflow-y:auto;padding:24px 24px 16px}
+.bulk-actions{flex:0 0 auto;padding:12px 24px 20px;background:var(--card);border-top:1px solid var(--border)}
 
 .contact-item{background:var(--bg);border-radius:12px;padding:14px;margin-bottom:10px;position:relative;border:1px solid var(--border)}
 .contact-item .del-btn{position:absolute;top:10px;right:10px;width:26px;height:26px;border-radius:50%;background:rgba(239,68,68,.08);color:var(--danger);border:none;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}

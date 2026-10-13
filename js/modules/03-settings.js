@@ -269,10 +269,27 @@ function recallMyEdit(el){
 
 // === Filter ===
 function buildFilterSelect(){
-  var html='<option value="all">全部类型</option>';
+  var sel=document.getElementById('filter-select');
+  if(!sel)return;
   var types=allTypes();
-  for(var i=0;i<types.length;i++)html+='<option value="'+escHtml(types[i])+'">'+escHtml(types[i])+'</option>';
-  document.getElementById('filter-select').innerHTML=html;
+  // 统计各属性下挂了多少客户，便于一眼看出错分（如「司法（0）」）
+  var cnt={},total=0;
+  for(var i=0;i<allClients.length;i++){
+    var c=allClients[i];if(!c)continue;
+    total++;
+    var ts=parseTypes(c.type);
+    for(var j=0;j<ts.length;j++)cnt[ts[j]]=(cnt[ts[j]]||0)+1;
+  }
+  var html='<option value="all">全部类型（'+total+'）</option>';
+  for(var k=0;k<types.length;k++){
+    var t=types[k];
+    html+='<option value="'+escHtml(t)+'">'+escHtml(t)+'（'+(cnt[t]||0)+'）</option>';
+  }
+  sel.innerHTML=html;
+  // 重建 option 会重置选中项：这里显式恢复，避免下拉显示与 currentFilter 不一致
+  var want=(currentFilter&&currentFilter!=='all'&&types.indexOf(currentFilter)>=0)?currentFilter:'all';
+  sel.value=want;
+  if(currentFilter!==want)currentFilter=want;
 }
 function onFilterChange(){
   currentFilter=document.getElementById('filter-select').value;

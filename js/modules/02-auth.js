@@ -44,6 +44,10 @@ let clientTags=[],clientAttachments=[],leadEditId=null,leadAssignId=null,allLead
 let c360ClientId=null,c360ActiveTab='overview',c360Orders=[];
 
 function h(s){if(s===null||s===undefined)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+// 与 h() 同义（旧名，400+ 处调用）。定义在 02 而非 08：拆成多模块后，
+// 各模块的顶层语句（如 03-settings.js 的 setTimeout(buildTypeGrid,0)）可能在
+// 后续模块下载期间抢先执行，若定义留在 08 会偶发 ReferenceError。
+function escHtml(s){return h(s)}
 // 把任意字符串安全地嵌进「双引号 HTML 属性内的单引号 JS 字符串」，如 onclick="f('...')"
 function jsStr(s){
   return String(s===null||s===undefined?'':s)

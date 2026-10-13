@@ -841,7 +841,7 @@ function renderDeptTree(nodes,level){
 }
 
 function formatDateTime(iso){if(!iso)return'';try{var d=new Date(iso);var y=d.getFullYear();var m=String(d.getMonth()+1).padStart(2,'0');var day=String(d.getDate()).padStart(2,'0');var h=String(d.getHours()).padStart(2,'0');var min=String(d.getMinutes()).padStart(2,'0');return y+'-'+m+'-'+day+' '+h+':'+min;}catch(e){return iso;}}
-function escHtml(s){return h(s)}  // 与 h() 同义，保留旧名以兼容 400+ 处调用
+// escHtml 已上移至 02-auth.js（与 h() 同处），避免拆分后跨模块的时序依赖
 async function doSetUserDeptCommit(userId,deptId){var tu=adminUserList.find(function(u){return u.user_id===userId;});if(!isSuperAdmin&&currentUserRole==='admin'&&tu&&tu.company_id!==currentCompanyId){showToast('权限不足');return;}var{error}=await sb.from('profiles').update({department_id:deptId}).eq('user_id',userId);if(error){showToast('操作失败: '+error.message,'error');return}for(var i=0;i<adminUserList.length;i++){if(adminUserList[i].user_id===userId){adminUserList[i].department_id=deptId;break;}}var m=document.getElementById('user-dept-modal');if(m)m.remove();if(typeof renderAdminEmployees==="function")renderAdminEmployees();}
 function closeDeptFormModal(){var m=document.getElementById('dept-form-modal');if(m)m.remove();}
 function delDeptById(id){var dept=null;for(var i=0;i<allDepartments.length;i++){if(allDepartments[i].id===id){dept=allDepartments[i];break;}}if(dept)deleteDept(id,dept.name);}
