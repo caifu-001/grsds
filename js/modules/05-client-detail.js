@@ -704,7 +704,18 @@ function refCt(){
   for(var j=0;j<pis.length;j++)pis[j].addEventListener('input',function(){this.value=this.value.replace(/\s+/g,'')});
 }
 // global helpers for onclick
-var addContact=function(){formContacts.push({id:'t'+Date.now()+Math.random().toString(36).slice(2,6),name:'',dept:'',position:'',phones:[''],landlines:[''],emails:[''],room:'',entered_date:todayLocalStr(),_new:true});refCt()};
+var addContact=function(){formContacts.push({id:'t'+Date.now()+Math.random().toString(36).slice(2,6),name:'',dept:'',position:'',phones:[''],landlines:[''],emails:[''],room:'',entered_date:todayLocalStr(),_new:true});refCt();scrollToLastContact()};
+// 新增联系人后滚到该条并聚焦姓名，省去用户手动滑到列表最下方
+function scrollToLastContact(){
+  try{
+    var items=document.querySelectorAll('#contacts-container .contact-item');
+    var it=items[items.length-1];
+    if(!it)return;
+    it.scrollIntoView({block:'nearest',behavior:'smooth'});
+    var f=it.querySelector('input');
+    if(f)setTimeout(function(){try{f.focus({preventScroll:true})}catch(e){f.focus()}},60);
+  }catch(e){}
+}
 var rmCt=function(i){formContacts.splice(i,1);refCt()};
 var upCt=function(i,f,v){if(i>=0&&i<formContacts.length)formContacts[i][f]=v};
 var upCtPh=function(i,p,v){if(formContacts[i]&&formContacts[i].phones)formContacts[i].phones[p]=(v||'').replace(/\s+/g,'')};
@@ -928,7 +939,9 @@ async function updateContactCount(clientId){
 // === Save ===
 
 var formProjects=[];
-function addProjectEntry(prefill){
+// toTop=true 时新条目插到列表最前（供「+ 添加项目」使用，插完即在视野内）；
+// 回显已有项目时不传，保持顺序 append，避免编辑时顺序被反转。
+function addProjectEntry(prefill,toTop){
   prefill=prefill||{};
   var list=document.getElementById('project-list');
   if(!list)return;
@@ -953,8 +966,13 @@ function addProjectEntry(prefill){
       '<div class="form-group"><label>甲方负责人</label><input class="pe-client-owner" placeholder="甲方负责人姓名" value="'+h(prefill.client_owner||'')+'"></div>'+
       '<div class="form-group"><label>备注</label><input class="pe-notes" placeholder="项目备注" value="'+h(prefill.notes||'')+'"></div>'+
     '</div>';
-  list.appendChild(div);
+  if(toTop&&list.firstChild)list.insertBefore(div,list.firstChild);else list.appendChild(div);
   renumberProjects();
+  if(toTop){
+    try{div.scrollIntoView({block:'nearest',behavior:'smooth'})}catch(e){}
+    var _pf=div.querySelector('.pe-project');
+    if(_pf)setTimeout(function(){try{_pf.focus({preventScroll:true})}catch(e){_pf.focus()}},60);
+  }
 }
 function removeProjectEntry(btn){
   var entry=btn.closest(".project-entry");

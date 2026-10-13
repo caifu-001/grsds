@@ -661,7 +661,10 @@
 <!-- Form Modal -->
 <div class="modal-overlay hidden" id="form-modal">
  <div class="modal-sheet">
-  <h3 id="form-title">添加客户</h3>
+  <div class="sheet-head">
+   <h3 id="form-title">添加客户</h3>
+   <button type="button" class="sheet-close" onclick="closeForm()" aria-label="关闭弹窗">&times;</button>
+  </div>
 
   <div class="section-title">📋 客户属性 *（可多选）</div>
   <div class="type-grid" id="type-grid"></div>
@@ -670,7 +673,7 @@
   <div class="section-title">📝 客户信息</div>
   <div class="form-group" style="position:relative"><label>客户名称 *</label><input id="f-name" placeholder="公司/单位名称" autocomplete="off" oninput="onClientNameInput()" onfocus="onClientNameInput()" onblur="setTimeout(function(){document.getElementById('name-suggestions').classList.add('hidden')},200)" onkeydown="onNameKeydown(event)"><div class="name-suggestions hidden" id="name-suggestions"></div></div>
   <div class="projects-section">
-   <div class="ps-header"><label>近期项目</label><span style="display:flex;gap:6px;align-items:center;flex-shrink:0"><button type="button" class="btn-add-project" onclick="sortProjectEntriesByBiddingDate()" title="按招标日期倒序（日期越新越靠前）">⇅ 按招标日期排序</button><button type="button" class="btn-add-project" onclick="addProjectEntry()">+ 添加项目</button></span></div>
+   <div class="ps-header"><label>近期项目</label><span style="display:flex;gap:6px;align-items:center;flex-shrink:0"><button type="button" class="btn-add-project" onclick="sortProjectEntriesByBiddingDate()" title="按招标日期倒序（日期越新越靠前）">⇅ 按招标日期排序</button><button type="button" class="btn-add-project" onclick="addProjectEntry(null,true)">+ 添加项目</button></span></div>
    <div id="project-list"></div>
   </div>
   <div class="form-group"><label>客户地址</label><input id="f-address" placeholder="详细地址"></div>
@@ -762,7 +765,7 @@
     </div>
   </div>
 
-  <div class="section-title">👤 联系人</div>
+  <div class="section-title">👤 联系人<button type="button" class="add-btn" onclick="addContact()">＋ 添加联系人</button></div>
   <div id="contacts-container"></div>
   <button class="add-phone-btn" style="margin-top:8px;margin-bottom:12px" onclick="addContact()">＋ 添加联系人</button>
 
