@@ -20,37 +20,54 @@ async function callAdmin(op,table,opts){
     return await r.json();
   }catch(e){console.error('callAdmin error:',e);return{data:null,error:{message:e.message||'Network error'}};}
 }
-// === 统一写通道（受 RLS 约束的表，如 clients）===
-// 背景：读链路走 admin-proxy（service_role，绕过 RLS）能读到全公司数据，
+// === 统一写通道（受 RLS 约束的表，如 clients / contacts）===
+// 背景：clients 的读链路走 admin-proxy（service_role，绕过 RLS）能读到全公司数据，
 // 写链路却是 anon key 直连、受 RLS 约束，两条链路权限不一致。当行级策略
 // （如 users can update own clients）不覆盖目标行时，PostgREST 的 update / delete
 // 会「命中 0 行却返回 200 且无 error」—— 静默失败：界面提示成功，数据实际没变。
-// 因此统一走本函数：先直连写入并带 select('id') 取回真实受影响行数；0 行则回退
+// 因此统一走本函数：先直连写入并带 select('id') 取回真实受影响行数；0 行则按需回退
 // 代理通道。admin-proxy 对非超管会自动注入 company_id 过滤，不会跨公司越权。
 // 返回 { hit:实际命中行数, via:'direct'|'proxy'|'none', error:null|{message} }
 // 注意：调用方必须判断 hit —— hit===0 即「没写进去」，不能再当成功。
-async function safeWriteById(table,op,payload,ids){
+// opts.col        过滤列名，默认 'id'（按其它列批量定位时用，如 col:'client_id'）
+// opts.allowProxy 默认 true；false 表示只直连并如实上报，绝不回退代理
+async function safeWriteById(table,op,payload,ids,opts){
+  opts=opts||{};
+  var col=opts.col||'id',allowProxy=opts.allowProxy!==false;
   ids=Array.isArray(ids)?ids.filter(Boolean):(ids==null?[]:[ids]);
   if(!ids.length)return{hit:0,via:'none',error:null};
   var r=null;
   try{
     var qb=sb.from(table);
     qb=op==='delete'?qb.delete():qb.update(payload);
-    qb=ids.length===1?qb.eq('id',ids[0]):qb.in('id',ids);
+    qb=ids.length===1?qb.eq(col,ids[0]):qb.in(col,ids);
     r=await qb.select('id');
   }catch(e){r={error:{message:(e&&e.message)||String(e)}}}
   if(r&&!r.error&&Array.isArray(r.data)&&r.data.length>0){
     return{hit:r.data.length,via:'direct',error:null};
   }
-  // 直连未命中（被 RLS 过滤）或报错 —— 回退到与读取一致的代理通道。
-  // 逐条 eq 而非 in：不依赖代理未验证过的 in 语法，成功/失败粒度也更清晰。
-  var lastErr=(r&&r.error)||null,hit=0;
+  // 0 行有两种可能：真的没有匹配行，或被 RLS 过滤掉了。
+  // miss:true 表示「没有报错但一行都没写进去」这种合成文案，调用方据此区分
+  // 「真报错（如列不存在）」与「只是没命中」，前者要中止，后者要再读一次去确认。
+  var lastErr=(r&&r.error)||{message:'未命中任何行（可能被行级策略过滤）',miss:true};
+  // 仅按主键 id 定位时才回退代理：回退靠 id 逐条 eq（不依赖代理未验证过的 in 语法），
+  // 按其它列批量回退既无法逐条收敛、也可能越权。
+  if(!allowProxy||col!=='id')return{hit:0,via:'none',error:lastErr};
+  var hit=0;
   for(var i=0;i<ids.length;i++){
     var pr=await callAdmin(op,table,{payload:payload,filters:[{col:'id',op:'eq',val:ids[i]}]});
     if(pr&&!pr.error)hit+=Array.isArray(pr.data)?pr.data.length:1;
     else lastErr=(pr&&pr.error)||lastErr;
   }
   return{hit:hit,via:'proxy',error:hit?null:lastErr};
+}
+// contacts 专用：联系人的**读取本身也受 RLS 约束**（loadClients / 客户详情里的
+// contacts 查询都是 anon 直连，没有走 callAdmin），所以「看不到 = 改不了」是一致的。
+// 也正因如此，写入**绝不能**回退代理通道 —— 那等于替用户修改他根本看不见的数据，属越权。
+// 这里只做「直连 + 行数校验」，把原来被静默吞掉的失败如实报出来。
+async function safeWriteContacts(op,payload,ids,opts){
+  opts=opts||{};
+  return safeWriteById('contacts',op,payload,ids,{col:opts.col,allowProxy:false});
 }
 window.addEventListener('error',function(e){console.error('[global err]',e.message,e.filename,e.lineno)});
 window.addEventListener('unhandledrejection',function(e){console.error('[unhandled promise]',e.reason)});

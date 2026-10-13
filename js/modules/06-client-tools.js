@@ -205,22 +205,28 @@ async function saveClient(){
       if(nc&&nc.length) savedIds.push(nc[0].id); else {showToast('新增联系人异常(无返回ID)');console.error('contact insert empty data:',nc);return}
     }else{
       cd.client_id=clientId; // ensure contact stays with this client
-      var {error:upErr}=await sb.from('contacts').update(cd).eq('id',co.id);
-      if(upErr&&/entered_date/.test(upErr.message||'')){console.warn('[save contact] entered_date 列缺失，已降级保存');delete cd.entered_date;upErr=(await sb.from('contacts').update(cd).eq('id',co.id)).error;}
+      var uw=await safeWriteContacts('update',cd,co.id);
+      var upErr=uw.hit?null:uw.error;
+      // 容错：若数据库尚未新增 entered_date 列，去掉该字段重试一次，避免联系人保存被阻断
+      if(upErr&&/entered_date/.test(upErr.message||'')){console.warn('[save contact] entered_date 列缺失，已降级保存');delete cd.entered_date;uw=await safeWriteContacts('update',cd,co.id);upErr=uw.hit?null:uw.error;}
       if(upErr){showToast('更新联系人失败: '+upErr.message);console.error('contact update:',upErr,'id:',co.id);return}
       savedIds.push(co.id);
     }
   }
 
   var toDel=existingIds.filter(function(id){return savedIds.indexOf(id)<0});
+  var delFailed=0;
   for(var j=0;j<toDel.length;j++){
-    var {error:delErr}=await sb.from('contacts').delete().eq('id',toDel[j]);
-    if(delErr){console.error('contact delete:',delErr,'id:',toDel[j]);}
+    // 旧写法只看 error：被行级策略过滤时会命中 0 行且不报错，等于「删了但没删」——
+    // 表单已关闭、列表一刷新联系人又冒出来。
+    var dw=await safeWriteContacts('delete',null,toDel[j]);
+    if(dw.hit===0){delFailed++;console.error('contact delete failed:',dw.error,'id:',toDel[j]);}
   }
 
   closeForm();
   loadClients();
-  showToast(editId?'已更新':'已添加');
+  if(delFailed)showToast((editId?'已更新':'已添加')+'，但有 '+delFailed+' 个联系人未能删除（可能无权修改，刷新后仍会存在）','error');
+  else showToast(editId?'已更新':'已添加');
 }
 
 // === Delete ===
@@ -321,7 +327,8 @@ async function doDelete(){
   closeForm();deleteId=null;
   if(!r.ok){showToast('删除失败: '+((r.error&&r.error.message)||'未知错误'),'error');return}
   await loadClients();
-  showToast(r.soft?'已移入回收站':'已删除');
+  if(r.contactError)showToast('客户已删除，但'+r.contactError.message,'error');
+  else showToast(r.soft?'已移入回收站':'已删除');
 }
 
 // === Import/Export ===

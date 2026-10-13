@@ -18,41 +18,61 @@ function parseTypes(raw){
 // ============================================================
 var allDeletedClients=[],allDeletedContacts=[],_softDeleteReady=false,_customDataReady=false;
 
+// 联系人级联结果的判定依据。
+// 按 client_id 批量更新时命中 0 行有两种可能：这些客户本就没有（当前用户可见的）联系人，
+// 或被 RLS 过滤。用一次**同权限范围的读取**来区分 —— 联系人读取走的就是 RLS，看到的正是
+// 能改的那批，所以「读得到却改不动」才能判定为真失败，避免把「本来就没人」误报成错误。
+// mode: 'active' 不该再有未进回收站的联系人 / 'trashed' 不该再有未恢复的 / 'any' 不该有残留
+async function contactsLeftBehind(ids,mode){
+  try{
+    var q=sb.from('contacts').select('id').in('client_id',ids).limit(1);
+    if(mode==='active')q=q.is('deleted_at',null);
+    else if(mode==='trashed')q=q.not('deleted_at','is',null);
+    var r=await q;
+    if(r&&!r.error&&Array.isArray(r.data)&&r.data.length>0){
+      return {message:'仍有联系人未同步（可能无权修改这些联系人）'};
+    }
+  }catch(e){}
+  return null;
+}
 // 软删除一批客户（自动探测 deleted_at 列；缺列时回退物理删除）
 async function softDeleteClients(ids){
   ids=(ids||[]).filter(Boolean);
-  if(!ids.length)return {ok:true,soft:true,count:0};
+  if(!ids.length)return {ok:true,soft:true,count:0,contactError:null};
   var nowIso=new Date().toISOString();
   var w=await safeWriteById('clients','update',{deleted_at:nowIso},ids);
   if(w.hit===0){
     // 疑似「无 deleted_at 列」（未执行 soft_delete_clients.sql）→ 回退物理删除
     if(/deleted_at/i.test((w.error&&w.error.message)||'')){
       var d=await safeWriteById('clients','delete',null,ids);
-      if(d.hit===0)return {ok:false,soft:false,error:d.error||{message:'物理删除未命中任何行'}};
-      await sb.from('contacts').delete().in('client_id',ids);
-      return {ok:true,soft:false,count:d.hit};
+      if(d.hit===0)return {ok:false,soft:false,error:d.error||{message:'物理删除未命中任何行'},contactError:null};
+      var cd=await safeWriteContacts('delete',null,ids,{col:'client_id'});
+      return {ok:true,soft:false,count:d.hit,contactError:cd.hit===0?await contactsLeftBehind(ids,'any'):null};
     }
     // hit=0 且无「缺列」特征 —— 就是被 RLS 静默过滤了，必须如实上报失败
-    return {ok:false,soft:true,error:w.error||{message:'软删除未命中任何行（可能被行级策略过滤）'}};
+    return {ok:false,soft:true,error:w.error||{message:'软删除未命中任何行（可能被行级策略过滤）'},contactError:null};
   }
-  var c=await sb.from('contacts').update({deleted_at:nowIso}).in('client_id',ids);
-  return {ok:true,soft:true,count:w.hit,contactError:c&&c.error};
+  // 联系人没跟着进回收站，就会出现「客户在回收站、联系人却还活着」的错位
+  var cw=await safeWriteContacts('update',{deleted_at:nowIso},ids,{col:'client_id'});
+  return {ok:true,soft:true,count:w.hit,contactError:cw.hit===0?await contactsLeftBehind(ids,'active'):null};
 }
 async function restoreClients(ids){
   ids=(ids||[]).filter(Boolean);
-  if(!ids.length)return {ok:true};
+  if(!ids.length)return {ok:true,count:0,contactError:null};
   var w=await safeWriteById('clients','update',{deleted_at:null},ids);
-  if(w.hit===0)return {ok:false,error:w.error||{message:'恢复未命中任何行（可能被行级策略过滤）'}};
-  await sb.from('contacts').update({deleted_at:null}).in('client_id',ids);
-  return {ok:true,count:w.hit};
+  if(w.hit===0)return {ok:false,error:w.error||{message:'恢复未命中任何行（可能被行级策略过滤）'},contactError:null};
+  // 客户回来了、联系人还躺在回收站 → 用户会看到「客户恢复了但联系人不见了」
+  var cw=await safeWriteContacts('update',{deleted_at:null},ids,{col:'client_id'});
+  return {ok:true,count:w.hit,contactError:cw.hit===0?await contactsLeftBehind(ids,'trashed'):null};
 }
 async function purgeClients(ids){
   ids=(ids||[]).filter(Boolean);
-  if(!ids.length)return {ok:true};
-  await sb.from('contacts').delete().in('client_id',ids);
+  if(!ids.length)return {ok:true,count:0,contactError:null};
+  var cw=await safeWriteContacts('delete',null,ids,{col:'client_id'});
   var w=await safeWriteById('clients','delete',null,ids);
-  if(w.hit===0)return {ok:false,error:w.error||{message:'彻底删除未命中任何行（可能被行级策略过滤）'}};
-  return {ok:true,count:w.hit};
+  if(w.hit===0)return {ok:false,error:w.error||{message:'彻底删除未命中任何行（可能被行级策略过滤）'},contactError:null};
+  // 客户被物理删除但联系人残留 → 库里会留下永久孤儿行，必须告知
+  return {ok:true,count:w.hit,contactError:cw.hit===0?await contactsLeftBehind(ids,'any'):null};
 }
 
 function updateRecycleBadge(){
@@ -119,7 +139,9 @@ function doRestoreClient(id){
     (async function(){
       var r=await restoreClients([id]);
       if(!r.ok){showToast('恢复失败: '+(r.error&&r.error.message||'未知错误'),'error');return}
-      await loadClients();renderRecycleBody();showToast('已恢复');
+      await loadClients();renderRecycleBody();
+      if(r.contactError)showToast('客户已恢复，但'+r.contactError.message,'error');
+      else showToast('已恢复');
     })();
   });
 }
@@ -129,7 +151,9 @@ function doPurgeClient(id){
     (async function(){
       var r=await purgeClients([id]);
       if(!r.ok){showToast('删除失败: '+(r.error&&r.error.message||'未知错误'),'error');return}
-      await loadClients();renderRecycleBody();showToast('已彻底删除');
+      await loadClients();renderRecycleBody();
+      if(r.contactError)showToast('客户已删除，但'+r.contactError.message,'error');
+      else showToast('已彻底删除');
     })();
   });
 }
@@ -141,7 +165,9 @@ function purgeAllDeleted(){
     (async function(){
       var r=await purgeClients(ids);
       if(!r.ok){showToast('清空失败: '+(r.error&&r.error.message||'未知错误'),'error');return}
-      await loadClients();renderRecycleBody();showToast('回收站已清空');
+      await loadClients();renderRecycleBody();
+      if(r.contactError)showToast('回收站已清空，但'+r.contactError.message,'error');
+      else showToast('回收站已清空');
     })();
   });
 }
@@ -219,8 +245,13 @@ function mergeDuplicateGroup(gi){
       if(!keep){showToast('目标客户不存在','error');return}
       var dupIds=dups.map(function(c){return c.id});
       // 1) 联系人转移
-      var cr=await sb.from('contacts').update({client_id:keepId}).in('client_id',dupIds);
-      if(cr.error){showToast('合并失败(联系人): '+cr.error.message,'error');return}
+      var cr=await safeWriteContacts('update',{client_id:keepId},dupIds,{col:'client_id'});
+      if(cr.hit===0){
+        // 真报错（列不存在之类）直接中止；只是没命中则再读一次确认，避免误伤「这批客户本就没有联系人」
+        if(cr.error&&!cr.error.miss){showToast('合并失败(联系人): '+cr.error.message,'error');return}
+        var left=await contactsLeftBehind(dupIds,'any');
+        if(left){showToast('合并失败(联系人未能转移): '+left.message,'error');return}
+      }
       // 2) 合并 projects / types / notes
       var projs=[],seen={};
       try{projs=JSON.parse(keep.projects||'[]');if(!Array.isArray(projs))projs=[]}catch(e){projs=[]}

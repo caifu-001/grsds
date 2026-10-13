@@ -444,16 +444,18 @@ function bulkDeleteClients(){
     if(!ok)return;
     (async function(){
       showToast('正在删除...');
-      var failed=0,soft=true;
+      var failed=0,soft=true,contactWarn=false;
       for(var i=0;i<ids.length;i+=10){
         var chunk=ids.slice(i,i+10);
         var r=await softDeleteClients(chunk);
         if(!r.ok)failed++;
+        if(r.contactError)contactWarn=true;
         if(r.soft===false)soft=false;
       }
       clientSel={};clientSelOnly=false;
       await loadClients();
       if(failed)showToast('删除完成，但有 '+failed+' 批失败（可能无权限）','error');
+      else if(contactWarn)showToast('客户已删除，但部分联系人未能同步（可能无权修改）','error');
       else showToast(soft?('已将 '+ids.length+' 个客户移入回收站'):('已删除 '+ids.length+' 个客户'));
     })();
   });
@@ -945,8 +947,10 @@ async function doMove(targetId,targetName){
   if(!co)return;
   if(!await uiConfirm('确认将联系人「'+(co.name||co.contact_name||'')+'」转移到「'+targetName+'」？')) return;
   if(!co._new&&co.id){
-    var {error}=await sb.from('contacts').update({client_id:targetId}).eq('id',co.id);
-    if(error){showToast('转移失败');return}
+    // 联系人写入同样受行级策略约束：命中 0 行时 supabase-js 不报错，
+    // 旧写法只判 error → 会照样提示「已转移到」，刷新后联系人却还在原客户下。
+    var w=await safeWriteContacts('update',{client_id:targetId},co.id);
+    if(w.hit===0){showToast('转移失败: '+((w.error&&w.error.message)||'未命中该联系人'),'error');return}
   }
   // Remove from current form if editing
   if(moveContactIdx>=0){formContacts.splice(moveContactIdx,1);refCt()}
