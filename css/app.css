@@ -1299,6 +1299,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
 .bulk-selbar .bs-spacer{flex:1}
 .bulk-selbar button{padding:6px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--card);color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;transition:all var(--transition)}
 .bulk-selbar button:hover{border-color:var(--primary);color:var(--primary)}
+.bulk-selbar button.on{background:var(--primary);border-color:var(--primary);color:#fff}
 .bulk-selbar button:disabled{opacity:.45;cursor:not-allowed}
 .bulk-selbar button:disabled:hover{border-color:var(--border);color:var(--text2)}
 .bulk-selbar button.danger{color:var(--danger);border-color:#FECACA}

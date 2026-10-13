@@ -136,8 +136,8 @@ function displayCompanyInfo(ci){
 // ============================================================
 // 批次B：列表分页 / 批量多选 / 全局搜索
 // ============================================================
-var clientPage=1,_clientPageSizeOverride=0,_clientFiltered=[];
-var clientBulkMode=false,clientSel={};
+var clientPage=1,_clientPageSizeOverride=0,_clientFiltered=[],_clientVisible=[];
+var clientBulkMode=false,clientSel={},clientSelOnly=false;
 var orderPage=1,_orderPageSizeOverride=0,_orderFiltered=[];
 
 // 联系人索引：避免每次搜索/渲染都 O(n×m) 遍历 allContacts
@@ -203,35 +203,44 @@ function toggleBulkMode(){
   clientBulkMode=!clientBulkMode;
   var b=document.getElementById('client-bulk-toggle');
   if(b){b.classList.toggle('on',clientBulkMode);b.textContent=clientBulkMode?'✕ 退出多选':'☑ 多选';}
-  if(!clientBulkMode)clientSel={};
+  if(!clientBulkMode){clientSel={};clientSelOnly=false;}
   renderList();
 }
 function clientToggleSel(id){
   if(!id)return;
   if(clientSel[id])delete clientSel[id];else clientSel[id]=true;
+  // 复核视图里取消掉最后一项时自动退出，避免停在空白列表
+  if(clientSelOnly&&!clientSelCount())clientSelOnly=false;
   renderList();
 }
 function clientSelCount(){return Object.keys(clientSel).length}
 function clientSelAllPage(){
-  var ps=clientPageSize(),start=(clientPage-1)*ps,end=Math.min(start+ps,_clientFiltered.length);
-  for(var i=start;i<end;i++){if(_clientFiltered[i]&&_clientFiltered[i].id)clientSel[_clientFiltered[i].id]=true}
+  var ps=clientPageSize(),start=(clientPage-1)*ps,end=Math.min(start+ps,_clientVisible.length);
+  for(var i=start;i<end;i++){if(_clientVisible[i]&&_clientVisible[i].id)clientSel[_clientVisible[i].id]=true}
   renderList();
 }
 function clientSelAllFiltered(){
   for(var i=0;i<_clientFiltered.length;i++){if(_clientFiltered[i]&&_clientFiltered[i].id)clientSel[_clientFiltered[i].id]=true}
   renderList();
 }
-function clientSelClear(){clientSel={};renderList();}
+function clientSelClear(){clientSel={};clientSelOnly=false;renderList();}
+// 「只看已选」：把列表收敛成已勾选的客户，下手前复核用（100 选 30 时尤其需要）
+function clientToggleSelOnly(){
+  clientSelOnly=!clientSelOnly;
+  clientPage=1;
+  renderList();
+}
 function renderClientSelBar(){
   var el=document.getElementById('client-selbar');if(!el)return;
   if(!clientBulkMode){el.classList.add('hidden');el.innerHTML='';return}
   el.classList.remove('hidden');
   var n=clientSelCount(),ps=clientPageSize();
-  var pageCount=Math.max(0,Math.min(ps,_clientFiltered.length-(clientPage-1)*ps));
+  var pageCount=Math.max(0,Math.min(ps,_clientVisible.length-(clientPage-1)*ps));
   el.innerHTML='<span>已选 <span class="bs-count">'+n+'</span> 项 · 本页 '+pageCount+' 项 · 筛选结果 '+_clientFiltered.length+' 项</span>'
     +'<span class="bs-spacer"></span>'
     +'<button onclick="clientSelAllPage()">全选本页</button>'
     +'<button onclick="clientSelAllFiltered()">全选结果</button>'
+    +'<button onclick="clientToggleSelOnly()" class="'+(clientSelOnly?'on':'')+'" '+((n||clientSelOnly)?'':'disabled')+'>'+(clientSelOnly?'显示全部':'只看已选')+'</button>'
     +'<button onclick="clientSelClear()" '+(n?'':'disabled')+'>清除</button>'
     +'<button onclick="bulkEditClientAttrs()" '+(n?'':'disabled')+'>批量改属性</button>'
     +'<button onclick="bulkExportClients()" '+(n?'':'disabled')+'>导出选中</button>'
@@ -389,7 +398,7 @@ function bulkApplyAttrs(){
         }
         if(hit)okCount++;else failed++;
       }
-      clientSel={};
+      clientSel={};clientSelOnly=false;
       await loadClients();
       if(failed)showToast('更新完成：成功 '+okCount+' / 失败 '+failed+(lastErr?'（'+lastErr+'）':''),'error');
       else showToast('已更新 '+ids.length+' 个客户');
@@ -448,7 +457,7 @@ function bulkDeleteClients(){
         if(!r.ok)failed++;
         if(r.soft===false)soft=false;
       }
-      clientSel={};
+      clientSel={};clientSelOnly=false;
       await loadClients();
       if(failed)showToast('删除完成，但有 '+failed+' 批失败（可能无权限）','error');
       else showToast(soft?('已将 '+ids.length+' 个客户移入回收站'):('已删除 '+ids.length+' 个客户'));
@@ -597,25 +606,28 @@ function renderList(){
     return types.indexOf(currentFilter)>=0;
   });
 
-  // 分页切片（保留完整筛选结果供统计/批量使用）
+  // 完整筛选结果：供「全选结果」与批量弹窗的提示条/预选使用，不受复核视图影响
   _clientFiltered=list;
+  // 「只看已选」复核视图：只渲染已勾选的客户，100 选 30 时用于下手前核对
+  var visible=(clientBulkMode&&clientSelOnly)?list.filter(function(c){return !!clientSel[c.id]}):list;
+  _clientVisible=visible;
   var _csize=clientPageSize();
-  var _cpages=Math.max(1,Math.ceil(list.length/_csize));
+  var _cpages=Math.max(1,Math.ceil(visible.length/_csize));
   if(clientPage<1)clientPage=1;
   if(clientPage>_cpages)clientPage=_cpages;
-  var pageList=list.slice((clientPage-1)*_csize,clientPage*_csize);
+  var pageList=visible.slice((clientPage-1)*_csize,clientPage*_csize);
 
   // Stats
   var statsBar=document.getElementById('stats-bar');
   var totalContacts=allContacts.length;
   var hasFilter=(currentFilter!=='all')||q;
   statsBar.innerHTML=
-    '<div class="stat-card"><div class="stat-num">'+list.length+'</div><div class="stat-label">'+(hasFilter?'筛选结果':'客户总数')+'</div></div>'+(
+    '<div class="stat-card"><div class="stat-num">'+visible.length+'</div><div class="stat-label">'+((clientBulkMode&&clientSelOnly)?'已选客户':(hasFilter?'筛选结果':'客户总数'))+'</div></div>'+(
     hasFilter?'<div class="stat-card"><div class="stat-num">'+allClients.length+'</div><div class="stat-label">全部客户</div></div>':'')+
     '<div class="stat-card"><div class="stat-num">'+totalContacts+'</div><div class="stat-label">联系人</div></div>';
 
   var grid=document.getElementById('client-grid'),empty=document.getElementById('empty-state');
-  if(list.length===0){grid.innerHTML='';empty.classList.remove('hidden');statsBar.innerHTML=allClients.length>0?'<div class="stat-card"><div class="stat-num">0</div><div class="stat-label">筛选结果</div></div><div class="stat-card"><div class="stat-num">'+allClients.length+'</div><div class="stat-label">全部客户</div></div><div class="stat-card"><div class="stat-num">'+allContacts.length+'</div><div class="stat-label">联系人</div></div>':'<div class="stat-card"><div class="stat-num">0</div><div class="stat-label">客户总数</div></div><div class="stat-card"><div class="stat-num">0</div><div class="stat-label">联系人</div></div>'}
+  if(visible.length===0){grid.innerHTML='';empty.classList.remove('hidden');statsBar.innerHTML=allClients.length>0?'<div class="stat-card"><div class="stat-num">0</div><div class="stat-label">'+((clientBulkMode&&clientSelOnly)?'已选客户':'筛选结果')+'</div></div><div class="stat-card"><div class="stat-num">'+allClients.length+'</div><div class="stat-label">全部客户</div></div><div class="stat-card"><div class="stat-num">'+allContacts.length+'</div><div class="stat-label">联系人</div></div>':'<div class="stat-card"><div class="stat-num">0</div><div class="stat-label">客户总数</div></div><div class="stat-card"><div class="stat-num">0</div><div class="stat-label">联系人</div></div>'}
   else{
     empty.classList.add('hidden');
     var html='';
@@ -678,7 +690,7 @@ function renderList(){
     }
     grid.innerHTML=html;
   }
-  renderPagerInto('client-pager',list.length,_csize,clientPage,_cpages,'goClientPage');
+  renderPagerInto('client-pager',visible.length,_csize,clientPage,_cpages,'goClientPage');
   renderClientSelBar();
 }
 
