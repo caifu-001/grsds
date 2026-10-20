@@ -65,7 +65,14 @@ async function renderClient360Overview(c,orders){
       var pr=projs[pj];
       html+='<div style="margin-bottom:10px;padding:10px;background:var(--primary-light);border-radius:8px">';
       html+='<div style="font-weight:600;font-size:14px;margin-bottom:6px">'+h(pr.project_name||'项目#'+(pj+1))+'</div>';
-      var pfields=[['招标日期',pr.bidding_date||'-'],['中标人',pr.bidder_name||'-'],['中标人电话',pr.bidder_phone||'-'],['中标公司',pr.bidder_company||'-'],['中标金额',pr.bid_amount?formatMoney(pr.bid_amount):'-']];
+      // 甲方负责人：关联到具体联系人时带上职务，方便判断是不是要找的人
+      var ocTxt=pr.client_owner||'-';
+      if(pr.client_owner_contact_id){
+        var _acs=allContacts||[],_oc=null;
+        for(var _oi=0;_oi<_acs.length;_oi++){if(String(_acs[_oi].id)===String(pr.client_owner_contact_id)){_oc=_acs[_oi];break}}
+        if(_oc&&String(_oc.position||'').trim())ocTxt=ocTxt+'（'+String(_oc.position).trim()+'）';
+      }
+      var pfields=[['招标日期',pr.bidding_date||'-'],['中标人',pr.bidder_name||'-'],['中标人电话',pr.bidder_phone||'-'],['中标公司',pr.bidder_company||'-'],['中标金额',pr.bid_amount?formatMoney(pr.bid_amount):'-'],['甲方负责人',ocTxt]];
       for(var pf=0;pf<pfields.length;pf++)html+='<div class="c360-info-row" style="font-size:12px"><span class="c360-info-label">'+pfields[pf][0]+'</span><span class="c360-info-value">'+h(pfields[pf][1])+'</span></div>';
       html+='</div>';
     }

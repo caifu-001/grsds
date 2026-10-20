@@ -585,6 +585,7 @@ function renderList(){
       arr.push(projs2[pi].project_name||'');
       arr.push(projs2[pi].bidder_name||'');
       arr.push(projs2[pi].bidder_company||'');
+      arr.push(projs2[pi].client_owner||'');
     }
     var types=parseTypes(c.type);
     arr=arr.concat(types);
@@ -671,9 +672,13 @@ function renderList(){
       if(projs.length===0)return '';
       var tags='',_tagN=0;
       for(var pi=0;pi<projs.length;pi++){
-        var p=projs[pi],pname=p.project_name||'',bd=p.bidder_name||'',co=p.client_owner||'';
+        var p=projs[pi],pname=p.project_name||'',bd=p.bidder_name||'',co=p.client_owner||'',coPos='';
+        if(p.client_owner_contact_id){
+          var _ac=allContacts||[];
+          for(var _ai=0;_ai<_ac.length;_ai++){if(String(_ac[_ai].id)===String(p.client_owner_contact_id)){coPos=String(_ac[_ai].position||'').trim();break}}
+        }
         if(!pname&&!bd&&!co)continue; // 三项全空时跳过，避免渲染出只有图标的空白气泡
-        tags+='<span class="card-project-tag" title="'+(bd?'中标人:'+h(bd):'')+(co?' / 甲方负责人:'+h(co):'')+'">📋 '+h(pname||'未命名项目')+(bd?' · '+h(bd):'')+(co?' · 👤'+h(co):'')+'</span>';
+        tags+='<span class="card-project-tag" title="'+(bd?'中标人:'+h(bd):'')+(co?' / 甲方负责人:'+h(co)+(coPos?'（'+h(coPos)+'）':''):'')+'">📋 '+h(pname||'未命名项目')+(bd?' · '+h(bd):'')+(co?' · 👤'+h(co):'')+'</span>';
         _tagN++;
       }
       if(!_tagN)return '';
@@ -692,6 +697,7 @@ function renderList(){
 
 // === Contacts Form ===
 function refCt(){
+  refreshPeOwnerLinks(); // 联系人增删改后，项目里的甲方负责人关联条要跟着更新
   var c=document.getElementById('contacts-container');
   if(formContacts.length===0){c.innerHTML='<div class="empty" style="padding:20px">暂无联系人，点击「＋ 添加」</div>';return}
   var html='';
@@ -998,11 +1004,21 @@ function addProjectEntry(prefill,toTop){
       '<div class="form-group"><label>中标金额</label><input class="pe-bid-amount" placeholder="中标金额" value="'+h(prefill.bid_amount||'')+'"></div>'+
     '</div>'+
     '<div class="form-row">'+
-      '<div class="form-group"><label>甲方负责人</label><input class="pe-client-owner" placeholder="甲方负责人姓名" value="'+h(prefill.client_owner||'')+'"></div>'+
+      '<div class="form-group pe-owner-group">'+
+        '<label>甲方负责人 <span class="pe-owner-tip">可从下方联系人选择</span></label>'+
+        '<div class="pe-owner-wrap">'+
+          '<input class="pe-client-owner" placeholder="选择下方联系人或直接输入姓名" autocomplete="off" data-cid="'+h(prefill.client_owner_contact_id||'')+'" value="'+h(prefill.client_owner||'')+'" onfocus="peOwnerOpen(this)" oninput="peOwnerInput(this)" onkeydown="peOwnerKey(event,this)" onblur="peOwnerBlur(this)">'+
+          '<div class="name-suggestions pe-owner-dd hidden"></div>'+
+        '</div>'+
+        '<div class="pe-owner-link hidden"></div>'+
+      '</div>'+
       '<div class="form-group"><label>备注</label><input class="pe-notes" placeholder="项目备注" value="'+h(prefill.notes||'')+'"></div>'+
     '</div>';
   if(toTop&&list.firstChild)list.insertBefore(div,list.firstChild);else list.appendChild(div);
   renumberProjects();
+  // 回显时联系人可能还没加载完（openForm 先渲染项目、后等接口回填联系人），
+  // 关联信息由 refCt() 收尾时统一补，这里只是让已加载的场景立刻可见。
+  peOwnerLinkRefresh(div.querySelector('.pe-client-owner'));
   if(toTop){
     try{div.scrollIntoView({block:'nearest',behavior:'smooth'})}catch(e){}
     var _pf=div.querySelector('.pe-project');
@@ -1017,4 +1033,148 @@ function removeProjectEntry(btn){
 function renumberProjects(){
   var entries=document.querySelectorAll('#project-list .project-entry');
   for(var i=0;i<entries.length;i++)entries[i].querySelector('.pe-num').textContent='项目 '+(i+1);
+}
+
+// === 甲方负责人：关联本客户联系人 ===
+// 候选列表必须「用的时候」再读 formContacts：openForm 是先渲染项目、后 await 回填联系人，
+// 渲染那一刻联系人往往还是空的，把候选固化进 DOM 会得到一份永远为空的下拉。
+// 关联用 data-cid 记录（值可能是本次新建联系人的临时 id，保存时由 saveClient 换绑真实 id）。
+function peOwnerDetail(c){
+  var parts=[],pos=String(c.position||'').trim();
+  if(pos)parts.push(pos);
+  else if(String(c.dept||'').trim())parts.push(String(c.dept).trim());
+  var phs=(c.phones||[]).filter(function(p){return String(p||'').trim()});
+  if(phs.length)parts.push('📞 '+phs[0]);
+  return parts.join(' · ');
+}
+function peOwnerFind(cid){
+  if(!cid)return null;
+  var list=formContacts||[];
+  for(var i=0;i<list.length;i++){if(String(list[i].id)===String(cid))return list[i]}
+  return null;
+}
+function peOwnerCandidates(inp){
+  var all=(formContacts||[]).filter(function(c){return String(c.name||'').trim()});
+  var kw=String(inp.value||'').trim().toLowerCase();
+  var cur=peOwnerFind(inp.getAttribute('data-cid')||'');
+  // 已关联时输入框里放的就是该联系人姓名，不能拿它当筛选词，否则只剩它自己
+  if(cur&&kw===String(cur.name||'').trim().toLowerCase())kw='';
+  if(!kw)return all;
+  return all.filter(function(c){
+    return (String(c.name||'')+' '+(c.position||'')+' '+(c.dept||'')).toLowerCase().indexOf(kw)>=0;
+  });
+}
+function peOwnerRender(inp){
+  var group=inp.closest('.pe-owner-group');
+  if(!group)return;
+  var dd=group.querySelector('.pe-owner-dd');
+  if(!dd)return;
+  var list=peOwnerCandidates(inp),cur=String(inp.getAttribute('data-cid')||''),html='';
+  if(!list.length){
+    html='<div class="ns-empty">'+((formContacts&&formContacts.length)?'没有匹配的联系人':'该客户暂无联系人，可先在下方「＋ 添加联系人」')+'</div>';
+  }else{
+    for(var i=0;i<list.length;i++){
+      var c=list[i],nm=String(c.name||'').trim(),dt=peOwnerDetail(c),on=String(c.id)===cur;
+      html+='<div class="name-suggestion'+(on?' active':'')+'" data-cid="'+h(c.id)+'" data-name="'+h(nm)+'" onmousedown="peOwnerPick(event,this)">'+
+        '<div class="ns-main"><div class="ns-name">'+h(nm)+'</div>'+(dt?'<div class="ns-detail">'+h(dt)+'</div>':'')+'</div>'+
+        (on?'<span class="ns-source">✓ 已关联</span>':'')+
+      '</div>';
+    }
+  }
+  dd.innerHTML=html;
+  dd.classList.remove('hidden');
+}
+function peOwnerOpen(inp){peOwnerRender(inp)}
+function peOwnerPick(e,el){
+  if(e){if(e.preventDefault)e.preventDefault();if(e.stopPropagation)e.stopPropagation()}
+  var group=el&&el.closest?el.closest('.pe-owner-group'):null;
+  if(!group)return;
+  var inp=group.querySelector('.pe-client-owner');
+  if(!inp)return;
+  inp.value=el.getAttribute('data-name')||'';
+  inp.setAttribute('data-cid',el.getAttribute('data-cid')||'');
+  var dd=group.querySelector('.pe-owner-dd');
+  if(dd)dd.classList.add('hidden');
+  peOwnerLinkRefresh(inp);
+}
+function peOwnerInput(inp){
+  // 手改成自定义姓名即视为解除关联，避免「显示名字」和「关联联系人」各说各话
+  inp.setAttribute('data-cid','');
+  peOwnerLinkRefresh(inp);
+  peOwnerRender(inp);
+}
+function peOwnerKey(e,inp){
+  var group=inp.closest('.pe-owner-group');
+  if(!group)return;
+  var dd=group.querySelector('.pe-owner-dd');
+  if(!dd)return;
+  if(e.key==='Escape'){dd.classList.add('hidden');return}
+  if(dd.classList.contains('hidden')){if(e.key==='ArrowDown')peOwnerRender(inp);else return}
+  var items=dd.querySelectorAll('.name-suggestion');
+  if(!items.length)return;
+  var act=-1;
+  for(var i=0;i<items.length;i++){if(items[i].classList.contains('active')){act=i;break}}
+  if(e.key==='ArrowDown'||e.key==='ArrowUp'){
+    e.preventDefault();
+    var next=e.key==='ArrowDown'?(act<0?0:Math.min(act+1,items.length-1)):(act<0?items.length-1:Math.max(act-1,0));
+    for(var j=0;j<items.length;j++)items[j].classList.remove('active');
+    items[next].classList.add('active');
+    try{items[next].scrollIntoView({block:'nearest'})}catch(err){}
+  }else if(e.key==='Enter'){
+    if(act>=0){e.preventDefault();peOwnerPick(null,items[act])}
+  }
+}
+function peOwnerBlur(inp){
+  setTimeout(function(){
+    var group=inp.closest?inp.closest('.pe-owner-group'):null;
+    if(!group)return;
+    var dd=group.querySelector('.pe-owner-dd');
+    if(dd)dd.classList.add('hidden');
+  },120);
+}
+// 关联条：显示联系人职务/手机号，并让输入框里的姓名跟随联系人（改名后自动同步）。
+// 关联 id 指向的联系人已不在表单里时不报错、也不清 id —— 只保留姓名，静默退化为纯文本。
+function peOwnerLinkRefresh(inp){
+  if(!inp||!inp.closest)return;
+  var group=inp.closest('.pe-owner-group');
+  if(!group)return;
+  var box=group.querySelector('.pe-owner-link');
+  if(!box)return;
+  var cid=inp.getAttribute('data-cid')||'';
+  var co=cid?peOwnerFind(cid):null;
+  if(!co){box.classList.add('hidden');box.innerHTML='';return}
+  var nm=String(co.name||'').trim();
+  if(nm&&inp.value!==nm)inp.value=nm;
+  var dt=peOwnerDetail(co),full='已关联联系人：'+(nm||'未命名')+(dt?' · '+dt:'');
+  // 输入框里已经有姓名了，关联条只补充职务/电话，避免挤成一团（完整信息放 title）
+  box.innerHTML='<span class="pe-owner-linked" title="'+h(full)+'">🔗 '+(dt?h(dt):'已关联联系人')+'</span><button type="button" class="pe-owner-unlink" onclick="peOwnerUnlink(this)">解除</button>';
+  box.classList.remove('hidden');
+}
+function peOwnerUnlink(btn){
+  var group=btn.closest('.pe-owner-group');
+  if(!group)return;
+  var inp=group.querySelector('.pe-client-owner');
+  if(!inp)return;
+  inp.setAttribute('data-cid','');
+  peOwnerLinkRefresh(inp);
+}
+function refreshPeOwnerLinks(){
+  var ins=document.querySelectorAll('#project-list .pe-client-owner');
+  for(var i=0;i<ins.length;i++)peOwnerLinkRefresh(ins[i]);
+}
+// 项目里的甲方负责人可能指向「本次刚新建的联系人」（临时 id）：联系人落库后才有真实 id，
+// 而客户行在联系人之前就写过一次，所以保存流程末尾要用它把临时 id 换掉。就地修改，返回是否有改动。
+// 联系人已被删掉时丢掉该关联、只保留姓名，避免长期挂一个指向空行的 id。
+function rebindProjectOwnerIds(projectsArr,contacts,savedIds){
+  var changed=false,list=projectsArr||[],cs=contacts||[],ids=savedIds||[];
+  for(var i=0;i<list.length;i++){
+    var p=list[i],cid=p&&p.client_owner_contact_id;
+    if(!cid)continue;
+    var idx=-1;
+    for(var j=0;j<cs.length;j++){if(String(cs[j].id)===String(cid)){idx=j;break}}
+    if(idx<0){delete p.client_owner_contact_id;changed=true;continue}
+    var real=ids[idx];
+    if(real&&String(real)!==String(cid)){p.client_owner_contact_id=real;changed=true}
+  }
+  return changed;
 }

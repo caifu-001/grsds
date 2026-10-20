@@ -115,9 +115,16 @@ async function saveClient(){
     var pbp=(e.querySelector('.pe-bidder-phone')||{}).value||'';
     var pbc=(e.querySelector('.pe-bidder-company')||{}).value||'';
     var pba=(e.querySelector('.pe-bid-amount')||{}).value||'';
-    var pco=(e.querySelector('.pe-client-owner')||{}).value||'';
+    var pcoEl=e.querySelector('.pe-client-owner');
+    var pco=pcoEl?pcoEl.value:'';
+    var pcoId=pcoEl?(pcoEl.getAttribute('data-cid')||''):'';
     var pnotes=(e.querySelector('.pe-notes')||{}).value||'';
-    if(pn||pb)projectsArr.push({project_name:pn,bidding_date:pd,bidder_name:pb,bidder_phone:pbp,bidder_company:pbc,bid_amount:pba,client_owner:pco,notes:pnotes});
+    if(pn||pb||pco){
+      var pj={project_name:pn,bidding_date:pd,bidder_name:pb,bidder_phone:pbp,bidder_company:pbc,bid_amount:pba,client_owner:pco,notes:pnotes};
+      // 甲方负责人若选自本客户联系人，记下关联 id（可能是本次新建联系人的临时 id，见下方换绑）
+      if(pcoId)pj.client_owner_contact_id=pcoId;
+      projectsArr.push(pj);
+    }
   }
   // 统一按招标日期倒序落库，保证表单/卡片/详情顺序一致（日期越新越靠前）
   projectsArr.sort(function(x,y){return cmpBiddingDateDesc(x.bidding_date,y.bidding_date)});
@@ -221,6 +228,13 @@ async function saveClient(){
     // 表单已关闭、列表一刷新联系人又冒出来。
     var dw=await safeWriteContacts('delete',null,toDel[j]);
     if(dw.hit===0){delFailed++;console.error('contact delete failed:',dw.error,'id:',toDel[j]);}
+  }
+
+  // 甲方负责人可能关联的是本次刚新建的联系人：那时手里只有临时 id，而客户行（含 projects
+  // JSON）在联系人落库之前就已经写过一次。这里把临时 id 换成真实 id，只在这一种情况下补写一次。
+  if(rebindProjectOwnerIds(projectsArr,formContacts,savedIds)){
+    var rw=await safeWriteById('clients','update',{projects:JSON.stringify(projectsArr)},clientId);
+    if(rw.hit===0)console.warn('[saveClient] 甲方负责人关联 id 未能回写：',rw.error);
   }
 
   closeForm();
