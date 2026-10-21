@@ -114,13 +114,14 @@ async function saveClient(){
     var pb=(e.querySelector('.pe-bidder')||{}).value||'';
     var pbp=(e.querySelector('.pe-bidder-phone')||{}).value||'';
     var pbc=(e.querySelector('.pe-bidder-company')||{}).value||'';
+    var pbg=String((e.querySelector('.pe-budget')||{}).value||'').trim();
     var pba=(e.querySelector('.pe-bid-amount')||{}).value||'';
     var pcoEl=e.querySelector('.pe-client-owner');
     var pco=pcoEl?pcoEl.value:'';
     var pcoId=pcoEl?(pcoEl.getAttribute('data-cid')||''):'';
     var pnotes=(e.querySelector('.pe-notes')||{}).value||'';
-    if(pn||pb||pco){
-      var pj={project_name:pn,bidding_date:pd,bidder_name:pb,bidder_phone:pbp,bidder_company:pbc,bid_amount:pba,client_owner:pco,notes:pnotes};
+    if(pn||pb||pco||pbg){
+      var pj={project_name:pn,bidding_date:pd,bidder_name:pb,bidder_phone:pbp,bidder_company:pbc,project_budget:pbg,bid_amount:pba,client_owner:pco,notes:pnotes};
       // 甲方负责人若选自本客户联系人，记下关联 id（可能是本次新建联系人的临时 id，见下方换绑）
       if(pcoId)pj.client_owner_contact_id=pcoId;
       projectsArr.push(pj);

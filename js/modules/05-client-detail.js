@@ -678,7 +678,11 @@ function renderList(){
           for(var _ai=0;_ai<_ac.length;_ai++){if(String(_ac[_ai].id)===String(p.client_owner_contact_id)){coPos=String(_ac[_ai].position||'').trim();break}}
         }
         if(!pname&&!bd&&!co)continue; // 三项全空时跳过，避免渲染出只有图标的空白气泡
-        tags+='<span class="card-project-tag" title="'+(bd?'中标人:'+h(bd):'')+(co?' / 甲方负责人:'+h(co)+(coPos?'（'+h(coPos)+'）':''):'')+'">📋 '+h(pname||'未命名项目')+(bd?' · '+h(bd):'')+(co?' · 👤'+h(co):'')+'</span>';
+        var _tip=[];
+        if(bd)_tip.push('中标人:'+h(bd));
+        if(p.project_budget)_tip.push('预算:'+h(formatMoney(p.project_budget)));
+        if(co)_tip.push('甲方负责人:'+h(co)+(coPos?'（'+h(coPos)+'）':''));
+        tags+='<span class="card-project-tag" title="'+_tip.join(' / ')+'">📋 '+h(pname||'未命名项目')+(bd?' · '+h(bd):'')+(co?' · 👤'+h(co):'')+'</span>';
         _tagN++;
       }
       if(!_tagN)return '';
@@ -996,12 +1000,16 @@ function addProjectEntry(prefill,toTop){
       '<div class="form-group"><label>招标日期</label><input type="date" class="pe-bidding-date" value="'+(prefill.bidding_date||'')+'"></div>'+
     '</div>'+
     '<div class="form-row">'+
+      '<div class="form-group"><label>项目预算</label><input type="number" min="0" step="0.01" class="pe-budget" placeholder="元，如 1200000" value="'+h(prefill.project_budget==null?'':prefill.project_budget)+'"></div>'+
+      '<div class="form-group"><label>中标金额</label><input class="pe-bid-amount" placeholder="元，如 980000" value="'+h(prefill.bid_amount||'')+'"></div>'+
+    '</div>'+
+    '<div class="form-row">'+
       '<div class="form-group"><label>中标人</label><input class="pe-bidder" placeholder="中标人姓名" value="'+h(prefill.bidder_name||'')+'"></div>'+
       '<div class="form-group"><label>中标人电话</label><input class="pe-bidder-phone" placeholder="联系电话" value="'+h(prefill.bidder_phone||'')+'"></div>'+
     '</div>'+
     '<div class="form-row">'+
       '<div class="form-group"><label>中标公司</label><input class="pe-bidder-company" placeholder="中标公司" value="'+h(prefill.bidder_company||'')+'"></div>'+
-      '<div class="form-group"><label>中标金额</label><input class="pe-bid-amount" placeholder="中标金额" value="'+h(prefill.bid_amount||'')+'"></div>'+
+      '<div class="form-group"><label>备注</label><input class="pe-notes" placeholder="项目备注" value="'+h(prefill.notes||'')+'"></div>'+
     '</div>'+
     '<div class="form-row">'+
       '<div class="form-group pe-owner-group">'+
@@ -1012,7 +1020,6 @@ function addProjectEntry(prefill,toTop){
         '</div>'+
         '<div class="pe-owner-link hidden"></div>'+
       '</div>'+
-      '<div class="form-group"><label>备注</label><input class="pe-notes" placeholder="项目备注" value="'+h(prefill.notes||'')+'"></div>'+
     '</div>';
   if(toTop&&list.firstChild)list.insertBefore(div,list.firstChild);else list.appendChild(div);
   renumberProjects();

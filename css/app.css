@@ -766,7 +766,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
 .ps-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
 .ps-header label{font-size:14px;font-weight:600;color:var(--text)}
 /* 甲方负责人：从本客户联系人中选择（下拉复用 .name-suggestions） */
-.pe-owner-group{position:relative}
+.pe-owner-group{position:relative;grid-column:1/-1}
 .pe-owner-wrap{position:relative}
 .pe-owner-tip{font-size:11px;font-weight:400;color:var(--text3);margin-left:4px}
 .pe-owner-dd .ns-main{flex:1;min-width:0;margin-right:8px;text-align:left}
