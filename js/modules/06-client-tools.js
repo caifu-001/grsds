@@ -37,12 +37,27 @@ function collectProjectEntries(){
     var e=entries[ei];
     var pn=(e.querySelector('.pe-project')||{}).value||'';
     var pd=(e.querySelector('.pe-bidding-date')||{}).value||null;
-    var pbInp=e.querySelector('.pe-bidder');
-    var pb=pbInp?String(pbInp.value||''):'';
-    var pbDs=pbInp&&pbInp.dataset?pbInp.dataset:{};
-    var phInp=e.querySelector('.pe-bidder-phone');
-    var pbp=phInp?String(phInp.value||''):'';
-    var phDs=phInp&&phInp.dataset?phInp.dataset:{};
+    // 中标人 / 中标人电话：可多位，每位一行（姓名 + 电话），各自可能关联不同公司的联系人
+    var pPersons=[],personRows=e.querySelectorAll('.pe-person');
+    for(var pri=0;pri<personRows.length;pri++){
+      var prow=personRows[pri];
+      var pnInp=prow.querySelector('.pe-bidder'),ppInp=prow.querySelector('.pe-bidder-phone');
+      var pnm=pnInp?String(pnInp.value||'').trim():'';
+      var pph=ppInp?String(ppInp.value||'').trim():'';
+      if(!pnm&&!pph)continue;
+      var pobj={name:pnm,phone:pph};
+      // 只有「文本仍是关联对象的值」时才存 id：手改过文本（oninput 已清 dataset）就等于自定义
+      var pnd=pnInp&&pnInp.dataset?pnInp.dataset:{};
+      if(pnd.cid&&String(pnd.name||'')===pnm){
+        pobj.contact_id=String(pnd.cid);
+        if(pnd.client)pobj.client_id=String(pnd.client);
+      }
+      var ppd=ppInp&&ppInp.dataset?ppInp.dataset:{};
+      if(ppd.cid&&String(ppd.phone||'')===pph)pobj.phone_contact_id=String(ppd.cid);
+      pPersons.push(pobj);
+    }
+    var pb=pPersons.map(function(o){return o.name}).filter(Boolean).join('、');
+    var pbp=pPersons.map(function(o){return o.phone}).filter(Boolean).join('、');
     var pbg=String((e.querySelector('.pe-budget')||{}).value||'').trim();
     var pba=(e.querySelector('.pe-bid-amount')||{}).value||'';
     // 中标公司可以多家（联合体中标）：chip 是唯一数据源，bidder_company 仍写单串以兼容旧链路。
@@ -87,7 +102,7 @@ function collectProjectEntries(){
     }
     var pco=pOwners.map(function(o){return o.name}).join('、');
     var pnotes=(e.querySelector('.pe-notes')||{}).value||'';
-    if(pn||pb||pco||pbg||bidderCo.length){
+    if(pn||pb||pco||pbg||bidderCo.length||pPersons.length){
       var pj={project_name:pn,bidding_date:pd,bidder_name:pb,bidder_phone:pbp,bidder_company:pbc,project_budget:pbg,bid_amount:pba,client_owner:pco,notes:pnotes};
       // client_owner 仍是「姓名用、连接」的单串（列表卡片 / 搜索 / 旧代码都在用），
       // 多负责人与关联 id 另存 client_owners；联合中标的中标公司同理另存 bidder_companies
@@ -99,13 +114,22 @@ function collectProjectEntries(){
         for(var bix=0;bix<bidderIds.length;bix++){if(bidderIds[bix]){anyCoId=true;break}}
         if(anyCoId)pj.bidder_company_ids=bidderIds;
       }
-      // 中标人 / 中标人电话：只有在「文本仍是关联对象的值」时才存 id。
-      // 手改过的文本（oninput 已清 dataset）不会走进来，等于只记文本 —— 这才是用户要的自定义。
-      if(pbDs.cid&&String(pbDs.name||'')===String(pb)){
-        pj.bidder_contact_id=String(pbDs.cid);
-        if(pbDs.client)pj.bidder_client_id=String(pbDs.client);
+      // 多位中标人：bidder_contacts 为准；第一位中标人的关联另写一份到旧字段
+      // （bidder_contact_id / bidder_client_id / bidder_phone_contact_id），旧链路照常读得到
+      if(pPersons.length){
+        pj.bidder_contacts=pPersons;
+        // 旧字段只放第一位有联系人的中标人（顺序不是硬保证：有人可能只填了姓名）
+        var pLink=null,pPhoneLink='';
+        for(var pli=0;pli<pPersons.length;pli++){
+          if(!pLink&&pPersons[pli].contact_id)pLink=pPersons[pli];
+          if(!pPhoneLink&&pPersons[pli].phone_contact_id)pPhoneLink=String(pPersons[pli].phone_contact_id);
+        }
+        if(pLink){
+          pj.bidder_contact_id=String(pLink.contact_id);
+          if(pLink.client_id)pj.bidder_client_id=String(pLink.client_id);
+        }
+        if(pPhoneLink)pj.bidder_phone_contact_id=pPhoneLink;
       }
-      if(phDs.cid&&String(phDs.phone||'')===String(pbp))pj.bidder_phone_contact_id=String(phDs.cid);
       projectsArr.push(pj);
     }
   }

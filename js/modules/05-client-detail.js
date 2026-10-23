@@ -584,6 +584,14 @@ function renderList(){
     for(var pi=0;pi<projs2.length;pi++){
       arr.push(projs2[pi].project_name||'');
       arr.push(projs2[pi].bidder_name||'');
+      // 多位中标人：姓名和电话都纳入搜索（联合体时按某家公司的对接人也能找到客户）
+      if(Array.isArray(projs2[pi].bidder_contacts)){
+        for(var _bi=0;_bi<projs2[pi].bidder_contacts.length;_bi++){
+          var _bp=projs2[pi].bidder_contacts[_bi]||{};
+          arr.push(_bp.name||'');
+          arr.push(_bp.phone||'');
+        }
+      }
       arr.push(projs2[pi].bidder_company||'');
       // 联合中标存的是数组，某个公司名未必出现在单串里（历史数据缺单串时也要能搜到）
       if(Array.isArray(projs2[pi].bidder_companies))arr=arr.concat(projs2[pi].bidder_companies.filter(Boolean).map(String));
@@ -676,7 +684,11 @@ function renderList(){
       if(projs.length===0)return '';
       var tags='',_tagN=0;
       for(var pi=0;pi<projs.length;pi++){
-        var p=projs[pi],pname=p.project_name||'',bd=p.bidder_name||'';
+        var p=projs[pi],pname=p.project_name||'';
+        // 中标人可能多位（联合体每家一位）：气泡里只放前两位，完整名单交给 tooltip
+        var bdNames=projectBidderPersonsOf(p).map(function(o){return o.name}).filter(Boolean);
+        var bd=bdNames.join('、');
+        var bdShort=bdNames.length>2?bdNames.slice(0,2).join('、')+' 等'+bdNames.length+'人':bd;
         var ownList=projectOwnersOf(p);
         var coNames=ownList.map(function(o){return o.name}).filter(Boolean);
         var co=coNames.join('、');
@@ -699,7 +711,7 @@ function renderList(){
         }
         var coShort=coNames.length>2?coNames.slice(0,2).join('、')+' 等'+coNames.length+'人':co;
         // 联合中标标记紧跟项目名：气泡末尾会被省略号截断，放前面才一定看得见
-        tags+='<span class="card-project-tag" title="'+_tip.join(' / ')+'">📋 '+h(pname||'未命名项目')+(bidList.length>1?' · 联合'+bidList.length+'家':'')+(bd?' · '+h(bd):'')+(co?' · 👤'+h(coShort):'')+'</span>';
+        tags+='<span class="card-project-tag" title="'+_tip.join(' / ')+'">📋 '+h(pname||'未命名项目')+(bidList.length>1?' · 联合'+bidList.length+'家':'')+(bd?' · '+h(bdShort):'')+(co?' · 👤'+h(coShort):'')+'</span>';
         _tagN++;
       }
       if(!_tagN)return '';
@@ -1026,17 +1038,10 @@ function addProjectEntry(prefill,toTop){
       '<div class="form-group"><label>中标金额</label><input class="pe-bid-amount" placeholder="元，如 980000" value="'+h(prefill.bid_amount||'')+'"></div>'+
     '</div>'+
     '<div class="form-row">'+
-      '<div class="form-group pe-bidname-group">'+
-        '<label>中标人 <span class="pe-owner-tip">可直接填，或选客户列表里的联系人</span></label>'+
-        '<input class="pe-bidder" placeholder="中标人姓名" autocomplete="off" value="'+h(prefill.bidder_name||'')+'" onfocus="peBidNameOpen(this)" oninput="peBidNameInput(this)" onkeydown="peBidNameKey(event,this)" onblur="peBidNameBlur(this)">'+
-        '<div class="name-suggestions pe-bidname-dd hidden"></div>'+
-        '<div class="pe-bidname-link"></div>'+
-      '</div>'+
-      '<div class="form-group pe-bidphone-group">'+
-        '<label>中标人电话 <span class="pe-owner-tip">可手填，或选联系人电话</span></label>'+
-        '<input class="pe-bidder-phone" placeholder="联系电话" autocomplete="off" value="'+h(prefill.bidder_phone||'')+'" onfocus="peBidPhoneOpen(this)" oninput="peBidPhoneInput(this)" onkeydown="peBidPhoneKey(event,this)" onblur="peBidPhoneBlur(this)">'+
-        '<div class="name-suggestions pe-bidphone-dd hidden"></div>'+
-        '<div class="pe-bidphone-link"></div>'+
+      '<div class="form-group pe-people-group" style="grid-column:1/-1">'+
+        '<label>中标人 <span class="pe-owner-tip">可手填，也可选客户列表里的联系人；联合体中标的每家公司可以各填一位</span></label>'+
+        '<div class="pe-people"></div>'+
+        '<button type="button" class="pe-person-add" onclick="pePersonAdd(this)">＋ 添加中标人</button>'+
       '</div>'+
     '</div>'+
     '<div class="form-row">'+
@@ -1066,8 +1071,8 @@ function addProjectEntry(prefill,toTop){
   renumberProjects();
   // 中标公司：联合中标时一个项目可能有多家，用 chip 逐个记录（chip 是唯一数据源）
   peBidderInit(div,projectBidderRefsOf(prefill));
-  // 中标人 / 中标人电话：可自由填，也可关联客户列表里的联系人（关联信息存在 input.dataset）
-  peBidContactInit(div,prefill);
+  // 中标人 / 中标人电话：可自由填、可关联客户列表；联合体可以每家公司各一位
+  pePeopleInit(div,prefill);
   // 甲方负责人：一个项目可以挂多个负责人，各用一个 chip 表示（chip 是唯一数据源）
   peOwnerInit(div,projectOwnersOf(prefill));
   // 回显时联系人可能还没加载完（openForm 先渲染项目、后等接口回填联系人），
@@ -1435,12 +1440,21 @@ function peBidNameLinkRender(inp){
   box.innerHTML='<span class="pe-bid-link">🔗 已关联：'+h(co||'客户')+' · '+h(nm)+
     '<button type="button" class="pe-bid-link-x" aria-label="解除关联" onclick="peBidNameUnlink(this)">×</button></span>';
 }
+// 姓名侧的关联变化会影响到同行电话条的显示（同一人时电话条是隐藏的），一起刷
+function peBidNameRefreshRow(inp){
+  peBidNameLinkRender(inp);
+  var group=(inp&&inp.closest)?inp.closest('.pe-bidname-group'):null;
+  if(!group)return;
+  var row=group.closest('.pe-person');
+  var ph=row?row.querySelector('.pe-bidder-phone'):null;
+  if(ph)peBidPhoneLinkRender(ph);
+}
 function peBidNameUnlink(btn){
   var group=(btn&&btn.closest)?btn.closest('.pe-bidname-group'):null;
   if(!group)return;
   var inp=group.querySelector('.pe-bidder');
   if(inp&&inp.dataset){delete inp.dataset.cid;delete inp.dataset.client;delete inp.dataset.name}
-  peBidNameLinkRender(inp);
+  peBidNameRefreshRow(inp);
 }
 function peBidNameClearLink(inp){
   if(!inp||!inp.dataset)return;
@@ -1451,7 +1465,7 @@ function peBidNameInput(inp){
   // 手改了姓名 → 关联已失效，清掉（保存时只按文本落库）
   var ds=inp.dataset||{};
   if(ds.cid&&String(inp.value||'')!==String(ds.name||''))peBidNameClearLink(inp);
-  peBidNameLinkRender(inp);
+  peBidNameRefreshRow(inp);
   peBidNameRender(inp);
 }
 function peBidNamePick(e,el){
@@ -1467,7 +1481,8 @@ function peBidNamePick(e,el){
   if(inp.dataset){inp.dataset.cid=cid;inp.dataset.client=client;inp.dataset.name=nm}
   peBidNameLinkRender(inp);
   // 电话联动：空着就带出该联系人的第一个号码；若当前号码正是上一个关联人自动带出的，也跟着换新人的
-  var row=group.closest('.form-row');
+  // 多人中标时每位一行，只联动「本行」的电话输入框
+  var row=group.closest('.pe-person')||group.closest('.form-row');
   var phInp=row?row.querySelector('.pe-bidder-phone'):null;
   if(phInp&&phone){
     var phDs=phInp.dataset||{};
@@ -1519,7 +1534,9 @@ function peBidNameBlur(inp){
 
 function peBidPhoneCandidates(inp,kwOverride){
   var entry=(inp&&inp.closest)?inp.closest('.project-entry'):null;
-  var nameInp=entry?entry.querySelector('.pe-bidder'):null;
+  // 多人中标：只参考「本行」的中标人，别把第一行的姓名当成所有人
+  var row=(inp&&inp.closest)?inp.closest('.pe-person'):null;
+  var nameInp=row?row.querySelector('.pe-bidder'):(entry?entry.querySelector('.pe-bidder'):null);
   var prefNameCid=nameInp&&nameInp.dataset?String(nameInp.dataset.cid||''):'';
   var prefClients=bidLinkedClientIds(entry);
   var kw=kwOverride==null?String(inp.value||'').trim().toLowerCase():String(kwOverride);
@@ -1569,6 +1586,11 @@ function peBidPhoneLinkRender(inp){
   if(!box)return;
   var ds=inp.dataset||{},cid=String(ds.cid||'');
   if(!cid){box.innerHTML='';return}
+  // 姓名与电话关联的是同一个人时只留姓名那条，避免同一行把同样的信息写两遍
+  var row=group.closest('.pe-person');
+  var nameInp=row?row.querySelector('.pe-bidder'):null;
+  var nameCid=nameInp&&nameInp.dataset?String(nameInp.dataset.cid||''):'';
+  if(nameCid&&nameCid===cid){box.innerHTML='';return}
   var c=bidContactOf(cid),co=c?bidClientName(c.client_id):'';
   var nm=String(ds.name||(c?c.name:''));
   box.innerHTML='<span class="pe-bid-link">🔗 已关联：'+h([nm,co].filter(Boolean).join(' · ')||'联系人')+
@@ -1636,60 +1658,170 @@ function peBidPhoneBlur(inp){
     if(dd)dd.classList.add('hidden');
   },120);
 }
-// 打开表单回显：文本来自 prefill，关联 id 存在 dataset 上，再渲染「已关联」小条
-function peBidContactInit(entry,prefill){
-  prefill=prefill||{};
-  var nameInp=entry?entry.querySelector('.pe-bidder'):null;
-  var phInp=entry?entry.querySelector('.pe-bidder-phone'):null;
-  var cid=String(prefill.bidder_contact_id||'');
-  if(nameInp&&cid&&nameInp.dataset){
-    nameInp.dataset.cid=cid;
-    nameInp.dataset.client=String(prefill.bidder_client_id||'');
-    nameInp.dataset.name=String(prefill.bidder_name||'');
-    peBidNameLinkRender(nameInp);
+// === 中标人（可多位）：每位一行「姓名 + 电话」，各自可关联客户列表里的联系人 ===
+// 存 bidder_contacts: [{name,phone,contact_id?,client_id?,phone_contact_id?}] 为准，
+// 同时把 bidder_name / bidder_phone 写成「张三、李四」单串，旧链路（卡片/搜索/360）继续可用。
+function splitBidderList(v){
+  return String(v==null?'':v).split(/[、,，;；\/|\n]+/).map(function(s){return s.trim()}).filter(Boolean);
+}
+function projectBidderPersonsOf(p){
+  p=p||{};
+  var out=[];
+  if(Array.isArray(p.bidder_contacts)&&p.bidder_contacts.length){
+    for(var i=0;i<p.bidder_contacts.length;i++){
+      var it=p.bidder_contacts[i]||{};
+      out.push({
+        name:String(it.name==null?'':it.name).trim(),
+        phone:String(it.phone==null?'':it.phone).trim(),
+        contact_id:String(it.contact_id||it.cid||''),
+        client_id:String(it.client_id||''),
+        phone_contact_id:String(it.phone_contact_id||'')
+      });
+    }
+    return out;
   }
-  var pcid=String(prefill.bidder_phone_contact_id||'');
-  if(phInp&&pcid&&phInp.dataset){
-    phInp.dataset.cid=pcid;
-    phInp.dataset.name='';
-    phInp.dataset.phone=String(prefill.bidder_phone||'');
-    peBidPhoneLinkRender(phInp);
+  // 旧格式：bidder_name / bidder_phone 单串（有的本来就把多人挤在一格，拆开）
+  var names=splitBidderList(p.bidder_name),phones=splitBidderList(p.bidder_phone);
+  if(names.length>1&&phones.length>0&&phones.length<names.length)phones=[phones.join('、')];
+  var n=Math.max(names.length,phones.length);
+  for(var j=0;j<n;j++)out.push({name:names[j]||'',phone:phones[j]||'',contact_id:'',client_id:'',phone_contact_id:''});
+  if(out.length){
+    out[0].contact_id=String(p.bidder_contact_id||'');
+    out[0].client_id=String(p.bidder_client_id||'');
+    if(out.length===1)out[0].phone_contact_id=String(p.bidder_phone_contact_id||'');
+  }
+  return out;
+}
+function pePersonRowHtml(){
+  return '<div class="form-group pe-bidname-group">'+
+      '<input class="pe-bidder" placeholder="中标人姓名" autocomplete="off" onfocus="peBidNameOpen(this)" oninput="peBidNameInput(this)" onkeydown="peBidNameKey(event,this)" onblur="peBidNameBlur(this)">'+
+      '<div class="name-suggestions pe-bidname-dd hidden"></div>'+
+      '<div class="pe-bidname-link"></div>'+
+    '</div>'+
+    '<div class="form-group pe-bidphone-group">'+
+      '<input class="pe-bidder-phone" placeholder="联系电话" autocomplete="off" onfocus="peBidPhoneOpen(this)" oninput="peBidPhoneInput(this)" onkeydown="peBidPhoneKey(event,this)" onblur="peBidPhoneBlur(this)">'+
+      '<div class="name-suggestions pe-bidphone-dd hidden"></div>'+
+      '<div class="pe-bidphone-link"></div>'+
+    '</div>'+
+    '<button type="button" class="pe-person-del" aria-label="移除这个中标人" onclick="pePersonRemove(this)">×</button>';
+}
+// 只剩一行时不给删（清空内容即可），避免出现「一个人也没有」的空壳
+function pePeopleDelSync(box){
+  if(!box)return;
+  var rows=box.querySelectorAll('.pe-person');
+  for(var i=0;i<rows.length;i++){
+    var btn=rows[i].querySelector('.pe-person-del');
+    if(btn)btn.style.visibility=rows.length>1?'visible':'hidden';
   }
 }
+function pePersonFill(row,p){
+  p=p||{};
+  var n=row.querySelector('.pe-bidder'),ph=row.querySelector('.pe-bidder-phone');
+  if(n){
+    n.value=String(p.name||'');
+    if(p.contact_id&&n.dataset){
+      n.dataset.cid=String(p.contact_id);
+      n.dataset.client=String(p.client_id||'');
+      n.dataset.name=String(p.name||'');
+      peBidNameLinkRender(n);
+    }
+  }
+  if(ph){
+    ph.value=String(p.phone||'');
+    if(p.phone_contact_id&&ph.dataset){
+      ph.dataset.cid=String(p.phone_contact_id);
+      ph.dataset.name='';
+      ph.dataset.phone=String(p.phone||'');
+      peBidPhoneLinkRender(ph);
+    }
+  }
+}
+function pePeopleInit(entry,prefill){
+  var box=entry?entry.querySelector('.pe-people'):null;
+  if(!box)return;
+  var persons=projectBidderPersonsOf(prefill||{});
+  if(!persons.length)persons=[{name:'',phone:''}];
+  box.innerHTML='';
+  for(var i=0;i<persons.length;i++){
+    var row=document.createElement('div');
+    row.className='pe-person';
+    row.innerHTML=pePersonRowHtml();
+    box.appendChild(row);
+    pePersonFill(row,persons[i]);
+  }
+  pePeopleDelSync(box);
+}
+function pePersonAdd(btn){
+  var group=btn&&btn.parentNode?btn.parentNode:null;
+  var box=group?group.querySelector('.pe-people'):null;
+  if(!box)return;
+  var row=document.createElement('div');
+  row.className='pe-person';
+  row.innerHTML=pePersonRowHtml();
+  box.appendChild(row);
+  pePeopleDelSync(box);
+  var n=row.querySelector('.pe-bidder');
+  if(n){try{n.focus({preventScroll:true})}catch(e){n.focus()}}
+}
+function pePersonRemove(btn){
+  var row=btn&&btn.closest?btn.closest('.pe-person'):null;
+  if(!row)return;
+  var box=row.parentNode;
+  if(box&&box.querySelectorAll('.pe-person').length>1){
+    row.remove();
+  }else{
+    // 只剩一行：清空内容而不是删行
+    var n=row.querySelector('.pe-bidder'),ph=row.querySelector('.pe-bidder-phone');
+    if(n){n.value='';if(n.dataset){delete n.dataset.cid;delete n.dataset.client;delete n.dataset.name}peBidNameLinkRender(n)}
+    if(ph){ph.value='';if(ph.dataset){delete ph.dataset.cid;delete ph.dataset.name;delete ph.dataset.phone}peBidPhoneLinkRender(ph)}
+  }
+  pePeopleDelSync(box);
+}
 // 联系人数据到位 / 被增删改后刷新关联显示；关联的联系人已经没了就丢掉关联（文本保留）
+// 一个项目里中标人可能有多位，每人一行，必须逐行刷，不能只取第一个
 function refreshPeBidderLinks(){
   var entries=document.querySelectorAll('#project-list .project-entry');
   var hasContacts=!!((allContacts||[]).length);
   for(var i=0;i<entries.length;i++){
     var e=entries[i];
-    var n=e.querySelector('.pe-bidder');
-    if(n&&n.dataset&&n.dataset.cid){
-      var c=bidContactOf(n.dataset.cid);
-      if(c){
-        n.dataset.name=String(c.name||'');
-        if(!n.dataset.client)n.dataset.client=String(c.client_id||'');
-      }else if(hasContacts){
-        delete n.dataset.cid;delete n.dataset.client;delete n.dataset.name;
+    var names=e.querySelectorAll('.pe-bidder');
+    for(var ni=0;ni<names.length;ni++){
+      var n=names[ni];
+      if(n&&n.dataset&&n.dataset.cid){
+        var c=bidContactOf(n.dataset.cid);
+        if(c){
+          n.dataset.name=String(c.name||'');
+          if(!n.dataset.client)n.dataset.client=String(c.client_id||'');
+        }else if(hasContacts){
+          delete n.dataset.cid;delete n.dataset.client;delete n.dataset.name;
+        }
+        peBidNameLinkRender(n);
       }
-      peBidNameLinkRender(n);
     }
-    var p=e.querySelector('.pe-bidder-phone');
-    if(p&&p.dataset&&p.dataset.cid){
-      var pc=bidContactOf(p.dataset.cid);
-      if(pc)p.dataset.name=String(pc.name||'');
-      else if(hasContacts){delete p.dataset.cid;delete p.dataset.name;delete p.dataset.phone}
-      peBidPhoneLinkRender(p);
+    var phones=e.querySelectorAll('.pe-bidder-phone');
+    for(var pi=0;pi<phones.length;pi++){
+      var p=phones[pi];
+      if(p&&p.dataset&&p.dataset.cid){
+        var pc=bidContactOf(p.dataset.cid);
+        if(pc)p.dataset.name=String(pc.name||'');
+        else if(hasContacts){delete p.dataset.cid;delete p.dataset.name;delete p.dataset.phone}
+        peBidPhoneLinkRender(p);
+      }
     }
   }
 }
-// 展示用：中标人带出关联客户名（360 项目卡 / 卡片 tooltip）
+// 展示用：中标人带出关联客户名（360 项目卡 / 卡片 tooltip），多位用「、」连接
 // 用「 · 」而不是括号：客户名本身常带括号，套起来会变成「张三（中建八局（上海）有限公司）」
 function bidderLabel(p){
-  p=p||{};
-  var nm=String(p.bidder_name||'').trim();
-  if(!nm)return '';
-  var co=bidClientName(p.bidder_client_id);
-  return co?nm+' · '+co:nm;
+  var persons=projectBidderPersonsOf(p||{});
+  var arr=[];
+  for(var i=0;i<persons.length;i++){
+    var nm=String(persons[i].name||'').trim();
+    if(!nm)continue;
+    var co=bidClientName(persons[i].client_id);
+    arr.push(co?nm+' · '+co:nm);
+  }
+  return arr.join('、');
 }
 
 // === 甲方负责人：关联本客户联系人 ===

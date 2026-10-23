@@ -816,6 +816,22 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
 .name-suggestion.disabled{opacity:.55;cursor:default}
 .name-suggestion.disabled .ns-source{color:var(--text3)}
 /* 中标人 / 中标人电话：可直接填，也可从客户列表（客户 → 联系人）里选 */
+/* 联合体中标的每家公司可以各一位中标人：每位一行「姓名 + 电话」，行内自带关联候选 */
+.pe-people-group{grid-column:1/-1}
+.pe-people{display:flex;flex-direction:column;gap:8px}
+.pe-person{display:flex;gap:8px;align-items:flex-start}
+.pe-person .form-group{margin-bottom:0;flex:1;min-width:0;position:relative}
+.pe-person .pe-bidname-group{flex:1.15}
+.pe-person-del{flex:0 0 auto;width:26px;height:26px;margin-top:6px;border:none;background:transparent;color:var(--text3);font-size:18px;line-height:1;cursor:pointer;border-radius:50%}
+.pe-person-del:hover{background:#FEE2E2;color:var(--danger)}
+.pe-person-add{margin-top:8px;padding:5px 12px;border:1px dashed var(--primary);background:transparent;color:var(--primary);border-radius:6px;font-size:12px;cursor:pointer}
+.pe-person-add:hover{background:var(--primary-light)}
+@media(max-width:560px){
+  .pe-person{flex-wrap:wrap;position:relative;padding-right:32px}
+  .pe-person .pe-bidname-group,.pe-person .pe-bidphone-group{flex:1 1 100%}
+  /* 窄屏时两栏叠成上下两行，× 用绝对定位挂在右上角，别自己占一行 */
+  .pe-person-del{position:absolute;top:6px;right:0;margin-top:0;align-self:auto}
+}
 .pe-bidname-group,.pe-bidphone-group{position:relative}
 .pe-bidname-dd,.pe-bidphone-dd{min-width:300px;max-width:min(360px,calc(100vw - 32px))}
 .pe-bidphone-dd{left:auto;right:0}
