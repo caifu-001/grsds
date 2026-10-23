@@ -806,6 +806,15 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
 .pe-bidder-chip-name{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px}
 .pe-bidder-chip-x{border:none;background:transparent;color:inherit;opacity:.5;cursor:pointer;font-size:14px;line-height:1;padding:0 5px;border-radius:50%}
 .pe-bidder-chip-x:hover{opacity:1;color:var(--danger)}
+/* 中标人 / 中标人电话：可直接填，也可从客户列表（客户 → 联系人）里选 */
+.pe-bidname-group,.pe-bidphone-group{position:relative}
+.pe-bidname-dd,.pe-bidphone-dd{min-width:300px;max-width:min(360px,calc(100vw - 32px))}
+.pe-bidphone-dd{left:auto;right:0}
+.pe-bidname-dd .ns-main,.pe-bidphone-dd .ns-main{flex:1;min-width:0;margin-right:8px;text-align:left}
+.pe-bidname-dd .ns-name,.pe-bidphone-dd .ns-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pe-bid-link{display:inline-flex;align-items:center;max-width:100%;margin-top:6px;padding:2px 2px 2px 8px;border-radius:12px;background:var(--primary-light);color:var(--primary);font-size:11px;line-height:1.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pe-bid-link-x{border:none;background:transparent;color:inherit;opacity:.55;cursor:pointer;font-size:13px;line-height:1;padding:0 5px;border-radius:50%}
+.pe-bid-link-x:hover{opacity:1;color:var(--danger)}
 .card-projects{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px}
 .card-project-tag{display:inline-flex;align-items:center;gap:3px;font-size:11px;padding:2px 8px;background:var(--primary-light);color:var(--primary);border-radius:10px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .card-project-tag .bidder{color:var(--text2);font-size:11px}

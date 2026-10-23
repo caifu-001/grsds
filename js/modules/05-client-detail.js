@@ -684,7 +684,7 @@ function renderList(){
         var bidList=projectBiddersOf(p);
         if(!pname&&!bd&&!co&&!bidList.length)continue; // 全空时跳过，避免渲染出只有图标的空白气泡
         var _tip=[];
-        if(bd)_tip.push('中标人:'+h(bd));
+        if(bd)_tip.push('中标人:'+h(bidderLabel(p)||bd));
         if(bidList.length)_tip.push('中标公司:'+h(bidList.join('、'))+(bidList.length>1?'（联合体 '+bidList.length+' 家）':''));
         if(p.project_budget)_tip.push('预算:'+h(formatMoney(p.project_budget)));
         if(co){
@@ -719,6 +719,7 @@ function renderList(){
 // === Contacts Form ===
 function refCt(){
   refreshPeOwnerLinks(); // 联系人增删改后，项目里的甲方负责人关联条要跟着更新
+  refreshPeBidderLinks(); // 中标人 / 中标人电话的「已关联」小条同理
   var c=document.getElementById('contacts-container');
   if(formContacts.length===0){c.innerHTML='<div class="empty" style="padding:20px">暂无联系人，点击「＋ 添加」</div>';return}
   var html='';
@@ -1025,8 +1026,18 @@ function addProjectEntry(prefill,toTop){
       '<div class="form-group"><label>中标金额</label><input class="pe-bid-amount" placeholder="元，如 980000" value="'+h(prefill.bid_amount||'')+'"></div>'+
     '</div>'+
     '<div class="form-row">'+
-      '<div class="form-group"><label>中标人</label><input class="pe-bidder" placeholder="中标人姓名" value="'+h(prefill.bidder_name||'')+'"></div>'+
-      '<div class="form-group"><label>中标人电话</label><input class="pe-bidder-phone" placeholder="联系电话" value="'+h(prefill.bidder_phone||'')+'"></div>'+
+      '<div class="form-group pe-bidname-group">'+
+        '<label>中标人 <span class="pe-owner-tip">可直接填，或选客户列表里的联系人</span></label>'+
+        '<input class="pe-bidder" placeholder="中标人姓名" autocomplete="off" value="'+h(prefill.bidder_name||'')+'" onfocus="peBidNameOpen(this)" oninput="peBidNameInput(this)" onkeydown="peBidNameKey(event,this)" onblur="peBidNameBlur(this)">'+
+        '<div class="name-suggestions pe-bidname-dd hidden"></div>'+
+        '<div class="pe-bidname-link"></div>'+
+      '</div>'+
+      '<div class="form-group pe-bidphone-group">'+
+        '<label>中标人电话 <span class="pe-owner-tip">可手填，或选联系人电话</span></label>'+
+        '<input class="pe-bidder-phone" placeholder="联系电话" autocomplete="off" value="'+h(prefill.bidder_phone||'')+'" onfocus="peBidPhoneOpen(this)" oninput="peBidPhoneInput(this)" onkeydown="peBidPhoneKey(event,this)" onblur="peBidPhoneBlur(this)">'+
+        '<div class="name-suggestions pe-bidphone-dd hidden"></div>'+
+        '<div class="pe-bidphone-link"></div>'+
+      '</div>'+
     '</div>'+
     '<div class="form-row">'+
       '<div class="form-group pe-bidders-group">'+
@@ -1054,6 +1065,8 @@ function addProjectEntry(prefill,toTop){
   renumberProjects();
   // 中标公司：联合中标时一个项目可能有多家，用 chip 逐个记录（chip 是唯一数据源）
   peBidderInit(div,projectBiddersOf(prefill));
+  // 中标人 / 中标人电话：可自由填，也可关联客户列表里的联系人（关联信息存在 input.dataset）
+  peBidContactInit(div,prefill);
   // 甲方负责人：一个项目可以挂多个负责人，各用一个 chip 表示（chip 是唯一数据源）
   peOwnerInit(div,projectOwnersOf(prefill));
   // 回显时联系人可能还没加载完（openForm 先渲染项目、后等接口回填联系人），
@@ -1168,6 +1181,375 @@ function peBidderInit(entry,companies){
   if(!group)return;
   var inp=group.querySelector('.pe-bidder-company');
   for(var i=0;i<(companies||[]).length;i++)peBidderAddChip(inp,companies[i]);
+}
+
+// === 中标人 / 中标人电话：可直接填，也可从客户列表里选联系人 ===
+// 关联状态挂在 input.dataset（cid=联系人 id、client=客户 id、name=联系人姓名、phone=选中的号码），
+// 下方「🔗 已关联」小条只是它的可视呈现。用户一旦手改文本就不再是关联，立刻清 dataset ——
+// 否则会存下一个跟文本对不上的 id（下次打开会显示成别人公司的联系人）。
+function bidClientName(id){
+  if(!id)return '';
+  var list=allClients||[];
+  for(var i=0;i<list.length;i++){if(String(list[i].id)===String(id))return String(list[i].name||'')}
+  return '';
+}
+function bidContactOf(cid){
+  if(!cid)return null;
+  var list=allContacts||[];
+  for(var i=0;i<list.length;i++){if(String(list[i].id)===String(cid))return list[i]}
+  return null;
+}
+function bidContactPhoneList(c){
+  var out=[];
+  if(!c)return out;
+  function pushArr(raw){
+    var arr=[];
+    try{arr=JSON.parse(raw||'[]');if(!Array.isArray(arr))arr=raw?[String(raw)]:[]}
+    catch(e){arr=raw?[String(raw)]:[]}
+    for(var i=0;i<arr.length;i++){var v=String(arr[i]==null?'':arr[i]).trim();if(v)out.push(v)}
+  }
+  pushArr(c.phone);pushArr(c.landline);
+  return out;
+}
+// 客户名归一：去空白、去括号，便于「中标公司」与客户列表做包含匹配
+function bidNormName(s){
+  return String(s||'').replace(/[\s（）()【】\[\]]+/g,'').toLowerCase();
+}
+// 中标公司 chips 能对上客户列表的公司 → {clientId:1}（这些客户的联系人排前面）
+function bidLinkedClientIds(entry){
+  var ids={},names=[];
+  var chips=entry?entry.querySelectorAll('.pe-bidder-chip'):[];
+  for(var i=0;i<chips.length;i++){
+    var nm=bidNormName(chips[i].getAttribute('data-name'));
+    if(nm)names.push(nm);
+  }
+  if(!names.length)return ids;
+  var clients=allClients||[];
+  for(var n=0;n<names.length;n++){
+    for(var c=0;c<clients.length;c++){
+      var cn=bidNormName(clients[c].name);
+      if(!cn)continue;
+      // 双向包含：「中建八局」能对上「中建八局（上海）有限公司」
+      if(cn===names[n]||cn.indexOf(names[n])>=0||names[n].indexOf(cn)>=0)ids[String(clients[c].id)]=1;
+    }
+  }
+  return ids;
+}
+function peBidNameCandidates(inp,kwOverride){
+  var entry=(inp&&inp.closest)?inp.closest('.project-entry'):null;
+  var prefer=bidLinkedClientIds(entry);
+  var kw=kwOverride==null?String(inp.value||'').trim().toLowerCase():String(kwOverride);
+  var list=(allContacts||[]).filter(function(c){return String(c.name||'').trim()});
+  var out=[];
+  for(var i=0;i<list.length;i++){
+    var c=list[i],co=bidClientName(c.client_id);
+    var hay=(String(c.name||'')+' '+String(c.position||'')+' '+String(c.dept||'')+' '+co).toLowerCase();
+    if(kw&&hay.indexOf(kw)<0)continue;
+    out.push(c);
+  }
+  // 排在前面的优先：本项目中标的公司（能对上客户列表的）→ 其余按公司聚在一起，便于分组显示
+  out.sort(function(a,b){
+    var pa=prefer[String(a.client_id)]?0:1,pb=prefer[String(b.client_id)]?0:1;
+    if(pa!==pb)return pa-pb;
+    var ca=bidClientName(a.client_id),cb=bidClientName(b.client_id);
+    return ca===cb?0:(ca<cb?-1:1);
+  });
+  return out;
+}
+// all=true 时不按输入框内容过滤：点开输入框先看到全部（框里往往已有关联出来的姓名），
+// 一旦开始输入才收窄 —— 否则「想换个人」时下拉里只剩当前这个人。
+function peBidNameRender(inp,all){
+  var group=(inp&&inp.closest)?inp.closest('.pe-bidname-group'):null;
+  if(!group)return;
+  var dd=group.querySelector('.pe-bidname-dd');
+  if(!dd)return;
+  var list=peBidNameCandidates(inp,all?'':null).slice(0,40),html='',lastCo=null;
+  if(!list.length){
+    html='<div class="ns-empty">客户列表里没有匹配的联系人，直接输入姓名即可</div>';
+  }else{
+    for(var i=0;i<list.length;i++){
+      var c=list[i],nm=String(c.name||'').trim(),co=bidClientName(c.client_id);
+      if(co!==lastCo){
+        html+='<div class="ns-group-label">🏢 '+h(co||'未归属客户')+'</div>';
+        lastCo=co;
+      }
+      var pos=String(c.position||'').trim()||String(c.dept||'').trim();
+      var phs=bidContactPhoneList(c);
+      var dt=[pos,phs[0]||''].filter(Boolean).join(' · ');
+      html+='<div class="name-suggestion" data-cid="'+h(c.id)+'" data-client="'+h(c.client_id||'')+'" data-name="'+h(nm)+'" data-phone="'+h(phs[0]||'')+'" onmousedown="peBidNamePick(event,this)">'+
+        '<div class="ns-main"><div class="ns-name">'+h(nm)+'</div>'+(dt?'<div class="ns-detail">'+h(dt)+'</div>':'')+'</div>'+
+        '<span class="ns-source ns-add">＋</span></div>';
+    }
+  }
+  dd.innerHTML=html;
+  dd.classList.remove('hidden');
+}
+function peBidNameLinkRender(inp){
+  var group=(inp&&inp.closest)?inp.closest('.pe-bidname-group'):null;
+  if(!group)return;
+  var box=group.querySelector('.pe-bidname-link');
+  if(!box)return;
+  var ds=inp.dataset||{},cid=String(ds.cid||'');
+  if(!cid){box.innerHTML='';return}
+  var co=bidClientName(ds.client),nm=String(ds.name||inp.value||'');
+  box.innerHTML='<span class="pe-bid-link">🔗 已关联：'+h(co||'客户')+' · '+h(nm)+
+    '<button type="button" class="pe-bid-link-x" aria-label="解除关联" onclick="peBidNameUnlink(this)">×</button></span>';
+}
+function peBidNameUnlink(btn){
+  var group=(btn&&btn.closest)?btn.closest('.pe-bidname-group'):null;
+  if(!group)return;
+  var inp=group.querySelector('.pe-bidder');
+  if(inp&&inp.dataset){delete inp.dataset.cid;delete inp.dataset.client;delete inp.dataset.name}
+  peBidNameLinkRender(inp);
+}
+function peBidNameClearLink(inp){
+  if(!inp||!inp.dataset)return;
+  delete inp.dataset.cid;delete inp.dataset.client;delete inp.dataset.name;
+}
+function peBidNameOpen(inp){peBidNameRender(inp,true)}
+function peBidNameInput(inp){
+  // 手改了姓名 → 关联已失效，清掉（保存时只按文本落库）
+  var ds=inp.dataset||{};
+  if(ds.cid&&String(inp.value||'')!==String(ds.name||''))peBidNameClearLink(inp);
+  peBidNameLinkRender(inp);
+  peBidNameRender(inp);
+}
+function peBidNamePick(e,el){
+  if(e){if(e.preventDefault)e.preventDefault();if(e.stopPropagation)e.stopPropagation()}
+  var group=(el&&el.closest)?el.closest('.pe-bidname-group'):null;
+  if(!group)return;
+  var inp=group.querySelector('.pe-bidder');
+  if(!inp)return;
+  var cid=el.getAttribute('data-cid')||'',nm=el.getAttribute('data-name')||'';
+  var client=el.getAttribute('data-client')||'',phone=el.getAttribute('data-phone')||'';
+  var prevCid=String((inp.dataset||{}).cid||'');   // 换人前是谁（判断电话是不是上一次自动带出的）
+  inp.value=nm;
+  if(inp.dataset){inp.dataset.cid=cid;inp.dataset.client=client;inp.dataset.name=nm}
+  peBidNameLinkRender(inp);
+  // 电话联动：空着就带出该联系人的第一个号码；若当前号码正是上一个关联人自动带出的，也跟着换新人的
+  var row=group.closest('.form-row');
+  var phInp=row?row.querySelector('.pe-bidder-phone'):null;
+  if(phInp&&phone){
+    var phDs=phInp.dataset||{};
+    var fromSamePerson=!!phDs.cid&&(phDs.cid===prevCid||phDs.cid===cid);
+    // 电话还是「上一个关联人自动带出来的号码」（哪怕中标人已被手改成别的名字）→ 也跟着换，
+    // 否则会出现「名字换了、电话还留着上一个人」的错误组合；手填的号码不会被覆盖。
+    var prevContact=phDs.cid?bidContactOf(phDs.cid):null;
+    var prevPhones=prevContact?bidContactPhoneList(prevContact):[];
+    var autoPhone=prevPhones.indexOf(String(phInp.value||'').trim())>=0;
+    if(!String(phInp.value||'').trim()||fromSamePerson||autoPhone){
+      phInp.value=phone;
+      if(phInp.dataset){phInp.dataset.cid=cid;phInp.dataset.name=nm;phInp.dataset.phone=phone}
+      peBidPhoneLinkRender(phInp);
+    }
+  }
+  var dd=group.querySelector('.pe-bidname-dd');
+  if(dd)dd.classList.add('hidden');
+}
+function peBidNameKey(e,inp){
+  var group=(inp&&inp.closest)?inp.closest('.pe-bidname-group'):null;
+  if(!group)return;
+  var dd=group.querySelector('.pe-bidname-dd');
+  if(!dd)return;
+  if(e.key==='Escape'){dd.classList.add('hidden');return}
+  if(dd.classList.contains('hidden')){if(e.key==='ArrowDown')peBidNameRender(inp,true);else return}
+  var items=dd.querySelectorAll('.name-suggestion'),act=-1;
+  for(var i=0;i<items.length;i++){if(items[i].classList.contains('active')){act=i;break}}
+  if(e.key==='ArrowDown'||e.key==='ArrowUp'){
+    if(!items.length)return;
+    e.preventDefault();
+    var next=e.key==='ArrowDown'?(act<0?0:Math.min(act+1,items.length-1)):(act<0?items.length-1:Math.max(act-1,0));
+    for(var j=0;j<items.length;j++)items[j].classList.remove('active');
+    items[next].classList.add('active');
+    try{items[next].scrollIntoView({block:'nearest'})}catch(err){}
+  }else if(e.key==='Enter'){
+    if(act>=0&&items[act]){if(e.preventDefault)e.preventDefault();peBidNamePick(null,items[act]);return}
+    // 没有高亮候选：走自由输入，关掉下拉即可（不是 <form>，回车不会提交）
+    dd.classList.add('hidden');
+  }
+}
+function peBidNameBlur(inp){
+  setTimeout(function(){
+    var group=(inp&&inp.closest)?inp.closest('.pe-bidname-group'):null;
+    if(!group)return;
+    var dd=group.querySelector('.pe-bidname-dd');
+    if(dd)dd.classList.add('hidden');
+  },120);
+}
+
+function peBidPhoneCandidates(inp,kwOverride){
+  var entry=(inp&&inp.closest)?inp.closest('.project-entry'):null;
+  var nameInp=entry?entry.querySelector('.pe-bidder'):null;
+  var prefNameCid=nameInp&&nameInp.dataset?String(nameInp.dataset.cid||''):'';
+  var prefClients=bidLinkedClientIds(entry);
+  var kw=kwOverride==null?String(inp.value||'').trim().toLowerCase():String(kwOverride);
+  var contacts=allContacts||[],out=[];
+  for(var i=0;i<contacts.length;i++){
+    var c=contacts[i],phs=bidContactPhoneList(c);
+    if(!phs.length)continue;
+    var co=bidClientName(c.client_id),nm=String(c.name||'').trim(),pos=String(c.position||'');
+    for(var p=0;p<phs.length;p++){
+      var num=phs[p];
+      var hay=(num+' '+nm+' '+co+' '+pos).toLowerCase();
+      if(kw&&hay.indexOf(kw)<0)continue;
+      var rank=2;
+      if(prefNameCid&&String(c.id)===prefNameCid)rank=0;
+      else if(prefClients[String(c.client_id)])rank=1;
+      out.push({num:num,cid:String(c.id),name:nm,company:co,pos:pos,rank:rank});
+    }
+  }
+  // 中标人本人的号码最前，其次是本项目中标的公司，最后才是其它客户
+  out.sort(function(a,b){return a.rank-b.rank});
+  return out;
+}
+function peBidPhoneRender(inp,all){
+  var group=(inp&&inp.closest)?inp.closest('.pe-bidphone-group'):null;
+  if(!group)return;
+  var dd=group.querySelector('.pe-bidphone-dd');
+  if(!dd)return;
+  var list=peBidPhoneCandidates(inp,all?'':null).slice(0,40),html='';
+  if(!list.length){
+    html='<div class="ns-empty">客户列表里没有可用的联系人电话，直接输入号码即可</div>';
+  }else{
+    for(var i=0;i<list.length;i++){
+      var it=list[i];
+      var dt=[it.name,it.company].filter(Boolean).join(' · ');
+      html+='<div class="name-suggestion" data-phone="'+h(it.num)+'" data-cid="'+h(it.cid)+'" data-name="'+h(it.name)+'" onmousedown="peBidPhonePick(event,this)">'+
+        '<div class="ns-main"><div class="ns-name">'+h(it.num)+'</div>'+(dt?'<div class="ns-detail">'+h(dt)+'</div>':'')+'</div>'+
+        '<span class="ns-source'+(it.rank===0?' ns-add':'')+'">'+(it.rank===0?'中标人':'＋')+'</span></div>';
+    }
+  }
+  dd.innerHTML=html;
+  dd.classList.remove('hidden');
+}
+function peBidPhoneLinkRender(inp){
+  var group=(inp&&inp.closest)?inp.closest('.pe-bidphone-group'):null;
+  if(!group)return;
+  var box=group.querySelector('.pe-bidphone-link');
+  if(!box)return;
+  var ds=inp.dataset||{},cid=String(ds.cid||'');
+  if(!cid){box.innerHTML='';return}
+  var c=bidContactOf(cid),co=c?bidClientName(c.client_id):'';
+  var nm=String(ds.name||(c?c.name:''));
+  box.innerHTML='<span class="pe-bid-link">🔗 已关联：'+h([nm,co].filter(Boolean).join(' · ')||'联系人')+
+    '<button type="button" class="pe-bid-link-x" aria-label="解除关联" onclick="peBidPhoneUnlink(this)">×</button></span>';
+}
+function peBidPhoneUnlink(btn){
+  var group=(btn&&btn.closest)?btn.closest('.pe-bidphone-group'):null;
+  if(!group)return;
+  var inp=group.querySelector('.pe-bidder-phone');
+  if(inp&&inp.dataset){delete inp.dataset.cid;delete inp.dataset.name;delete inp.dataset.phone}
+  peBidPhoneLinkRender(inp);
+}
+function peBidPhoneOpen(inp){peBidPhoneRender(inp,true)}
+function peBidPhoneInput(inp){
+  var ds=inp.dataset||{};
+  if(ds.cid&&String(inp.value||'')!==String(ds.phone||'')){
+    delete ds.cid;delete ds.name;delete ds.phone;
+  }
+  peBidPhoneLinkRender(inp);
+  peBidPhoneRender(inp);
+}
+function peBidPhonePick(e,el){
+  if(e){if(e.preventDefault)e.preventDefault();if(e.stopPropagation)e.stopPropagation()}
+  var group=(el&&el.closest)?el.closest('.pe-bidphone-group'):null;
+  if(!group)return;
+  var inp=group.querySelector('.pe-bidder-phone');
+  if(!inp)return;
+  var num=el.getAttribute('data-phone')||'';
+  inp.value=num;
+  if(inp.dataset){
+    inp.dataset.cid=el.getAttribute('data-cid')||'';
+    inp.dataset.name=el.getAttribute('data-name')||'';
+    inp.dataset.phone=num;
+  }
+  peBidPhoneLinkRender(inp);
+  var dd=group.querySelector('.pe-bidphone-dd');
+  if(dd)dd.classList.add('hidden');
+}
+function peBidPhoneKey(e,inp){
+  var group=(inp&&inp.closest)?inp.closest('.pe-bidphone-group'):null;
+  if(!group)return;
+  var dd=group.querySelector('.pe-bidphone-dd');
+  if(!dd)return;
+  if(e.key==='Escape'){dd.classList.add('hidden');return}
+  if(dd.classList.contains('hidden')){if(e.key==='ArrowDown')peBidPhoneRender(inp,true);else return}
+  var items=dd.querySelectorAll('.name-suggestion'),act=-1;
+  for(var i=0;i<items.length;i++){if(items[i].classList.contains('active')){act=i;break}}
+  if(e.key==='ArrowDown'||e.key==='ArrowUp'){
+    if(!items.length)return;
+    e.preventDefault();
+    var next=e.key==='ArrowDown'?(act<0?0:Math.min(act+1,items.length-1)):(act<0?items.length-1:Math.max(act-1,0));
+    for(var j=0;j<items.length;j++)items[j].classList.remove('active');
+    items[next].classList.add('active');
+    try{items[next].scrollIntoView({block:'nearest'})}catch(err){}
+  }else if(e.key==='Enter'){
+    if(act>=0&&items[act]){if(e.preventDefault)e.preventDefault();peBidPhonePick(null,items[act]);return}
+    dd.classList.add('hidden');
+  }
+}
+function peBidPhoneBlur(inp){
+  setTimeout(function(){
+    var group=(inp&&inp.closest)?inp.closest('.pe-bidphone-group'):null;
+    if(!group)return;
+    var dd=group.querySelector('.pe-bidphone-dd');
+    if(dd)dd.classList.add('hidden');
+  },120);
+}
+// 打开表单回显：文本来自 prefill，关联 id 存在 dataset 上，再渲染「已关联」小条
+function peBidContactInit(entry,prefill){
+  prefill=prefill||{};
+  var nameInp=entry?entry.querySelector('.pe-bidder'):null;
+  var phInp=entry?entry.querySelector('.pe-bidder-phone'):null;
+  var cid=String(prefill.bidder_contact_id||'');
+  if(nameInp&&cid&&nameInp.dataset){
+    nameInp.dataset.cid=cid;
+    nameInp.dataset.client=String(prefill.bidder_client_id||'');
+    nameInp.dataset.name=String(prefill.bidder_name||'');
+    peBidNameLinkRender(nameInp);
+  }
+  var pcid=String(prefill.bidder_phone_contact_id||'');
+  if(phInp&&pcid&&phInp.dataset){
+    phInp.dataset.cid=pcid;
+    phInp.dataset.name='';
+    phInp.dataset.phone=String(prefill.bidder_phone||'');
+    peBidPhoneLinkRender(phInp);
+  }
+}
+// 联系人数据到位 / 被增删改后刷新关联显示；关联的联系人已经没了就丢掉关联（文本保留）
+function refreshPeBidderLinks(){
+  var entries=document.querySelectorAll('#project-list .project-entry');
+  var hasContacts=!!((allContacts||[]).length);
+  for(var i=0;i<entries.length;i++){
+    var e=entries[i];
+    var n=e.querySelector('.pe-bidder');
+    if(n&&n.dataset&&n.dataset.cid){
+      var c=bidContactOf(n.dataset.cid);
+      if(c){
+        n.dataset.name=String(c.name||'');
+        if(!n.dataset.client)n.dataset.client=String(c.client_id||'');
+      }else if(hasContacts){
+        delete n.dataset.cid;delete n.dataset.client;delete n.dataset.name;
+      }
+      peBidNameLinkRender(n);
+    }
+    var p=e.querySelector('.pe-bidder-phone');
+    if(p&&p.dataset&&p.dataset.cid){
+      var pc=bidContactOf(p.dataset.cid);
+      if(pc)p.dataset.name=String(pc.name||'');
+      else if(hasContacts){delete p.dataset.cid;delete p.dataset.name;delete p.dataset.phone}
+      peBidPhoneLinkRender(p);
+    }
+  }
+}
+// 展示用：中标人带出关联客户名（360 项目卡 / 卡片 tooltip）
+// 用「 · 」而不是括号：客户名本身常带括号，套起来会变成「张三（中建八局（上海）有限公司）」
+function bidderLabel(p){
+  p=p||{};
+  var nm=String(p.bidder_name||'').trim();
+  if(!nm)return '';
+  var co=bidClientName(p.bidder_client_id);
+  return co?nm+' · '+co:nm;
 }
 
 // === 甲方负责人：关联本客户联系人 ===

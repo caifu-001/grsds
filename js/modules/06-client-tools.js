@@ -37,8 +37,12 @@ function collectProjectEntries(){
     var e=entries[ei];
     var pn=(e.querySelector('.pe-project')||{}).value||'';
     var pd=(e.querySelector('.pe-bidding-date')||{}).value||null;
-    var pb=(e.querySelector('.pe-bidder')||{}).value||'';
-    var pbp=(e.querySelector('.pe-bidder-phone')||{}).value||'';
+    var pbInp=e.querySelector('.pe-bidder');
+    var pb=pbInp?String(pbInp.value||''):'';
+    var pbDs=pbInp&&pbInp.dataset?pbInp.dataset:{};
+    var phInp=e.querySelector('.pe-bidder-phone');
+    var pbp=phInp?String(phInp.value||''):'';
+    var phDs=phInp&&phInp.dataset?phInp.dataset:{};
     var pbg=String((e.querySelector('.pe-budget')||{}).value||'').trim();
     var pba=(e.querySelector('.pe-bid-amount')||{}).value||'';
     // 中标公司可以多家（联合体中标）：chip 是唯一数据源，bidder_company 仍写单串以兼容旧链路
@@ -82,6 +86,13 @@ function collectProjectEntries(){
       // 多负责人与关联 id 另存 client_owners；联合中标的中标公司同理另存 bidder_companies
       if(pOwners.length)pj.client_owners=pOwners;
       if(bidderCo.length)pj.bidder_companies=bidderCo;
+      // 中标人 / 中标人电话：只有在「文本仍是关联对象的值」时才存 id。
+      // 手改过的文本（oninput 已清 dataset）不会走进来，等于只记文本 —— 这才是用户要的自定义。
+      if(pbDs.cid&&String(pbDs.name||'')===String(pb)){
+        pj.bidder_contact_id=String(pbDs.cid);
+        if(pbDs.client)pj.bidder_client_id=String(pbDs.client);
+      }
+      if(phDs.cid&&String(phDs.phone||'')===String(pbp))pj.bidder_phone_contact_id=String(phDs.cid);
       projectsArr.push(pj);
     }
   }

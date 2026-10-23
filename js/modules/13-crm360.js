@@ -83,7 +83,7 @@ async function renderClient360Overview(c,orders){
       // 联合中标：一个项目可能有多家中标公司，逐家列出并标出家数
       var _bcList=projectBiddersOf(pr);
       var bcTxt=_bcList.length?(_bcList.join('、')+(_bcList.length>1?'（联合体 '+_bcList.length+' 家）':'')):'-';
-      var pfields=[['招标日期',pr.bidding_date||'-'],['中标人',pr.bidder_name||'-'],['中标人电话',pr.bidder_phone||'-'],['中标公司',bcTxt],['项目预算',pr.project_budget?formatMoney(pr.project_budget):'-'],['中标金额',pr.bid_amount?formatMoney(pr.bid_amount):'-'],['甲方负责人',ocTxt]];
+      var pfields=[['招标日期',pr.bidding_date||'-'],['中标人',bidderLabel(pr)||'-'],['中标人电话',pr.bidder_phone||'-'],['中标公司',bcTxt],['项目预算',pr.project_budget?formatMoney(pr.project_budget):'-'],['中标金额',pr.bid_amount?formatMoney(pr.bid_amount):'-'],['甲方负责人',ocTxt]];
       for(var pf=0;pf<pfields.length;pf++)html+='<div class="c360-info-row" style="font-size:12px"><span class="c360-info-label">'+pfields[pf][0]+'</span><span class="c360-info-value">'+h(pfields[pf][1])+'</span></div>';
       html+='</div>';
     }
