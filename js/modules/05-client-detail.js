@@ -705,13 +705,15 @@ function renderList(){
             var _ppCo=_pp.bidders.map(function(o){return o.name}).filter(Boolean).join('、');
             var _ppPs=_pp.persons.map(function(o){return o.name}).filter(Boolean).join('、');
             var _ppAmt=String(_pp.bid_amount||'').trim();
-            _tip.push(h(_ppn+':'+(_ppCo||'-')+(_ppPs?' · '+_ppPs:'')+(_ppAmt?' · '+formatMoney(_ppAmt):'')));
+            var _ppBud=String(_pp.project_budget||'').trim();
+            _tip.push(h(_ppn+':'+(_ppCo||'-')+(_ppPs?' · '+_ppPs:'')+(_ppBud?' · 预算 '+formatMoney(_ppBud):'')+(_ppAmt?' · 金额 '+formatMoney(_ppAmt):'')));
           }
         }else{
           if(bd)_tip.push('中标人:'+h(bidderLabel(p)||bd));
           if(bidList.length)_tip.push('中标公司:'+h(bidList.join('、'))+(bidList.length>1?'（联合体 '+bidList.length+' 家）':''));
         }
-        if(p.project_budget)_tip.push('预算:'+h(formatMoney(p.project_budget)));
+        // 分包时顶层预算是各包之和，标成「合计」，避免与包内预算混看
+        if(p.project_budget)_tip.push((packed?'预算合计:':'预算:')+h(formatMoney(p.project_budget)));
         if(co){
           // 负责人可能多个：tooltip 里逐个带上职务，气泡里只放得下前两个
           var _ac=allContacts||[];
@@ -1047,7 +1049,7 @@ function addProjectEntry(prefill,toTop){
       '<div class="form-group"><label>招标日期</label><input type="date" class="pe-bidding-date" value="'+(prefill.bidding_date||'')+'"></div>'+
     '</div>'+
     '<div class="form-row">'+
-      '<div class="form-group"><label>项目预算</label><input type="number" min="0" step="0.01" class="pe-budget" placeholder="元，如 1200000" value="'+h(prefill.project_budget==null?'':prefill.project_budget)+'"></div>'+
+      '<div class="form-group pe-top-budget"><label>项目预算</label><input type="number" min="0" step="0.01" class="pe-budget" placeholder="元，如 1200000" value="'+h(prefill.project_budget==null?'':prefill.project_budget)+'"></div>'+
       '<div class="form-group pe-top-money"><label>中标金额</label><input class="pe-bid-amount" placeholder="元，如 980000" value="'+h(prefill.bid_amount||'')+'"></div>'+
     '</div>'+
     // 中标情况按「标包」渲染：不分包时就是一个标包，界面与原来一致；
@@ -1108,6 +1110,7 @@ function projectPackagesOf(p){
       out.push({
         name:String(it.name==null?'':it.name).trim(),
         bid_amount:String(it.bid_amount==null?'':it.bid_amount).trim(),
+        project_budget:String(it.project_budget==null?'':it.project_budget).trim(),
         bidders:projectBidderRefsOf(it),
         persons:projectBidderPersonsOf(it)
       });
@@ -1117,6 +1120,7 @@ function projectPackagesOf(p){
   return [{
     name:'',
     bid_amount:String(p.bid_amount==null?'':p.bid_amount).trim(),
+    project_budget:String(p.project_budget==null?'':p.project_budget).trim(),
     bidders:projectBidderRefsOf(p),
     persons:projectBidderPersonsOf(p)
   }];
@@ -1139,6 +1143,7 @@ function peAwardBlockHtml(pk){
       '<button type="button" class="pe-award-del" aria-label="移除这个标包" onclick="peAwardRemove(this)">×</button>'+
     '</div>'+
     '<div class="form-row pe-award-money-row">'+
+      '<div class="form-group"><label>本包预算</label><input class="pe-pack-budget" placeholder="元，如 600000" value="'+h(pk.project_budget||'')+'" oninput="peAwardMoneySync(this)"></div>'+
       '<div class="form-group"><label>本包中标金额</label><input class="pe-pack-amount" placeholder="元，如 500000" value="'+h(pk.bid_amount||'')+'" oninput="peAwardMoneySync(this)"></div>'+
     '</div>'+
     '<div class="form-row">'+
@@ -1172,9 +1177,11 @@ function peAwardInit(entry,prefill){
     pePeopleInit(block,packs[i]);
     peBidderInit(block,packs[i].bidders);
   }
-  // 单包时金额放在项目层（与原来完全一致），把包里的金额回填过去
+  // 单包时金额 / 预算放在项目层（与原来完全一致），把包里的值回填过去
   var top=entry.querySelector('.pe-bid-amount');
   if(packs.length===1&&top&&!String(top.value||'').trim())top.value=packs[0].bid_amount||'';
+  var topBud=entry.querySelector('.pe-budget');
+  if(packs.length===1&&topBud&&!String(topBud.value||'').trim())topBud.value=packs[0].project_budget||'';
   peAwardRefresh(entry);
 }
 // 刷新编号 / 单包状态 / 项目层金额的「合计」样式
@@ -1206,7 +1213,22 @@ function peAwardRefresh(entry){
     if(locked){topInp.readOnly=true;topInp.classList.add('pe-readonly')}
     else{topInp.readOnly=false;topInp.classList.remove('pe-readonly')}
   }
+  // 项目预算同理：分包后变成只读合计，各包的预算在包内填
+  var budGroup=entry.querySelector('.pe-top-budget');
+  if(budGroup){
+    var bLab=budGroup.querySelector('label');
+    if(bLab){
+      if(locked)bLab.innerHTML='项目预算合计 <span class="pe-owner-tip">各标包自动相加</span>';
+      else bLab.textContent='项目预算';
+    }
+  }
+  var budInp=entry.querySelector('.pe-budget');
+  if(budInp){
+    if(locked){budInp.readOnly=true;budInp.classList.add('pe-readonly')}
+    else{budInp.readOnly=false;budInp.classList.remove('pe-readonly')}
+  }
   peAwardSum(entry);
+  peAwardBudgetSum(entry);
 }
 // 项目层「中标金额合计」：多包相加；单包但保留了包名时与包内金额保持一致
 function peAwardSum(entry){
@@ -1230,9 +1252,36 @@ function peAwardSum(entry){
   top.value=any?String(Math.round(sum*100)/100):'';
   return top.value;
 }
+// 项目层「项目预算合计」：多包相加；单包但保留了包名时与包内预算保持一致。
+// 各包都没填预算时**不动**项目层那格：老的分包项目只有项目级预算，
+// 一旦这里被清成空，用户只是改个备注也会把预算弄丢。
+function peAwardBudgetSum(entry){
+  if(!entry)return '';
+  var blocks=peAwardBlocks(entry);
+  var top=entry.querySelector('.pe-budget');
+  if(!top)return '';
+  if(blocks.length===1){
+    var nmInp=blocks[0].querySelector('.pe-pack-name');
+    if(!String(nmInp?nmInp.value:'').trim())return '';   // 没包名：用户在项目层直接填，不干涉
+    var one=String((blocks[0].querySelector('.pe-pack-budget')||{}).value||'').trim();
+    if(one)top.value=one;
+    return top.value;
+  }
+  var sum=0,any=false;
+  for(var i=0;i<blocks.length;i++){
+    var raw=String((blocks[i].querySelector('.pe-pack-budget')||{}).value||'').replace(/[^\d.\-]/g,'');
+    var v=parseFloat(raw);
+    if(!isNaN(v)){sum+=v;any=true}
+  }
+  if(!any)return String(top.value||'');
+  top.value=String(Math.round(sum*100)/100);
+  return top.value;
+}
 function peAwardMoneySync(inp){
   var entry=inp&&inp.closest?inp.closest('.project-entry'):null;
-  if(entry)peAwardSum(entry);
+  if(!entry)return;
+  peAwardSum(entry);
+  peAwardBudgetSum(entry);
 }
 function peAwardAdd(btn){
   if(!btn)return;

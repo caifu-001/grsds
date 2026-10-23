@@ -29,10 +29,11 @@ function sortProjectEntriesByBiddingDate(){
 
 // 采集一个「标包」卡片里的内容（中标公司 / 中标人），保存与回归测试共用同一份逻辑
 function collectAwardBlock(block){
-  var out={name:'',bid_amount:'',bidders:[],bidderIds:[],persons:[]};
+  var out={name:'',bid_amount:'',project_budget:'',bidders:[],bidderIds:[],persons:[]};
   if(!block)return out;
   out.name=String((block.querySelector('.pe-pack-name')||{}).value||'').trim();
   out.bid_amount=String((block.querySelector('.pe-pack-amount')||{}).value||'').trim();
+  out.project_budget=String((block.querySelector('.pe-pack-budget')||{}).value||'').trim();
   // 中标人 / 中标人电话：可多位，每位一行（姓名 + 电话），各自可能关联不同公司的联系人
   var pPersons=[],personRows=block.querySelectorAll('.pe-person');
   for(var pri=0;pri<personRows.length;pri++){
@@ -84,6 +85,7 @@ function collectAwardBlock(block){
 // 把一个标包的采集结果整理成落库对象
 function awardPackPayload(pk){
   var o={name:pk.name||'',bid_amount:pk.bid_amount||''};
+  if(String(pk.project_budget||'').trim())o.project_budget=String(pk.project_budget).trim();
   var names=pk.persons.map(function(p){return p.name}).filter(Boolean);
   var phones=pk.persons.map(function(p){return p.phone}).filter(Boolean);
   if(pk.bidders.length){
@@ -128,13 +130,25 @@ function collectProjectEntries(){
     // 中标情况按标包采集：不分包就是一个包（包名空），界面与数据都还是原来的样子
     var blockEls=e.querySelectorAll('.pe-award-block'),packs=[];
     for(var bi=0;bi<blockEls.length;bi++)packs.push(collectAwardBlock(blockEls[bi]));
-    if(!packs.length)packs=[{name:'',bid_amount:'',bidders:[],bidderIds:[],persons:[]}];
+    if(!packs.length)packs=[{name:'',bid_amount:'',project_budget:'',bidders:[],bidderIds:[],persons:[]}];
     var multi=packs.length>1;
     // 只有一个包但填了包名，也算分包（不写 packages 的话包名会丢）
     var packed=multi||!!String(packs[0].name||'').trim();
     // 金额来源：只有「单包且没包名」时才用项目层那格（包内金额行此时是隐藏的），
     // 其余情况一律以包内金额为准，项目层只是只读合计
     if(!packed)packs[0].bid_amount=topAmount;
+    // 预算同理：不分包时以项目层那格为准，分包时以各包预算相加
+    var budgetSum=0,budgetAny=false;
+    if(packed){
+      for(var bpi=0;bpi<packs.length;bpi++){
+        if(String(packs[bpi].project_budget||'').trim()){
+          var bv=parseFloat(String(packs[bpi].project_budget).replace(/[^\d.\-]/g,''));
+          if(!isNaN(bv)){budgetSum+=bv;budgetAny=true}
+        }
+      }
+    }else{
+      packs[0].project_budget=pbg;
+    }
     // 汇总到项目层：公司、人员跨包去重（各包自己的关联信息另存 packages 里，互不影响）
     var bidderCo=[],bidderIds=[],bidderSeen={};
     var pPersons=[],personSeen={};
@@ -177,7 +191,9 @@ function collectProjectEntries(){
     var pnotes=(e.querySelector('.pe-notes')||{}).value||'';
     if(pn||pb||pco||pbg||bidderCo.length||pPersons.length){
       var totalAmount=packed?(amountAny?String(Math.round(amountSum*100)/100):''):topAmount;
-      var pj={project_name:pn,bidding_date:pd,bidder_name:pb,bidder_phone:pbp,bidder_company:pbc,project_budget:pbg,bid_amount:totalAmount,client_owner:pco,notes:pnotes};
+      // 分包时预算取各包之和；各包都没填就沿用项目层原值（老数据不清零）
+      var totalBudget=packed?(budgetAny?String(Math.round(budgetSum*100)/100):pbg):pbg;
+      var pj={project_name:pn,bidding_date:pd,bidder_name:pb,bidder_phone:pbp,bidder_company:pbc,project_budget:totalBudget,bid_amount:totalAmount,client_owner:pco,notes:pnotes};
       // client_owner 仍是「姓名用、连接」的单串（列表卡片 / 搜索 / 旧代码都在用），
       // 多负责人与关联 id 另存 client_owners；联合中标的中标公司同理另存 bidder_companies
       if(pOwners.length)pj.client_owners=pOwners;

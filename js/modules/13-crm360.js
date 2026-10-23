@@ -95,6 +95,7 @@ async function renderClient360Overview(c,orders){
           var _seg=[];
           var _pkName=String(_pk.name||'').trim();
           if(_pkName)_seg.push(_pkName);
+          if(String(_pk.project_budget||'').trim())_seg.push('预算 '+formatMoney(_pk.project_budget));
           var _cos=_pk.bidders.map(function(o){return o.name}).filter(Boolean);
           if(_cos.length)_seg.push('中标公司 '+_cos.join('、'));
           var _ps=_pk.persons.filter(function(o){return String(o.name||'').trim()});
