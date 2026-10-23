@@ -27,6 +27,92 @@ function sortProjectEntriesByBiddingDate(){
   renumberProjects();
 }
 
+// 采集一个「标包」卡片里的内容（中标公司 / 中标人），保存与回归测试共用同一份逻辑
+function collectAwardBlock(block){
+  var out={name:'',bid_amount:'',bidders:[],bidderIds:[],persons:[]};
+  if(!block)return out;
+  out.name=String((block.querySelector('.pe-pack-name')||{}).value||'').trim();
+  out.bid_amount=String((block.querySelector('.pe-pack-amount')||{}).value||'').trim();
+  // 中标人 / 中标人电话：可多位，每位一行（姓名 + 电话），各自可能关联不同公司的联系人
+  var pPersons=[],personRows=block.querySelectorAll('.pe-person');
+  for(var pri=0;pri<personRows.length;pri++){
+    var prow=personRows[pri];
+    var pnInp=prow.querySelector('.pe-bidder'),ppInp=prow.querySelector('.pe-bidder-phone');
+    var pnm=pnInp?String(pnInp.value||'').trim():'';
+    var pph=ppInp?String(ppInp.value||'').trim():'';
+    if(!pnm&&!pph)continue;
+    var pobj={name:pnm,phone:pph};
+    // 只有「文本仍是关联对象的值」时才存 id：手改过文本（oninput 已清 dataset）就等于自定义
+    var pnd=pnInp&&pnInp.dataset?pnInp.dataset:{};
+    if(pnd.cid&&String(pnd.name||'')===pnm){
+      pobj.contact_id=String(pnd.cid);
+      if(pnd.client)pobj.client_id=String(pnd.client);
+    }
+    var ppd=ppInp&&ppInp.dataset?ppInp.dataset:{};
+    if(ppd.cid&&String(ppd.phone||'')===pph)pobj.phone_contact_id=String(ppd.cid);
+    pPersons.push(pobj);
+  }
+  // 中标公司可以多家（联合体中标）：chip 是唯一数据源，bidder_company 仍写单串以兼容旧链路。
+  // bidderIds 与 bidders 等长平行：chip 的 data-cid 有值表示这家是客户列表里的公司（已关联）
+  var bidderCo=[],bidderIds=[],bidderSeen={};
+  // 用函数表达式而非块内函数声明：避免每轮循环重新声明带来的提升歧义
+  var pushCo=function(nm,cid){
+    nm=String(nm==null?'':nm).replace(/\s+/g,' ').trim();
+    if(!nm)return;
+    var k=nm.toLowerCase();
+    if(bidderSeen[k])return;
+    bidderSeen[k]=1;bidderCo.push(nm);bidderIds.push(String(cid==null?'':cid).trim());
+  };
+  var coChips=block.querySelectorAll('.pe-bidder-chip');
+  for(var bci=0;bci<coChips.length;bci++){
+    pushCo(coChips[bci].getAttribute('data-name'),coChips[bci].getAttribute('data-cid'));
+  }
+  // 输入框里还留着没提交的公司名（未回车、也未失焦）同样要落库，不能让用户白填
+  var leftInp=block.querySelector('.pe-bidder-company');
+  var leftRaw=leftInp?String(leftInp.value||'').trim():'';
+  if(leftRaw){
+    var lps=leftRaw.split(/[、,，;；\/|\n]+/);
+    for(var lp=0;lp<lps.length;lp++){
+      // 残留输入也走同一套「能对上客户就关联」的判断，名字统一成客户列表里的写法
+      var lc=bidFindClientByName(lps[lp]);
+      pushCo(lc?String(lc.name||lps[lp]):lps[lp],lc?String(lc.id||''):'');
+    }
+  }
+  out.bidders=bidderCo;out.bidderIds=bidderIds;out.persons=pPersons;
+  return out;
+}
+// 把一个标包的采集结果整理成落库对象
+function awardPackPayload(pk){
+  var o={name:pk.name||'',bid_amount:pk.bid_amount||''};
+  var names=pk.persons.map(function(p){return p.name}).filter(Boolean);
+  var phones=pk.persons.map(function(p){return p.phone}).filter(Boolean);
+  if(pk.bidders.length){
+    o.bidder_companies=pk.bidders.slice();
+    o.bidder_company=pk.bidders.join('、');
+    // 只要有一家关联到了客户就存平行 id 数组；全是自定义则不写（不留空壳字段）
+    var anyCoId=false;
+    for(var i=0;i<pk.bidderIds.length;i++){if(pk.bidderIds[i]){anyCoId=true;break}}
+    if(anyCoId)o.bidder_company_ids=pk.bidderIds.slice();
+  }
+  if(names.length)o.bidder_name=names.join('、');
+  if(phones.length)o.bidder_phone=phones.join('、');
+  if(pk.persons.length){
+    o.bidder_contacts=pk.persons;
+    // 旧单值字段保留为「本包第一位有联系人的中标人」，旧代码读得到
+    var link=null,phoneLink='';
+    for(var j=0;j<pk.persons.length;j++){
+      if(!link&&pk.persons[j].contact_id)link=pk.persons[j];
+      if(!phoneLink&&pk.persons[j].phone_contact_id)phoneLink=String(pk.persons[j].phone_contact_id);
+    }
+    if(link){
+      o.bidder_contact_id=String(link.contact_id);
+      if(link.client_id)o.bidder_client_id=String(link.client_id);
+    }
+    if(phoneLink)o.bidder_phone_contact_id=phoneLink;
+  }
+  return o;
+}
+
 // 读取「近期项目」表单 → 项目数组（保存与回归测试共用同一份逻辑），返回按招标日期倒序的结果。
 // 注意：这里的循环变量一律不要用 ci —— saveClient 里 ci 是 company_info 的载体，
 // 早年 `for(var ci=...)` 因为 var 提升把 company_info 写成了数字，属于真实数据丢失。
@@ -37,55 +123,42 @@ function collectProjectEntries(){
     var e=entries[ei];
     var pn=(e.querySelector('.pe-project')||{}).value||'';
     var pd=(e.querySelector('.pe-bidding-date')||{}).value||null;
-    // 中标人 / 中标人电话：可多位，每位一行（姓名 + 电话），各自可能关联不同公司的联系人
-    var pPersons=[],personRows=e.querySelectorAll('.pe-person');
-    for(var pri=0;pri<personRows.length;pri++){
-      var prow=personRows[pri];
-      var pnInp=prow.querySelector('.pe-bidder'),ppInp=prow.querySelector('.pe-bidder-phone');
-      var pnm=pnInp?String(pnInp.value||'').trim():'';
-      var pph=ppInp?String(ppInp.value||'').trim():'';
-      if(!pnm&&!pph)continue;
-      var pobj={name:pnm,phone:pph};
-      // 只有「文本仍是关联对象的值」时才存 id：手改过文本（oninput 已清 dataset）就等于自定义
-      var pnd=pnInp&&pnInp.dataset?pnInp.dataset:{};
-      if(pnd.cid&&String(pnd.name||'')===pnm){
-        pobj.contact_id=String(pnd.cid);
-        if(pnd.client)pobj.client_id=String(pnd.client);
+    var pbg=String((e.querySelector('.pe-budget')||{}).value||'').trim();
+    var topAmount=String((e.querySelector('.pe-bid-amount')||{}).value||'').trim();
+    // 中标情况按标包采集：不分包就是一个包（包名空），界面与数据都还是原来的样子
+    var blockEls=e.querySelectorAll('.pe-award-block'),packs=[];
+    for(var bi=0;bi<blockEls.length;bi++)packs.push(collectAwardBlock(blockEls[bi]));
+    if(!packs.length)packs=[{name:'',bid_amount:'',bidders:[],bidderIds:[],persons:[]}];
+    var multi=packs.length>1;
+    // 只有一个包但填了包名，也算分包（不写 packages 的话包名会丢）
+    var packed=multi||!!String(packs[0].name||'').trim();
+    // 金额来源：只有「单包且没包名」时才用项目层那格（包内金额行此时是隐藏的），
+    // 其余情况一律以包内金额为准，项目层只是只读合计
+    if(!packed)packs[0].bid_amount=topAmount;
+    // 汇总到项目层：公司、人员跨包去重（各包自己的关联信息另存 packages 里，互不影响）
+    var bidderCo=[],bidderIds=[],bidderSeen={};
+    var pPersons=[],personSeen={};
+    var amountSum=0,amountAny=false;
+    for(var pi=0;pi<packs.length;pi++){
+      var pk=packs[pi];
+      for(var ci=0;ci<pk.bidders.length;ci++){
+        var coName=pk.bidders[ci],coKey=String(coName).toLowerCase();
+        if(bidderSeen[coKey])continue;
+        bidderSeen[coKey]=1;
+        bidderCo.push(coName);bidderIds.push(String(pk.bidderIds[ci]||''));
       }
-      var ppd=ppInp&&ppInp.dataset?ppInp.dataset:{};
-      if(ppd.cid&&String(ppd.phone||'')===pph)pobj.phone_contact_id=String(ppd.cid);
-      pPersons.push(pobj);
+      for(var ci2=0;ci2<pk.persons.length;ci2++){
+        var person=pk.persons[ci2],pKey=String(person.name||'')+'|'+String(person.phone||'');
+        if(personSeen[pKey])continue;
+        personSeen[pKey]=1;pPersons.push(person);
+      }
+      if(String(pk.bid_amount||'').trim()){
+        var av=parseFloat(String(pk.bid_amount).replace(/[^\d.\-]/g,''));
+        if(!isNaN(av)){amountSum+=av;amountAny=true}
+      }
     }
     var pb=pPersons.map(function(o){return o.name}).filter(Boolean).join('、');
     var pbp=pPersons.map(function(o){return o.phone}).filter(Boolean).join('、');
-    var pbg=String((e.querySelector('.pe-budget')||{}).value||'').trim();
-    var pba=(e.querySelector('.pe-bid-amount')||{}).value||'';
-    // 中标公司可以多家（联合体中标）：chip 是唯一数据源，bidder_company 仍写单串以兼容旧链路。
-    // bidderIds 与 bidderCo 等长平行：chip 的 data-cid 有值表示这家是客户列表里的公司（已关联）
-    var bidderCo=[],bidderIds=[],bidderSeen={};
-    // 用函数表达式而非块内函数声明：避免每轮循环重新声明带来的提升歧义
-    var pushCo=function(nm,cid){
-      nm=String(nm==null?'':nm).replace(/\s+/g,' ').trim();
-      if(!nm)return;
-      var k=nm.toLowerCase();
-      if(bidderSeen[k])return;
-      bidderSeen[k]=1;bidderCo.push(nm);bidderIds.push(String(cid==null?'':cid).trim());
-    };
-    var coChips=e.querySelectorAll('.pe-bidder-chip');
-    for(var bci=0;bci<coChips.length;bci++){
-      pushCo(coChips[bci].getAttribute('data-name'),coChips[bci].getAttribute('data-cid'));
-    }
-    // 输入框里还留着没提交的公司名（未回车、也未失焦）同样要落库，不能让用户白填
-    var leftInp=e.querySelector('.pe-bidder-company');
-    var leftRaw=leftInp?String(leftInp.value||'').trim():'';
-    if(leftRaw){
-      var lps=leftRaw.split(/[、,，;；\/|\n]+/);
-      for(var lp=0;lp<lps.length;lp++){
-        // 残留输入也走同一套「能对上客户就关联」的判断，名字统一成客户列表里的写法
-        var lc=bidFindClientByName(lps[lp]);
-        pushCo(lc?String(lc.name||lps[lp]):lps[lp],lc?String(lc.id||''):'');
-      }
-    }
     var pbc=bidderCo.join('、');
     // 甲方负责人可以有多个：每个 chip 一条，chip 的 data-cid 才代表「关联到联系人」，
     // 为空表示只记了姓名（手输的自定义名字）。chip 是唯一数据源，不另存状态。
@@ -103,7 +176,8 @@ function collectProjectEntries(){
     var pco=pOwners.map(function(o){return o.name}).join('、');
     var pnotes=(e.querySelector('.pe-notes')||{}).value||'';
     if(pn||pb||pco||pbg||bidderCo.length||pPersons.length){
-      var pj={project_name:pn,bidding_date:pd,bidder_name:pb,bidder_phone:pbp,bidder_company:pbc,project_budget:pbg,bid_amount:pba,client_owner:pco,notes:pnotes};
+      var totalAmount=packed?(amountAny?String(Math.round(amountSum*100)/100):''):topAmount;
+      var pj={project_name:pn,bidding_date:pd,bidder_name:pb,bidder_phone:pbp,bidder_company:pbc,project_budget:pbg,bid_amount:totalAmount,client_owner:pco,notes:pnotes};
       // client_owner 仍是「姓名用、连接」的单串（列表卡片 / 搜索 / 旧代码都在用），
       // 多负责人与关联 id 另存 client_owners；联合中标的中标公司同理另存 bidder_companies
       if(pOwners.length)pj.client_owners=pOwners;
@@ -130,6 +204,8 @@ function collectProjectEntries(){
         }
         if(pPhoneLink)pj.bidder_phone_contact_id=pPhoneLink;
       }
+      // 真分包（多包，或单包但填了包名）才写 packages；否则保持老结构
+      if(packed)pj.packages=packs.map(awardPackPayload);
       projectsArr.push(pj);
     }
   }

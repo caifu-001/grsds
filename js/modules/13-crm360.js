@@ -83,7 +83,30 @@ async function renderClient360Overview(c,orders){
       // 联合中标：一个项目可能有多家中标公司，逐家列出并标出家数
       var _bcList=projectBiddersOf(pr);
       var bcTxt=_bcList.length?(_bcList.join('、')+(_bcList.length>1?'（联合体 '+_bcList.length+' 家）':'')):'-';
-      var pfields=[['招标日期',pr.bidding_date||'-'],['中标人',bidderLabel(pr)||'-'],['中标人电话',pr.bidder_phone||'-'],['中标公司',bcTxt],['项目预算',pr.project_budget?formatMoney(pr.project_budget):'-'],['中标金额',pr.bid_amount?formatMoney(pr.bid_amount):'-'],['甲方负责人',ocTxt]];
+      var pfields;
+      if(projectHasPackages(pr)){
+        // 分包：一个项目分几个包，各包可能不同公司中标（也可能同一家），逐包列出
+        var _packs=projectPackagesOf(pr);
+        pfields=[['招标日期',pr.bidding_date||'-'],['项目预算',pr.project_budget?formatMoney(pr.project_budget):'-']];
+        for(var _pi=0;_pi<_packs.length;_pi++){
+          var _pk=_packs[_pi];
+          // label 只放序号（太长会把 value 挤成两列），包名放进 value 开头
+          var _pkLabel='标包 '+(_pi+1);
+          var _seg=[];
+          var _pkName=String(_pk.name||'').trim();
+          if(_pkName)_seg.push(_pkName);
+          var _cos=_pk.bidders.map(function(o){return o.name}).filter(Boolean);
+          if(_cos.length)_seg.push('中标公司 '+_cos.join('、'));
+          var _ps=_pk.persons.filter(function(o){return String(o.name||'').trim()});
+          if(_ps.length)_seg.push('中标人 '+_ps.map(function(o){return String(o.name).trim()+(String(o.phone||'').trim()?'（'+String(o.phone).trim()+'）':'')}).join('、'));
+          if(String(_pk.bid_amount||'').trim())_seg.push('金额 '+formatMoney(_pk.bid_amount));
+          pfields.push([_pkLabel,_seg.join(' · ')||'-']);
+        }
+        pfields.push(['中标金额合计',pr.bid_amount?formatMoney(pr.bid_amount):'-']);
+        pfields.push(['甲方负责人',ocTxt]);
+      }else{
+        pfields=[['招标日期',pr.bidding_date||'-'],['中标人',bidderLabel(pr)||'-'],['中标人电话',pr.bidder_phone||'-'],['中标公司',bcTxt],['项目预算',pr.project_budget?formatMoney(pr.project_budget):'-'],['中标金额',pr.bid_amount?formatMoney(pr.bid_amount):'-'],['甲方负责人',ocTxt]];
+      }
       for(var pf=0;pf<pfields.length;pf++)html+='<div class="c360-info-row" style="font-size:12px"><span class="c360-info-label">'+pfields[pf][0]+'</span><span class="c360-info-value">'+h(pfields[pf][1])+'</span></div>';
       html+='</div>';
     }

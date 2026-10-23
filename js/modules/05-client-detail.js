@@ -692,12 +692,25 @@ function renderList(){
         var ownList=projectOwnersOf(p);
         var coNames=ownList.map(function(o){return o.name}).filter(Boolean);
         var co=coNames.join('、');
-        // 联合中标：中标公司可能多家
+        // 联合中标：中标公司可能多家；分包：一个项目有多个标包，各包各自一套
         var bidList=projectBiddersOf(p);
-        if(!pname&&!bd&&!co&&!bidList.length)continue; // 全空时跳过，避免渲染出只有图标的空白气泡
+        var packsAll=projectPackagesOf(p);
+        // 只有真的分了 2 个以上包才在气泡上标「分N包」，单包（哪怕带包名）仍按普通项目显示
+        var packed=packsAll.length>1,packs=packed?packsAll:[];
+        if(!pname&&!bd&&!co&&!bidList.length&&!packs.length)continue; // 全空时跳过，避免渲染出只有图标的空白气泡
         var _tip=[];
-        if(bd)_tip.push('中标人:'+h(bidderLabel(p)||bd));
-        if(bidList.length)_tip.push('中标公司:'+h(bidList.join('、'))+(bidList.length>1?'（联合体 '+bidList.length+' 家）':''));
+        if(packed){
+          for(var _pk=0;_pk<packs.length;_pk++){
+            var _pp=packs[_pk],_ppn=String(_pp.name||'').trim()||('包'+(_pk+1));
+            var _ppCo=_pp.bidders.map(function(o){return o.name}).filter(Boolean).join('、');
+            var _ppPs=_pp.persons.map(function(o){return o.name}).filter(Boolean).join('、');
+            var _ppAmt=String(_pp.bid_amount||'').trim();
+            _tip.push(h(_ppn+':'+(_ppCo||'-')+(_ppPs?' · '+_ppPs:'')+(_ppAmt?' · '+formatMoney(_ppAmt):'')));
+          }
+        }else{
+          if(bd)_tip.push('中标人:'+h(bidderLabel(p)||bd));
+          if(bidList.length)_tip.push('中标公司:'+h(bidList.join('、'))+(bidList.length>1?'（联合体 '+bidList.length+' 家）':''));
+        }
         if(p.project_budget)_tip.push('预算:'+h(formatMoney(p.project_budget)));
         if(co){
           // 负责人可能多个：tooltip 里逐个带上职务，气泡里只放得下前两个
@@ -711,7 +724,7 @@ function renderList(){
         }
         var coShort=coNames.length>2?coNames.slice(0,2).join('、')+' 等'+coNames.length+'人':co;
         // 联合中标标记紧跟项目名：气泡末尾会被省略号截断，放前面才一定看得见
-        tags+='<span class="card-project-tag" title="'+_tip.join(' / ')+'">📋 '+h(pname||'未命名项目')+(bidList.length>1?' · 联合'+bidList.length+'家':'')+(bd?' · '+h(bdShort):'')+(co?' · 👤'+h(coShort):'')+'</span>';
+        tags+='<span class="card-project-tag" title="'+_tip.join(' / ')+'">📋 '+h(pname||'未命名项目')+(packed?' · 分'+packs.length+'包':(bidList.length>1?' · 联合'+bidList.length+'家':''))+(bd?' · '+h(bdShort):'')+(co?' · 👤'+h(coShort):'')+'</span>';
         _tagN++;
       }
       if(!_tagN)return '';
@@ -1035,24 +1048,13 @@ function addProjectEntry(prefill,toTop){
     '</div>'+
     '<div class="form-row">'+
       '<div class="form-group"><label>项目预算</label><input type="number" min="0" step="0.01" class="pe-budget" placeholder="元，如 1200000" value="'+h(prefill.project_budget==null?'':prefill.project_budget)+'"></div>'+
-      '<div class="form-group"><label>中标金额</label><input class="pe-bid-amount" placeholder="元，如 980000" value="'+h(prefill.bid_amount||'')+'"></div>'+
+      '<div class="form-group pe-top-money"><label>中标金额</label><input class="pe-bid-amount" placeholder="元，如 980000" value="'+h(prefill.bid_amount||'')+'"></div>'+
     '</div>'+
-    '<div class="form-row">'+
-      '<div class="form-group pe-people-group" style="grid-column:1/-1">'+
-        '<label>中标人 <span class="pe-owner-tip">可手填，也可选客户列表里的联系人；联合体中标的每家公司可以各填一位</span></label>'+
-        '<div class="pe-people"></div>'+
-        '<button type="button" class="pe-person-add" onclick="pePersonAdd(this)">＋ 添加中标人</button>'+
-      '</div>'+
-    '</div>'+
-    '<div class="form-row">'+
-      '<div class="form-group pe-bidders-group">'+
-        '<label>中标公司 <span class="pe-owner-tip">联合体中标的可添加多家；可手填，也可从客户列表里选</span></label>'+
-        '<div class="pe-bidders-wrap">'+
-          '<input class="pe-bidder-company" placeholder="输入公司名后回车，或点开从客户列表选择" autocomplete="off" onfocus="peBidCoOpen(this)" oninput="peBidCoInput(this)" onkeydown="peBidderKey(event,this)" onblur="peBidderBlur(this)">'+
-          '<div class="name-suggestions pe-bidco-dd hidden"></div>'+
-        '</div>'+
-        '<div class="pe-bidder-chips"></div>'+
-      '</div>'+
+    // 中标情况按「标包」渲染：不分包时就是一个标包，界面与原来一致；
+    // 分包时每个包各自有中标公司 / 中标人 / 本包金额
+    '<div class="pe-awards"></div>'+
+    '<div class="pe-award-add-wrap">'+
+      '<button type="button" class="pe-award-add" onclick="peAwardAdd(this)">＋ 按标包分别录入（分包 / 各包不同公司中标）</button>'+
     '</div>'+
     '<div class="form-row">'+
       '<div class="form-group" style="grid-column:1/-1"><label>备注</label><input class="pe-notes" placeholder="项目备注" value="'+h(prefill.notes||'')+'"></div>'+
@@ -1069,10 +1071,8 @@ function addProjectEntry(prefill,toTop){
     '</div>';
   if(toTop&&list.firstChild)list.insertBefore(div,list.firstChild);else list.appendChild(div);
   renumberProjects();
-  // 中标公司：联合中标时一个项目可能有多家，用 chip 逐个记录（chip 是唯一数据源）
-  peBidderInit(div,projectBidderRefsOf(prefill));
-  // 中标人 / 中标人电话：可自由填、可关联客户列表；联合体可以每家公司各一位
-  pePeopleInit(div,prefill);
+  // 中标情况：按标包渲染（不分包＝就是原来的单包），每包内部再初始化中标公司与中标人
+  peAwardInit(div,prefill);
   // 甲方负责人：一个项目可以挂多个负责人，各用一个 chip 表示（chip 是唯一数据源）
   peOwnerInit(div,projectOwnersOf(prefill));
   // 回显时联系人可能还没加载完（openForm 先渲染项目、后等接口回填联系人），
@@ -1092,6 +1092,177 @@ function removeProjectEntry(btn){
 function renumberProjects(){
   var entries=document.querySelectorAll('#project-list .project-entry');
   for(var i=0;i<entries.length;i++)entries[i].querySelector('.pe-num').textContent='项目 '+(i+1);
+}
+
+// === 标包：一个项目可能分几个包，各包的中标公司 / 中标人 / 金额各自独立 ===
+// 只有「真分包」（多于一个包，或填了包名）才写 project.packages；否则沿用原来的顶层字段，
+// 老数据、老表单、老断言完全不受影响。分包时把各包汇总一份写回顶层
+// （bidder_company / bidder_name / bidder_phone / bid_amount），列表卡片、客户搜索、
+// 客户 360、导出等旧链路不用改也能读。
+function projectPackagesOf(p){
+  p=p||{};
+  var out=[];
+  if(Array.isArray(p.packages)&&p.packages.length){
+    for(var i=0;i<p.packages.length;i++){
+      var it=p.packages[i]||{};
+      out.push({
+        name:String(it.name==null?'':it.name).trim(),
+        bid_amount:String(it.bid_amount==null?'':it.bid_amount).trim(),
+        bidders:projectBidderRefsOf(it),
+        persons:projectBidderPersonsOf(it)
+      });
+    }
+    if(out.length)return out;
+  }
+  return [{
+    name:'',
+    bid_amount:String(p.bid_amount==null?'':p.bid_amount).trim(),
+    bidders:projectBidderRefsOf(p),
+    persons:projectBidderPersonsOf(p)
+  }];
+}
+// 是不是真分包（有 packages 且不止一个包，或带包名）
+function projectHasPackages(p){
+  p=p||{};
+  if(!Array.isArray(p.packages)||!p.packages.length)return false;
+  if(p.packages.length>1)return true;
+  return !!String((p.packages[0]||{}).name||'').trim();
+}
+function peAwardBlocks(entry){
+  return entry?entry.querySelectorAll('.pe-award-block'):[];
+}
+function peAwardBlockHtml(pk){
+  pk=pk||{};
+  return '<div class="pe-award-head">'+
+      '<span class="pe-award-num">标包 1</span>'+
+      '<input class="pe-pack-name" placeholder="包名/包号，如 一包、A包、标段一" value="'+h(pk.name||'')+'" autocomplete="off" oninput="peAwardRefresh(this.closest(\'.project-entry\'))">'+
+      '<button type="button" class="pe-award-del" aria-label="移除这个标包" onclick="peAwardRemove(this)">×</button>'+
+    '</div>'+
+    '<div class="form-row pe-award-money-row">'+
+      '<div class="form-group"><label>本包中标金额</label><input class="pe-pack-amount" placeholder="元，如 500000" value="'+h(pk.bid_amount||'')+'" oninput="peAwardMoneySync(this)"></div>'+
+    '</div>'+
+    '<div class="form-row">'+
+      '<div class="form-group pe-people-group" style="grid-column:1/-1">'+
+        '<label>中标人 <span class="pe-owner-tip">可手填，也可选客户列表里的联系人；联合体每家可各填一位</span></label>'+
+        '<div class="pe-people"></div>'+
+        '<button type="button" class="pe-person-add" onclick="pePersonAdd(this)">＋ 添加中标人</button>'+
+      '</div>'+
+    '</div>'+
+    '<div class="form-row">'+
+      '<div class="form-group pe-bidders-group">'+
+        '<label>中标公司 <span class="pe-owner-tip">可多家；可手填，也可从客户列表里选</span></label>'+
+        '<div class="pe-bidders-wrap">'+
+          '<input class="pe-bidder-company" placeholder="输入公司名后回车，或点开从客户列表选择" autocomplete="off" onfocus="peBidCoOpen(this)" oninput="peBidCoInput(this)" onkeydown="peBidderKey(event,this)" onblur="peBidderBlur(this)">'+
+          '<div class="name-suggestions pe-bidco-dd hidden"></div>'+
+        '</div>'+
+        '<div class="pe-bidder-chips"></div>'+
+      '</div>'+
+    '</div>';
+}
+function peAwardInit(entry,prefill){
+  var wrap=entry?entry.querySelector('.pe-awards'):null;
+  if(!wrap)return;
+  var packs=projectPackagesOf(prefill||{});
+  wrap.innerHTML='';
+  for(var i=0;i<packs.length;i++){
+    var block=document.createElement('div');
+    block.className='pe-award-block';
+    block.innerHTML=peAwardBlockHtml(packs[i]);
+    wrap.appendChild(block);
+    pePeopleInit(block,packs[i]);
+    peBidderInit(block,packs[i].bidders);
+  }
+  // 单包时金额放在项目层（与原来完全一致），把包里的金额回填过去
+  var top=entry.querySelector('.pe-bid-amount');
+  if(packs.length===1&&top&&!String(top.value||'').trim())top.value=packs[0].bid_amount||'';
+  peAwardRefresh(entry);
+}
+// 刷新编号 / 单包状态 / 项目层金额的「合计」样式
+function peAwardRefresh(entry){
+  if(!entry)return;
+  var blocks=peAwardBlocks(entry);
+  var multi=blocks.length>1,anyNamed=false;
+  for(var i=0;i<blocks.length;i++){
+    var b=blocks[i];
+    var nmInp=b.querySelector('.pe-pack-name');
+    var named=!!String(nmInp?nmInp.value:'').trim();
+    if(named)anyNamed=true;
+    // data-single=1 时隐藏包名行、包内金额行，等同「没有分包」
+    b.setAttribute('data-single',(multi||named)?'0':'1');
+    var num=b.querySelector('.pe-award-num');
+    if(num)num.textContent='标包 '+(i+1);
+  }
+  var locked=multi||anyNamed;
+  var topGroup=entry.querySelector('.pe-top-money');
+  if(topGroup){
+    var lab=topGroup.querySelector('label');
+    if(lab){
+      if(locked)lab.innerHTML='中标金额合计 <span class="pe-owner-tip">各标包自动相加</span>';
+      else lab.textContent='中标金额';
+    }
+  }
+  var topInp=entry.querySelector('.pe-bid-amount');
+  if(topInp){
+    if(locked){topInp.readOnly=true;topInp.classList.add('pe-readonly')}
+    else{topInp.readOnly=false;topInp.classList.remove('pe-readonly')}
+  }
+  peAwardSum(entry);
+}
+// 项目层「中标金额合计」：多包相加；单包但保留了包名时与包内金额保持一致
+function peAwardSum(entry){
+  if(!entry)return '';
+  var blocks=peAwardBlocks(entry);
+  var top=entry.querySelector('.pe-bid-amount');
+  if(!top)return '';
+  if(blocks.length===1){
+    var nmInp=blocks[0].querySelector('.pe-pack-name');
+    if(!String(nmInp?nmInp.value:'').trim())return '';   // 没包名：用户在项目层直接填，不干涉
+    var one=String((blocks[0].querySelector('.pe-pack-amount')||{}).value||'').trim();
+    if(one)top.value=one;
+    return top.value;
+  }
+  var sum=0,any=false;
+  for(var i=0;i<blocks.length;i++){
+    var raw=String((blocks[i].querySelector('.pe-pack-amount')||{}).value||'').replace(/[^\d.\-]/g,'');
+    var v=parseFloat(raw);
+    if(!isNaN(v)){sum+=v;any=true}
+  }
+  top.value=any?String(Math.round(sum*100)/100):'';
+  return top.value;
+}
+function peAwardMoneySync(inp){
+  var entry=inp&&inp.closest?inp.closest('.project-entry'):null;
+  if(entry)peAwardSum(entry);
+}
+function peAwardAdd(btn){
+  if(!btn)return;
+  var entry=btn.closest('.project-entry');
+  if(!entry)return;
+  var wrap=entry.querySelector('.pe-awards');
+  if(!wrap)return;
+  var block=document.createElement('div');
+  block.className='pe-award-block';
+  block.innerHTML=peAwardBlockHtml({});
+  wrap.appendChild(block);
+  pePeopleInit(block,{});
+  peBidderInit(block,[]);
+  peAwardRefresh(entry);
+  var nm=block.querySelector('.pe-pack-name');
+  if(nm){try{nm.focus({preventScroll:true})}catch(e){nm.focus()}}
+}
+function peAwardRemove(btn){
+  var block=btn&&btn.closest?btn.closest('.pe-award-block'):null;
+  if(!block)return;
+  var entry=block.closest('.project-entry');
+  var all=peAwardBlocks(entry);
+  if(all.length>1){
+    block.remove();
+  }else{
+    // 只剩一个包：只清空包名（等于取消分包），内容留着让用户自己改
+    var nm=block.querySelector('.pe-pack-name');
+    if(nm)nm.value='';
+  }
+  peAwardRefresh(entry);
 }
 
 // === 中标公司：支持联合中标（一个项目多家公司），并可关联客户列表 ===
@@ -1381,7 +1552,8 @@ function bidLinkedClientIds(entry){
   return ids;
 }
 function peBidNameCandidates(inp,kwOverride){
-  var entry=(inp&&inp.closest)?inp.closest('.project-entry'):null;
+  // 分包时只取「本包」的中标公司来给联系人候选排序，别串到别的包
+  var entry=(inp&&inp.closest)?(inp.closest('.pe-award-block')||inp.closest('.project-entry')):null;
   var prefer=bidLinkedClientIds(entry);
   var kw=kwOverride==null?String(inp.value||'').trim().toLowerCase():String(kwOverride);
   var list=(allContacts||[]).filter(function(c){return String(c.name||'').trim()});
@@ -1533,7 +1705,8 @@ function peBidNameBlur(inp){
 }
 
 function peBidPhoneCandidates(inp,kwOverride){
-  var entry=(inp&&inp.closest)?inp.closest('.project-entry'):null;
+  // 分包时只取「本包」的中标公司来给联系人候选排序，别串到别的包
+  var entry=(inp&&inp.closest)?(inp.closest('.pe-award-block')||inp.closest('.project-entry')):null;
   // 多人中标：只参考「本行」的中标人，别把第一行的姓名当成所有人
   var row=(inp&&inp.closest)?inp.closest('.pe-person'):null;
   var nameInp=row?row.querySelector('.pe-bidder'):(entry?entry.querySelector('.pe-bidder'):null);
@@ -1739,7 +1912,9 @@ function pePersonFill(row,p){
 function pePeopleInit(entry,prefill){
   var box=entry?entry.querySelector('.pe-people'):null;
   if(!box)return;
-  var persons=projectBidderPersonsOf(prefill||{});
+  // 既接受项目原始对象（内部按 bidder_contacts / bidder_name 解析），
+  // 也接受标包已经解析好的 {persons:[...]}，避免二次解析把旧格式拆行结果吃掉
+  var persons=Array.isArray(prefill&&prefill.persons)?prefill.persons:projectBidderPersonsOf(prefill||{});
   if(!persons.length)persons=[{name:'',phone:''}];
   box.innerHTML='';
   for(var i=0;i<persons.length;i++){
