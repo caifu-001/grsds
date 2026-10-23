@@ -797,6 +797,15 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
 .pe-owner-chip-x{border:none;background:transparent;color:inherit;opacity:.5;cursor:pointer;font-size:14px;line-height:1;padding:0 5px;border-radius:50%}
 .pe-owner-chip-x:hover{opacity:1;color:var(--danger)}
 .pe-owner-dd .ns-add{color:var(--primary);font-weight:600}
+/* 中标公司：支持联合中标，多家公司用 chip 列出（视觉与甲方负责人 chip 同一套） */
+.pe-bidders-group{position:relative;grid-column:1/-1}
+.pe-bidders-wrap{position:relative}
+.pe-bidder-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.pe-bidder-chips:empty{display:none}
+.pe-bidder-chip{display:inline-flex;align-items:center;max-width:100%;padding:2px 2px 2px 9px;border-radius:14px;background:var(--primary-light);border:1px solid transparent;font-size:12px;line-height:1.7;color:var(--primary)}
+.pe-bidder-chip-name{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px}
+.pe-bidder-chip-x{border:none;background:transparent;color:inherit;opacity:.5;cursor:pointer;font-size:14px;line-height:1;padding:0 5px;border-radius:50%}
+.pe-bidder-chip-x:hover{opacity:1;color:var(--danger)}
 .card-projects{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px}
 .card-project-tag{display:inline-flex;align-items:center;gap:3px;font-size:11px;padding:2px 8px;background:var(--primary-light);color:var(--primary);border-radius:10px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .card-project-tag .bidder{color:var(--text2);font-size:11px}

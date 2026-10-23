@@ -27,6 +27,69 @@ function sortProjectEntriesByBiddingDate(){
   renumberProjects();
 }
 
+// 读取「近期项目」表单 → 项目数组（保存与回归测试共用同一份逻辑），返回按招标日期倒序的结果。
+// 注意：这里的循环变量一律不要用 ci —— saveClient 里 ci 是 company_info 的载体，
+// 早年 `for(var ci=...)` 因为 var 提升把 company_info 写成了数字，属于真实数据丢失。
+function collectProjectEntries(){
+  var projectsArr=[];
+  var entries=document.querySelectorAll('#project-list .project-entry');
+  for(var ei=0;ei<entries.length;ei++){
+    var e=entries[ei];
+    var pn=(e.querySelector('.pe-project')||{}).value||'';
+    var pd=(e.querySelector('.pe-bidding-date')||{}).value||null;
+    var pb=(e.querySelector('.pe-bidder')||{}).value||'';
+    var pbp=(e.querySelector('.pe-bidder-phone')||{}).value||'';
+    var pbg=String((e.querySelector('.pe-budget')||{}).value||'').trim();
+    var pba=(e.querySelector('.pe-bid-amount')||{}).value||'';
+    // 中标公司可以多家（联合体中标）：chip 是唯一数据源，bidder_company 仍写单串以兼容旧链路
+    var bidderCo=[],bidderSeen={};
+    // 用函数表达式而非块内函数声明：避免每轮循环重新声明带来的提升歧义
+    var pushCo=function(nm){
+      nm=String(nm==null?'':nm).replace(/\s+/g,' ').trim();
+      if(!nm)return;
+      var k=nm.toLowerCase();
+      if(bidderSeen[k])return;
+      bidderSeen[k]=1;bidderCo.push(nm);
+    };
+    var coChips=e.querySelectorAll('.pe-bidder-chip');
+    for(var bci=0;bci<coChips.length;bci++)pushCo(coChips[bci].getAttribute('data-name'));
+    // 输入框里还留着没提交的公司名（未回车、也未失焦）同样要落库，不能让用户白填
+    var leftInp=e.querySelector('.pe-bidder-company');
+    var leftRaw=leftInp?String(leftInp.value||'').trim():'';
+    if(leftRaw){
+      var lps=leftRaw.split(/[、,，;；\/|\n]+/);
+      for(var lp=0;lp<lps.length;lp++)pushCo(lps[lp]);
+    }
+    var pbc=bidderCo.join('、');
+    // 甲方负责人可以有多个：每个 chip 一条，chip 的 data-cid 才代表「关联到联系人」，
+    // 为空表示只记了姓名（手输的自定义名字）。chip 是唯一数据源，不另存状态。
+    var pOwners=[],pOwnSeen={};
+    var ownerChips=e.querySelectorAll('.pe-owner-chip');
+    for(var oci=0;oci<ownerChips.length;oci++){
+      var onm=String(ownerChips[oci].getAttribute('data-name')||'').trim();
+      if(!onm)continue;
+      var ocid=String(ownerChips[oci].getAttribute('data-cid')||'').trim();
+      var okey=ocid||('nm:'+onm);
+      if(pOwnSeen[okey])continue;
+      pOwnSeen[okey]=1;
+      pOwners.push(ocid?{name:onm,cid:ocid}:{name:onm});
+    }
+    var pco=pOwners.map(function(o){return o.name}).join('、');
+    var pnotes=(e.querySelector('.pe-notes')||{}).value||'';
+    if(pn||pb||pco||pbg||bidderCo.length){
+      var pj={project_name:pn,bidding_date:pd,bidder_name:pb,bidder_phone:pbp,bidder_company:pbc,project_budget:pbg,bid_amount:pba,client_owner:pco,notes:pnotes};
+      // client_owner 仍是「姓名用、连接」的单串（列表卡片 / 搜索 / 旧代码都在用），
+      // 多负责人与关联 id 另存 client_owners；联合中标的中标公司同理另存 bidder_companies
+      if(pOwners.length)pj.client_owners=pOwners;
+      if(bidderCo.length)pj.bidder_companies=bidderCo;
+      projectsArr.push(pj);
+    }
+  }
+  // 统一按招标日期倒序落库，保证表单/卡片/详情顺序一致（日期越新越靠前）
+  projectsArr.sort(function(x,y){return cmpBiddingDateDesc(x.bidding_date,y.bidding_date)});
+  return projectsArr;
+}
+
 async function saveClient(){
   vfClearAll(document.getElementById('form-modal'));
   if(!selTypes.length){document.getElementById('type-err').textContent='请选择至少一个客户属性';setTimeout(function(){document.getElementById('type-err').textContent=''},3000);return}
@@ -104,43 +167,8 @@ async function saveClient(){
   v=document.getElementById('ci-capital').value; if(v)ci.reg_capital=v;
   v=document.getElementById('ci-status').value; if(v)ci.reg_status=v;
 
-  // Build projects array from form
-  var projectsArr=[];
-  var entries=document.querySelectorAll('#project-list .project-entry');
-  for(var ei=0;ei<entries.length;ei++){
-    var e=entries[ei];
-    var pn=(e.querySelector('.pe-project')||{}).value||'';
-    var pd=(e.querySelector('.pe-bidding-date')||{}).value||null;
-    var pb=(e.querySelector('.pe-bidder')||{}).value||'';
-    var pbp=(e.querySelector('.pe-bidder-phone')||{}).value||'';
-    var pbc=(e.querySelector('.pe-bidder-company')||{}).value||'';
-    var pbg=String((e.querySelector('.pe-budget')||{}).value||'').trim();
-    var pba=(e.querySelector('.pe-bid-amount')||{}).value||'';
-    // 甲方负责人可以有多个：每个 chip 一条，chip 的 data-cid 才代表「关联到联系人」，
-    // 为空表示只记了姓名（手输的自定义名字）。chip 是唯一数据源，不另存状态。
-    var pOwners=[],pOwnSeen={};
-    var ownerChips=e.querySelectorAll('.pe-owner-chip');
-    for(var ci=0;ci<ownerChips.length;ci++){
-      var onm=String(ownerChips[ci].getAttribute('data-name')||'').trim();
-      if(!onm)continue;
-      var ocid=String(ownerChips[ci].getAttribute('data-cid')||'').trim();
-      var okey=ocid||('nm:'+onm);
-      if(pOwnSeen[okey])continue;
-      pOwnSeen[okey]=1;
-      pOwners.push(ocid?{name:onm,cid:ocid}:{name:onm});
-    }
-    var pco=pOwners.map(function(o){return o.name}).join('、');
-    var pnotes=(e.querySelector('.pe-notes')||{}).value||'';
-    if(pn||pb||pco||pbg){
-      var pj={project_name:pn,bidding_date:pd,bidder_name:pb,bidder_phone:pbp,bidder_company:pbc,project_budget:pbg,bid_amount:pba,client_owner:pco,notes:pnotes};
-      // client_owner 仍是「姓名用、连接」的单串（列表卡片 / 搜索 / 旧代码都在用），
-      // 多负责人与关联 id 另存 client_owners 数组
-      if(pOwners.length)pj.client_owners=pOwners;
-      projectsArr.push(pj);
-    }
-  }
-  // 统一按招标日期倒序落库，保证表单/卡片/详情顺序一致（日期越新越靠前）
-  projectsArr.sort(function(x,y){return cmpBiddingDateDesc(x.bidding_date,y.bidding_date)});
+  // Build projects array from form（逻辑见 collectProjectEntries，保存与回归测试共用）
+  var projectsArr=collectProjectEntries();
   var fp=projectsArr.length>0?projectsArr[0].project_name:'';
   // Collect new fields
   var fIndustry=document.getElementById('f-industry');
@@ -250,10 +278,12 @@ async function saveClient(){
     if(rw.hit===0)console.warn('[saveClient] 甲方负责人关联 id 未能回写：',rw.error);
   }
 
+  // closeForm 会把 editId 清空，提示文案要用清空前的状态判断，否则编辑保存也会提示「已添加」
+  var _wasEdit=!!editId;
   closeForm();
   loadClients();
-  if(delFailed)showToast((editId?'已更新':'已添加')+'，但有 '+delFailed+' 个联系人未能删除（可能无权修改，刷新后仍会存在）','error');
-  else showToast(editId?'已更新':'已添加');
+  if(delFailed)showToast((_wasEdit?'已更新':'已添加')+'，但有 '+delFailed+' 个联系人未能删除（可能无权修改，刷新后仍会存在）','error');
+  else showToast(_wasEdit?'已更新':'已添加');
 }
 
 // === Delete ===
