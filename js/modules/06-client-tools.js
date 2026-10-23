@@ -116,14 +116,26 @@ async function saveClient(){
     var pbc=(e.querySelector('.pe-bidder-company')||{}).value||'';
     var pbg=String((e.querySelector('.pe-budget')||{}).value||'').trim();
     var pba=(e.querySelector('.pe-bid-amount')||{}).value||'';
-    var pcoEl=e.querySelector('.pe-client-owner');
-    var pco=pcoEl?pcoEl.value:'';
-    var pcoId=pcoEl?(pcoEl.getAttribute('data-cid')||''):'';
+    // 甲方负责人可以有多个：每个 chip 一条，chip 的 data-cid 才代表「关联到联系人」，
+    // 为空表示只记了姓名（手输的自定义名字）。chip 是唯一数据源，不另存状态。
+    var pOwners=[],pOwnSeen={};
+    var ownerChips=e.querySelectorAll('.pe-owner-chip');
+    for(var ci=0;ci<ownerChips.length;ci++){
+      var onm=String(ownerChips[ci].getAttribute('data-name')||'').trim();
+      if(!onm)continue;
+      var ocid=String(ownerChips[ci].getAttribute('data-cid')||'').trim();
+      var okey=ocid||('nm:'+onm);
+      if(pOwnSeen[okey])continue;
+      pOwnSeen[okey]=1;
+      pOwners.push(ocid?{name:onm,cid:ocid}:{name:onm});
+    }
+    var pco=pOwners.map(function(o){return o.name}).join('、');
     var pnotes=(e.querySelector('.pe-notes')||{}).value||'';
     if(pn||pb||pco||pbg){
       var pj={project_name:pn,bidding_date:pd,bidder_name:pb,bidder_phone:pbp,bidder_company:pbc,project_budget:pbg,bid_amount:pba,client_owner:pco,notes:pnotes};
-      // 甲方负责人若选自本客户联系人，记下关联 id（可能是本次新建联系人的临时 id，见下方换绑）
-      if(pcoId)pj.client_owner_contact_id=pcoId;
+      // client_owner 仍是「姓名用、连接」的单串（列表卡片 / 搜索 / 旧代码都在用），
+      // 多负责人与关联 id 另存 client_owners 数组
+      if(pOwners.length)pj.client_owners=pOwners;
       projectsArr.push(pj);
     }
   }

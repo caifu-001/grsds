@@ -586,6 +586,8 @@ function renderList(){
       arr.push(projs2[pi].bidder_name||'');
       arr.push(projs2[pi].bidder_company||'');
       arr.push(projs2[pi].client_owner||'');
+      var _ownList=projectOwnersOf(projs2[pi]);
+      for(var _oi=0;_oi<_ownList.length;_oi++)arr.push(_ownList[_oi].name);
     }
     var types=parseTypes(c.type);
     arr=arr.concat(types);
@@ -672,17 +674,26 @@ function renderList(){
       if(projs.length===0)return '';
       var tags='',_tagN=0;
       for(var pi=0;pi<projs.length;pi++){
-        var p=projs[pi],pname=p.project_name||'',bd=p.bidder_name||'',co=p.client_owner||'',coPos='';
-        if(p.client_owner_contact_id){
-          var _ac=allContacts||[];
-          for(var _ai=0;_ai<_ac.length;_ai++){if(String(_ac[_ai].id)===String(p.client_owner_contact_id)){coPos=String(_ac[_ai].position||'').trim();break}}
-        }
+        var p=projs[pi],pname=p.project_name||'',bd=p.bidder_name||'';
+        var ownList=projectOwnersOf(p);
+        var coNames=ownList.map(function(o){return o.name}).filter(Boolean);
+        var co=coNames.join('、');
         if(!pname&&!bd&&!co)continue; // 三项全空时跳过，避免渲染出只有图标的空白气泡
         var _tip=[];
         if(bd)_tip.push('中标人:'+h(bd));
         if(p.project_budget)_tip.push('预算:'+h(formatMoney(p.project_budget)));
-        if(co)_tip.push('甲方负责人:'+h(co)+(coPos?'（'+h(coPos)+'）':''));
-        tags+='<span class="card-project-tag" title="'+_tip.join(' / ')+'">📋 '+h(pname||'未命名项目')+(bd?' · '+h(bd):'')+(co?' · 👤'+h(co):'')+'</span>';
+        if(co){
+          // 负责人可能多个：tooltip 里逐个带上职务，气泡里只放得下前两个
+          var _ac=allContacts||[];
+          var _ownTxt=ownList.map(function(o){
+            var pos='';
+            if(o.cid){for(var _ai=0;_ai<_ac.length;_ai++){if(String(_ac[_ai].id)===String(o.cid)){pos=String(_ac[_ai].position||'').trim();break}}}
+            return o.name+(pos?'（'+pos+'）':'');
+          }).filter(Boolean).join('、');
+          _tip.push('甲方负责人:'+h(_ownTxt));
+        }
+        var coShort=coNames.length>2?coNames.slice(0,2).join('、')+' 等'+coNames.length+'人':co;
+        tags+='<span class="card-project-tag" title="'+_tip.join(' / ')+'">📋 '+h(pname||'未命名项目')+(bd?' · '+h(bd):'')+(co?' · 👤'+h(coShort):'')+'</span>';
         _tagN++;
       }
       if(!_tagN)return '';
@@ -1017,19 +1028,21 @@ function addProjectEntry(prefill,toTop){
     '</div>'+
     '<div class="form-row">'+
       '<div class="form-group pe-owner-group">'+
-        '<label>甲方负责人 <span class="pe-owner-tip">可从下方联系人选择</span></label>'+
+        '<label>甲方负责人 <span class="pe-owner-tip">可从下方联系人选择，支持多个</span></label>'+
         '<div class="pe-owner-wrap">'+
-          '<input class="pe-client-owner" placeholder="选择下方联系人或直接输入姓名" autocomplete="off" data-cid="'+h(prefill.client_owner_contact_id||'')+'" value="'+h(prefill.client_owner||'')+'" onfocus="peOwnerOpen(this)" oninput="peOwnerInput(this)" onkeydown="peOwnerKey(event,this)" onblur="peOwnerBlur(this)">'+
+          '<input class="pe-client-owner" placeholder="搜索联系人姓名后回车添加，或直接输入姓名" autocomplete="off" onfocus="peOwnerOpen(this)" oninput="peOwnerInput(this)" onkeydown="peOwnerKey(event,this)" onblur="peOwnerBlur(this)">'+
           '<div class="name-suggestions pe-owner-dd hidden"></div>'+
         '</div>'+
-        '<div class="pe-owner-link hidden"></div>'+
+        '<div class="pe-owner-chips"></div>'+
       '</div>'+
     '</div>';
   if(toTop&&list.firstChild)list.insertBefore(div,list.firstChild);else list.appendChild(div);
   renumberProjects();
+  // 甲方负责人：一个项目可以挂多个负责人，各用一个 chip 表示（chip 是唯一数据源）
+  peOwnerInit(div,projectOwnersOf(prefill));
   // 回显时联系人可能还没加载完（openForm 先渲染项目、后等接口回填联系人），
   // 关联信息由 refCt() 收尾时统一补，这里只是让已加载的场景立刻可见。
-  peOwnerLinkRefresh(div.querySelector('.pe-client-owner'));
+  peOwnerChipsRefresh(div.querySelector('.pe-owner-group'));
   if(toTop){
     try{div.scrollIntoView({block:'nearest',behavior:'smooth'})}catch(e){}
     var _pf=div.querySelector('.pe-project');
@@ -1064,31 +1077,125 @@ function peOwnerFind(cid){
   for(var i=0;i<list.length;i++){if(String(list[i].id)===String(cid))return list[i]}
   return null;
 }
+// 把项目里存的负责人统一读成 [{name,cid}]：
+// · 新格式 client_owners: [{name,cid}]（一个项目可多个）
+// · 旧格式 client_owner（单串，可能是「张三、李四」）+ client_owner_contact_id
+function projectOwnersOf(p){
+  p=p||{};
+  var out=[],seen={};
+  function push(name,cid){
+    name=String(name||'').trim();cid=String(cid||'').trim();
+    if(!name&&!cid)return;
+    var key=cid?('id:'+cid):('nm:'+name);
+    if(seen[key])return;seen[key]=1;
+    out.push({name:name,cid:cid});
+  }
+  if(Array.isArray(p.client_owners)&&p.client_owners.length){
+    for(var i=0;i<p.client_owners.length;i++){
+      var o=p.client_owners[i]||{};
+      push(o.name,o.cid||o.contact_id);
+    }
+  }else if(String(p.client_owner||'').trim()){
+    var legacyId=String(p.client_owner_contact_id||'').trim();
+    var parts=String(p.client_owner).split(/[、,，;；\/|]+/).map(function(s){return s.trim()}).filter(Boolean);
+    for(var j=0;j<parts.length;j++)push(parts[j],parts.length===1?legacyId:'');
+  }
+  return out;
+}
+function peOwnerGroupOf(inp){
+  return (inp&&inp.closest)?inp.closest('.pe-owner-group'):null;
+}
+function peOwnerChipList(group){
+  return group?group.querySelectorAll('.pe-owner-chip'):[];
+}
+function peOwnerHasChip(group,cid,name){
+  var cs=peOwnerChipList(group);
+  for(var i=0;i<cs.length;i++){
+    var c=cs[i],cc=String(c.getAttribute('data-cid')||'');
+    if(cid){if(cc===String(cid))return c}
+    else if(!cc&&String(c.getAttribute('data-name')||'')===String(name||''))return c;
+  }
+  return null;
+}
+// 关联 id 指向的联系人已不在表单里时：丢掉 id、保留姓名，退化成纯文本，不挂指向空行的引用。
+function peOwnerChipRefresh(chip){
+  if(!chip)return;
+  var cid=String(chip.getAttribute('data-cid')||''),co=cid?peOwnerFind(cid):null;
+  var nmEl=chip.querySelector('.pe-owner-chip-name'),mEl=chip.querySelector('.pe-owner-chip-meta');
+  var nm=co?String(co.name||'').trim():String(chip.getAttribute('data-name')||'').trim();
+  if(co&&!nm)nm=String(chip.getAttribute('data-name')||'').trim();
+  if(co&&nm)chip.setAttribute('data-name',nm);
+  var dt=co?peOwnerDetail(co):'';
+  if(nmEl)nmEl.textContent=nm||'未命名';
+  if(mEl)mEl.textContent=dt?' · '+dt:'';
+  chip.setAttribute('title',(nm||'未命名')+(dt?' · '+dt:'')+(co?'':'（未关联联系人，仅记录姓名）'));
+  chip.classList.toggle('linked',!!co);
+  if(cid&&!co)chip.setAttribute('data-cid','');
+}
+function peOwnerChipsRefresh(group){
+  if(!group)return;
+  var cs=peOwnerChipList(group);
+  for(var i=0;i<cs.length;i++)peOwnerChipRefresh(cs[i]);
+}
+function peOwnerAddChip(inp,cid,name){
+  var group=peOwnerGroupOf(inp);
+  if(!group)return null;
+  var box=group.querySelector('.pe-owner-chips');
+  if(!box)return null;
+  name=String(name||'').trim();
+  if(!name)return null;
+  if(peOwnerHasChip(group,cid,name))return null;
+  var chip=document.createElement('span');
+  chip.className='pe-owner-chip';
+  chip.setAttribute('data-cid',cid||'');
+  chip.setAttribute('data-name',name);
+  chip.innerHTML='<span class="pe-owner-chip-name"></span><span class="pe-owner-chip-meta"></span>'+
+    '<button type="button" class="pe-owner-chip-x" aria-label="移除该负责人" onclick="peOwnerRemoveChip(this)">×</button>';
+  box.appendChild(chip);
+  peOwnerChipRefresh(chip);
+  return chip;
+}
+function peOwnerRemoveChip(btn){
+  var chip=btn&&btn.closest?btn.closest('.pe-owner-chip'):null;
+  if(!chip)return;
+  var group=chip.closest('.pe-owner-group');
+  chip.remove();
+  // 下拉若是开着的，取消它的「已选」标记
+  if(group&&group.querySelector('.pe-owner-dd')&&!group.querySelector('.pe-owner-dd').classList.contains('hidden')){
+    peOwnerRender(group.querySelector('.pe-client-owner'));
+  }
+}
+function peOwnerInit(entry,owners){
+  var group=(entry&&entry.querySelector)?entry.querySelector('.pe-owner-group'):null;
+  if(!group)return;
+  var inp=group.querySelector('.pe-client-owner');
+  for(var i=0;i<(owners||[]).length;i++){
+    var o=owners[i]||{};
+    peOwnerAddChip(inp,o.cid||o.contact_id||'',o.name);
+  }
+}
 function peOwnerCandidates(inp){
   var all=(formContacts||[]).filter(function(c){return String(c.name||'').trim()});
   var kw=String(inp.value||'').trim().toLowerCase();
-  var cur=peOwnerFind(inp.getAttribute('data-cid')||'');
-  // 已关联时输入框里放的就是该联系人姓名，不能拿它当筛选词，否则只剩它自己
-  if(cur&&kw===String(cur.name||'').trim().toLowerCase())kw='';
   if(!kw)return all;
   return all.filter(function(c){
     return (String(c.name||'')+' '+(c.position||'')+' '+(c.dept||'')).toLowerCase().indexOf(kw)>=0;
   });
 }
 function peOwnerRender(inp){
-  var group=inp.closest('.pe-owner-group');
+  var group=peOwnerGroupOf(inp);
   if(!group)return;
   var dd=group.querySelector('.pe-owner-dd');
   if(!dd)return;
-  var list=peOwnerCandidates(inp),cur=String(inp.getAttribute('data-cid')||''),html='';
+  var list=peOwnerCandidates(inp),html='';
   if(!list.length){
-    html='<div class="ns-empty">'+((formContacts&&formContacts.length)?'没有匹配的联系人':'该客户暂无联系人，可先在下方「＋ 添加联系人」')+'</div>';
+    html='<div class="ns-empty">'+((formContacts&&formContacts.length)?'没有匹配的联系人，回车可直接添加姓名':'该客户暂无联系人，可先在下方「＋ 添加联系人」')+'</div>';
   }else{
     for(var i=0;i<list.length;i++){
-      var c=list[i],nm=String(c.name||'').trim(),dt=peOwnerDetail(c),on=String(c.id)===cur;
+      var c=list[i],nm=String(c.name||'').trim(),dt=peOwnerDetail(c),on=!!peOwnerHasChip(group,c.id,'');
       html+='<div class="name-suggestion'+(on?' active':'')+'" data-cid="'+h(c.id)+'" data-name="'+h(nm)+'" onmousedown="peOwnerPick(event,this)">'+
         '<div class="ns-main"><div class="ns-name">'+h(nm)+'</div>'+(dt?'<div class="ns-detail">'+h(dt)+'</div>':'')+'</div>'+
-        (on?'<span class="ns-source">✓ 已关联</span>':'')+
+        (on?'<span class="ns-source">✓ 已选</span>':'<span class="ns-source ns-add">＋</span>')+
       '</div>';
     }
   }
@@ -1096,82 +1203,61 @@ function peOwnerRender(inp){
   dd.classList.remove('hidden');
 }
 function peOwnerOpen(inp){peOwnerRender(inp)}
+// 点候选项是「切换」：没选过就加上，已选过就移除 —— 多选场景下比反复开下拉直观。
 function peOwnerPick(e,el){
   if(e){if(e.preventDefault)e.preventDefault();if(e.stopPropagation)e.stopPropagation()}
   var group=el&&el.closest?el.closest('.pe-owner-group'):null;
   if(!group)return;
   var inp=group.querySelector('.pe-client-owner');
   if(!inp)return;
-  inp.value=el.getAttribute('data-name')||'';
-  inp.setAttribute('data-cid',el.getAttribute('data-cid')||'');
-  var dd=group.querySelector('.pe-owner-dd');
-  if(dd)dd.classList.add('hidden');
-  peOwnerLinkRefresh(inp);
+  var cid=el.getAttribute('data-cid')||'',nm=el.getAttribute('data-name')||'';
+  var exist=peOwnerHasChip(group,cid,nm);
+  if(exist)exist.remove();else peOwnerAddChip(inp,cid,nm);
+  inp.value='';
+  peOwnerRender(inp); // 保持下拉打开，方便连着选下一个
+  try{inp.focus({preventScroll:true})}catch(err){}
 }
-function peOwnerInput(inp){
-  // 手改成自定义姓名即视为解除关联，避免「显示名字」和「关联联系人」各说各话
-  inp.setAttribute('data-cid','');
-  peOwnerLinkRefresh(inp);
-  peOwnerRender(inp);
-}
+function peOwnerInput(inp){peOwnerRender(inp)}
 function peOwnerKey(e,inp){
-  var group=inp.closest('.pe-owner-group');
+  var group=peOwnerGroupOf(inp);
   if(!group)return;
   var dd=group.querySelector('.pe-owner-dd');
   if(!dd)return;
   if(e.key==='Escape'){dd.classList.add('hidden');return}
   if(dd.classList.contains('hidden')){if(e.key==='ArrowDown')peOwnerRender(inp);else return}
   var items=dd.querySelectorAll('.name-suggestion');
-  if(!items.length)return;
   var act=-1;
   for(var i=0;i<items.length;i++){if(items[i].classList.contains('active')){act=i;break}}
   if(e.key==='ArrowDown'||e.key==='ArrowUp'){
+    if(!items.length)return;
     e.preventDefault();
     var next=e.key==='ArrowDown'?(act<0?0:Math.min(act+1,items.length-1)):(act<0?items.length-1:Math.max(act-1,0));
     for(var j=0;j<items.length;j++)items[j].classList.remove('active');
     items[next].classList.add('active');
     try{items[next].scrollIntoView({block:'nearest'})}catch(err){}
   }else if(e.key==='Enter'){
-    if(act>=0){e.preventDefault();peOwnerPick(null,items[act])}
+    e.preventDefault();
+    if(act>=0&&items[act]){peOwnerPick(null,items[act]);return}
+    // 没有命中候选：把输入内容当成自定义姓名加进去（允许不关联联系人）
+    var typed=String(inp.value||'').trim();
+    if(typed){
+      peOwnerAddChip(inp,'',typed);
+      inp.value='';
+      peOwnerRender(inp);
+    }
   }
 }
 function peOwnerBlur(inp){
   setTimeout(function(){
-    var group=inp.closest?inp.closest('.pe-owner-group'):null;
+    var group=peOwnerGroupOf(inp);
     if(!group)return;
     var dd=group.querySelector('.pe-owner-dd');
     if(dd)dd.classList.add('hidden');
   },120);
 }
-// 关联条：显示联系人职务/手机号，并让输入框里的姓名跟随联系人（改名后自动同步）。
-// 关联 id 指向的联系人已不在表单里时不报错、也不清 id —— 只保留姓名，静默退化为纯文本。
-function peOwnerLinkRefresh(inp){
-  if(!inp||!inp.closest)return;
-  var group=inp.closest('.pe-owner-group');
-  if(!group)return;
-  var box=group.querySelector('.pe-owner-link');
-  if(!box)return;
-  var cid=inp.getAttribute('data-cid')||'';
-  var co=cid?peOwnerFind(cid):null;
-  if(!co){box.classList.add('hidden');box.innerHTML='';return}
-  var nm=String(co.name||'').trim();
-  if(nm&&inp.value!==nm)inp.value=nm;
-  var dt=peOwnerDetail(co),full='已关联联系人：'+(nm||'未命名')+(dt?' · '+dt:'');
-  // 输入框里已经有姓名了，关联条只补充职务/电话，避免挤成一团（完整信息放 title）
-  box.innerHTML='<span class="pe-owner-linked" title="'+h(full)+'">🔗 '+(dt?h(dt):'已关联联系人')+'</span><button type="button" class="pe-owner-unlink" onclick="peOwnerUnlink(this)">解除</button>';
-  box.classList.remove('hidden');
-}
-function peOwnerUnlink(btn){
-  var group=btn.closest('.pe-owner-group');
-  if(!group)return;
-  var inp=group.querySelector('.pe-client-owner');
-  if(!inp)return;
-  inp.setAttribute('data-cid','');
-  peOwnerLinkRefresh(inp);
-}
 function refreshPeOwnerLinks(){
-  var ins=document.querySelectorAll('#project-list .pe-client-owner');
-  for(var i=0;i<ins.length;i++)peOwnerLinkRefresh(ins[i]);
+  var groups=document.querySelectorAll('#project-list .pe-owner-group');
+  for(var i=0;i<groups.length;i++)peOwnerChipsRefresh(groups[i]);
 }
 // 项目里的甲方负责人可能指向「本次刚新建的联系人」（临时 id）：联系人落库后才有真实 id，
 // 而客户行在联系人之前就写过一次，所以保存流程末尾要用它把临时 id 换掉。就地修改，返回是否有改动。
@@ -1179,13 +1265,29 @@ function refreshPeOwnerLinks(){
 function rebindProjectOwnerIds(projectsArr,contacts,savedIds){
   var changed=false,list=projectsArr||[],cs=contacts||[],ids=savedIds||[];
   for(var i=0;i<list.length;i++){
-    var p=list[i],cid=p&&p.client_owner_contact_id;
-    if(!cid)continue;
-    var idx=-1;
-    for(var j=0;j<cs.length;j++){if(String(cs[j].id)===String(cid)){idx=j;break}}
-    if(idx<0){delete p.client_owner_contact_id;changed=true;continue}
-    var real=ids[idx];
-    if(real&&String(real)!==String(cid)){p.client_owner_contact_id=real;changed=true}
+    var p=list[i];
+    if(!p)continue;
+    // 旧格式（单条 client_owner_contact_id）先归一成数组，下面的逻辑就只需要处理一种结构
+    if(!Array.isArray(p.client_owners)){
+      var legacyId=String(p.client_owner_contact_id||'').trim();
+      if(!legacyId)continue;
+      p.client_owners=[{name:String(p.client_owner||'').trim(),cid:legacyId}];
+      delete p.client_owner_contact_id;
+      changed=true;
+    }
+    for(var k=0;k<p.client_owners.length;k++){
+      var o=p.client_owners[k];
+      if(!o)continue;
+      var cid=String(o.cid||o.contact_id||'').trim();
+      if(!cid)continue;
+      var idx=-1;
+      for(var j=0;j<cs.length;j++){if(String(cs[j].id)===String(cid)){idx=j;break}}
+      // 联系人已被删掉：丢掉关联、只保留姓名，避免长期挂一个指向空行的 id
+      if(idx<0){delete o.cid;delete o.contact_id;changed=true;continue}
+      var real=ids[idx];
+      if(real&&String(real)!==String(cid)){o.cid=real;changed=true}
+      if(o.contact_id){o.cid=cid;delete o.contact_id;changed=true}
+    }
   }
   return changed;
 }

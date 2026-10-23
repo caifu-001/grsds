@@ -65,12 +65,20 @@ async function renderClient360Overview(c,orders){
       var pr=projs[pj];
       html+='<div style="margin-bottom:10px;padding:10px;background:var(--primary-light);border-radius:8px">';
       html+='<div style="font-weight:600;font-size:14px;margin-bottom:6px">'+h(pr.project_name||'项目#'+(pj+1))+'</div>';
-      // 甲方负责人：关联到具体联系人时带上职务，方便判断是不是要找的人
-      var ocTxt=pr.client_owner||'-';
-      if(pr.client_owner_contact_id){
-        var _acs=allContacts||[],_oc=null;
-        for(var _oi=0;_oi<_acs.length;_oi++){if(String(_acs[_oi].id)===String(pr.client_owner_contact_id)){_oc=_acs[_oi];break}}
-        if(_oc&&String(_oc.position||'').trim())ocTxt=ocTxt+'（'+String(_oc.position).trim()+'）';
+      // 甲方负责人可能多个：逐个带上职务，方便判断要找的是哪位
+      var ocTxt='-';
+      var _ownList=projectOwnersOf(pr);
+      if(_ownList.length){
+        var _acs=allContacts||[];
+        var _ownParts=[];
+        for(var _oi2=0;_oi2<_ownList.length;_oi2++){
+          var _o=_ownList[_oi2],_pos='';
+          if(_o.cid){
+            for(var _oi=0;_oi<_acs.length;_oi++){if(String(_acs[_oi].id)===String(_o.cid)){_pos=String(_acs[_oi].position||'').trim();break}}
+          }
+          _ownParts.push(_o.name+(_pos?'（'+_pos+'）':''));
+        }
+        ocTxt=_ownParts.filter(Boolean).join('、')||'-';
       }
       var pfields=[['招标日期',pr.bidding_date||'-'],['中标人',pr.bidder_name||'-'],['中标人电话',pr.bidder_phone||'-'],['中标公司',pr.bidder_company||'-'],['项目预算',pr.project_budget?formatMoney(pr.project_budget):'-'],['中标金额',pr.bid_amount?formatMoney(pr.bid_amount):'-'],['甲方负责人',ocTxt]];
       for(var pf=0;pf<pfields.length;pf++)html+='<div class="c360-info-row" style="font-size:12px"><span class="c360-info-label">'+pfields[pf][0]+'</span><span class="c360-info-value">'+h(pfields[pf][1])+'</span></div>';

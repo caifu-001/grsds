@@ -786,10 +786,17 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
 .pe-owner-tip{font-size:11px;font-weight:400;color:var(--text3);margin-left:4px}
 .pe-owner-dd .ns-main{flex:1;min-width:0;margin-right:8px;text-align:left}
 .pe-owner-dd .ns-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pe-owner-link{display:flex;align-items:center;gap:6px;margin-top:6px;padding:4px 8px;border-radius:6px;background:var(--primary-light);color:var(--primary);font-size:11px;line-height:1.6}
-.pe-owner-link .pe-owner-linked{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pe-owner-unlink{border:none;background:transparent;color:var(--text3);font-size:11px;cursor:pointer;padding:0;text-decoration:underline;flex-shrink:0;line-height:1.6}
-.pe-owner-unlink:hover{color:var(--danger)}
+/* 甲方负责人：一个项目可挂多个（chip 列表 + 下拉多选） */
+.pe-owner-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.pe-owner-chips:empty{display:none}
+.pe-owner-chip{display:inline-flex;align-items:center;max-width:100%;padding:2px 2px 2px 9px;border-radius:14px;background:var(--surface);border:1px solid var(--border);font-size:12px;line-height:1.7;color:var(--text2)}
+.pe-owner-chip.linked{background:var(--primary-light);border-color:transparent;color:var(--primary)}
+.pe-owner-chip-name{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px}
+.pe-owner-chip-meta{color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
+.pe-owner-chip.linked .pe-owner-chip-meta{color:var(--primary);opacity:.8}
+.pe-owner-chip-x{border:none;background:transparent;color:inherit;opacity:.5;cursor:pointer;font-size:14px;line-height:1;padding:0 5px;border-radius:50%}
+.pe-owner-chip-x:hover{opacity:1;color:var(--danger)}
+.pe-owner-dd .ns-add{color:var(--primary);font-weight:600}
 .card-projects{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px}
 .card-project-tag{display:inline-flex;align-items:center;gap:3px;font-size:11px;padding:2px 8px;background:var(--primary-light);color:var(--primary);border-radius:10px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .card-project-tag .bidder{color:var(--text2);font-size:11px}
