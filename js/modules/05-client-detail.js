@@ -927,6 +927,10 @@ async function openForm(id){
     renderClientCustomFields(_cfData);
     renderTagSuggestions();
   });
+  // 内容区是独立滚动容器，滚动位置不会随关闭自动复位；重开时回到顶部，
+  // 否则上一次看到「联系人」这一段，这次打开会直接停在半中间。
+  var _sb=document.querySelector('#form-modal .sheet-body');
+  if(_sb)_sb.scrollTop=0;
   document.getElementById('form-modal').classList.remove('hidden');
 }
 function closeForm(){document.getElementById('form-modal').classList.add('hidden');editId=null;formContacts=[];selTypes=[]}
