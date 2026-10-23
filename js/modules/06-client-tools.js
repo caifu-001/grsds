@@ -45,24 +45,31 @@ function collectProjectEntries(){
     var phDs=phInp&&phInp.dataset?phInp.dataset:{};
     var pbg=String((e.querySelector('.pe-budget')||{}).value||'').trim();
     var pba=(e.querySelector('.pe-bid-amount')||{}).value||'';
-    // 中标公司可以多家（联合体中标）：chip 是唯一数据源，bidder_company 仍写单串以兼容旧链路
-    var bidderCo=[],bidderSeen={};
+    // 中标公司可以多家（联合体中标）：chip 是唯一数据源，bidder_company 仍写单串以兼容旧链路。
+    // bidderIds 与 bidderCo 等长平行：chip 的 data-cid 有值表示这家是客户列表里的公司（已关联）
+    var bidderCo=[],bidderIds=[],bidderSeen={};
     // 用函数表达式而非块内函数声明：避免每轮循环重新声明带来的提升歧义
-    var pushCo=function(nm){
+    var pushCo=function(nm,cid){
       nm=String(nm==null?'':nm).replace(/\s+/g,' ').trim();
       if(!nm)return;
       var k=nm.toLowerCase();
       if(bidderSeen[k])return;
-      bidderSeen[k]=1;bidderCo.push(nm);
+      bidderSeen[k]=1;bidderCo.push(nm);bidderIds.push(String(cid==null?'':cid).trim());
     };
     var coChips=e.querySelectorAll('.pe-bidder-chip');
-    for(var bci=0;bci<coChips.length;bci++)pushCo(coChips[bci].getAttribute('data-name'));
+    for(var bci=0;bci<coChips.length;bci++){
+      pushCo(coChips[bci].getAttribute('data-name'),coChips[bci].getAttribute('data-cid'));
+    }
     // 输入框里还留着没提交的公司名（未回车、也未失焦）同样要落库，不能让用户白填
     var leftInp=e.querySelector('.pe-bidder-company');
     var leftRaw=leftInp?String(leftInp.value||'').trim():'';
     if(leftRaw){
       var lps=leftRaw.split(/[、,，;；\/|\n]+/);
-      for(var lp=0;lp<lps.length;lp++)pushCo(lps[lp]);
+      for(var lp=0;lp<lps.length;lp++){
+        // 残留输入也走同一套「能对上客户就关联」的判断，名字统一成客户列表里的写法
+        var lc=bidFindClientByName(lps[lp]);
+        pushCo(lc?String(lc.name||lps[lp]):lps[lp],lc?String(lc.id||''):'');
+      }
     }
     var pbc=bidderCo.join('、');
     // 甲方负责人可以有多个：每个 chip 一条，chip 的 data-cid 才代表「关联到联系人」，
@@ -85,7 +92,13 @@ function collectProjectEntries(){
       // client_owner 仍是「姓名用、连接」的单串（列表卡片 / 搜索 / 旧代码都在用），
       // 多负责人与关联 id 另存 client_owners；联合中标的中标公司同理另存 bidder_companies
       if(pOwners.length)pj.client_owners=pOwners;
-      if(bidderCo.length)pj.bidder_companies=bidderCo;
+      if(bidderCo.length){
+        pj.bidder_companies=bidderCo;
+        // 只要有一家关联到了客户就存平行 id 数组；全是自定义则不写（不留空壳字段）
+        var anyCoId=false;
+        for(var bix=0;bix<bidderIds.length;bix++){if(bidderIds[bix]){anyCoId=true;break}}
+        if(anyCoId)pj.bidder_company_ids=bidderIds;
+      }
       // 中标人 / 中标人电话：只有在「文本仍是关联对象的值」时才存 id。
       // 手改过的文本（oninput 已清 dataset）不会走进来，等于只记文本 —— 这才是用户要的自定义。
       if(pbDs.cid&&String(pbDs.name||'')===String(pb)){

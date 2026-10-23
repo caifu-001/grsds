@@ -802,10 +802,19 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
 .pe-bidders-wrap{position:relative}
 .pe-bidder-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .pe-bidder-chips:empty{display:none}
-.pe-bidder-chip{display:inline-flex;align-items:center;max-width:100%;padding:2px 2px 2px 9px;border-radius:14px;background:var(--primary-light);border:1px solid transparent;font-size:12px;line-height:1.7;color:var(--primary)}
+.pe-bidder-chip{display:inline-flex;align-items:center;max-width:100%;padding:2px 2px 2px 9px;border-radius:14px;background:var(--surface);border:1px dashed var(--border);font-size:12px;line-height:1.7;color:var(--text2)}
+/* 从客户列表选中的公司 = 已关联（蓝）；手输的自定义名称 = 灰底虚线，一眼能分清 */
+.pe-bidder-chip.linked{background:var(--primary-light);border:1px solid transparent;color:var(--primary)}
 .pe-bidder-chip-name{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px}
 .pe-bidder-chip-x{border:none;background:transparent;color:inherit;opacity:.5;cursor:pointer;font-size:14px;line-height:1;padding:0 5px;border-radius:50%}
 .pe-bidder-chip-x:hover{opacity:1;color:var(--danger)}
+.pe-bidco-dd{min-width:320px;max-width:min(420px,calc(100vw - 32px))}
+.pe-bidco-dd .ns-main{flex:1;min-width:0;margin-right:8px;text-align:left}
+.pe-bidco-dd .ns-name,.pe-bidco-dd .ns-detail{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pe-bidco-dd .ns-add{color:var(--primary);font-weight:600}
+/* 已在本次项目里的公司：灰掉不可点，避免重复添加 */
+.name-suggestion.disabled{opacity:.55;cursor:default}
+.name-suggestion.disabled .ns-source{color:var(--text3)}
 /* 中标人 / 中标人电话：可直接填，也可从客户列表（客户 → 联系人）里选 */
 .pe-bidname-group,.pe-bidphone-group{position:relative}
 .pe-bidname-dd,.pe-bidphone-dd{min-width:300px;max-width:min(360px,calc(100vw - 32px))}
