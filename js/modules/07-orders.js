@@ -41,6 +41,50 @@ var allOrders=[],orderEditId=null,orderDeleteId=null;
 var orderStage='谈判中',orderClientId=null,orderClientName='';
 var ORDER_STAGES=['谈判中','已签约','执行中','已完成','已取消'];
 
+// === 业绩口径：签约即计 ===
+// 计入业绩的阶段：已签约 / 执行中 / 已完成（阶段名可在配置中心自定义，故用关键字兜底）
+var ORDER_WON_STAGES=['已签约','执行中','已完成'];
+var ORDER_LOST_RE=/取消|终止|流失|输单|丢单|废单|作废|暂停/;
+var ORDER_WON_RE=/签约|签订|中标|赢单|成交|执行|完成|交付|结项|验收/;
+var _orderHasWonCols=null;   // orders 表是否已有 won_date / owner_id 两列（null=未知）
+
+function orderIsWon(stage){
+  var s=String(stage==null?'':stage).trim();
+  if(!s)return false;
+  if(ORDER_LOST_RE.test(s))return false;
+  if(ORDER_WON_STAGES.indexOf(s)>=0)return true;
+  return ORDER_WON_RE.test(s);
+}
+
+// 业绩归属人：优先 owner_id，回退录单人
+function orderOwnerId(o){
+  if(!o)return '';
+  return o.owner_id||o.user_id||'';
+}
+
+// 业绩归月用的「赢单日期」：won_date → 实际完成 → 开始日期 → 创建日期
+function orderWonDate(o){
+  if(!o)return '';
+  var d=o.won_date||o.actual_date||o.start_date||'';
+  if(!d&&o.created_at)d=String(o.created_at);
+  return String(d||'').slice(0,10);
+}
+
+// 取某个月（year, month 从 1 起）内赢单的订单
+function ordersWonInMonth(year,month){
+  var out=[];
+  for(var i=0;i<allOrders.length;i++){
+    var o=allOrders[i];
+    if(!orderIsWon(o.stage))continue;
+    var d=orderWonDate(o);
+    if(!d)continue;
+    if(parseInt(d.slice(0,4),10)!==year)continue;
+    if(parseInt(d.slice(5,7),10)!==month)continue;
+    out.push(o);
+  }
+  return out;
+}
+
 function stageClass(stage){
   switch(stage){
     case '已签约':return 'stage-signed';
@@ -88,14 +132,11 @@ async function renderDashboardCharts(){
       months.push({year:d.getFullYear(),month:d.getMonth()+1,label:d.getMonth()+1+'月'});
     }
     var revData=[];
+    await ensureOrdersLoaded();
     for(var ri=0;ri<months.length;ri++){
-      var mStart=new Date(months[ri].year,months[ri].month-1,1).toISOString();
-      var mEnd=new Date(months[ri].year,months[ri].month,0,23,59,59).toISOString();
-      var r=await sb.from('orders').select('amount')
-        .eq('company_id',currentCompanyId)
-        .gte('created_at',mStart).lte('created_at',mEnd).not('stage','eq','已取消');
+      var wonList=ordersWonInMonth(months[ri].year,months[ri].month);
       var sum=0;
-      if(r.data)for(var j=0;j<r.data.length;j++)sum+=parseFloat(r.data[j].amount)||0;
+      for(var j=0;j<wonList.length;j++)sum+=wonList[j]._amount||0;
       revData.push(sum);
     }
     _destroyChart('revenue');
@@ -152,11 +193,9 @@ async function renderDashboardCharts(){
     if(!allTargets||!allTargets.length){
       try{var tq=await sb.from('sales_targets').select('*').eq('company_id',currentCompanyId).eq('target_year',thisYear);allTargets=tq.data||[];}catch(ee){allTargets=[];}
     }
-    var pmStart=new Date(thisYear,thisMonth,1).toISOString();
-    var pmEnd=new Date(thisYear,thisMonth+1,0,23,59,59).toISOString();
-    var pr=await sb.from('orders').select('amount').eq('company_id',currentCompanyId).gte('created_at',pmStart).lte('created_at',pmEnd).not('stage','eq','已取消');
     var actualTotal=0;
-    if(pr.data)for(var pi=0;pi<pr.data.length;pi++)actualTotal+=parseFloat(pr.data[pi].amount)||0;
+    var _pmList=ordersWonInMonth(thisYear,thisMonth+1);
+    for(var pi=0;pi<_pmList.length;pi++)actualTotal+=_pmList[pi]._amount||0;
     var targetTotal2=0;
     for(var ti=0;ti<(allTargets||[]).length;ti++){
       var tt=allTargets[ti];
@@ -222,13 +261,15 @@ function switchReportsTab(sub){
 
 // ===== 汇总卡片数据加载 =====
 function loadReportSummary(){
-  var now=new Date();var mStart=new Date(now.getFullYear(),now.getMonth(),1).toISOString();
-  sb.from('orders').select('amount,stage').eq('company_id',currentCompanyId).gte('created_at',mStart).then(function(r){
+  var now=new Date();
+  ensureOrdersLoaded().then(function(){
+    var list=ordersWonInMonth(now.getFullYear(),now.getMonth()+1);
     var sum=0,completed=0;
-    if(r.data)for(var i=0;i<r.data.length;i++){var a=parseFloat(r.data[i].amount)||0;sum+=a;if(r.data[i].stage==='已完成')completed++}
+    for(var i=0;i<list.length;i++){sum+=list[i]._amount||0;if(list[i].stage==='已完成')completed++}
     document.getElementById('rp-monthly-sales').textContent='¥'+sum.toLocaleString('zh-CN',{minimumFractionDigits:0,maximumFractionDigits:0});
     document.getElementById('rp-order-complete').textContent=completed;
   }).catch(function(){});
+  var mStart=new Date(now.getFullYear(),now.getMonth(),1).toISOString();
   sb.from('clients').select('id',{count:'exact',head:true}).eq('company_id',currentCompanyId).gte('created_at',mStart).then(function(r){
     document.getElementById('rp-monthly-clients').textContent=r.count||0;
   }).catch(function(){});
@@ -363,12 +404,13 @@ async function renderDealCycle(sel){
 
 async function renderAvgDealPrice(sel){
   try{
+    await ensureOrdersLoaded();
     var labels=[],prices=[];
     for(var mi=0;mi<sel.months.length;mi++){
       var mo=sel.months[mi];
-      var r=await _reportQuery('orders').select('amount').not('stage','eq','已取消').gte('created_at',mo.start).lte('created_at',mo.end);
-      var total=0,count=0;
-      if(r.data)for(var i=0;i<r.data.length;i++){total+=parseFloat(r.data[i].amount)||0;count++;}
+      var list=ordersWonInMonth(sel.year,mo.month);
+      var total=0,count=list.length;
+      for(var i=0;i<list.length;i++)total+=list[i]._amount||0;
       labels.push(mo.shortLabel);
       prices.push(count>0?Math.round(total/count):0);
     }
@@ -1332,8 +1374,11 @@ async function openOrderForm(id){
   document.getElementById('of-start-date').value='';
   document.getElementById('of-expected-date').value='';
   document.getElementById('of-actual-date').value='';
+  var _wd=document.getElementById('of-won-date');if(_wd)_wd.value='';
   document.getElementById('of-notes').value='';
+  renderOrderOwnerOptions('');
   buildStageGrid();
+  syncOrderWonFields();
   if(id){
     var o=allOrders.find(function(x){return x.id===id});
     if(o){
@@ -1345,7 +1390,11 @@ async function openOrderForm(id){
       document.getElementById('of-expected-date').value=o.expected_date||'';
       document.getElementById('of-actual-date').value=o.actual_date||'';
       document.getElementById('of-notes').value=o.notes||'';
+      // 赢单日期：优先已存值，其次按「完成→开始→创建」推一个，方便直接改
+      if(_wd)_wd.value=o.won_date||(orderIsWon(o.stage)?orderWonDate(o):'');
+      renderOrderOwnerOptions(o.owner_id||o.user_id||'');
       buildStageGrid();
+      syncOrderWonFields();
       // Decrypt amount
       decryptAmount(o.amount_enc||'').then(function(v){
         document.getElementById('of-amount').value=v||'';
@@ -1356,8 +1405,10 @@ async function openOrderForm(id){
     }
   }else{
     document.getElementById('of-number').value='';
+    ensureOrderOwners().then(function(){renderOrderOwnerOptions(currentUser?currentUser.id:'');syncOrderWonFields()});
     loadConfigCenter().then(function(){
       buildStageGrid();
+      syncOrderWonFields();
       if(orderEditId)return;
       autoFillOrderNumber().then(function(){
         if(!document.getElementById('of-number').value.trim()){
@@ -1367,6 +1418,60 @@ async function openOrderForm(id){
     });
   }
   document.getElementById('order-form-modal').classList.remove('hidden');
+}
+
+// === 业绩归属人下拉 ===
+var _orderOwners=null;
+async function ensureOrderOwners(){
+  if(_orderOwners)return _orderOwners;
+  var list=[];
+  function push(id,name){if(!id)return;for(var i=0;i<list.length;i++)if(list[i].id===id)return;list.push({id:id,name:name||''})}
+  if(allUsers&&allUsers.length){
+    for(var i=0;i<allUsers.length;i++)push(allUsers[i].user_id,allUsers[i].display_name||allUsers[i].email);
+  }else{
+    try{
+      var r=await sb.from('profiles').select('user_id,display_name,email').eq('company_id',currentCompanyId);
+      if(!r.error&&r.data)for(var j=0;j<r.data.length;j++)push(r.data[j].user_id,r.data[j].display_name||r.data[j].email);
+    }catch(e){}
+  }
+  if(currentUser)push(currentUser.id,currentUser.email||'我');
+  _orderOwners=list;
+  return list;
+}
+
+function renderOrderOwnerOptions(selectedId){
+  var sel=document.getElementById('of-owner');
+  if(!sel)return;
+  var list=_orderOwners||[];
+  var cur=selectedId||sel.value||(currentUser?currentUser.id:'');
+  var html='';
+  for(var i=0;i<list.length;i++){
+    html+='<option value="'+escHtml(list[i].id)+'"'+(list[i].id===cur?' selected':'')+'>'+escHtml(list[i].name||list[i].id)+'</option>';
+  }
+  if(!list.length&&currentUser)html='<option value="'+escHtml(currentUser.id)+'">'+(escHtml(currentUser.email||'我'))+'</option>';
+  sel.innerHTML=html;
+  if(cur)sel.value=cur;
+}
+
+// 赢单日期 / 归属人 的显示与提示
+function syncOrderWonFields(){
+  var row=document.getElementById('of-won-row');
+  var hint=document.getElementById('of-won-hint');
+  if(!row||!hint)return;
+  if(_orderHasWonCols===false){
+    row.classList.add('hidden');
+    hint.textContent='⚠ 订单表还没加「赢单日期 / 业绩归属人」字段：业绩暂按「实际完成 → 创建日期」归月。执行 sql/order_won_date_owner.sql 后即可精确归月。';
+    return;
+  }
+  row.classList.remove('hidden');
+  var won=orderIsWon(orderStage);
+  if(won){
+    hint.textContent='✅ 阶段「'+orderStage+'」计入业绩，按赢单日期归月';
+    var d=document.getElementById('of-won-date');
+    if(d&&!d.value)d.value=_todayStr();
+  }else{
+    hint.textContent='阶段「'+orderStage+'」不计入业绩；改到「已签约 / 执行中 / 已完成」后才计入';
+  }
 }
 
 function closeOrderForm(){
@@ -1390,6 +1495,7 @@ function selOrderStage(stage){
   orderStage=stage;
   var opts=document.querySelectorAll('.order-stage-opt');
   for(var i=0;i<opts.length;i++)opts[i].classList.toggle('selected',opts[i].textContent===stage);
+  syncOrderWonFields();
 }
 
 function searchOrderClient(){
@@ -1439,21 +1545,59 @@ async function saveOrder(){
   };
   if(!orderEditId)order.user_id=currentUser.id;
 
+  // 业绩口径：赢了就必须有归属月，没填就用今天（否则这单进不了业绩）
+  var wonEl=document.getElementById('of-won-date');
+  var wonVal=wonEl?wonEl.value:'';
+  if(!wonVal&&orderIsWon(orderStage))wonVal=_todayStr();
+  var ownerEl=document.getElementById('of-owner');
+  var ownerVal=(ownerEl&&ownerEl.value)||(currentUser?currentUser.id:'');
+  if(_orderHasWonCols!==false){
+    order.won_date=wonVal||null;
+    order.owner_id=ownerVal||null;
+  }
+
+  var _degraded=false;
   if(!orderEditId){
     order.company_id=currentCompanyId;
     dbg('[saveOrder] inserting order',{cols:Object.keys(order),vals:JSON.stringify(order)});
     var {error}=await sb.from('orders').insert(order);
+    if(error&&_isMissingWonColError(error)){
+      // 数据库还没执行升级 SQL：降级保存，避免阻塞下单
+      _orderHasWonCols=false;_degraded=true;
+      delete order.won_date;delete order.owner_id;
+      var r2=await sb.from('orders').insert(order);
+      error=r2.error;
+    }
     if(error){console.error('[saveOrder] insert error',JSON.stringify(error));showToast('创建失败: '+(error.message||JSON.stringify(error)));return}
-    showToast('订单已创建');
+    showToast(_degraded?'订单已创建（订单表缺赢单日期字段，业绩按完成日期归月）':'订单已创建');
   }else{
-    var {error}=await sb.from('orders').update(order).eq('id',orderEditId);
-    if(error){showToast('更新失败: '+error.message);return}
-    showToast('订单已更新');
+    var {error:uerr}=await sb.from('orders').update(order).eq('id',orderEditId);
+    if(uerr&&_isMissingWonColError(uerr)){
+      _orderHasWonCols=false;_degraded=true;
+      delete order.won_date;delete order.owner_id;
+      var r3=await sb.from('orders').update(order).eq('id',orderEditId);
+      uerr=r3.error;
+    }
+    if(uerr){showToast('更新失败: '+uerr.message);return}
+    showToast(_degraded?'订单已更新（订单表缺赢单日期字段，业绩按完成日期归月）':'订单已更新');
   }
   closeOrderForm();
   await loadOrders();
   if(!document.getElementById('order-view').classList.contains('hidden'))renderOrders();
   else renderList();
+}
+
+// orders 表缺 won_date / owner_id 列的报错识别
+function _isMissingWonColError(err){
+  if(!err)return false;
+  if(err.code==='42703'||err.code==='PGRST204')return true;
+  var m=String(err.message||'')+' '+String(err.details||'');
+  return /won_date|owner_id/.test(m);
+}
+
+function _todayStr(){
+  var t=new Date();
+  return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0');
 }
 
 async function loadOrders(){
@@ -1462,15 +1606,27 @@ async function loadOrders(){
     var {data,error}=await sb.from('orders').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
     if(error){console.error('loadOrders:',error);return}
     allOrders=(data||[]);
-    // Decrypt amounts
+    // 探测 orders 表是否已完成 won_date / owner_id 升级（空表时保持未知，保存时再兜底）
+    if(allOrders.length)_orderHasWonCols=('won_date' in allOrders[0]);
+    // Decrypt amounts + 归一化业绩字段
     for(var i=0;i<allOrders.length;i++){
       allOrders[i]._amount=allOrders[i].amount||0;
       try{
         var dec=await decryptAmount(allOrders[i].amount_enc||'');
         if(dec)allOrders[i]._amount=parseFloat(dec)||0;
       }catch(e){}
+      allOrders[i]._wonDate=orderWonDate(allOrders[i]);
+      allOrders[i]._won=orderIsWon(allOrders[i].stage);
+      allOrders[i]._owner=orderOwnerId(allOrders[i]);
     }
   }catch(e){console.error('loadOrders error:',e)}
+}
+
+// 报表/业绩页可能先于订单页打开，这里保证 allOrders 已解密可用
+async function ensureOrdersLoaded(){
+  if(allOrders&&allOrders.length)return allOrders;
+  await loadOrders();
+  return allOrders;
 }
 
 function renderOrders(){

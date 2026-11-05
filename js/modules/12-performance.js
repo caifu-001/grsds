@@ -60,6 +60,7 @@ async function loadTargets(){
   var r=await q;
   allTargets=r.data||[];
   populatePerfSelects();
+  await loadPerfRecords();
   renderTargets();
 }
 
@@ -142,8 +143,7 @@ async function deleteTarget(id){
 var targetEditId=null;
 
 async function loadDashboard(){
-  await loadTargets();
-  await loadPerfRecords();
+  await loadTargets();   // 内含 loadPerfRecords（订单实时聚合）
   var y=parseInt(document.getElementById('perf-dash-year').value);
   var m=parseInt(document.getElementById('perf-dash-month').value);
   var u=document.getElementById('perf-dash-user').value;
@@ -157,13 +157,36 @@ async function loadDashboard(){
 }
 
 async function loadPerfRecords(){
-  var y=parseInt(document.getElementById('perf-dash-year').value);
-  var m=parseInt(document.getElementById('perf-dash-month').value);
-  var q=sb.from('performance_records').select('*').eq('company_id',currentCompanyId);
-  if(y)q=q.eq('record_year',y);
-  if(m)q=q.eq('record_month',m);
-  var r=await q;
-  allPerfRecords=r.data||[];
+  // 业绩口径：订单「签约即计」（已签约 / 执行中 / 已完成），按赢单日期归月、按业绩归属人归属
+  // 这里构建一份内存态记录，字段与原 performance_records 一致，
+  // 于是 getPerfActual / renderDashboard / calcCommission 全部无需改动。
+  await ensureOrdersLoaded();
+  if(!allUsers||!allUsers.length){
+    try{
+      var ur=await sb.from('profiles').select('user_id,display_name,email').eq('company_id',currentCompanyId);
+      if(!ur.error&&ur.data&&ur.data.length)allUsers=ur.data;
+    }catch(e){}
+  }
+  var out=[];
+  for(var i=0;i<allOrders.length;i++){
+    var o=allOrders[i];
+    if(!orderIsWon(o.stage))continue;
+    var d=orderWonDate(o);
+    if(!d)continue;
+    var yy=parseInt(d.slice(0,4),10),mm=parseInt(d.slice(5,7),10);
+    if(!yy||!mm)continue;
+    out.push({
+      user_id:orderOwnerId(o),
+      record_year:yy,
+      record_month:mm,
+      amount:o._amount||0,
+      order_id:o.id,
+      order_number:o.order_number||'',
+      stage:o.stage||'',
+      client_id:o.client_id||null
+    });
+  }
+  allPerfRecords=out;
 }
 
 function renderDashboard(records,y,m,uid){
@@ -179,7 +202,7 @@ function renderDashboard(records,y,m,uid){
   }
   var rate=targetTotal>0?Math.round(total/targetTotal*100):0;
   var kpi=document.getElementById('kpi-cards');
-  if(kpi)kpi.innerHTML='<div class="kpi-card"><div class="kpi-val kpi-primary">¥'+fmtNum(total)+'</div><div class="kpi-label">实际业绩</div><div class="kpi-sub">'+count+' 条记录</div></div><div class="kpi-card"><div class="kpi-val kpi-primary">¥'+fmtNum(targetTotal)+'</div><div class="kpi-label">目标金额</div></div><div class="kpi-card"><div class="kpi-val '+(rate>=100?'kpi-success':rate>=60?'kpi-warning':'kpi-danger')+'">'+rate+'%</div><div class="kpi-label">完成率</div><div class="progress-bar"><div class="progress-fill '+(rate>=100?'progress-high':rate>=60?'progress-mid':'progress-low')+'" style="width:'+Math.min(rate,100)+'%"></div></div></div>';
+  if(kpi)kpi.innerHTML='<div class="kpi-card"><div class="kpi-val kpi-primary">¥'+fmtNum(total)+'</div><div class="kpi-label">实际业绩</div><div class="kpi-sub">'+count+' 单 · 签约即计</div></div><div class="kpi-card"><div class="kpi-val kpi-primary">¥'+fmtNum(targetTotal)+'</div><div class="kpi-label">目标金额</div></div><div class="kpi-card"><div class="kpi-val '+(rate>=100?'kpi-success':rate>=60?'kpi-warning':'kpi-danger')+'">'+rate+'%</div><div class="kpi-label">完成率</div><div class="progress-bar"><div class="progress-fill '+(rate>=100?'progress-high':rate>=60?'progress-mid':'progress-low')+'" style="width:'+Math.min(rate,100)+'%"></div></div></div>';
 
   // Detail table
   var tbody=document.getElementById('perf-dash-tbody');
@@ -191,7 +214,7 @@ function renderDashboard(records,y,m,uid){
     userMap[rec.user_id].total+=parseFloat(rec.amount)||0;
     userMap[rec.user_id].count++;
   }
-  if(!users.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-secondary)">暂无业绩数据</td></tr>';return;}
+  if(!users.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-secondary)">本月暂无赢单订单（订单阶段到「已签约 / 执行中 / 已完成」才计入业绩）</td></tr>';return;}
   var h='';
   for(var ki=0;ki<users.length;ki++){
     var uid2=users[ki],um=userMap[uid2];
