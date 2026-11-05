@@ -9,7 +9,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👔</text></svg>">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/app.css?v=8d843d5b">
 
 <!-- 百度地图改为按需加载（见 js/app_v2.js 的 ensureBaiduMap），避免首屏同步阻塞 -->
 </head>
@@ -166,7 +166,7 @@
    <button class="biz-subtab" onclick="switchBizTab('performance')">🏆 业绩看板</button>
   </div>
   <div class="toolbar">
-   <select id="order-stage-filter" onchange="renderOrders()"><option value="all">全部阶段</option><option value="谈判中">谈判中</option><option value="已签约">已签约</option><option value="执行中">执行中</option><option value="已完成">已完成</option><option value="已取消">已取消</option></select>
+   <select id="order-stage-filter" onchange="renderOrders()"><option value="all">全部阶段</option><option value="谈判中">谈判中</option><option value="已签约">已签约</option><option value="执行中">执行中</option><option value="已完成">已完成</option><option value="已关闭">已关闭（输单）</option></select>
    <div class="search-wrap"><input id="order-search" placeholder="搜索订单/客户/项目..." oninput="orderSearchInput()"></div>
   </div>
   <div class="order-stats" id="order-stats"></div>
@@ -247,10 +247,11 @@
   </div>
   <div class="perf-panel" id="perf-dashboard">
    <div class="perf-toolbar">
-    <select id="perf-dash-year" onchange="loadDashboard()"></select>
-    <select id="perf-dash-month" onchange="loadDashboard()"></select>
-    <select id="perf-dash-user" onchange="loadDashboard()"><option value="">全部人员</option></select>
+    <select id="perf-dash-year" onchange="onPerfDashChange()"></select>
+    <select id="perf-dash-month" onchange="onPerfDashChange()"></select>
+    <select id="perf-dash-user" onchange="onPerfDashChange()"><option value="">全部人员</option></select>
    </div>
+   <div class="perf-diag" id="perf-dash-diag"></div>
    <div class="kpi-cards" id="kpi-cards"></div>
    <div class="perf-table-wrap">
     <table class="stock-table"><thead><tr><th>人员</th><th>订单数</th><th>业绩金额</th><th>目标金额</th><th>完成率</th><th>提成金额</th></tr></thead><tbody id="perf-dash-tbody"></tbody></table>
@@ -802,7 +803,8 @@
   <div class="form-group"><label>订单编号 *</label><input id="of-number" placeholder="如 ORD-20260101"></div>
   <div class="form-group"><label>项目名称</label><input id="of-project" placeholder="订单关联项目"></div>
   <div class="form-group"><label>金额 *</label><input type="number" id="of-amount" placeholder="0.00" step="0.01" min="0"></div>
-  <div class="form-group"><label>订单阶段</label><div class="order-stage-select" id="order-stage-grid"></div></div>
+  <div class="form-group"><label>订单阶段</label><div class="order-stage-select" id="order-stage-grid"></div><div id="of-closed-bar" class="of-closed-bar hidden">🚫 本单已关闭（输单 / 放弃），不计入业绩 · <a href="javascript:void(0)" onclick="reopenOrder()">重新打开</a></div></div>
+  <div class="of-close-line"><a href="javascript:void(0)" id="of-close-btn" class="of-close-link hidden" onclick="closeOrderAsLost()">标记为输单 / 关闭此单</a></div>
   <div class="form-row">
    <div class="form-group"><label>开始日期</label><input type="date" id="of-start-date"></div>
    <div class="form-group"><label>预计完成</label><input type="date" id="of-expected-date"></div>
@@ -2130,24 +2132,24 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 </script>
 <!-- grsds · 模块化加载（传统脚本，按序执行、共享同一全局作用域，onclick 内联调用照常可用） -->
 <!-- 由原 js/app_v2.js 机械拆分而来，共 18 个模块，顺序不可调整 -->
-<script src="js/modules/01-core.js"></script>
-<script src="js/modules/02-auth.js"></script>
-<script src="js/modules/03-settings.js"></script>
-<script src="js/modules/04-client-list.js"></script>
-<script src="js/modules/05-client-detail.js"></script>
-<script src="js/modules/06-client-tools.js"></script>
-<script src="js/modules/07-orders.js"></script>
-<script src="js/modules/08-admin.js"></script>
-<script src="js/modules/09-sales.js"></script>
-<script src="js/modules/10-charts.js"></script>
-<script src="js/modules/11-inventory.js"></script>
-<script src="js/modules/12-performance.js"></script>
-<script src="js/modules/13-crm360.js"></script>
-<script src="js/modules/14-hr-config.js"></script>
-<script src="js/modules/15-workflow.js"></script>
-<script src="js/modules/16-projects.js"></script>
-<script src="js/modules/17-workbench.js"></script>
-<script src="js/modules/18-templates.js"></script>
+<script src="js/modules/01-core.js?v=904d49b3"></script>
+<script src="js/modules/02-auth.js?v=97bfed3e"></script>
+<script src="js/modules/03-settings.js?v=1eb73362"></script>
+<script src="js/modules/04-client-list.js?v=8cbf161e"></script>
+<script src="js/modules/05-client-detail.js?v=5fa63509"></script>
+<script src="js/modules/06-client-tools.js?v=025f2c9a"></script>
+<script src="js/modules/07-orders.js?v=39e064d3"></script>
+<script src="js/modules/08-admin.js?v=d16f5cf8"></script>
+<script src="js/modules/09-sales.js?v=83d62ee5"></script>
+<script src="js/modules/10-charts.js?v=5122efef"></script>
+<script src="js/modules/11-inventory.js?v=def5b4e8"></script>
+<script src="js/modules/12-performance.js?v=8fef362e"></script>
+<script src="js/modules/13-crm360.js?v=3ec5a21b"></script>
+<script src="js/modules/14-hr-config.js?v=08066fa1"></script>
+<script src="js/modules/15-workflow.js?v=11a24d5e"></script>
+<script src="js/modules/16-projects.js?v=1701e6d3"></script>
+<script src="js/modules/17-workbench.js?v=c9440e49"></script>
+<script src="js/modules/18-templates.js?v=efe0ac1f"></script>
 
 
 <!-- ===== END service-view ===== -->

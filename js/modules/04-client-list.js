@@ -349,6 +349,38 @@ function loadConfigCenter(force){
 }
 
 // ── E3 销售阶段：订单表单 + 阶段筛选 ──
+// 阶段只表达「推进到哪一步」，赢/输是结果不是阶段：
+//   · 推进态（ORDER_STAGES）线性向前，命中赢单关键词即计入业绩
+//   · 输单/放弃是独立动作，落到 ORDER_CLOSED_STAGE（历史数据里的「已取消」同样识别）
+var ORDER_STAGES=['谈判中','已签约','执行中','已完成'];
+var ORDER_CLOSED_STAGE='已关闭';
+var ORDER_WON_STAGES=['已签约','执行中','已完成'];
+var ORDER_LOST_RE=/取消|关闭|终止|流失|输单|丢单|废单|作废|暂停|放弃/;
+var ORDER_WON_RE=/签约|签订|中标|赢单|成交|执行|完成|交付|结项|验收/;
+
+function orderIsClosed(stage){
+  var s=String(stage==null?'':stage).trim();
+  return !!s&&ORDER_LOST_RE.test(s);
+}
+function orderIsWon(stage){
+  var s=String(stage==null?'':stage).trim();
+  if(!s)return false;
+  if(ORDER_LOST_RE.test(s))return false;
+  if(ORDER_WON_STAGES.indexOf(s)>=0)return true;
+  return ORDER_WON_RE.test(s);
+}
+// 展示用：历史「已取消」统一显示为「已关闭」
+function orderStageLabel(stage){
+  var s=String(stage==null?'':stage).trim();
+  return orderIsClosed(s)?ORDER_CLOSED_STAGE:s;
+}
+// 只取推进态（去掉输单/关闭一类），供订单表单阶段选择使用
+function orderWonStageList(){
+  var base=orderStageList(),out=[];
+  for(var i=0;i<base.length;i++)if(!orderIsClosed(base[i])&&out.indexOf(base[i])<0)out.push(base[i]);
+  if(!out.length)out=ORDER_WON_STAGES.slice();
+  return out;
+}
 function orderStageList(){
   if(cfgStages&&cfgStages.length){
     var a=[];
@@ -359,11 +391,13 @@ function orderStageList(){
 }
 function buildOrderStageFilter(){
   var sel=document.getElementById('order-stage-filter');if(!sel)return;
-  var cur=sel.value||'all',list=orderStageList();
+  var cur=sel.value||'all',list=orderWonStageList();
   var html='<option value="all">全部阶段</option>';
   for(var i=0;i<list.length;i++)html+='<option value="'+h(list[i])+'">'+h(list[i])+'</option>';
+  html+='<option value="'+ORDER_CLOSED_STAGE+'">'+ORDER_CLOSED_STAGE+'（输单）</option>';
   sel.innerHTML=html;
-  sel.value=(cur&&(cur==='all'||list.indexOf(cur)>=0))?cur:'all';
+  var ok=(cur&&(cur==='all'||cur===ORDER_CLOSED_STAGE||list.indexOf(cur)>=0));
+  sel.value=ok?cur:'all';
 }
 
 // ── E4 自定义标签：客户表单快捷标签 ──

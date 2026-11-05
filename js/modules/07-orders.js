@@ -37,24 +37,10 @@ async function decryptAmount(encStr){
 }
 
 // === Order State ===
+// 阶段枚举与赢/输判定见 04-client-list.js（orderStageList / orderIsWon / orderIsClosed）
 var allOrders=[],orderEditId=null,orderDeleteId=null;
 var orderStage='谈判中',orderClientId=null,orderClientName='';
-var ORDER_STAGES=['谈判中','已签约','执行中','已完成','已取消'];
-
-// === 业绩口径：签约即计 ===
-// 计入业绩的阶段：已签约 / 执行中 / 已完成（阶段名可在配置中心自定义，故用关键字兜底）
-var ORDER_WON_STAGES=['已签约','执行中','已完成'];
-var ORDER_LOST_RE=/取消|终止|流失|输单|丢单|废单|作废|暂停/;
-var ORDER_WON_RE=/签约|签订|中标|赢单|成交|执行|完成|交付|结项|验收/;
 var _orderHasWonCols=null;   // orders 表是否已有 won_date / owner_id 两列（null=未知）
-
-function orderIsWon(stage){
-  var s=String(stage==null?'':stage).trim();
-  if(!s)return false;
-  if(ORDER_LOST_RE.test(s))return false;
-  if(ORDER_WON_STAGES.indexOf(s)>=0)return true;
-  return ORDER_WON_RE.test(s);
-}
 
 // 业绩归属人：优先 owner_id，回退录单人
 function orderOwnerId(o){
@@ -86,22 +72,22 @@ function ordersWonInMonth(year,month){
 }
 
 function stageClass(stage){
+  if(orderIsClosed(stage))return 'stage-cancelled';
   switch(stage){
     case '已签约':return 'stage-signed';
     case '执行中':return 'stage-executing';
     case '已完成':return 'stage-completed';
-    case '已取消':return 'stage-cancelled';
     default:return 'stage-negotiating';
   }
 }
 
 function stageColor(stage){
+  if(orderIsClosed(stage))return '#EF4444';
   switch(stage){
     case '谈判中':return '#F59E0B';
     case '已签约':return '#3B82F6';
     case '执行中':return '#10B981';
     case '已完成':return '#8B5CF6';
-    case '已取消':return '#EF4444';
     default:return '#999';
   }
 }
@@ -1404,6 +1390,7 @@ async function openOrderForm(id){
       if(cl){orderClientName=cl.name;cs.style.display='block';cs.textContent='已选择: '+cl.name}
     }
   }else{
+    orderStage=ORDER_STAGES[0]||'谈判中';   // 新建：避免残留上一单的关闭态
     document.getElementById('of-number').value='';
     ensureOrderOwners().then(function(){renderOrderOwnerOptions(currentUser?currentUser.id:'');syncOrderWonFields()});
     loadConfigCenter().then(function(){
@@ -1458,6 +1445,11 @@ function syncOrderWonFields(){
   var row=document.getElementById('of-won-row');
   var hint=document.getElementById('of-won-hint');
   if(!row||!hint)return;
+  if(orderIsClosed(orderStage)){
+    row.classList.add('hidden');
+    hint.textContent='';   // 红条已说明，避免重复
+    return;
+  }
   if(_orderHasWonCols===false){
     row.classList.add('hidden');
     hint.textContent='⚠ 订单表还没加「赢单日期 / 业绩归属人」字段：业绩暂按「实际完成 → 创建日期」归月。执行 sql/order_won_date_owner.sql 后即可精确归月。';
@@ -1482,19 +1474,50 @@ function closeOrderForm(){
 function buildStageGrid(){
   var g=document.getElementById('order-stage-grid');
   if(!g)return;
-  var list=orderStageList();
-  if(list.indexOf(orderStage)<0)orderStage=list[0]||orderStage;
+  var list=orderWonStageList();
+  // 关闭态不参与阶段选择，但也不能被静默改回「谈判中」
+  if(!orderStage||(!orderIsClosed(orderStage)&&list.indexOf(orderStage)<0))orderStage=list[0]||'谈判中';
   var out='';
   for(var i=0;i<list.length;i++){
     out+='<div class="order-stage-opt'+(list[i]===orderStage?' selected':'')+'" onclick="selOrderStage(\''+jsStr(list[i])+'\')">'+h(list[i])+'</div>';
   }
   g.innerHTML=out;
+  renderOrderClosedState();
+  syncOrderWonFields();
+}
+
+// 关闭态的红条 + 「标记为输单」入口（只对已存在的订单显示）
+function renderOrderClosedState(){
+  var closed=orderIsClosed(orderStage);
+  var bar=document.getElementById('of-closed-bar');
+  if(bar)bar.classList.toggle('hidden',!closed);
+  var btn=document.getElementById('of-close-btn');
+  if(btn)btn.classList.toggle('hidden',closed||!orderEditId);
+}
+
+function closeOrderAsLost(){
+  confirmDialog('关闭后这张订单不计入业绩，也不会再进入推进流程。确定标记为输单？').then(function(ok){
+    if(!ok)return;
+    orderStage=ORDER_CLOSED_STAGE;
+    buildStageGrid();
+    syncOrderWonFields();
+    showToast('已标记为输单，保存后生效');
+  });
+}
+
+function reopenOrder(){
+  var list=orderWonStageList();
+  orderStage=list[0]||'谈判中';
+  buildStageGrid();
+  syncOrderWonFields();
+  showToast('已重新打开，当前阶段「'+orderStage+'」，保存后生效');
 }
 
 function selOrderStage(stage){
   orderStage=stage;
   var opts=document.querySelectorAll('.order-stage-opt');
   for(var i=0;i<opts.length;i++)opts[i].classList.toggle('selected',opts[i].textContent===stage);
+  renderOrderClosedState();
   syncOrderWonFields();
 }
 
@@ -1548,6 +1571,8 @@ async function saveOrder(){
   // 业绩口径：赢了就必须有归属月，没填就用今天（否则这单进不了业绩）
   var wonEl=document.getElementById('of-won-date');
   var wonVal=wonEl?wonEl.value:'';
+  // 关闭/未赢单的订单不写赢单日期（避免从已签约改成输单后残留脏值）
+  if(!orderIsWon(orderStage))wonVal='';
   if(!wonVal&&orderIsWon(orderStage))wonVal=_todayStr();
   var ownerEl=document.getElementById('of-owner');
   var ownerVal=(ownerEl&&ownerEl.value)||(currentUser?currentUser.id:'');
@@ -1634,7 +1659,10 @@ function renderOrders(){
   var query=(document.getElementById('order-search').value||'').trim().toLowerCase();
   var list=allOrders.slice();
 
-  if(stageF!=='all')list=list.filter(function(o){return o.stage===stageF});
+  if(stageF!=='all'){
+    if(stageF===ORDER_CLOSED_STAGE)list=list.filter(function(o){return orderIsClosed(o.stage)});
+    else list=list.filter(function(o){return o.stage===stageF&&!orderIsClosed(o.stage)});
+  }
   if(query){
     list=list.filter(function(o){
       var cn='';var cl=allClients.find(function(x){return x.id===o.client_id});if(cl)cn=cl.name.toLowerCase();
@@ -1673,7 +1701,7 @@ function renderOrders(){
     var o=pageList[i],sc=stageClass(o.stage);
     var cn='';var cl=allClients.find(function(x){return x.id===o.client_id});if(cl)cn=h(cl.name);
     html+='<div class="order-card" onclick="openOrderForm(\''+o.id+'\')" style="--card-bar:'+stageColor(o.stage)+'">';
-    html+='<div class="oc-number">#'+h(o.order_number||'')+' · <span class="stage-badge '+sc+'">'+h(o.stage)+'</span></div>';
+    html+='<div class="oc-number">#'+h(o.order_number||'')+' · <span class="stage-badge '+sc+'">'+h(orderStageLabel(o.stage))+'</span></div>';
     html+='<div class="oc-header"><span class="oc-client">'+cn+'</span><span class="oc-amount">'+formatMoney(o._amount||0)+'</span></div>';
     if(o.project_name)html+='<div class="oc-project">📋 '+h(o.project_name)+'</div>';
     var dates=[];

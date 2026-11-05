@@ -383,6 +383,12 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
 .order-stage-opt{padding:8px 4px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;color:var(--text2);text-align:center;transition:all .15s;user-select:none;font-weight:500}
 .order-stage-opt.selected{border-color:var(--primary);background:rgba(79,110,247,.08);color:var(--primary);font-weight:600}
 .order-stage-opt:active{transform:scale(.95)}
+/* 输单 / 关闭：独立于阶段之外的动作 */
+.of-closed-bar{margin-top:8px;padding:8px 10px;border-radius:8px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.35);color:#dc2626;font-size:12px;line-height:1.5}
+.of-closed-bar a{color:#dc2626;text-decoration:underline;font-weight:600}
+.of-close-line{margin:-4px 0 12px;text-align:right}
+.of-close-link{font-size:12px;color:var(--text3);text-decoration:underline}
+.of-close-link:hover{color:var(--danger)}
 
 /* ── Admin Panel ── */
 .admin-tabs{display:flex;gap:6px;padding:12px 16px 8px;border-bottom:1px solid var(--border);margin-bottom:8px;overflow-x:auto;white-space:nowrap;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none;overflow-y:hidden}
@@ -680,6 +686,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
   .perf-toolbar select,.perf-toolbar input{height:34px;border:1px solid var(--border);border-radius:8px;padding:0 10px;font-size:13px;background:var(--surface);color:var(--text)}
   .perf-toolbar .btn-sm{height:34px;padding:0 14px}
   .perf-table-wrap{overflow-x:auto;margin-top:8px}
+  .perf-diag{font-size:12px;line-height:1.6;color:var(--text3);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:12px;word-break:break-all}
   .perf-target-table-wrap{overflow-x:auto}
   .kpi-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:16px}
   .kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center}

@@ -22,33 +22,51 @@ function switchPerfTab(sub){
 function getYearMonths(){
   var now=new Date();
   var y=now.getFullYear(),m=now.getMonth()+1;
-  return {year:y,month:m, years:[y-1,y,y+1], months:[1,2,3,4,5,6,7,8,9,10,11,12]};
+  return {year:y,month:m, years:[y-3,y-2,y-1,y,y+1], months:[1,2,3,4,5,6,7,8,9,10,11,12]};
 }
 
 function populatePerfSelects(){
   var ym=getYearMonths();
-  var sel=document.getElementById('perf-target-year');
-  var sel2=document.getElementById('perf-dash-year');
-  var sel3=document.getElementById('perf-comm-year');
-  var sm=document.getElementById('perf-dash-month');
-  var sc=document.getElementById('perf-comm-month');
-  var h='';for(var i=0;i<ym.years.length;i++)h+='<option value="'+ym.years[i]+'"'+(ym.years[i]===ym.year?' selected':'')+'>'+ym.years[i]+'年</option>';
-  if(sel)sel.innerHTML=h;
-  if(sel2)sel2.innerHTML=h;
-  if(sel3)sel3.innerHTML=h;
-  var mh='';for(var j=0;j<ym.months.length;j++)mh+='<option value="'+ym.months[j]+'"'+(ym.months[j]===ym.month?' selected':'')+'>'+ym.months[j]+'月</option>';
-  if(sm)sm.innerHTML=mh;
-  if(sc)sc.innerHTML=mh;
-  // Users
+  // 关键：重建 options 时必须保留用户当前选择，
+  // 否则 loadDashboard → loadTargets → 本函数 会把月份/人员弹回默认，导致永远看到空数据
+  function fillYear(sel){
+    if(!sel)return;
+    var cur=parseInt(sel.value,10)||ym.year;
+    var h='';
+    for(var i=0;i<ym.years.length;i++)h+='<option value="'+ym.years[i]+'"'+(ym.years[i]===cur?' selected':'')+'>'+ym.years[i]+'年</option>';
+    sel.innerHTML=h;sel.value=String(cur);
+  }
+  function fillMonth(sel,withAll){
+    if(!sel)return;
+    var cur=sel.value===''?String(ym.month):String(sel.value);
+    var h='';
+    for(var j=0;j<ym.months.length;j++)h+='<option value="'+ym.months[j]+'"'+(String(ym.months[j])===cur?' selected':'')+'>'+ym.months[j]+'月</option>';
+    if(withAll)h+='<option value="0"'+(cur==='0'?' selected':'')+'>全年</option>';
+    sel.innerHTML=h;
+    if(!(withAll&&cur==='0')&&!ym.months.some(function(x){return String(x)===cur}))cur=String(ym.month);
+    sel.value=cur;
+  }
+  fillYear(document.getElementById('perf-target-year'));
+  fillYear(document.getElementById('perf-dash-year'));
+  fillYear(document.getElementById('perf-comm-year'));
+  fillMonth(document.getElementById('perf-dash-month'),true);   // 业绩看板支持「全年」
+  fillMonth(document.getElementById('perf-comm-month'),false); // 提成按月核算，不给全年
+  // Users（保留已选人员）
   if(allUsers&&allUsers.length){
     var uh='<option value="">全部人员</option>';
     for(var k=0;k<allUsers.length;k++)uh+='<option value="'+allUsers[k].user_id+'">'+escHtml(allUsers[k].display_name||allUsers[k].email)+'</option>';
     var pu=document.getElementById('perf-target-user');
     var du=document.getElementById('perf-dash-user');
-    if(pu)pu.innerHTML=uh;
-    if(du)du.innerHTML=uh;
+    var pcur=pu?pu.value:'',dcur=du?du.value:'';
+    if(pu){pu.innerHTML=uh;pu.value=pcur}
+    if(du){du.innerHTML=uh;du.value=dcur}
   }
 }
+
+// 用户手动改年月/人员后，就不再自动跳月
+var _perfDashAutoJump=true;
+var _commLoadedYear=null;
+function onPerfDashChange(){_perfDashAutoJump=false;loadDashboard()}
 
 async function loadTargets(){
   var y=document.getElementById('perf-target-year');
@@ -142,18 +160,90 @@ async function deleteTarget(id){
 
 var targetEditId=null;
 
-async function loadDashboard(){
-  await loadTargets();   // 内含 loadPerfRecords（订单实时聚合）
-  var y=parseInt(document.getElementById('perf-dash-year').value);
-  var m=parseInt(document.getElementById('perf-dash-month').value);
-  var u=document.getElementById('perf-dash-user').value;
-  // Filter records
-  var records=[];
+// 取符合条件的业绩记录；m=0 表示全年
+function _perfRecordsFor(y,m,u){
+  var out=[];
   for(var i=0;i<allPerfRecords.length;i++){
     var r=allPerfRecords[i];
-    if(r.record_year===y&&r.record_month===m&&(!u||r.user_id===u))records.push(r);
+    if(r.record_year!==y)continue;
+    if(m>0&&r.record_month!==m)continue;
+    if(u&&r.user_id!==u)continue;
+    out.push(r);
   }
+  return out;
+}
+
+// 指定年内最近一个有业绩的月份（无则 0）
+function _perfLatestMonth(y,u){
+  var best=0;
+  for(var i=0;i<allPerfRecords.length;i++){
+    var r=allPerfRecords[i];
+    if(r.record_year!==y)continue;
+    if(u&&r.user_id!==u)continue;
+    if(r.record_month>best)best=r.record_month;
+  }
+  return best;
+}
+
+// 首次进入看板：当前月没有赢单、但这一年有 → 跳到最近有业绩的月份
+function applyPerfAutoJump(selM,y,u){
+  var m=parseInt(selM.value,10);
+  if(!_perfDashAutoJump||!(m>0))return m;
+  if(_perfRecordsFor(y,m,u).length)return m;
+  var lm=_perfLatestMonth(y,u);
+  if(lm&&lm!==m){
+    selM.value=String(lm);
+    showToast('本月没有赢单，已切到 '+y+' 年 '+lm+' 月（最近有业绩的月份）');
+    return lm;
+  }
+  return m;
+}
+
+async function loadDashboard(){
+  await loadTargets();   // 内含 loadPerfRecords（订单实时聚合）
+  var selY=document.getElementById('perf-dash-year');
+  var selM=document.getElementById('perf-dash-month');
+  var u=document.getElementById('perf-dash-user').value;
+  var y=parseInt(selY.value,10);
+  var m=applyPerfAutoJump(selM,y,u);
+  // 提成列：按年拉一次 commission_details（此前看板从不加载，提成列恒为 0）
+  if(_commLoadedYear!==y){
+    try{
+      var cr=await sb.from('commission_details').select('*').eq('company_id',currentCompanyId).eq('calc_year',y);
+      if(!cr.error){allCommission=cr.data||[];_commLoadedYear=y}
+    }catch(e){}
+  }
+
+  var records=_perfRecordsFor(y,m,u);
   renderDashboard(records,y,m,u);
+  renderPerfDiag(y,m,records);
+}
+
+// 看板下方的数据来源说明：一眼看清「为什么是 0」
+function renderPerfDiag(y,m,records){
+  var el=document.getElementById('perf-dash-diag');
+  if(!el)return;
+  var all=allOrders||[];
+  var won=0,wonAmt=0,openN=0,lostN=0,noAmt=0;
+  for(var i=0;i<all.length;i++){
+    var o=all[i];
+    if(orderIsClosed(o.stage)){lostN++;continue}
+    if(!orderIsWon(o.stage)){openN++;continue}
+    won++;
+    wonAmt+=parseFloat(o._amount)||0;
+    if(!(parseFloat(o._amount)>0))noAmt++;
+  }
+  if(!all.length){
+    el.textContent='没有读到任何订单：请确认当前公司下已有订单，且当前账号有查看权限。';
+    el.classList.remove('hidden');
+    return;
+  }
+  var txt='公司共 '+all.length+' 张订单：推进中 '+openN+' · 已关闭 '+lostN+' · 已赢单 '+won+'（合计 ¥'+fmtNum(wonAmt)+'）';
+  var scope=(m>0?(y+' 年 '+m+' 月'):(y+' 年全年'));
+  txt+=' · 当前筛选范围（'+scope+'）内 '+records.length+' 单';
+  if(noAmt>0)txt+=' · ⚠ '+noAmt+' 张赢单金额为空或解密失败，未计入金额';
+  el.textContent=txt;
+  el.classList.remove('hidden');
 }
 
 async function loadPerfRecords(){
@@ -196,7 +286,7 @@ function renderDashboard(records,y,m,uid){
   var targetTotal=0;
   for(var j=0;j<allTargets.length;j++){
     var t=allTargets[j];
-    if(t.target_year===y&&t.target_month===m){
+    if(t.target_year===y&&(m===0||t.target_month===m)){
       if(!uid||t.user_id===uid)targetTotal+=parseFloat(t.amount);
     }
   }
@@ -214,7 +304,7 @@ function renderDashboard(records,y,m,uid){
     userMap[rec.user_id].total+=parseFloat(rec.amount)||0;
     userMap[rec.user_id].count++;
   }
-  if(!users.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-secondary)">本月暂无赢单订单（订单阶段到「已签约 / 执行中 / 已完成」才计入业绩）</td></tr>';return;}
+  if(!users.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-secondary)">'+(m>0?(y+' 年 '+m+' 月'):(y+' 年全年'))+'没有赢单订单（订单阶段到「已签约 / 执行中 / 已完成」才计入业绩）</td></tr>';return;}
   var h='';
   for(var ki=0;ki<users.length;ki++){
     var uid2=users[ki],um=userMap[uid2];
@@ -223,11 +313,11 @@ function renderDashboard(records,y,m,uid){
     var utarget=0;
     for(var tj=0;tj<allTargets.length;tj++){
       var tt=allTargets[tj];
-      if(tt.user_id===uid2&&tt.target_year===y&&tt.target_month===m)utarget=parseFloat(tt.amount);
+      if(tt.user_id===uid2&&tt.target_year===y&&(m===0||tt.target_month===m))utarget+=parseFloat(tt.amount)||0;
     }
     var urate=utarget>0?Math.round(um.total/utarget*100):0;
     var urc=urate>=100?'var(--success)':urate>=60?'var(--warning)':'var(--danger)';
-    var comm=getCommissionForUser(uid2,y,m);
+    var comm=getCommissionForUserRange(uid2,y,m);
     h+='<tr><td>'+escHtml(uname)+'</td><td>'+um.count+'</td><td style="font-weight:600">¥'+fmtNum(um.total)+'</td><td>¥'+fmtNum(utarget)+'</td><td style="color:'+urc+';font-weight:600">'+urate+'%</td><td style="color:var(--primary);font-weight:600">¥'+fmtNum(comm)+'</td></tr>';
   }
   tbody.innerHTML=h;
@@ -245,6 +335,19 @@ function getCommissionForUser(uid,year,month){
     if(c.user_id===uid&&c.calc_year===year&&c.calc_month===month)return parseFloat(c.commission_amount)||0;
   }
   return 0;
+}
+
+// month=0 表示全年
+function getCommissionForUserRange(uid,year,month){
+  if(!allCommission.length)return 0;
+  var sum=0;
+  for(var i=0;i<allCommission.length;i++){
+    var c=allCommission[i];
+    if(c.user_id!==uid||c.calc_year!==year)continue;
+    if(month>0&&c.calc_month!==month)continue;
+    sum+=parseFloat(c.commission_amount)||0;
+  }
+  return sum;
 }
 
 async function loadCommission(){
