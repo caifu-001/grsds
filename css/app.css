@@ -383,12 +383,18 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
 .order-stage-opt{padding:8px 4px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;color:var(--text2);text-align:center;transition:all .15s;user-select:none;font-weight:500}
 .order-stage-opt.selected{border-color:var(--primary);background:rgba(79,110,247,.08);color:var(--primary);font-weight:600}
 .order-stage-opt:active{transform:scale(.95)}
-/* 输单 / 关闭：独立于阶段之外的动作 */
-.of-closed-bar{margin-top:8px;padding:8px 10px;border-radius:8px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.35);color:#dc2626;font-size:12px;line-height:1.5}
-.of-closed-bar a{color:#dc2626;text-decoration:underline;font-weight:600}
-.of-close-line{margin:-4px 0 12px;text-align:right}
-.of-close-link{font-size:12px;color:var(--text3);text-decoration:underline}
-.of-close-link:hover{color:var(--danger)}
+/* 订单结果：赢单 / 丢单（终局判定，二选一） */
+.order-result-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px}
+.order-result-opt{border:1.5px solid var(--border);border-radius:10px;padding:9px 8px;cursor:pointer;transition:all .15s;user-select:none;text-align:center;background:var(--surface)}
+.order-result-opt .orr-t{font-size:13px;font-weight:600;color:var(--text)}
+.order-result-opt .orr-s{font-size:11px;color:var(--text3);margin-top:2px}
+.order-result-opt:active{transform:scale(.98)}
+.order-result-opt.won-on{border-color:var(--success);background:rgba(16,185,129,.10)}
+.order-result-opt.won-on .orr-t,.order-result-opt.won-on .orr-s{color:var(--success)}
+.order-result-opt.lost-on{border-color:var(--danger);background:rgba(239,68,68,.08)}
+.order-result-opt.lost-on .orr-t,.order-result-opt.lost-on .orr-s{color:var(--danger)}
+.of-result-hint{font-size:11px;color:var(--text3);margin-top:4px;line-height:1.5}
+.of-result-hint a{color:var(--primary);text-decoration:underline}
 
 /* ── Admin Panel ── */
 .admin-tabs{display:flex;gap:6px;padding:12px 16px 8px;border-bottom:1px solid var(--border);margin-bottom:8px;overflow-x:auto;white-space:nowrap;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none;overflow-y:hidden}

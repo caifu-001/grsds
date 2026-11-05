@@ -9,7 +9,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👔</text></svg>">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<link rel="stylesheet" href="css/app.css?v=8d843d5b">
+<link rel="stylesheet" href="css/app.css?v=5fb75041">
 
 <!-- 百度地图改为按需加载（见 js/app_v2.js 的 ensureBaiduMap），避免首屏同步阻塞 -->
 </head>
@@ -803,8 +803,15 @@
   <div class="form-group"><label>订单编号 *</label><input id="of-number" placeholder="如 ORD-20260101"></div>
   <div class="form-group"><label>项目名称</label><input id="of-project" placeholder="订单关联项目"></div>
   <div class="form-group"><label>金额 *</label><input type="number" id="of-amount" placeholder="0.00" step="0.01" min="0"></div>
-  <div class="form-group"><label>订单阶段</label><div class="order-stage-select" id="order-stage-grid"></div><div id="of-closed-bar" class="of-closed-bar hidden">🚫 本单已关闭（输单 / 放弃），不计入业绩 · <a href="javascript:void(0)" onclick="reopenOrder()">重新打开</a></div></div>
-  <div class="of-close-line"><a href="javascript:void(0)" id="of-close-btn" class="of-close-link hidden" onclick="closeOrderAsLost()">标记为输单 / 关闭此单</a></div>
+  <div class="form-group"><label>订单阶段</label><div class="order-stage-select" id="order-stage-grid"></div></div>
+  <div class="form-group">
+   <label>订单结果</label>
+   <div class="order-result-row">
+    <div class="order-result-opt" id="of-result-won" onclick="markOrderWon()"><div class="orr-t">✅ 赢单</div><div class="orr-s">计入业绩看板</div></div>
+    <div class="order-result-opt" id="of-result-lost" onclick="markOrderLost()"><div class="orr-t">❌ 丢单</div><div class="orr-s">关闭此单，不计业绩</div></div>
+   </div>
+   <div id="of-result-hint" class="of-result-hint"></div>
+  </div>
   <div class="form-row">
    <div class="form-group"><label>开始日期</label><input type="date" id="of-start-date"></div>
    <div class="form-group"><label>预计完成</label><input type="date" id="of-expected-date"></div>
@@ -2138,7 +2145,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 <script src="js/modules/04-client-list.js?v=8cbf161e"></script>
 <script src="js/modules/05-client-detail.js?v=5fa63509"></script>
 <script src="js/modules/06-client-tools.js?v=025f2c9a"></script>
-<script src="js/modules/07-orders.js?v=39e064d3"></script>
+<script src="js/modules/07-orders.js?v=918fe9e0"></script>
 <script src="js/modules/08-admin.js?v=d16f5cf8"></script>
 <script src="js/modules/09-sales.js?v=83d62ee5"></script>
 <script src="js/modules/10-charts.js?v=5122efef"></script>
