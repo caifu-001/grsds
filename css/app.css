@@ -370,6 +370,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
 .stage-executing{background:#DCFCE7;color:#166534}
 .stage-completed{background:#F3E8FF;color:#6B21A8}
 .stage-cancelled{background:#FEE2E2;color:#991B1B}
+.stage-won{background:#DCFCE7;color:#15803D;border:1px solid #86EFAC}
 
 /* ── Order Stats ── */
 .order-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:8px 16px 4px}

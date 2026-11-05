@@ -227,8 +227,9 @@ function renderPerfDiag(y,m,records){
   var won=0,wonAmt=0,openN=0,lostN=0,noAmt=0;
   for(var i=0;i<all.length;i++){
     var o=all[i];
-    if(orderIsClosed(o.stage)){lostN++;continue}
-    if(!orderIsWon(o.stage)){openN++;continue}
+    var _res=orderResultOf(o);
+    if(_res==='lost'){lostN++;continue}
+    if(_res!=='won'){openN++;continue}
     won++;
     wonAmt+=parseFloat(o._amount)||0;
     if(!(parseFloat(o._amount)>0))noAmt++;
@@ -247,7 +248,8 @@ function renderPerfDiag(y,m,records){
 }
 
 async function loadPerfRecords(){
-  // 业绩口径：订单「签约即计」（已签约 / 执行中 / 已完成），按赢单日期归月、按业绩归属人归属
+  // 业绩口径：订单「赢单即计」（订单结果=赢单，按赢单日期归月、按业绩归属人归属），
+  // 与客户自定义的阶段名无关 —— 阶段怎么命名都不影响业绩
   // 这里构建一份内存态记录，字段与原 performance_records 一致，
   // 于是 getPerfActual / renderDashboard / calcCommission 全部无需改动。
   await ensureOrdersLoaded();
@@ -260,7 +262,7 @@ async function loadPerfRecords(){
   var out=[];
   for(var i=0;i<allOrders.length;i++){
     var o=allOrders[i];
-    if(!orderIsWon(o.stage))continue;
+    if(orderResultOf(o)!=='won')continue;
     var d=orderWonDate(o);
     if(!d)continue;
     var yy=parseInt(d.slice(0,4),10),mm=parseInt(d.slice(5,7),10);
@@ -292,7 +294,7 @@ function renderDashboard(records,y,m,uid){
   }
   var rate=targetTotal>0?Math.round(total/targetTotal*100):0;
   var kpi=document.getElementById('kpi-cards');
-  if(kpi)kpi.innerHTML='<div class="kpi-card"><div class="kpi-val kpi-primary">¥'+fmtNum(total)+'</div><div class="kpi-label">实际业绩</div><div class="kpi-sub">'+count+' 单 · 签约即计</div></div><div class="kpi-card"><div class="kpi-val kpi-primary">¥'+fmtNum(targetTotal)+'</div><div class="kpi-label">目标金额</div></div><div class="kpi-card"><div class="kpi-val '+(rate>=100?'kpi-success':rate>=60?'kpi-warning':'kpi-danger')+'">'+rate+'%</div><div class="kpi-label">完成率</div><div class="progress-bar"><div class="progress-fill '+(rate>=100?'progress-high':rate>=60?'progress-mid':'progress-low')+'" style="width:'+Math.min(rate,100)+'%"></div></div></div>';
+  if(kpi)kpi.innerHTML='<div class="kpi-card"><div class="kpi-val kpi-primary">¥'+fmtNum(total)+'</div><div class="kpi-label">实际业绩</div><div class="kpi-sub">'+count+' 单 · 赢单即计</div></div><div class="kpi-card"><div class="kpi-val kpi-primary">¥'+fmtNum(targetTotal)+'</div><div class="kpi-label">目标金额</div></div><div class="kpi-card"><div class="kpi-val '+(rate>=100?'kpi-success':rate>=60?'kpi-warning':'kpi-danger')+'">'+rate+'%</div><div class="kpi-label">完成率</div><div class="progress-bar"><div class="progress-fill '+(rate>=100?'progress-high':rate>=60?'progress-mid':'progress-low')+'" style="width:'+Math.min(rate,100)+'%"></div></div></div>';
 
   // Detail table
   var tbody=document.getElementById('perf-dash-tbody');
@@ -304,7 +306,7 @@ function renderDashboard(records,y,m,uid){
     userMap[rec.user_id].total+=parseFloat(rec.amount)||0;
     userMap[rec.user_id].count++;
   }
-  if(!users.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-secondary)">'+(m>0?(y+' 年 '+m+' 月'):(y+' 年全年'))+'没有赢单订单（订单阶段到「已签约 / 执行中 / 已完成」才计入业绩）</td></tr>';return;}
+  if(!users.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-secondary)">'+(m>0?(y+' 年 '+m+' 月'):(y+' 年全年'))+'没有赢单订单（订单里点「赢单」并填了赢单日期才计入业绩）</td></tr>';return;}
   var h='';
   for(var ki=0;ki<users.length;ki++){
     var uid2=users[ki],um=userMap[uid2];

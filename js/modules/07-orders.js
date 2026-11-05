@@ -61,7 +61,7 @@ function ordersWonInMonth(year,month){
   var out=[];
   for(var i=0;i<allOrders.length;i++){
     var o=allOrders[i];
-    if(!orderIsWon(o.stage))continue;
+    if(orderResultOf(o)!=='won')continue;
     var d=orderWonDate(o);
     if(!d)continue;
     if(parseInt(d.slice(0,4),10)!==year)continue;
@@ -1369,7 +1369,13 @@ async function openOrderForm(id){
     var o=allOrders.find(function(x){return x.id===id});
     if(o){
       orderClientId=o.client_id;
-      orderStage=o.stage||'谈判中';
+      orderStage=o.stage||'';
+      // 历史数据直接停在「赢单/输单」这类结果阶段上的：落到最后一个推进阶段，
+      // 赢的语义交给「赢单日期」承担，阶段选择器里不再出现合并结果项
+      if(orderIsResultStage(orderStage)){
+        var _pl=orderWonStageList();
+        if(_pl.length)orderStage=_pl[_pl.length-1];
+      }
       document.getElementById('of-number').value=o.order_number||'';
       document.getElementById('of-project').value=o.project_name||'';
       document.getElementById('of-start-date').value=o.start_date||'';
@@ -1377,7 +1383,7 @@ async function openOrderForm(id){
       document.getElementById('of-actual-date').value=o.actual_date||'';
       document.getElementById('of-notes').value=o.notes||'';
       // 赢单日期：优先已存值，其次按「完成→开始→创建」推一个，方便直接改
-      if(_wd)_wd.value=o.won_date||(orderIsWon(o.stage)?orderWonDate(o):'');
+      if(_wd)_wd.value=o.won_date||(orderResultOf(o)==='won'?orderWonDate(o):'');
       renderOrderOwnerOptions(o.owner_id||o.user_id||'');
       buildStageGrid();
       syncOrderWonFields();
@@ -1440,6 +1446,15 @@ function renderOrderOwnerOptions(selectedId){
   if(cur)sel.value=cur;
 }
 
+// 当前表单上的结果判定（赢单看「赢单日期」，不是看阶段名）
+function orderUiResult(){
+  if(orderIsClosed(orderStage))return 'lost';
+  var d=document.getElementById('of-won-date');
+  if(d&&String(d.value||'').trim())return 'won';
+  if(orderIsWon(orderStage))return 'won';
+  return 'open';
+}
+
 // 赢单日期 / 归属人 的显示（说明文字统一交给结果区，这里只留字段缺失告警）
 function syncOrderWonFields(){
   var row=document.getElementById('of-won-row');
@@ -1452,14 +1467,10 @@ function syncOrderWonFields(){
   }
   if(_orderHasWonCols===false){
     row.classList.add('hidden');
-    hint.textContent='⚠ 订单表还没加「赢单日期 / 业绩归属人」字段：业绩暂按「实际完成 → 创建日期」归月。执行 sql/order_won_date_owner.sql 后即可精确归月。';
+    hint.textContent='⚠ 订单表还没加「赢单日期 / 业绩归属人」字段：执行 sql/order_won_date_owner.sql 后才能按赢单日期归月（现在只能靠阶段名标记赢单）。';
     return;
   }
   row.classList.remove('hidden');
-  if(orderIsWon(orderStage)){
-    var d=document.getElementById('of-won-date');
-    if(d&&!d.value)d.value=_todayStr();
-  }
 }
 
 function closeOrderForm(){
@@ -1471,8 +1482,9 @@ function buildStageGrid(){
   var g=document.getElementById('order-stage-grid');
   if(!g)return;
   var list=orderWonStageList();
-  // 关闭态不参与阶段选择，但也不能被静默改回「谈判中」
-  if(!orderStage||(!orderIsClosed(orderStage)&&list.indexOf(orderStage)<0))orderStage=list[0]||'谈判中';
+  // 只在阶段为空时给默认值。客户自定义阶段 / 历史结果阶段（「赢单/输单」）一律原样保留，
+  // 不能因为「不在列表里」就改写成第一个阶段（这正是「点赢单跳到初步接触」的根因）。
+  if(!orderStage)orderStage=list[0]||ORDER_STAGES[0]||'谈判中';
   var out='';
   for(var i=0;i<list.length;i++){
     out+='<div class="order-stage-opt'+(list[i]===orderStage?' selected':'')+'" onclick="selOrderStage(\''+jsStr(list[i])+'\')">'+h(list[i])+'</div>';
@@ -1484,7 +1496,7 @@ function buildStageGrid(){
 
 // 订单结果区：赢单（绿）/ 丢单（红）二选一，未判定则都不亮
 function renderOrderResult(){
-  var won=orderIsWon(orderStage),lost=orderIsClosed(orderStage);
+  var res=orderUiResult(),won=res==='won',lost=res==='lost';
   var ew=document.getElementById('of-result-won');
   var el=document.getElementById('of-result-lost');
   if(ew)ew.classList.toggle('won-on',won);
@@ -1496,26 +1508,32 @@ function renderOrderResult(){
   }else if(won){
     hint.innerHTML='✅ 已赢单：计入业绩看板，按赢单日期归月';
   }else{
-    hint.innerHTML='未判定：谈判中的订单不计入业绩，点「赢单」或「丢单」标记结果';
+    hint.innerHTML='未判定：还没赢的订单不计入业绩，点「赢单」或「丢单」标记结果';
   }
 }
 
 // 第一个「算赢单」的阶段（配置中心自定义阶段名时也能落到正确的那个）
 function firstWonStage(){
-  var list=orderWonStageList();
-  for(var i=0;i<list.length;i++)if(orderIsWon(list[i]))return list[i];
-  return ORDER_WON_STAGES[0]||'已签约';
+  return orderWonResultStage();
 }
 
-// 赢单：计入业绩。若之前是丢单/未判定，先回到第一个推进态（已签约）
+// 赢单：计入业绩。阶段原地不动（阶段是推进到哪一步，赢单是结果）
 function markOrderWon(){
   var wasClosed=orderIsClosed(orderStage);
   var apply=function(){
-    // 当前不在赢单态（谈判中 / 已关闭 / 空）→ 落到第一个赢单阶段
-    if(!orderStage||!orderIsWon(orderStage))orderStage=firstWonStage();
-    buildStageGrid();
+    // 只有从「已关闭 / 空」恢复时才需要补一个推进阶段，落到最后一个推进态（赢=走到最后）
+    if(wasClosed||!orderStage){
+      var pl=orderWonStageList();
+      orderStage=pl.length?pl[pl.length-1]:(ORDER_STAGES[0]||'谈判中');
+    }
     var d=document.getElementById('of-won-date');
     if(d&&!d.value)d.value=_todayStr();
+    // 没有 won_date 列的降级模式：只能靠阶段名表达结果，落到配置里的「赢单/输单」
+    if(_orderHasWonCols===false){
+      var rs=orderWonResultStage();
+      if(rs)orderStage=rs;
+    }
+    buildStageGrid();
     syncOrderWonFields();
     showToast(wasClosed?'已撤销丢单并标记赢单，保存后计入业绩':'已标记赢单，保存后计入业绩');
   };
@@ -1526,7 +1544,7 @@ function markOrderWon(){
 
 // 丢单：关闭订单，不计业绩。已经计入业绩的需确认（业绩会消失）
 function markOrderLost(){
-  var wasWon=orderIsWon(orderStage);
+  var wasWon=(orderUiResult()==='won');
   var apply=function(){
     orderStage=ORDER_CLOSED_STAGE;
     var d=document.getElementById('of-won-date');
@@ -1555,6 +1573,11 @@ function selOrderStage(stage){
   orderStage=stage;
   var opts=document.querySelectorAll('.order-stage-opt');
   for(var i=0;i<opts.length;i++)opts[i].classList.toggle('selected',opts[i].textContent===stage);
+  // 配置里的阶段名本身带赢单语义（如「已签约 / 中标」）时，顺手补赢单日期
+  if(orderIsWon(stage)){
+    var d=document.getElementById('of-won-date');
+    if(d&&!String(d.value||'').trim())d.value=_todayStr();
+  }
   renderOrderResult();
   syncOrderWonFields();
 }
@@ -1606,12 +1629,19 @@ async function saveOrder(){
   };
   if(!orderEditId)order.user_id=currentUser.id;
 
-  // 业绩口径：赢了就必须有归属月，没填就用今天（否则这单进不了业绩）
+  // 业绩口径：赢单是「结果」，落在 won_date 上，与阶段名无关
   var wonEl=document.getElementById('of-won-date');
-  var wonVal=wonEl?wonEl.value:'';
-  // 关闭/未赢单的订单不写赢单日期（避免从已签约改成输单后残留脏值）
-  if(!orderIsWon(orderStage))wonVal='';
-  if(!wonVal&&orderIsWon(orderStage))wonVal=_todayStr();
+  var wonVal=wonEl?String(wonEl.value||'').trim():'';
+  var _res=orderIsClosed(orderStage)?'lost':((wonVal||orderIsWon(orderStage))?'won':'open');
+  if(_res!=='won')wonVal='';                        // 丢单 / 未判定不写，避免残留脏值
+  else if(!wonVal)wonVal=_todayStr();               // 赢了就必须有归属月，没填用今天
+  // 降级模式（订单表还没有 won_date 列）：只能靠阶段名表达结果，补一个结果阶段
+  if(_res==='won'&&_orderHasWonCols===false&&!orderIsWon(orderStage)){
+    var _rs=orderWonResultStage();
+    if(_rs){orderStage=_rs;order.stage=_rs}
+  }
+  // 先按结果定好 stage，再取 order 里的值，避免上面改了 orderStage 但没同步
+  if(_res==='lost')order.stage=ORDER_CLOSED_STAGE;
   var ownerEl=document.getElementById('of-owner');
   var ownerVal=(ownerEl&&ownerEl.value)||(currentUser?currentUser.id:'');
   if(_orderHasWonCols!==false){
@@ -1620,6 +1650,13 @@ async function saveOrder(){
   }
 
   var _degraded=false;
+  // 降级（订单表还没有 won_date 列）时，赢单只能靠阶段名表达，否则业绩会凭空消失
+  var _applyDegradedResult=function(){
+    if(_res==='won'&&!orderIsWon(order.stage)){
+      var rs=orderWonResultStage();
+      if(rs)order.stage=rs;
+    }
+  };
   if(!orderEditId){
     order.company_id=currentCompanyId;
     dbg('[saveOrder] inserting order',{cols:Object.keys(order),vals:JSON.stringify(order)});
@@ -1628,21 +1665,23 @@ async function saveOrder(){
       // 数据库还没执行升级 SQL：降级保存，避免阻塞下单
       _orderHasWonCols=false;_degraded=true;
       delete order.won_date;delete order.owner_id;
+      _applyDegradedResult();
       var r2=await sb.from('orders').insert(order);
       error=r2.error;
     }
     if(error){console.error('[saveOrder] insert error',JSON.stringify(error));showToast('创建失败: '+(error.message||JSON.stringify(error)));return}
-    showToast(_degraded?'订单已创建（订单表缺赢单日期字段，业绩按完成日期归月）':'订单已创建');
+    showToast(_degraded?'订单已创建（订单表缺赢单日期字段，赢单已用阶段名标记，建议尽快执行 sql/order_won_date_owner.sql）':'订单已创建');
   }else{
     var {error:uerr}=await sb.from('orders').update(order).eq('id',orderEditId);
     if(uerr&&_isMissingWonColError(uerr)){
       _orderHasWonCols=false;_degraded=true;
       delete order.won_date;delete order.owner_id;
+      _applyDegradedResult();
       var r3=await sb.from('orders').update(order).eq('id',orderEditId);
       uerr=r3.error;
     }
     if(uerr){showToast('更新失败: '+uerr.message);return}
-    showToast(_degraded?'订单已更新（订单表缺赢单日期字段，业绩按完成日期归月）':'订单已更新');
+    showToast(_degraded?'订单已更新（订单表缺赢单日期字段，赢单已用阶段名标记，建议尽快执行 sql/order_won_date_owner.sql）':'订单已更新');
   }
   closeOrderForm();
   await loadOrders();
@@ -1679,7 +1718,7 @@ async function loadOrders(){
         if(dec)allOrders[i]._amount=parseFloat(dec)||0;
       }catch(e){}
       allOrders[i]._wonDate=orderWonDate(allOrders[i]);
-      allOrders[i]._won=orderIsWon(allOrders[i].stage);
+      allOrders[i]._won=(orderResultOf(allOrders[i])==='won');
       allOrders[i]._owner=orderOwnerId(allOrders[i]);
     }
   }catch(e){console.error('loadOrders error:',e)}
@@ -1698,8 +1737,9 @@ function renderOrders(){
   var list=allOrders.slice();
 
   if(stageF!=='all'){
-    if(stageF===ORDER_CLOSED_STAGE)list=list.filter(function(o){return orderIsClosed(o.stage)});
-    else list=list.filter(function(o){return o.stage===stageF&&!orderIsClosed(o.stage)});
+    if(stageF===ORDER_CLOSED_STAGE)list=list.filter(function(o){return orderResultOf(o)==='lost'});
+    else if(stageF===ORDER_WON_FILTER)list=list.filter(function(o){return orderResultOf(o)==='won'});
+    else list=list.filter(function(o){return o.stage===stageF&&orderResultOf(o)!=='lost'});
   }
   if(query){
     list=list.filter(function(o){
@@ -1715,19 +1755,19 @@ function renderOrders(){
   if(orderPage>_opages)orderPage=_opages;
   var pageList=list.slice((orderPage-1)*_osize,orderPage*_osize);
 
-  // Stats
-  var statHtml='',totalAmt=0,negAmt=0,sigAmt=0,exeAmt=0,comAmt=0;
-  for(var i=0;i<list.length;i++){totalAmt+=list[i]._amount||0}
+  // Stats（按「结果」统计，不再依赖客户自定义的阶段名）
+  var statHtml='',totalAmt=0,wonAmt=0,lostAmt=0,openAmt=0;
   for(var i=0;i<list.length;i++){
     var a=list[i]._amount||0;
-    if(list[i].stage==='谈判中')negAmt+=a;
-    else if(list[i].stage==='已签约')sigAmt+=a;
-    else if(list[i].stage==='执行中')exeAmt+=a;
-    else if(list[i].stage==='已完成')comAmt+=a;
+    totalAmt+=a;
+    var _r=orderResultOf(list[i]);
+    if(_r==='won')wonAmt+=a;
+    else if(_r==='lost')lostAmt+=a;
+    else openAmt+=a;
   }
   statHtml='<div class="order-stat"><div class="os-num">'+list.length+'</div><div class="os-label">订单数</div></div>';
   statHtml+='<div class="order-stat"><div class="os-num">'+formatMoney(totalAmt)+'</div><div class="os-label">总额</div></div>';
-  statHtml+='<div class="order-stat"><div class="os-num">'+formatMoney(negAmt+sigAmt+exeAmt)+'</div><div class="os-label">进行中</div></div>';
+  statHtml+='<div class="order-stat"><div class="os-num">'+formatMoney(openAmt)+'</div><div class="os-label">推进中</div></div>';
   document.getElementById('order-stats').innerHTML=statHtml;
 
   // Grid
@@ -1738,8 +1778,11 @@ function renderOrders(){
   for(var i=0;i<pageList.length;i++){
     var o=pageList[i],sc=stageClass(o.stage);
     var cn='';var cl=allClients.find(function(x){return x.id===o.client_id});if(cl)cn=h(cl.name);
+    var _ores=orderResultOf(o);
+    // 赢单是结果，阶段徽标旁边单独标一个，避免和推进阶段混在一起
+    var _obadge=(_ores==='won')?' <span class="stage-badge stage-won">赢单</span>':'';
     html+='<div class="order-card" onclick="openOrderForm(\''+o.id+'\')" style="--card-bar:'+stageColor(o.stage)+'">';
-    html+='<div class="oc-number">#'+h(o.order_number||'')+' · <span class="stage-badge '+sc+'">'+h(orderStageLabel(o.stage))+'</span></div>';
+    html+='<div class="oc-number">#'+h(o.order_number||'')+' · <span class="stage-badge '+sc+'">'+h(orderStageLabel(o.stage))+'</span>'+_obadge+'</div>';
     html+='<div class="oc-header"><span class="oc-client">'+cn+'</span><span class="oc-amount">'+formatMoney(o._amount||0)+'</span></div>';
     if(o.project_name)html+='<div class="oc-project">📋 '+h(o.project_name)+'</div>';
     var dates=[];

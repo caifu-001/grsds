@@ -357,28 +357,63 @@ var ORDER_CLOSED_STAGE='已关闭';
 var ORDER_WON_STAGES=['已签约','执行中','已完成'];
 var ORDER_LOST_RE=/取消|关闭|终止|流失|输单|丢单|废单|作废|暂停|放弃/;
 var ORDER_WON_RE=/签约|签订|中标|赢单|成交|执行|完成|交付|结项|验收/;
+var ORDER_WON_FILTER='__won';   // 订单筛选里「已赢单」的哨兵值
 
+// 配置中心默认种子阶段就叫「赢单/输单」（sales_stages_def · stage_key=closed）。
+// 这类把成败合写在一个名字里的阶段是「结果」，既不是推进态、也不能算关闭，
+// 否则整条阶段链会被判成已关闭（历史 bug：orderIsClosed('赢单/输单') 曾返回 true）。
+function orderIsResultStage(stage){
+  var s=String(stage==null?'':stage).trim();
+  return !!s&&ORDER_WON_RE.test(s)&&ORDER_LOST_RE.test(s);
+}
 function orderIsClosed(stage){
   var s=String(stage==null?'':stage).trim();
-  return !!s&&ORDER_LOST_RE.test(s);
+  if(!s)return false;
+  if(orderIsResultStage(s))return false;
+  return ORDER_LOST_RE.test(s);
 }
+// 仅供「阶段名本身表达赢单」的旧数据兼容判断；
+// 新数据的业绩判据一律走 orderResultOf()，与阶段无关。
 function orderIsWon(stage){
   var s=String(stage==null?'':stage).trim();
   if(!s)return false;
-  if(ORDER_LOST_RE.test(s))return false;
+  if(orderIsClosed(s))return false;
   if(ORDER_WON_STAGES.indexOf(s)>=0)return true;
   return ORDER_WON_RE.test(s);
+}
+
+// 订单结果：'won' | 'lost' | 'open'
+// 赢单不再靠改阶段名实现（阶段名是客户在配置中心自定义的，永远猜不准），
+// 而是落在 won_date 上：有赢单日期 = 赢单。旧数据（阶段名即赢单）继续兼容。
+function orderResultOf(o){
+  if(!o)return 'open';
+  var s=String(o.stage==null?'':o.stage).trim();
+  if(orderIsClosed(s))return 'lost';
+  if(String(o.won_date||'').trim())return 'won';
+  if(orderIsWon(s))return 'won';
+  return 'open';
+}
+// 没有 won_date 列时的降级目标阶段：配置里那个合并结果阶段（「赢单/输单」）
+function orderWonResultStage(){
+  var list=orderStageList();
+  for(var i=0;i<list.length;i++)if(orderIsResultStage(list[i]))return list[i];
+  for(var j=0;j<list.length;j++)if(orderIsWon(list[j]))return list[j];
+  return ORDER_WON_STAGES[0]||'已签约';
 }
 // 展示用：历史「已取消」统一显示为「已关闭」
 function orderStageLabel(stage){
   var s=String(stage==null?'':stage).trim();
   return orderIsClosed(s)?ORDER_CLOSED_STAGE:s;
 }
-// 只取推进态（去掉输单/关闭一类），供订单表单阶段选择使用
+// 只取推进态（去掉输单/关闭、去掉「赢单/输单」这类结果阶段），供订单表单阶段选择使用
 function orderWonStageList(){
   var base=orderStageList(),out=[];
-  for(var i=0;i<base.length;i++)if(!orderIsClosed(base[i])&&out.indexOf(base[i])<0)out.push(base[i]);
-  if(!out.length)out=ORDER_WON_STAGES.slice();
+  for(var i=0;i<base.length;i++){
+    var n=base[i];
+    if(orderIsClosed(n)||orderIsResultStage(n))continue;
+    if(out.indexOf(n)<0)out.push(n);
+  }
+  if(!out.length)out=ORDER_STAGES.slice();
   return out;
 }
 function orderStageList(){
@@ -393,10 +428,11 @@ function buildOrderStageFilter(){
   var sel=document.getElementById('order-stage-filter');if(!sel)return;
   var cur=sel.value||'all',list=orderWonStageList();
   var html='<option value="all">全部阶段</option>';
+  html+='<option value="'+ORDER_WON_FILTER+'">✅ 已赢单</option>';
   for(var i=0;i<list.length;i++)html+='<option value="'+h(list[i])+'">'+h(list[i])+'</option>';
-  html+='<option value="'+ORDER_CLOSED_STAGE+'">'+ORDER_CLOSED_STAGE+'（输单）</option>';
+  html+='<option value="'+ORDER_CLOSED_STAGE+'">🚫 已关闭（丢单）</option>';
   sel.innerHTML=html;
-  var ok=(cur&&(cur==='all'||cur===ORDER_CLOSED_STAGE||list.indexOf(cur)>=0));
+  var ok=(cur&&(cur==='all'||cur===ORDER_WON_FILTER||cur===ORDER_CLOSED_STAGE||list.indexOf(cur)>=0));
   sel.value=ok?cur:'all';
 }
 
