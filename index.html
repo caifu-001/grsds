@@ -9,7 +9,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👔</text></svg>">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<link rel="stylesheet" href="css/app.css?v=d9bd3484">
+<link rel="stylesheet" href="css/app.css?v=883e75d2">
 
 <!-- 百度地图改为按需加载（见 js/app_v2.js 的 ensureBaiduMap），避免首屏同步阻塞 -->
 </head>
@@ -2151,7 +2151,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 <script src="js/modules/10-charts.js?v=5122efef"></script>
 <script src="js/modules/11-inventory.js?v=def5b4e8"></script>
 <script src="js/modules/12-performance.js?v=262ad6ee"></script>
-<script src="js/modules/13-crm360.js?v=3ec5a21b"></script>
+<script src="js/modules/13-crm360.js?v=e837169b"></script>
 <script src="js/modules/14-hr-config.js?v=08066fa1"></script>
 <script src="js/modules/15-workflow.js?v=11a24d5e"></script>
 <script src="js/modules/16-projects.js?v=1701e6d3"></script>
@@ -2758,6 +2758,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
   </div>
   <div class="client-360-tabs">
    <button class="client-360-tab active" data-tab="overview" onclick="switchClient360Tab('overview')">概览</button>
+   <button class="client-360-tab" data-tab="bidding" onclick="switchClient360Tab('bidding')">招标统计</button>
    <button class="client-360-tab" data-tab="contacts" onclick="switchClient360Tab('contacts')">联系人</button>
    <button class="client-360-tab" data-tab="orders" onclick="switchClient360Tab('orders')">订单</button>
    <button class="client-360-tab" data-tab="engagements" onclick="switchClient360Tab('engagements')">跟进</button>

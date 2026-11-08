@@ -4,6 +4,7 @@
 // ==========================================================================
 // ============ NEW: Client 360 Functions ============
 function closeClient360(){
+  _destroyChart('c360Bidding');
   document.getElementById('client360-modal').classList.add('hidden');
   c360ClientId=null;
 }
@@ -38,11 +39,213 @@ function switchClient360Tab(tab){
   for(var i=0;i<tabs.length;i++)tabs[i].classList.toggle('active',tabs[i].getAttribute('data-tab')===tab);
   var c=allClients.find(function(x){return x.id===c360ClientId});
   if(!c)return;
+  // 图表挂在 #c360-body 里，切 tab / 换客户 / 关弹窗都必须先销毁，否则旧实例会抱着已移除的 canvas
+  _destroyChart('c360Bidding');
   if(tab==='overview')renderClient360Overview(c,c360Orders);
+  else if(tab==='bidding')renderClient360Bidding(c);
   else if(tab==='contacts')renderClient360Contacts(c);
   else if(tab==='orders')renderClient360Orders(c);
   else if(tab==='engagements')renderClient360Engagements(c.id);
   else if(tab==='lifecycle')renderClient360Lifecycle(c.id);
+}
+
+// ============================================================
+// 客户 · 历史项目招标统计（近 N 年柱状图）
+// 数据源只有 clients.projects 里的 bidding_date —— 招标日期是这类客户
+// 唯一的「时间轴」，所以按它归年；分包的金额按包累加。
+// ============================================================
+var c360BidYears=6;        // 默认看近 6 年（含今年）
+var c360BidYearsPicked=0;  // 用户最近一次点的年数（0=还没点过，用默认）
+var c360BidMetric='count'; // count=招标项目数 | amount=招标金额
+
+function client360ProjectsOf(c){
+  var projs=[];
+  if(!c)return projs;
+  try{projs=JSON.parse(c.projects||'[]');if(!Array.isArray(projs))projs=[]}catch(e){projs=[]}
+  // 老数据只在客户顶层存了一个项目 + 招标日期，顺手兜底，否则这批客户图上一根柱子都没有
+  if(!projs.length&&(c.project||c.bidding_date)){
+    projs=[{project_name:c.project||'',bidding_date:c.bidding_date||'',bid_amount:c.bid_amount||''}];
+  }
+  return projs;
+}
+
+// 'YYYY-MM-DD' / 'YYYY/MM/DD' / 'YYYY年M月D日' 都取前四位；取不到返回 0（视为没填日期）
+function projectBidYear(p){
+  var s=String((p&&p.bidding_date)||'').trim();
+  var m=s.match(/(\d{4})/);
+  if(!m)return 0;
+  var y=parseInt(m[1],10);
+  if(!y||y<1990||y>2100)return 0;
+  return y;
+}
+
+// 一个项目的招标金额：分包就累加各包中标额（没填中标额就退该包预算），单包/不分包直接取顶层
+function projectBidAmount(p){
+  p=p||{};
+  var sum=0,any=false;
+  if(projectHasPackages(p)){
+    var packs=projectPackagesOf(p);
+    for(var i=0;i<packs.length;i++){
+      var v=parseFloat(packs[i].bid_amount||'');
+      if(!(v>0))v=parseFloat(packs[i].project_budget||'');
+      if(v>0){sum+=v;any=true}
+    }
+  }
+  if(!any){
+    var t=parseFloat(p.bid_amount||'');
+    if(!(t>0))t=parseFloat(p.project_budget||'');
+    if(t>0){sum=t;any=true}
+  }
+  return any?sum:0;
+}
+
+// 按招标年份聚合。返回 {years:[...升序], map:{年: {count,amount}}, undated:{count,amount}, total:{count,amount}}
+function clientBiddingStats(c,years){
+  var n=years&&years>0?years:c360BidYears;
+  var nowY=new Date().getFullYear();
+  var list=[];
+  for(var i=n-1;i>=0;i--)list.push(nowY-i);
+  var map={},undated={count:0,amount:0},total={count:0,amount:0},earliest=0;
+  for(var k=0;k<list.length;k++)map[list[k]]={count:0,amount:0};
+  var projs=client360ProjectsOf(c);
+  for(var pi=0;pi<projs.length;pi++){
+    var pr=projs[pi],y=projectBidYear(pr),amt=projectBidAmount(pr);
+    if(y){
+      if(!earliest||y<earliest)earliest=y;
+      // 早于统计窗口的年份：也算进 total，但不进柱子（否则「合计」和柱子对不上会让人困惑）
+      if(map[y]===undefined)map[y]={count:0,amount:0};
+      map[y].count++;map[y].amount+=amt;
+    }else{
+      undated.count++;undated.amount+=amt;
+    }
+    total.count++;total.amount+=amt;
+  }
+  // 数据比默认窗口还老（比如 5 年前的老客户），把窗口往前拉到最早那一年
+  if(earliest&&earliest<list[0]){
+    var pre=[];
+    for(var yy=earliest;yy<list[0];yy++)pre.push(yy);
+    list=pre.concat(list);
+    for(var qi=0;qi<pre.length;qi++){
+      if(map[pre[qi]]===undefined)map[pre[qi]]={count:0,amount:0};
+    }
+  }
+  var wins=0;
+  for(var wi=0;wi<list.length;wi++)if(map[list[wi]].count>0)wins++;
+  return {years:list,map:map,undated:undated,total:total,activeYears:wins,earliest:earliest};
+}
+
+function setC360BidYears(n){
+  // 数据比所选窗口还老时（统计会把窗口往前拉），记下用户到底点了几年，
+  // 否则点了「近3年」却还是显示 6 根柱子，看起来像没反应
+  c360BidYears=n;
+  c360BidYearsPicked=n;
+  var c=allClients.find(function(x){return x.id===c360ClientId});
+  if(c)renderClient360Bidding(c);
+}
+
+function setC360BidMetric(m){
+  c360BidMetric=(m==='amount')?'amount':'count';
+  var c=allClients.find(function(x){return x.id===c360ClientId});
+  if(c)renderClient360Bidding(c);
+}
+
+function renderClient360Bidding(c){
+  var st=clientBiddingStats(c,c360BidYears);
+  var isAmt=c360BidMetric==='amount';
+  var segBtn=function(val,label){
+    var on=(isAmt?'amount':'count')===val;
+    return '<button onclick="setC360BidMetric(\''+val+'\')" style="padding:4px 10px;font-size:12px;border-radius:14px;cursor:pointer;border:1px solid '+(on?'var(--primary)':'var(--border)')+';background:'+(on?'var(--primary)':'transparent')+';color:'+(on?'#fff':'var(--text2)')+'">'+label+'</button>';
+  };
+  var yearBtn=function(n){
+    // c360BidYears 可能被统计函数往前拉（数据更老），高亮跟着用户点的那个走
+    var on=(c360BidYearsPicked||c360BidYears)===n;
+    return '<button onclick="setC360BidYears('+n+')" style="padding:4px 10px;font-size:12px;border-radius:14px;cursor:pointer;border:1px solid '+(on?'var(--primary)':'var(--border)')+';background:'+(on?'var(--primary)':'transparent')+';color:'+(on?'#fff':'var(--text2)')+'">近'+n+'年</button>';
+  };
+  var html='';
+  // ── 概览数字：招标项目数 / 招标金额 / 有招标的年份
+  html+='<div class="c360-card"><div class="c360-card-title">📊 招标总览</div><div class="c360-stats">';
+  html+='<div class="c360-stat-item"><div class="c360-stat-num">'+st.total.count+'</div><div class="c360-stat-label">历史项目</div></div>';
+  html+='<div class="c360-stat-item"><div class="c360-stat-num" style="font-size:16px">'+formatMoney(st.total.amount)+'</div><div class="c360-stat-label">招标金额</div></div>';
+  html+='<div class="c360-stat-item"><div class="c360-stat-num">'+st.activeYears+'</div><div class="c360-stat-label">有招标年份</div></div>';
+  html+='</div>';
+  if(st.undated.count>0)html+='<div style="font-size:11px;color:var(--warning);margin-top:8px">⚠️ 有 '+st.undated.count+' 个项目没填招标日期，未计入年度统计</div>';
+  html+='</div>';
+
+  // ── 柱状图
+  html+='<div class="c360-card"><div class="c360-card-title" style="justify-content:space-between;flex-wrap:wrap;gap:6px">📅 近年招标趋势'
+    +'<span style="display:inline-flex;gap:4px;font-weight:400">'+segBtn('count','项目数')+segBtn('amount','金额')+'</span></div>';
+  // 年份按钮按「最早那一年」动态给区间，避免老客户想看更早的数据却没入口。
+  // 至少保 3 档，否则只剩一两个按钮反而不好点（够不到的档位会被统计函数往前拉满）
+  var _span=st.earliest?Math.max(1,new Date().getFullYear()-st.earliest+1):6;
+  var _opts=[],_cand=[3,5,6,10];
+  for(var ci2=0;ci2<_cand.length;ci2++){
+    if(_cand[ci2]<_span&&_opts.length>=2)continue;
+    _opts.push(_cand[ci2]);
+  }
+  var _btns='';
+  for(var bi=0;bi<_opts.length;bi++)_btns+=yearBtn(_opts[bi]);
+  html+='<div style="display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap">'+_btns+'</div>';
+  if(!st.total.count){
+    html+='<div class="empty" style="padding:30px">该项目还没有录入招标日期，先在「编辑客户 · 近期项目」里补上，才能看出年度趋势</div>';
+  }else{
+    // Chart.js 在弹窗里需要固定高度的容器，否则会随内容撑成 0
+    html+='<div style="position:relative;height:200px;width:100%"><canvas id="c360-bid-chart"></canvas></div>';
+  }
+  html+='</div>';
+
+  // ── 逐年明细（图看趋势，表看准数）
+  if(st.total.count){
+    html+='<div class="c360-card"><div class="c360-card-title">📋 逐年明细</div>';
+    html+='<div class="c360-info-row" style="font-size:11px;color:var(--text3);border-bottom:1px solid var(--border);padding-bottom:4px"><span style="flex:1">年份</span><span style="width:56px;text-align:right">项目数</span><span style="width:88px;text-align:right">招标金额</span></div>';
+    for(var i=st.years.length-1;i>=0;i--){
+      var y=st.years[i],d=st.map[y]||{count:0,amount:0};
+      if(!d.count&&!isAmt)continue;          // 只看项目数时，空年份不必占版面
+      html+='<div class="c360-info-row" style="font-size:12px"><span style="flex:1">'+y+' 年'+(d.count?'':' <span style="color:var(--text3)">（无）</span>')+'</span>'
+        +'<span style="width:56px;text-align:right">'+d.count+'</span>'
+        +'<span style="width:88px;text-align:right">'+(d.amount?formatMoney(d.amount):'-')+'</span></div>';
+    }
+    html+='</div>';
+  }
+  var body=document.getElementById('c360-body');
+  if(body)body.innerHTML=html;
+
+  // canvas 已进 DOM 才能建图
+  var ctx=document.getElementById('c360-bid-chart');
+  if(!ctx)return;
+  if(typeof Chart==='undefined')return;
+  var labels=st.years.map(function(y){return y+'年'});
+  var vals=st.years.map(function(y){var d=st.map[y]||{};return isAmt?(d.amount||0):(d.count||0)});
+  var nowY=new Date().getFullYear();
+  var colors=st.years.map(function(y){
+    if(y===nowY)return '#F59E0B';       // 今年高亮，一眼看到最新进度
+    return isAmt?'rgba(16,185,129,.85)':'#6366F1';
+  });
+  _destroyChart('c360Bidding');
+  _chartInstances.c360Bidding=new Chart(ctx,{
+    type:'bar',
+    data:{labels:labels,datasets:[{
+      label:isAmt?'招标金额':'招标项目数',
+      data:vals,
+      backgroundColor:colors,
+      borderRadius:6,
+      maxBarThickness:36
+    }]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:function(it){
+          var v=it.parsed.y||0;
+          return (isAmt?'招标金额 ':'招标项目数 ')+(isAmt?formatMoney(v):v+' 个');
+        }}}
+      },
+      scales:{
+        y:{beginAtZero:true,ticks:{precision:isAmt?undefined:0,maxTicksLimit:5,
+          callback:function(v){if(!isAmt)return v;return v>=10000?(v/10000).toFixed(0)+'万':v}}},
+        x:{grid:{display:false},ticks:{font:{size:10},maxRotation:0,autoSkip:false}}
+      }
+    }
+  });
 }
 
 async function renderClient360Overview(c,orders){
@@ -127,7 +330,17 @@ async function renderClient360Overview(c,orders){
   html+='<div class="c360-stat-item"><div class="c360-stat-num">'+orders.length+'</div><div class="c360-stat-label">订单数</div></div>';
   html+='<div class="c360-stat-item"><div class="c360-stat-num">'+formatMoney(totalRev)+'</div><div class="c360-stat-label">成交额</div></div>';
   html+='<div class="c360-stat-item"><div class="c360-stat-num" id="c360-last-engage">'+lastEng+'</div><div class="c360-stat-label">最近跟进</div></div>';
-  html+='</div></div>';
+  html+='</div>';
+  // 招标统计在独立 tab 里，这里给个入口，否则用户不会想到去点那一页
+  (function(){
+    var _bs=clientBiddingStats(c,c360BidYears);
+    if(!_bs.total.count)return;
+    html+='<div style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12px;color:var(--text2)">'
+      +'<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📅 历史招标 '+_bs.total.count+' 个项目 · 近 '+_bs.activeYears+' 年有招标</span>'
+      +'<button onclick="switchClient360Tab(\'bidding\')" style="flex-shrink:0;font-size:11px;color:var(--primary);border:1px solid var(--primary);border-radius:12px;background:transparent;padding:2px 10px;cursor:pointer">看柱状图 ›</button>'
+      +'</div>';
+  })();
+  html+='</div>';
   // Tags
   var tags=[];
   try{tags=JSON.parse(c.tags||'[]');if(!Array.isArray(tags))tags=[]}catch(e){tags=[]}
