@@ -770,8 +770,15 @@ function refCt(){
   var c=document.getElementById('contacts-container');
   if(formContacts.length===0){c.innerHTML='<div class="empty" style="padding:20px">暂无联系人，点击「＋ 添加」</div>';return}
   var html='';
+  // 联系人一多（十几个），全展开要滚半天。条目数 ≤2 时照旧全部展开（没必要多点一次），
+  // 超过就默认收起成一行摘要，点哪条展开哪条。
+  // 展开状态存在 formContacts[i]._open 上：refCt() 会整块重建 DOM，
+  // 存 DOM 会随重建丢失（改个手机号、加个号码就全收起来了）。
+  var defOpen=formContacts.length<=2;
   for(var i=0;i<formContacts.length;i++){
     var co=formContacts[i],phones=co.phones||[],landlines=co.landlines||[];
+    var _open=(co._open===undefined)?defOpen:!!co._open;
+    var _sp=ctSumParts(co);
     if(!phones.length)phones=[''];
     var ph='';
     for(var p=0;p<phones.length;p++)ph+='<div class="phone-row"><input type="tel" value="'+h(phones[p]||'')+'" oninput="upCtPh('+i+','+p+',this.value)" placeholder="手机号">'+(phones.length>1?'<button class="rm-phone" onclick="rmPh('+i+','+p+')">✕</button>':'')+'</div>';
@@ -785,10 +792,17 @@ function refCt(){
     ll+='<button class="add-phone-btn" onclick="addLl('+i+')">＋ 添加座机</button>';
     for(var e=0;e<emails.length;e++)em+='<div class="phone-row"><input type="email" value="'+h(emails[e]||'')+'" oninput="upCtEm('+i+','+e+',this.value)" placeholder="邮箱">'+(emails.length>1?'<button class="rm-phone" onclick="rmEm('+i+','+e+')">✕</button>':'')+'</div>';
     em+='<button class="add-phone-btn" onclick="addEm('+i+')">＋ 添加邮箱</button>';
-    html+='<div class="contact-item">\
+    html+='<div class="contact-item'+(_open?'':' collapsed')+'" data-idx="'+i+'">\
       <button class="del-btn" onclick="rmCt('+i+')">✕</button>'+
       '<button class="mv-btn" onclick="openMoveModal('+i+')">转移</button>'+
-      '<div class="contact-header">🧑 联系人 #'+(i+1)+'</div>\
+      '<div class="ct-sum" onclick="ctToggle(this)" title="'+h((_sp.name||'')+' '+(_sp.meta?('· '+_sp.meta+' '):'')+(_sp.phone||''))+'">\
+        <span class="ct-caret">'+(_open?'▾':'▸')+'</span>\
+        <span class="ct-name">'+h(_sp.name)+'</span>\
+        <span class="ct-meta">'+h(_sp.meta)+'</span>\
+        <span class="ct-ph">'+h(_sp.phone)+'</span>\
+      </div>\
+      <div class="ct-body">\
+      <div class="contact-header">🧑 联系人 #'+(i+1)+'</div>\
       <div class="form-row">\
         <div class="form-group"><label>姓名</label><input value="'+h(co.name||'')+'" oninput="upCt('+i+',\'name\',this.value)" placeholder="联系人姓名"></div>\
         <div class="form-group"><label>部门</label><input value="'+h(co.dept||'')+'" oninput="upCt('+i+',\'dept\',this.value)" placeholder="所属部门"></div>\
@@ -804,14 +818,79 @@ function refCt(){
       <div class="form-group"><label>手机</label>'+ph+'</div>\
       <div class="form-group"><label>座机</label>'+ll+'</div>\
       <div class="form-group"><label>邮箱</label>'+em+'</div>\
-    </div>';
+    </div>'+
+    '</div>';
   }
   c.innerHTML=html;
   var pis=c.querySelectorAll('.phone-row input[type="tel"]');
   for(var j=0;j<pis.length;j++)pis[j].addEventListener('input',function(){this.value=this.value.replace(/\s+/g,'')});
+  ctUpdateAllBtn();
+}
+
+// ── 联系人折叠 ──
+// 摘要行始终显示（收起时是唯一可见的一行，展开时当标题用），
+// 内容从 formContacts 实时算，所以编辑时改了姓名/部门，一收起就能看到最新的。
+function ctSumParts(co){
+  co=co||{};
+  var name=String(co.name||'').trim();
+  var meta=[String(co.dept||'').trim(),String(co.position||'').trim()].filter(function(x){return !!x}).join(' · ');
+  var mob=(co.phones||[]).filter(function(x){return String(x||'').trim()});
+  var tel=(co.landlines||[]).filter(function(x){return String(x||'').trim()});
+  var ph=mob[0]||tel[0]||'';
+  var extra=mob.length>0?(mob.length-1):(tel.length-1);
+  return {
+    name:name||'（未填姓名）',
+    meta:meta,
+    phone:ph?(String(ph)+(extra>0?' +'+extra:'')):''
+  };
+}
+function ctSetOpen(item,open,idx){
+  if(!item)return;
+  item.classList.toggle('collapsed',!open);
+  var caret=item.querySelector('.ct-caret');
+  if(caret)caret.textContent=open?'▾':'▸';
+  if(idx==null||isNaN(idx))idx=parseInt(item.getAttribute('data-idx'),10);
+  if(!isNaN(idx)&&formContacts[idx])formContacts[idx]._open=open;
+  if(!open&&!isNaN(idx)&&formContacts[idx])ctSyncSum(item,idx);
+  ctUpdateAllBtn();
+}
+function ctSyncSum(item,idx){
+  if(!item||!formContacts[idx])return;
+  var p=ctSumParts(formContacts[idx]);
+  var n=item.querySelector('.ct-name'),m=item.querySelector('.ct-meta'),ph=item.querySelector('.ct-ph');
+  if(n)n.textContent=p.name;
+  if(m)m.textContent=p.meta;
+  if(ph)ph.textContent=p.phone;
+}
+function ctToggle(el){
+  var item=el&&el.closest?el.closest('.contact-item'):null;
+  if(!item)return;
+  ctSetOpen(item,item.classList.contains('collapsed'));
+}
+// 全部展开 / 全部收起：以 DOM 当前状态为准（_open 可能是 undefined 的"默认值"）
+function ctExpandAll(open){
+  for(var i=0;i<formContacts.length;i++)formContacts[i]._open=!!open;
+  refCt();
+}
+function ctAllToggle(){
+  var items=document.querySelectorAll('#contacts-container .contact-item');
+  var anyClosed=false;
+  for(var i=0;i<items.length;i++)if(items[i].classList.contains('collapsed')){anyClosed=true;break}
+  ctExpandAll(anyClosed);
+}
+function ctUpdateAllBtn(){
+  var btn=document.getElementById('ct-all-btn');
+  if(!btn)return;
+  var items=document.querySelectorAll('#contacts-container .contact-item');
+  // 2 条及以下本来就不折叠，按钮纯属噪音
+  if(items.length<3){btn.style.display='none';return}
+  btn.style.display='';
+  var anyClosed=false;
+  for(var i=0;i<items.length;i++)if(items[i].classList.contains('collapsed')){anyClosed=true;break}
+  btn.textContent=anyClosed?'⇕ 展开全部':'⇕ 收起全部';
 }
 // global helpers for onclick
-var addContact=function(){formContacts.push({id:'t'+Date.now()+Math.random().toString(36).slice(2,6),name:'',dept:'',position:'',phones:[''],landlines:[''],emails:[''],room:'',entered_date:todayLocalStr(),_new:true});refCt();scrollToLastContact()};
+var addContact=function(){formContacts.push({id:'t'+Date.now()+Math.random().toString(36).slice(2,6),name:'',dept:'',position:'',phones:[''],landlines:[''],emails:[''],room:'',entered_date:todayLocalStr(),_new:true,_open:true});refCt();scrollToLastContact()};
 // 新增联系人后滚到该条并聚焦姓名，省去用户手动滑到列表最下方
 function scrollToLastContact(){
   try{
@@ -924,6 +1003,8 @@ async function openForm(id){
       formProjects=projs;
       for(var pi=0;pi<projs.length;pi++)addProjectEntry(projs[pi]);
       sortProjectEntriesByBiddingDate();
+      // 渲染完再统一决定展开/收起：边渲边判会出现「前两个展开、后面收起」
+      peApplyDefaultCollapse();
       document.getElementById('f-address').value=c.address||'';
       document.getElementById('f-notes').value=c.notes||'';
       setSelectedTypes(parseTypes(c.type));
@@ -1070,7 +1151,17 @@ function addProjectEntry(prefill,toTop){
   var div=document.createElement('div');
   div.className='project-entry';
   div.innerHTML=
-    '<div class="pe-header"><span class="pe-num">项目 '+idx+'</span><button type="button" class="pe-remove" onclick="removeProjectEntry(this)">×</button></div>'+
+    // 摘要行：收起时只有这一行可见（项目名 / 日期 / 金额 / 🔁♻️ 标记），
+    // 点整行展开。删除按钮要拦掉冒泡，否则点 × 会顺手把条目展开。
+    '<div class="pe-header" onclick="peToggle(this)">'+
+      '<span class="pe-caret">▸</span>'+
+      '<span class="pe-num">项目 '+idx+'</span>'+
+      '<span class="pe-sum-name"></span>'+
+      '<span class="pe-sum-tags"></span>'+
+      '<span class="pe-sum-meta"></span>'+
+      '<button type="button" class="pe-remove" onclick="event.stopPropagation();removeProjectEntry(this)">×</button>'+
+    '</div>'+
+    '<div class="pe-body">'+
     '<div class="form-row">'+
       '<div class="form-group"><label>项目名称</label><input class="pe-project" placeholder="项目名称" value="'+h(prefill.project_name||'')+'" oninput="peRecurNameHint(this);peRenewalSync(this)"></div>'+
       '<div class="form-group"><label>招标日期</label><input type="date" class="pe-bidding-date" value="'+(prefill.bidding_date||'')+'" oninput="peRecurSync(this);peRenewalSync(this)" onchange="peRecurSync(this);peRenewalSync(this)"></div>'+
@@ -1140,6 +1231,7 @@ function addProjectEntry(prefill,toTop){
         '</div>'+
         '<div class="pe-owner-chips"></div>'+
       '</div>'+
+    '</div>'+
     '</div>';
   if(toTop&&list.firstChild)list.insertBefore(div,list.firstChild);else list.appendChild(div);
   renumberProjects();
@@ -1159,7 +1251,12 @@ function addProjectEntry(prefill,toTop){
   // 复购：用户明确标过「不是复购」的不再自动勾回来；其余按同名旧项目自动认定
   if(prefill.is_renewal===false)div.setAttribute('data-renewal-touched','1');
   if(typeof peRenewalSync==='function')peRenewalSync(div);else peRenewalRender(div);
+  // 摘要行任何时候都显示，先按当前内容填一遍。
+  // 回显的条目不在这里决定展开/收起（data-open 留空），交给 openForm 末尾的
+  // peApplyDefaultCollapse() 按总条数统一处理，避免「先来的展开、后来的收起」。
+  peSyncSum(div);
   if(toTop){
+    peSetOpen(div,true);
     try{div.scrollIntoView({block:'nearest',behavior:'smooth'})}catch(e){}
     var _pf=div.querySelector('.pe-project');
     if(_pf)setTimeout(function(){try{_pf.focus({preventScroll:true})}catch(e){_pf.focus()}},60);
@@ -1169,6 +1266,93 @@ function removeProjectEntry(btn){
   var entry=btn.closest(".project-entry");
   if(entry)entry.remove();
   renumberProjects();
+  peUpdateAllBtn();
+}
+
+// ── 项目折叠 ──
+// 摘要读的是表单当前值（不是 prefill），所以录入过程中「招标日期 / 金额」一改，
+// 收起后立刻能看到最新的那一行。
+function peNumOf(v){
+  var n=parseFloat(String(v==null?'':v).replace(/[^0-9.\-]/g,''));
+  return isFinite(n)?n:0;
+}
+function peSumAmount(entry){
+  if(!entry)return 0;
+  // 分包时顶层「中标金额」是各包合计（peAwardRefresh 会写回），先认它；
+  // 顶层空着但包里有数（表单一打开就分包、还没触发过汇总）再把各包加起来
+  var top=peNumOf((entry.querySelector('.pe-bid-amount')||{}).value);
+  if(top>0)return top;
+  var tot=0,packs=entry.querySelectorAll('.pe-pack-amount');
+  for(var i=0;i<packs.length;i++){
+    var v=peNumOf(packs[i].value);
+    if(v>0)tot+=v;
+  }
+  return tot;
+}
+function peSumMoney(n){
+  if(!(n>0))return '';
+  return (typeof rnMoney==='function')?rnMoney(n):String(Math.round(n));
+}
+function peSyncSum(entry){
+  if(!entry)return;
+  var nm=String((entry.querySelector('.pe-project')||{}).value||'').trim();
+  var dt=String((entry.querySelector('.pe-bidding-date')||{}).value||'').trim();
+  var amt=peSumAmount(entry);
+  var tags='';
+  var rc=entry.querySelector('.pe-recur');if(rc&&rc.checked)tags+='🔁';
+  var rw=entry.querySelector('.pe-renewal');if(rw&&rw.checked)tags+='♻️';
+  var meta=[];
+  if(dt)meta.push(dt);
+  if(amt>0)meta.push('¥'+peSumMoney(amt));
+  var nEl=entry.querySelector('.pe-sum-name');
+  if(nEl){nEl.textContent=nm||'（未填项目名）';nEl.title=nm;}
+  var tEl=entry.querySelector('.pe-sum-tags');if(tEl)tEl.textContent=tags;
+  var mEl=entry.querySelector('.pe-sum-meta');if(mEl)mEl.textContent=meta.join(' · ');
+}
+function peSetOpen(entry,open){
+  if(!entry)return;
+  entry.classList.toggle('collapsed',!open);
+  entry.setAttribute('data-open',open?'1':'0');
+  var caret=entry.querySelector('.pe-caret');
+  if(caret)caret.textContent=open?'▾':'▸';
+  if(!open)peSyncSum(entry);   // 收起这一刻按最新内容刷新摘要
+  peUpdateAllBtn();
+}
+function peToggle(el){
+  var entry=el&&el.closest?el.closest('.project-entry'):null;
+  if(!entry)return;
+  peSetOpen(entry,entry.classList.contains('collapsed'));
+}
+// 回显时按总条数决定：≤2 条不折（没必要多点一次），多了就全部收起
+function peApplyDefaultCollapse(){
+  var entries=document.querySelectorAll('#project-list .project-entry');
+  var open=entries.length<=2;
+  for(var i=0;i<entries.length;i++){
+    // 用户已经手动点过、或刚新增的条目（data-open 已写死）保持原样
+    if(entries[i].getAttribute('data-open')===null)peSetOpen(entries[i],open);
+  }
+  peUpdateAllBtn();
+}
+function peExpandAll(open){
+  var entries=document.querySelectorAll('#project-list .project-entry');
+  for(var i=0;i<entries.length;i++)peSetOpen(entries[i],!!open);
+  peUpdateAllBtn();
+}
+function peAllToggle(){
+  var entries=document.querySelectorAll('#project-list .project-entry');
+  var anyClosed=false;
+  for(var i=0;i<entries.length;i++)if(entries[i].classList.contains('collapsed')){anyClosed=true;break}
+  peExpandAll(anyClosed);
+}
+function peUpdateAllBtn(){
+  var btn=document.getElementById('pe-all-btn');
+  if(!btn)return;
+  var entries=document.querySelectorAll('#project-list .project-entry');
+  if(entries.length<3){btn.style.display='none';return}
+  btn.style.display='';
+  var anyClosed=false;
+  for(var i=0;i<entries.length;i++)if(entries[i].classList.contains('collapsed')){anyClosed=true;break}
+  btn.textContent=anyClosed?'⇕ 展开全部':'⇕ 收起全部';
 }
 function renumberProjects(){
   var entries=document.querySelectorAll('#project-list .project-entry');

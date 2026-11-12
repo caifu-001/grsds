@@ -192,6 +192,16 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
 .contact-item .mv-btn{position:absolute;top:10px;right:44px;font-size:11px;color:var(--text2);border:1px solid var(--border);border-radius:12px;background:var(--card);padding:3px 10px;cursor:pointer;transition:all .15s}
 .contact-item .mv-btn:active{background:var(--bg)}
 .contact-header{font-size:13px;font-weight:600;color:var(--primary);margin-bottom:10px;padding-right:60px}
+/* 联系人折叠：收起时只留一行摘要（姓名 · 部门/职务 · 主手机号）。
+   字段区只是 display:none，仍在 DOM 里，取值/保存链路完全不受影响。
+   右侧留 104px 给绝对定位的「转移」「✕」，否则摘要文字会压到按钮底下。 */
+.contact-item.collapsed{padding:10px 14px}
+.contact-item.collapsed .ct-body{display:none}
+.ct-sum{display:flex;align-items:center;gap:8px;padding-right:104px;cursor:pointer;user-select:none;min-height:22px}
+.ct-caret{flex-shrink:0;width:12px;font-size:11px;color:var(--text3);text-align:center}
+.ct-name{flex-shrink:0;max-width:46%;font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ct-meta{flex:1;min-width:0;font-size:11px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ct-ph{flex-shrink:0;font-size:11px;color:var(--text2);font-variant-numeric:tabular-nums}
 
 /* ── Form ── */
 .form-group{margin-bottom:14px}
@@ -790,7 +800,16 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
 
 
 .project-entry{border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;background:#fff}
-.pe-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.pe-header{display:flex;justify-content:flex-start;align-items:center;gap:8px;margin-bottom:10px;cursor:pointer;user-select:none}
+/* 收起态：只剩摘要行（编号 + 项目名 + 日期·金额 + 🔁♻️），字段区整块隐藏。
+   字段仍在 DOM 里（只是 display:none），所以取值、校验、保存链路完全不受影响。 */
+.project-entry.collapsed{padding:10px 12px}
+.project-entry.collapsed .pe-header{margin-bottom:0}
+.project-entry.collapsed .pe-body{display:none}
+.pe-caret{flex-shrink:0;width:12px;font-size:11px;color:var(--text3);text-align:center}
+.pe-sum-name{flex:1;min-width:0;font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pe-sum-tags{flex-shrink:0;font-size:11px;letter-spacing:1px}
+.pe-sum-meta{flex-shrink:0;font-size:11px;color:var(--text3);font-variant-numeric:tabular-nums;white-space:nowrap}
 .pe-num{font-size:13px;font-weight:600;color:var(--primary)}
 .pe-remove{width:24px;height:24px;border:none;background:transparent;color:var(--text3);font-size:18px;cursor:pointer;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:all .2s}
 .pe-remove:hover{background:#FEE2E2;color:var(--danger)}
