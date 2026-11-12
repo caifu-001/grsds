@@ -108,6 +108,37 @@ function projectRenewalDue(p){
   return rnAddMonths(r.anchor,r.months);
 }
 
+// 这一轮复购的预估金额。返回 {amount, src}
+//   src='estimate' → 用户在商机卡上手工填的预估（renew_estimate）
+//   src='last'     → 沿用上次招标金额（分包按各包累加）
+//   src='none'     → 上次没填金额，交不出来
+// 为什么不直接用「上次金额」当唯一口径：等保测评这类每年价格会小幅波动，
+// 招标规模也可能调整，销售心里有个数时要能覆盖掉。
+function projectRenewalAmount(p){
+  p=p||{};
+  var raw=String(p.renew_estimate==null?'':p.renew_estimate).trim();
+  if(raw!==''){
+    var est=parseFloat(raw);
+    if(!isNaN(est)&&est>=0)return {amount:est,src:'estimate'};
+  }
+  var v=(typeof projectBidAmount==='function')?projectBidAmount(p):0;
+  if(v>0)return {amount:v,src:'last'};
+  return {amount:0,src:'none'};
+}
+
+// 金额文本（不带 ¥）。本模块自足实现，避免依赖 07-orders 的 formatMoney：
+// 19 在 07 之后加载，运行时虽然能用，但客户卡片（05）要显示金额时是前向引用，
+// 直接调 formatMoney 会被 lint-hoisting 盯上。统一从这里取。
+function rnMoney(v){
+  v=parseFloat(v);
+  if(isNaN(v)||v<=0)return '';
+  if(v>=10000){
+    var w=v/10000;
+    return (w>=100?w.toFixed(0):w.toFixed(1))+'万';
+  }
+  return String(Math.round(v));
+}
+
 // ============================================================
 // 「这个项目是不是复购项目」判定
 //
@@ -206,9 +237,11 @@ function clientRenewalOpps(c,opts){
     var days=rnDiffDays(today,due);
     var state=days<0?'overdue':(days<=lead?'due':'future');
     if(!opts.includeFuture&&state==='future')continue;
+    var amt=projectRenewalAmount(p);
     out.push({
       idx:i,client:c,project:p,due:due,days:days,state:state,
       months:r.months,anchor:r.anchor,
+      amount:amt.amount,amountSrc:amt.src,
       name:String(p.project_name||'').trim()||'未命名项目'
     });
   }
@@ -234,6 +267,30 @@ function rnStateBadge(o){
   return '<span class="rn-badge rn-badge-future">还有 '+o.days+' 天</span>';
 }
 
+// 商机金额合计：金额交不出来的单独计数，不当作 0 悄悄拉低合计
+function rnRenewalSum(list){
+  var sum=0,known=0,miss=0;
+  for(var i=0;i<(list||[]).length;i++){
+    var v=parseFloat(list[i].amount)||0;
+    if(v>0){sum+=v;known++}else{miss++}
+  }
+  return {sum:sum,known:known,miss:miss};
+}
+
+// 单条商机的金额徽标。点一下就能改预估（不改原项目金额），
+// 因为「上次 18 万」≠「今年也一定 18 万」，销售得能覆盖。
+function rnAmountChip(o){
+  var cid=String(o.client.id).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+  var act=' onclick="event.stopPropagation();renewalSetEstimate(\''+cid+'\','+o.idx+')"';
+  if(!(o.amount>0)){
+    return '<span class="rn-amt rn-amt-miss" title="这次复购大概能做多少，点一下补上（用于预估商机金额）"'+act+'>金额待补</span>';
+  }
+  var isEst=o.amountSrc==='estimate';
+  var tip=(isEst?'手工填的预估金额':'按上次招标金额预估')+'，点一下修改';
+  return '<span class="rn-amt" title="'+tip+'"'+act
+    +'>¥'+rnMoney(o.amount)+'<i class="rn-amt-tag">'+(isEst?'预估':'上次')+'</i></span>';
+}
+
 // ============================================================
 // 经营总览 · 复购商机卡片
 // ============================================================
@@ -248,11 +305,23 @@ async function renderRenewalCard(){
   var list=allRenewalOpps();
   var cntEl=document.getElementById('rn-count');
   if(cntEl)cntEl.textContent=list.length?'（'+list.length+'）':'';
+  var agg=rnRenewalSum(list);
+  var amtEl=document.getElementById('rn-amount');
+  if(amtEl){
+    amtEl.textContent=agg.sum>0?('预估 ¥'+rnMoney(agg.sum)):'';
+    amtEl.title=agg.sum>0
+      ?('按上次招标金额/手工预估汇总'+(agg.miss?('，另有 '+agg.miss+' 项没金额未计入'):''))
+      :'';
+  }
   var head=document.getElementById('rn-head-hint');
   if(head){
     var over=0;
     for(var oi=0;oi<list.length;oi++)if(list[oi].state==='overdue')over++;
-    head.textContent=over?('有 '+over+' 个已过应做时间，优先打电话') : (list.length?'临近应做时间，提前接触':'');
+    var tips=[];
+    if(over)tips.push('有 '+over+' 个已过应做时间，优先打电话');
+    else if(list.length)tips.push('临近应做时间，提前接触');
+    if(agg.miss)tips.push(agg.miss+' 项缺金额');
+    head.textContent=tips.join(' · ');
   }
   if(!list.length){
     box.innerHTML='<div class="empty-state">🎉 暂无到期的复购商机</div>';
@@ -263,7 +332,7 @@ async function renderRenewalCard(){
     var o=list[i];
     html+='<div class="rn-item'+(o.state==='overdue'?' rn-over':'')+'">'
       +'<div class="rn-main">'
-        +'<div class="rn-title">'+rnStateBadge(o)+'<b class="rn-client">'+h(o.client.name)+'</b><span class="rn-proj">'+h(o.name)+'</span></div>'
+        +'<div class="rn-title">'+rnStateBadge(o)+'<b class="rn-client">'+h(o.client.name)+'</b><span class="rn-proj">'+h(o.name)+'</span>'+rnAmountChip(o)+'</div>'
         +'<div class="rn-sub">上次招标 '+h(o.anchor||'-')+' → 应于 <b>'+h(o.due)+'</b> 续做 · 每 '+o.months+' 个月一次</div>'
       +'</div>'
       +'<div class="rn-acts">'
@@ -290,8 +359,18 @@ function renewal360CardHtml(c){
     var tip=o.state==='future'
       ?('下次  '+o.due)
       :(o.state==='overdue'?('应于 '+o.due+' 续做（逾期 '+Math.abs(o.days)+' 天）'):('应于 '+o.due+' 续做'));
+    var amtHtml;
+    if(o.amount>0){
+      amtHtml='<span class="rn-amt" style="font-size:11px;margin-left:0;flex-shrink:0" title="'
+        +(o.amountSrc==='estimate'?'手工填的预估金额':'按上次招标金额预估')+'，点一下修改"'
+        +' onclick="renewalSetEstimate(\''+c.id+'\','+o.idx+')">¥'+rnMoney(o.amount)+'</span>';
+    }else{
+      amtHtml='<span class="rn-amt rn-amt-miss" style="font-size:10px;margin-left:0;flex-shrink:0" title="点一下补上这次的预估金额"'
+        +' onclick="renewalSetEstimate(\''+c.id+'\','+o.idx+')">待补</span>';
+    }
     html+='<div class="c360-info-row" style="font-size:12px;align-items:center">'
-      +'<span class="c360-info-label" style="min-width:auto">'+h(o.name)+'</span>'
+      +'<span class="c360-info-label" style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+h(o.name)+'</span>'
+      +amtHtml
       +'<span class="c360-info-value" style="flex:1;min-width:0;text-align:right">'+h(tip)+'</span>'
       +(o.state==='future'
         ?''
@@ -316,7 +395,12 @@ async function rnPatchProject(cid,idx,patch){
   var projs=rnProjectsOf(c);
   var p=projs[idx];
   if(!p){showToast('项目已变动，请刷新后重试');return false}
-  for(var k in patch){if(Object.prototype.hasOwnProperty.call(patch,k))p[k]=patch[k]}
+  for(var k in patch){
+    if(!Object.prototype.hasOwnProperty.call(patch,k))continue;
+    // 传 undefined 表示「删掉这个字段」，而不是存成 null ——
+    // 清空预估金额时要回到「自动沿用上次金额」，不能留个 null 在 JSON 里
+    if(patch[k]===undefined)delete p[k];else p[k]=patch[k];
+  }
   var res=await safeWriteById('clients','update',{projects:JSON.stringify(projs)},c.id);
   if(!res||!res.hit){
     var msg=(res&&res.error&&res.error.message)?res.error.message:'没有写入任何数据';
@@ -353,6 +437,37 @@ async function renewalStop(cid,idx){
   rnRefreshAll();
 }
 
+// 手工填这一轮的预估金额（不改项目历史中标额，只影响商机预估）
+// 留空 = 清掉，回到「沿用上次招标金额」
+async function renewalSetEstimate(cid,idx){
+  var c=null;
+  for(var i=0;i<allClients.length;i++){if(String(allClients[i].id)===String(cid)){c=allClients[i];break}}
+  if(!c){showToast('客户不存在，可能已被删除');return}
+  var projs=rnProjectsOf(c),p=projs[idx];
+  if(!p){showToast('项目已变动，请刷新后重试');return}
+  var cur=projectRenewalAmount(p);
+  var def=cur.src==='estimate'?String(p.renew_estimate):(cur.amount>0?String(Math.round(cur.amount)):'');
+  var v=await uiPrompt(
+    '这次复购预估多少钱？（元）\n留空则沿用上次招标金额'+(cur.src==='last'&&cur.amount>0?('（¥'+rnMoney(cur.amount)+'）'):''),
+    def,{okText:'保存',inputType:'number'});
+  if(v===null)return;                       // 取消
+  var raw=String(v).trim();
+  var patch;
+  if(raw===''){
+    if(cur.src!=='estimate')return;         // 本来就没手填，什么都不用改
+    patch={renew_estimate:undefined};       // 清掉 → 回到沿用上次
+  }else{
+    var n=parseFloat(raw);
+    if(isNaN(n)||n<0){showToast('请输入有效金额');return}
+    n=Math.round(n*100)/100;
+    if(cur.src==='estimate'&&String(p.renew_estimate)===String(n))return;
+    patch={renew_estimate:n};
+  }
+  if(!await rnPatchProject(cid,idx,patch))return;
+  showToast(patch.renew_estimate===undefined?'已恢复为上次招标金额':'预估金额已更新');
+  rnRefreshAll();
+}
+
 // 一键开单：客户、项目名、金额、备注都预填好，销售只需要补日期和阶段
 async function renewalFollowUp(cid,idx){
   var c=null;
@@ -373,12 +488,13 @@ async function renewalFollowUp(cid,idx){
     pickOrderClient(c.id,c.name);
     var pel=document.getElementById('of-project');
     if(pel)pel.value=newName;
-    var amt=(typeof projectBidAmount==='function')?projectBidAmount(p):0;
+    var amt=projectRenewalAmount(p).amount;
     var ael=document.getElementById('of-amount');
     if(ael&&amt>0&&!ael.value)ael.value=String(amt);
     var nel=document.getElementById('of-notes');
     if(nel&&!nel.value){
-      nel.value='年度复购：上次招标 '+(lastBid||'-')+(due?'，应于 '+due+' 续做':'');
+      nel.value='年度复购：上次招标 '+(lastBid||'-')+(due?'，应于 '+due+' 续做':'')
+        +(amt>0?('，上次金额 ¥'+rnMoney(amt)):'');
     }
     showToast('已按上次信息预填，确认金额后保存');
   }catch(e){
@@ -498,6 +614,10 @@ function peRenewalSync(el){
   var prev=rw&&rw.prevDate?rw.prevDate:'';
   if(prev)entry.setAttribute('data-renewal-had','1');else entry.removeAttribute('data-renewal-had');
   entry.setAttribute('data-renewal-prev',prev);
+  // 上次实际中标额：预估留空时要沿用这个数，得先说清是多少
+  var prevAmt=(rw&&rw.prev&&typeof projectBidAmount==='function')?projectBidAmount(rw.prev):0;
+  if(prevAmt>0)entry.setAttribute('data-renewal-prev-amt',String(prevAmt));
+  else entry.removeAttribute('data-renewal-prev-amt');
   var chk=entry.querySelector('.pe-renewal');
   // 用户手动取消过的（data-renewal-touched）不再自动往回勾，否则取消不掉
   if(chk&&!chk.checked&&prev&&entry.getAttribute('data-renewal-touched')!=='1'){
@@ -519,7 +639,10 @@ function peRenewalRender(entry){
   var chk=entry.querySelector('.pe-renewal');
   var hint=entry.querySelector('.pe-renewal-hint');
   if(!hint)return;
-  if(chk&&chk.checked){
+  var on=!!(chk&&chk.checked);
+  var wrap=entry.querySelector('.pe-renewal-est-wrap');
+  if(wrap)wrap.classList.toggle('hidden',!on);
+  if(on){
     var prev=entry.getAttribute('data-renewal-prev')||'';
     hint.textContent=prev?('上次招标 '+prev+'，这单算复购'):'这单算复购（客户之前做过同类项目）';
     hint.style.color='var(--warning)';
@@ -529,4 +652,30 @@ function peRenewalRender(entry){
       :'客户之前做过同类项目才勾，统计复购率用';
     hint.style.color='';
   }
+  peRenewalEstRender(entry);
+}
+
+// 预估金额下面的说明：留空会沿用多少，得让人看见数字，否则「留空」是个黑盒
+function peRenewalEstRender(entry){
+  if(!entry)return;
+  var hint=entry.querySelector('.pe-renewal-est-hint');
+  if(!hint)return;
+  var chk=entry.querySelector('.pe-renewal');
+  if(!chk||!chk.checked){hint.textContent='';hint.style.color='';return}
+  var estEl=entry.querySelector('.pe-renewal-est');
+  var typed=estEl?String(estEl.value||'').trim():'';
+  var pa=parseFloat(entry.getAttribute('data-renewal-prev-amt')||'');
+  if(typed!==''){
+    var n=parseFloat(typed);
+    if(isNaN(n)||n<0){hint.textContent='金额填错了';hint.style.color='var(--danger)'}
+    else{hint.textContent='商机卡按 ¥'+rnMoney(n)+' 计入合计';hint.style.color=''}
+    return;
+  }
+  if(pa>0){hint.textContent='留空＝沿用上次 ¥'+rnMoney(pa);hint.style.color=''}
+  else{hint.textContent='上次没填金额，建议补一个，商机合计才不缺口';hint.style.color='var(--text3)'}
+}
+
+function peRenewalEstInput(inp){
+  var entry=inp&&inp.closest?inp.closest('.project-entry'):null;
+  if(entry)peRenewalEstRender(entry);
 }

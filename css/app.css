@@ -925,6 +925,14 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
 .rn-badge-over{background:#FEE2E2;color:#B91C1C}
 .rn-badge-due{background:#FEF3C7;color:#B45309}
 .rn-badge-future{background:var(--border-light);color:var(--text3)}
+/* 商机金额：右边挂一条，点一下可改预估（金额是这轮商机的价值，比日期更该显眼） */
+.rn-amt{display:inline-flex;align-items:center;gap:3px;margin-left:auto;flex-shrink:0;font-size:12px;font-weight:700;color:var(--primary);cursor:pointer;white-space:nowrap;border-radius:8px;padding:0 4px}
+.rn-amt:hover{background:var(--border-light)}
+.rn-amt i{font-style:normal;font-size:10px;font-weight:600;color:var(--text3);background:var(--border-light);border-radius:6px;padding:0 3px;line-height:14px}
+.rn-amt-miss{color:var(--text3);font-weight:600;font-size:11px;border:1px dashed var(--border);padding:0 6px}
+.rn-amt-miss:hover{color:var(--primary);border-color:var(--primary);background:transparent}
+.rn-total{display:inline-block;font-size:12px;font-weight:700;color:#B45309;background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:1px 8px;margin-left:6px;white-space:nowrap;vertical-align:middle}
+.rn-total:empty{display:none}
 @media(max-width:640px){
   .rn-item{align-items:flex-start}
   .rn-acts{width:100%;justify-content:flex-end}
@@ -942,6 +950,11 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
 .pe-recur-next-preview{font-size:11px;color:var(--primary);min-width:0}
 .pe-recur-resume{padding:2px 8px;font-size:11px;border-radius:10px;border:1px solid var(--warning);background:var(--warning-light);color:#B45309;cursor:pointer}
 .pe-recur-resume.hidden{display:none}
+/* 复购预估金额：勾了「复购项目」才出现，留空＝沿用上次中标额 */
+.pe-renewal-est-wrap{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px;font-size:12px;color:var(--text2)}
+.pe-renewal-est-wrap.hidden{display:none}
+.pe-renewal-est{width:160px;max-width:100%;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--card);color:var(--text)}
+.pe-renewal-est-hint{font-size:11px;color:var(--text3);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:120px}
 .dash-actions{display:flex;flex-wrap:wrap;gap:8px}
 .dash-action-btn{padding:10px 18px;border-radius:10px;border:1px solid var(--border);background:var(--card-bg);color:var(--text);font-size:13px;cursor:pointer;transition:all .15s;font-weight:500}
 .dash-action-btn:hover{background:var(--primary);color:#fff;border-color:var(--primary)}

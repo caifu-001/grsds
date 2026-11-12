@@ -247,7 +247,17 @@ function collectProjectEntries(){
       // 必须显式写 false —— 不写的话读的时候还会再认成复购，取消不掉、复购率也降不下来
       var rwChk=e.querySelector('.pe-renewal');
       if(rwChk){
-        if(rwChk.checked)pj.is_renewal=true;
+        if(rwChk.checked){
+          pj.is_renewal=true;
+          // 本轮预估金额：只有勾了复购才有意义。留空就不写字段，
+          // 读的时候自然回到「沿用上次中标额」，不要存 0（0 会被当成"这单不值钱"）
+          var estEl=e.querySelector('.pe-renewal-est');
+          var estRaw=String((estEl&&estEl.value)||'').trim();
+          if(estRaw!==''){
+            var estV=parseFloat(estRaw);
+            if(!isNaN(estV)&&estV>=0)pj.renew_estimate=Math.round(estV*100)/100;
+          }
+        }
         else if(e.getAttribute('data-renewal-had')==='1')pj.is_renewal=false;
       }
       projectsArr.push(pj);

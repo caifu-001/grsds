@@ -9,7 +9,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👔</text></svg>">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<link rel="stylesheet" href="css/app.css?v=91971d3b">
+<link rel="stylesheet" href="css/app.css?v=608807c0">
 
 <!-- 百度地图改为按需加载（见 js/app_v2.js 的 ensureBaiduMap），避免首屏同步阻塞 -->
 </head>
@@ -2023,7 +2023,7 @@
       <div id="birthday-reminders"></div>
     </div>
     <div class="an-table-card" style="margin-bottom:14px">
-      <h4>🔁 年度复购商机 <span id="rn-count" style="color:var(--primary)"></span> <span id="rn-head-hint" style="font-size:11px;font-weight:400;color:var(--text3);margin-left:6px"></span></h4>
+      <h4>🔁 年度复购商机 <span id="rn-count" style="color:var(--primary)"></span><span id="rn-amount" class="rn-total"></span> <span id="rn-head-hint" style="font-size:11px;font-weight:400;color:var(--text3);margin-left:6px"></span></h4>
       <div id="rn-list"><div class="empty-state">加载中...</div></div>
     </div>
     <div class="an-table-card" style="margin-bottom:14px">
@@ -2147,8 +2147,8 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 <script src="js/modules/02-auth.js?v=97bfed3e"></script>
 <script src="js/modules/03-settings.js?v=1eb73362"></script>
 <script src="js/modules/04-client-list.js?v=67661223"></script>
-<script src="js/modules/05-client-detail.js?v=8bc6b682"></script>
-<script src="js/modules/06-client-tools.js?v=898cf9a9"></script>
+<script src="js/modules/05-client-detail.js?v=76f30ebd"></script>
+<script src="js/modules/06-client-tools.js?v=36af5e67"></script>
 <script src="js/modules/07-orders.js?v=f4b55f39"></script>
 <script src="js/modules/08-admin.js?v=d16f5cf8"></script>
 <script src="js/modules/09-sales.js?v=83d62ee5"></script>
@@ -2161,7 +2161,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 <script src="js/modules/16-projects.js?v=1701e6d3"></script>
 <script src="js/modules/17-workbench.js?v=cce546f8"></script>
 <script src="js/modules/18-templates.js?v=efe0ac1f"></script>
-<script src="js/modules/19-renewal.js?v=dd667250"></script>
+<script src="js/modules/19-renewal.js?v=b75a543c"></script>
 
 
 <!-- ===== END service-view ===== -->

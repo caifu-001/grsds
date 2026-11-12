@@ -683,9 +683,18 @@ function renderList(){
       var _rl=clientRenewalOpps(c);
       if(!_rl.length)return '';
       var _o=_rl[0];
-      var _tip=_o.state==='overdue'?('🔁 待复购 · 逾期 '+Math.abs(_o.days)+' 天'):('🔁 待复购 · 还有 '+_o.days+' 天');
+      // 这个客户到点该续做的钱有多少，一起标出来 —— 翻列表时「哪家最值得先打」
+      // 靠的就是金额 × 紧急度，只有天数是不够的
+      var _sum=0;
+      for(var _ri=0;_ri<_rl.length;_ri++)_sum+=(parseFloat(_rl[_ri].amount)||0);
+      var _amtTxt=(_sum>0&&typeof rnMoney==='function')?(' ¥'+rnMoney(_sum)):'';
+      var _when=_o.state==='overdue'?('逾期 '+Math.abs(_o.days)+' 天'):(_o.days===0?'今天到期':('还有 '+_o.days+' 天'));
+      var _tip='🔁 待复购'+_amtTxt+' · '+_when;
       var _title='';
-      for(var _ri=0;_ri<_rl.length;_ri++)_title+=(_ri?'\n':'')+_rl[_ri].name+' → 应于 '+_rl[_ri].due+' 续做';
+      for(var _ri2=0;_ri2<_rl.length;_ri2++){
+        _title+=(_ri2?'\n':'')+_rl[_ri2].name+' → 应于 '+_rl[_ri2].due+' 续做'
+          +(_rl[_ri2].amount>0?('（¥'+rnMoney(_rl[_ri2].amount)+'）'):'');
+      }
       return '<div class="card-renewal'+(_o.state==='overdue'?' over':'')+'" title="'+h(_title)+'">'+h(_tip+' · '+_o.name)+(_rl.length>1?'<span class="card-renewal-more">+' +(_rl.length-1)+'</span>':'')+'</div>';
     })()+
         (function(){
@@ -1088,6 +1097,13 @@ function addProjectEntry(prefill,toTop){
           '<span class="pe-recur-name">♻️ 复购项目</span>'+
           '<span class="pe-renewal-hint">客户之前做过同类项目才勾，统计复购率用</span>'+
         '</label>'+
+        // 预估金额：这一轮大概能做多少。留空就沿用上次中标额，
+        // 填了就以填的为准（每年价格会波动，商机金额不该被历史锁死）
+        '<div class="pe-renewal-est-wrap'+(_rwOn?'':' hidden')+'">'+
+          '<span class="pe-recur-lbl">本轮预估</span>'+
+          '<input type="number" min="0" step="0.01" class="pe-renewal-est" placeholder="元，留空＝沿用上次中标额" value="'+(prefill.renew_estimate==null?'':h(prefill.renew_estimate))+'" oninput="peRenewalEstInput(this)">'+
+          '<span class="pe-renewal-est-hint"></span>'+
+        '</div>'+
       '</div>'+
     '</div>'+
     // 周期性采购：等保测评 / 维保 / 年费这类每年都要做的服务，勾上就在明年到点提醒
