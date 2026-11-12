@@ -1054,13 +1054,17 @@ function addProjectEntry(prefill,toTop){
   // 老数据没有 recur 字段、但项目名像年度服务（等保/测评/维保…）→ 表单里先按勾上显示，
   // 否则用户看到「没勾」却照旧被提醒，会以为坏了
   var _rnOn=(prefill.recur===true)||(prefill.recur===undefined&&typeof RN_INFER_RE!=='undefined'&&RN_INFER_RE.test(String(prefill.project_name||'')));
+  // 复购项目：同客户里「同名 + 更早还有一次」就认定是复购（老数据自动认，免得统计全是 0）；
+  // 显式 is_renewal 优先（false 表示用户确认过「这不是复购」）
+  var _rwInfo=(typeof projectRenewalOf==='function')?projectRenewalOf(prefill,formProjects):null;
+  var _rwOn=(prefill.is_renewal===true)||(prefill.is_renewal===undefined&&!!(_rwInfo&&_rwInfo.is));
   var div=document.createElement('div');
   div.className='project-entry';
   div.innerHTML=
     '<div class="pe-header"><span class="pe-num">项目 '+idx+'</span><button type="button" class="pe-remove" onclick="removeProjectEntry(this)">×</button></div>'+
     '<div class="form-row">'+
-      '<div class="form-group"><label>项目名称</label><input class="pe-project" placeholder="项目名称" value="'+h(prefill.project_name||'')+'" oninput="peRecurNameHint(this)"></div>'+
-      '<div class="form-group"><label>招标日期</label><input type="date" class="pe-bidding-date" value="'+(prefill.bidding_date||'')+'" oninput="peRecurSync(this)" onchange="peRecurSync(this)"></div>'+
+      '<div class="form-group"><label>项目名称</label><input class="pe-project" placeholder="项目名称" value="'+h(prefill.project_name||'')+'" oninput="peRecurNameHint(this);peRenewalSync(this)"></div>'+
+      '<div class="form-group"><label>招标日期</label><input type="date" class="pe-bidding-date" value="'+(prefill.bidding_date||'')+'" oninput="peRecurSync(this);peRenewalSync(this)" onchange="peRecurSync(this);peRenewalSync(this)"></div>'+
     '</div>'+
     '<div class="form-row">'+
       '<div class="form-group pe-top-budget"><label>项目预算</label><input type="number" min="0" step="0.01" class="pe-budget" placeholder="元，如 1200000" value="'+h(prefill.project_budget==null?'':prefill.project_budget)+'"></div>'+
@@ -1074,6 +1078,17 @@ function addProjectEntry(prefill,toTop){
     '</div>'+
     '<div class="form-row">'+
       '<div class="form-group" style="grid-column:1/-1"><label>备注</label><input class="pe-notes" placeholder="项目备注" value="'+h(prefill.notes||'')+'"></div>'+
+    '</div>'+
+    // 复购项目：只标记「这一单是把老项目又做了一遍」，不决定明年提不提醒
+    // （那是下面「周期性采购」的事）。两者可以同时勾，也可以只勾一个。
+    '<div class="form-row">'+
+      '<div class="form-group" style="grid-column:1/-1">'+
+        '<label class="pe-recur-row">'+
+          '<input type="checkbox" class="pe-renewal" onchange="peRenewalToggle(this)"'+(_rwOn?' checked':'')+'>'+
+          '<span class="pe-recur-name">♻️ 复购项目</span>'+
+          '<span class="pe-renewal-hint">客户之前做过同类项目才勾，统计复购率用</span>'+
+        '</label>'+
+      '</div>'+
     '</div>'+
     // 周期性采购：等保测评 / 维保 / 年费这类每年都要做的服务，勾上就在明年到点提醒
     '<div class="form-row">'+
@@ -1125,6 +1140,9 @@ function addProjectEntry(prefill,toTop){
     if(prefill.recur===true)div.setAttribute('data-recur-touched','1');
     peRecurRender(div);
   }
+  // 复购：用户明确标过「不是复购」的不再自动勾回来；其余按同名旧项目自动认定
+  if(prefill.is_renewal===false)div.setAttribute('data-renewal-touched','1');
+  if(typeof peRenewalSync==='function')peRenewalSync(div);else peRenewalRender(div);
   if(toTop){
     try{div.scrollIntoView({block:'nearest',behavior:'smooth'})}catch(e){}
     var _pf=div.querySelector('.pe-project');

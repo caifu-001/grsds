@@ -243,6 +243,13 @@ function collectProjectEntries(){
         // 否则读的时候会被「老数据按名字推定」又当成周期性，等于取消不掉
         pj.recur=false;
       }
+      // 复购项目：只是这一单的性质。系统按同名旧项目自动勾上、用户又取消掉的，
+      // 必须显式写 false —— 不写的话读的时候还会再认成复购，取消不掉、复购率也降不下来
+      var rwChk=e.querySelector('.pe-renewal');
+      if(rwChk){
+        if(rwChk.checked)pj.is_renewal=true;
+        else if(e.getAttribute('data-renewal-had')==='1')pj.is_renewal=false;
+      }
       projectsArr.push(pj);
     }
   }

@@ -99,26 +99,38 @@ function projectBidAmount(p){
   return any?sum:0;
 }
 
-// 按招标年份聚合。返回 {years:[...升序], map:{年: {count,amount}}, undated:{count,amount}, total:{count,amount}}
+// 是不是复购项目。19-renewal.js 在 13 之后加载，所以这里必须留一条保守分支：
+// 没有判定函数时只认显式 true，绝不自己猜（避免统计页在极端加载顺序下算错）
+function projectRenewalFlag(p,projs){
+  if(!p)return false;
+  if(typeof projectRenewalOf==='function')return !!projectRenewalOf(p,projs).is;
+  return p.is_renewal===true;
+}
+
+// 按招标年份聚合。返回 {years:[...升序], map:{年: {count,amount,renew,renewAmount}}, undated, total, earliest}
 function clientBiddingStats(c,years){
   var n=years&&years>0?years:c360BidYears;
   var nowY=new Date().getFullYear();
   var list=[];
   for(var i=n-1;i>=0;i--)list.push(nowY-i);
-  var map={},undated={count:0,amount:0},total={count:0,amount:0},earliest=0;
-  for(var k=0;k<list.length;k++)map[list[k]]={count:0,amount:0};
+  var map={},undated={count:0,amount:0,renew:0,renewAmount:0},total={count:0,amount:0,renew:0,renewAmount:0},earliest=0;
+  for(var k=0;k<list.length;k++)map[list[k]]={count:0,amount:0,renew:0,renewAmount:0};
   var projs=client360ProjectsOf(c);
   for(var pi=0;pi<projs.length;pi++){
     var pr=projs[pi],y=projectBidYear(pr),amt=projectBidAmount(pr);
+    var rw=projectRenewalFlag(pr,projs);
     if(y){
       if(!earliest||y<earliest)earliest=y;
       // 早于统计窗口的年份：也算进 total，但不进柱子（否则「合计」和柱子对不上会让人困惑）
-      if(map[y]===undefined)map[y]={count:0,amount:0};
+      if(map[y]===undefined)map[y]={count:0,amount:0,renew:0,renewAmount:0};
       map[y].count++;map[y].amount+=amt;
+      if(rw){map[y].renew++;map[y].renewAmount+=amt}
     }else{
       undated.count++;undated.amount+=amt;
+      if(rw){undated.renew++;undated.renewAmount+=amt}
     }
     total.count++;total.amount+=amt;
+    if(rw){total.renew++;total.renewAmount+=amt}
   }
   // 数据比默认窗口还老（比如 5 年前的老客户），把窗口往前拉到最早那一年
   if(earliest&&earliest<list[0]){
@@ -126,7 +138,7 @@ function clientBiddingStats(c,years){
     for(var yy=earliest;yy<list[0];yy++)pre.push(yy);
     list=pre.concat(list);
     for(var qi=0;qi<pre.length;qi++){
-      if(map[pre[qi]]===undefined)map[pre[qi]]={count:0,amount:0};
+      if(map[pre[qi]]===undefined)map[pre[qi]]={count:0,amount:0,renew:0,renewAmount:0};
     }
   }
   var wins=0;
@@ -152,6 +164,7 @@ function setC360BidMetric(m){
 function renderClient360Bidding(c){
   var st=clientBiddingStats(c,c360BidYears);
   var isAmt=c360BidMetric==='amount';
+  var hasRenew=st.total.renew>0;
   var segBtn=function(val,label){
     var on=(isAmt?'amount':'count')===val;
     return '<button onclick="setC360BidMetric(\''+val+'\')" style="padding:4px 10px;font-size:12px;border-radius:14px;cursor:pointer;border:1px solid '+(on?'var(--primary)':'var(--border)')+';background:'+(on?'var(--primary)':'transparent')+';color:'+(on?'#fff':'var(--text2)')+'">'+label+'</button>';
@@ -168,6 +181,16 @@ function renderClient360Bidding(c){
   html+='<div class="c360-stat-item"><div class="c360-stat-num" style="font-size:16px">'+formatMoney(st.total.amount)+'</div><div class="c360-stat-label">招标金额</div></div>';
   html+='<div class="c360-stat-item"><div class="c360-stat-num">'+st.activeYears+'</div><div class="c360-stat-label">有招标年份</div></div>';
   html+='</div>';
+  // 复购：单独一行 chip，不硬塞进三格统计（4 格在 480px 侧栏里会被挤成两行，
+  // 金额又长，反而不如一行文字好读）
+  if(st.total.count){
+    var _rwRate=Math.round(st.total.renew/st.total.count*100);
+    html+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">'
+      +'<span class="tag-chip" style="background:var(--warning-light);color:#B45309">♻️ 复购项目 '+st.total.renew+' 个</span>'
+      +'<span class="tag-chip">复购占比 '+_rwRate+'%</span>'
+      +(st.total.renewAmount>0?'<span class="tag-chip">复购金额 '+formatMoney(st.total.renewAmount)+'</span>':'')
+      +'</div>';
+  }
   if(st.undated.count>0)html+='<div style="font-size:11px;color:var(--warning);margin-top:8px">⚠️ 有 '+st.undated.count+' 个项目没填招标日期，未计入年度统计</div>';
   html+='</div>';
 
@@ -196,13 +219,17 @@ function renderClient360Bidding(c){
   // ── 逐年明细（图看趋势，表看准数）
   if(st.total.count){
     html+='<div class="c360-card"><div class="c360-card-title">📋 逐年明细</div>';
-    html+='<div class="c360-info-row" style="font-size:11px;color:var(--text3);border-bottom:1px solid var(--border);padding-bottom:4px"><span style="flex:1">年份</span><span style="width:56px;text-align:right">项目数</span><span style="width:88px;text-align:right">招标金额</span></div>';
+    html+='<div class="c360-info-row" style="font-size:11px;color:var(--text3);border-bottom:1px solid var(--border);padding-bottom:4px"><span style="flex:1">年份</span>'
+      +'<span style="width:52px;text-align:right">项目数</span>'
+      +(hasRenew?'<span style="width:44px;text-align:right">复购</span>':'')
+      +'<span style="width:'+(hasRenew?78:88)+'px;text-align:right">招标金额</span></div>';
     for(var i=st.years.length-1;i>=0;i--){
-      var y=st.years[i],d=st.map[y]||{count:0,amount:0};
+      var y=st.years[i],d=st.map[y]||{count:0,amount:0,renew:0};
       if(!d.count&&!isAmt)continue;          // 只看项目数时，空年份不必占版面
       html+='<div class="c360-info-row" style="font-size:12px"><span style="flex:1">'+y+' 年'+(d.count?'':' <span style="color:var(--text3)">（无）</span>')+'</span>'
-        +'<span style="width:56px;text-align:right">'+d.count+'</span>'
-        +'<span style="width:88px;text-align:right">'+(d.amount?formatMoney(d.amount):'-')+'</span></div>';
+        +'<span style="width:52px;text-align:right">'+d.count+'</span>'
+        +(hasRenew?'<span style="width:44px;text-align:right;'+(d.renew?'color:#B45309;font-weight:600':'color:var(--text3)')+'">'+(d.renew||'-')+'</span>':'')
+        +'<span style="width:'+(hasRenew?78:88)+'px;text-align:right">'+(d.amount?formatMoney(d.amount):'-')+'</span></div>';
     }
     html+='</div>';
   }
@@ -215,34 +242,56 @@ function renderClient360Bidding(c){
   if(typeof Chart==='undefined')return;
   var labels=st.years.map(function(y){return y+'年'});
   var vals=st.years.map(function(y){var d=st.map[y]||{};return isAmt?(d.amount||0):(d.count||0)});
+  var renewVals=st.years.map(function(y){var d=st.map[y]||{};return isAmt?(d.renewAmount||0):(d.renew||0)});
+  var newVals=st.years.map(function(v,i){return Math.max(0,vals[i]-renewVals[i])});
   var nowY=new Date().getFullYear();
+  // 有复购才拆成两组堆叠：没有复购时保持原来单色柱（多数客户第一次看都还没有复购，
+  // 凭空多出一条「复购 0」的图例只是噪音）
   var colors=st.years.map(function(y){
+    if(hasRenew)return y===nowY?'#B45309':'#F59E0B';
     if(y===nowY)return '#F59E0B';       // 今年高亮，一眼看到最新进度
     return isAmt?'rgba(16,185,129,.85)':'#6366F1';
   });
+  var newColors=st.years.map(function(y){
+    if(y===nowY)return '#4338CA';
+    return isAmt?'rgba(16,185,129,.85)':'#6366F1';
+  });
+  var datasets=hasRenew?[
+    {label:'新项目',data:newVals,backgroundColor:newColors,borderRadius:3,maxBarThickness:36,stack:'bid'},
+    {label:'复购',data:renewVals,backgroundColor:colors,borderRadius:3,maxBarThickness:36,stack:'bid'}
+  ]:[{
+    label:isAmt?'招标金额':'招标项目数',
+    data:vals,
+    backgroundColor:colors,
+    borderRadius:6,
+    maxBarThickness:36
+  }];
   _destroyChart('c360Bidding');
   _chartInstances.c360Bidding=new Chart(ctx,{
     type:'bar',
-    data:{labels:labels,datasets:[{
-      label:isAmt?'招标金额':'招标项目数',
-      data:vals,
-      backgroundColor:colors,
-      borderRadius:6,
-      maxBarThickness:36
-    }]},
+    data:{labels:labels,datasets:datasets},
     options:{
       responsive:true,maintainAspectRatio:false,
       plugins:{
-        legend:{display:false},
-        tooltip:{callbacks:{label:function(it){
-          var v=it.parsed.y||0;
-          return (isAmt?'招标金额 ':'招标项目数 ')+(isAmt?formatMoney(v):v+' 个');
-        }}}
+        legend:hasRenew?{display:true,position:'bottom',labels:{boxWidth:10,boxHeight:10,font:{size:10},padding:8}}:{display:false},
+        tooltip:{callbacks:{
+          label:function(it){
+            var v=it.parsed.y||0;
+            var name=hasRenew?(it.dataset.label+' '):(isAmt?'招标金额 ':'招标项目数 ');
+            return name+(isAmt?formatMoney(v):v+' 个');
+          },
+          footer:function(items){
+            if(!hasRenew)return '';
+            var sum=0;
+            for(var fi=0;fi<items.length;fi++)sum+=items[fi].parsed.y||0;
+            return '合计 '+(isAmt?formatMoney(sum):sum+' 个');
+          }
+        }}
       },
       scales:{
-        y:{beginAtZero:true,ticks:{precision:isAmt?undefined:0,maxTicksLimit:5,
+        y:{beginAtZero:true,stacked:hasRenew,ticks:{precision:isAmt?undefined:0,maxTicksLimit:5,
           callback:function(v){if(!isAmt)return v;return v>=10000?(v/10000).toFixed(0)+'万':v}}},
-        x:{grid:{display:false},ticks:{font:{size:10},maxRotation:0,autoSkip:false}}
+        x:{stacked:hasRenew,grid:{display:false},ticks:{font:{size:10},maxRotation:0,autoSkip:false}}
       }
     }
   });
@@ -312,6 +361,12 @@ async function renderClient360Overview(c,orders){
         pfields=[['招标日期',pr.bidding_date||'-'],['中标人',bidderLabel(pr)||'-'],['中标人电话',pr.bidder_phone||'-'],['中标公司',bcTxt],['项目预算',pr.project_budget?formatMoney(pr.project_budget):'-'],['中标金额',pr.bid_amount?formatMoney(pr.bid_amount):'-'],['甲方负责人',ocTxt]];
       }
       for(var pf=0;pf<pfields.length;pf++)html+='<div class="c360-info-row" style="font-size:12px"><span class="c360-info-label">'+pfields[pf][0]+'</span><span class="c360-info-value">'+h(pfields[pf][1])+'</span></div>';
+      // 复购项目：这一单是把老项目又做了一遍。标在卡上，销售一眼能看出「这个客户会回头」
+      var _rwInfo=(typeof projectRenewalOf==='function')?projectRenewalOf(pr,projs):null;
+      if(_rwInfo&&_rwInfo.is){
+        html+='<div class="c360-info-row" style="font-size:12px"><span class="c360-info-label">项目性质</span>'
+          +'<span class="c360-info-value" style="color:#B45309">♻️ 复购项目'+(_rwInfo.prevDate?'（上次 '+_rwInfo.prevDate+'）':'')+'</span></div>';
+      }
       // 周期性采购：把「多久一次 / 下次什么时候」直接标在项目卡上，
       // 否则用户看不出这个项目会被年度提醒
       var _rnDue=(typeof projectRenewalDue==='function')?projectRenewalDue(pr):'';
@@ -348,7 +403,7 @@ async function renderClient360Overview(c,orders){
     var _bs=clientBiddingStats(c,c360BidYears);
     if(!_bs.total.count)return;
     html+='<div style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12px;color:var(--text2)">'
-      +'<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📅 历史招标 '+_bs.total.count+' 个项目 · 近 '+_bs.activeYears+' 年有招标</span>'
+      +'<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📅 历史招标 '+_bs.total.count+' 个项目 · 近 '+_bs.activeYears+' 年有招标'+(_bs.total.renew?' · ♻️ 复购 '+_bs.total.renew+' 个':'')+'</span>'
       +'<button onclick="switchClient360Tab(\'bidding\')" style="flex-shrink:0;font-size:11px;color:var(--primary);border:1px solid var(--primary);border-radius:12px;background:transparent;padding:2px 10px;cursor:pointer">看柱状图 ›</button>'
       +'</div>';
   })();

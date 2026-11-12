@@ -10,6 +10,8 @@
 //   recur_next     手工指定的下次到期日（可空；空则按 招标日 + 周期 自动算）
 //   recur_snooze   「稍后提醒」到某日之前不再打扰
 //   recur_off      「不再提醒」（保留项目本身的复购属性，只是不弹商机）
+//   is_renewal     这一单是不是「复购项目」（纯标记，不影响提醒；复购统计用）
+//                  true=是 / false=明确不是 / 缺失=按同名旧项目自动认定
 //
 // 三个必须守住的判断（改之前先看这里）：
 //   1) 到期日 = 最近一次招标日 + 周期。用招标日而不是中标日，因为等保测评这类
@@ -106,7 +108,66 @@ function projectRenewalDue(p){
   return rnAddMonths(r.anchor,r.months);
 }
 
-function rnNormName(s){return String(s==null?'':s).replace(/\s+/g,'').toLowerCase()}
+// ============================================================
+// 「这个项目是不是复购项目」判定
+//
+// 注意：这跟上面的 recur（周期性采购）是两件事，不要合并——
+//   recur        → 明年还要不要再提醒我（面向未来）
+//   is_renewal   → 这一单本身是不是把老项目又做了一遍（面向这一单的性质）
+// 一个三年一签的项目可以是复购（第二次签），但不该每年提醒；
+// 一个每年的维保如果不勾 recur，也只是「标记了是复购、不提醒」。
+//
+// 三种状态，和 recur 完全一致的约定：
+//   is_renewal===true  → 是复购（用户明确标的）
+//   is_renewal===false → 明确不是（压住下面按同名做的自动认定，否则取消不掉）
+//   字段缺失           → 同客户里「同名 + 更早还有一次」就认定是复购。
+//                        本功能上线前录的项目没有这个字段，不做推定的话
+//                        所有存量客户都会被算成「从没复购过」，统计永远是 0。
+// ============================================================
+function projectRenewalOf(p,allProjs){
+  var prev=null;
+  if(p&&allProjs&&allProjs.length){
+    var nm=rnNormName(p.project_name);
+    var self=String(p.bidding_date||'').slice(0,10);
+    // 自己没填招标日期就不推定：分不清谁先谁后，宁可不算
+    if(nm&&self){
+      for(var i=0;i<allProjs.length;i++){
+        var q=allProjs[i];
+        if(!q||q===p)continue;
+        if(rnNormName(q.project_name)!==nm)continue;
+        var qd=String(q.bidding_date||'').slice(0,10);
+        if(!qd||qd>=self)continue;          // 只要更早的那一次
+        if(!prev||qd>String(prev.bidding_date||'').slice(0,10))prev=q;
+      }
+    }
+  }
+  var is;
+  if(p&&p.is_renewal===true)is=true;
+  else if(p&&p.is_renewal===false)is=false;
+  else is=!!prev;
+  return {is:is,prev:prev,prevDate:prev?String(prev.bidding_date||'').slice(0,10):''};
+}
+
+// 供别的模块用（13 的招标统计、05 的表单）——19 是最后加载的，
+// 在它之前加载的模块调用时必须先做 typeof 判断，没有这个函数就走保守分支。
+function projectIsRenewal(p,allProjs){
+  if(!p)return false;
+  if(p.is_renewal===true)return true;
+  if(p.is_renewal===false)return false;
+  return projectRenewalOf(p,allProjs).is;
+}
+
+// 项目名归一化：去掉年份后缀（「（2026 年度）」/「(2026)」/「2026年度」）、空白和标点，
+// 只留主体名。这样「去跟进」开单时自动加年份的新项目，能和去年的同名项目对上——
+// 否则今年的等保测评叫「等保测评（2026 年度）」，跟去年那条永远对不上，
+// 旧商机不会闭环、复购也认不出来。
+function rnNormName(s){
+  return String(s==null?'':s)
+    .replace(/[（(]\s*\d{4}\s*年度?\s*[)）]/g,'')
+    .replace(/\d{4}\s*年度?/g,'')
+    .replace(/[\s·・,，、;；\-—_/\\.。:：]+/g,'')
+    .toLowerCase();
+}
 
 function rnProjectsOf(c){
   var a=[];
@@ -402,4 +463,70 @@ function peRecurSync(el){
   var days=rnDiffDays(rnToday(),due);
   nextEl.style.color='';
   nextEl.textContent='下次应于 '+due+' 提醒'+(days<0?'（已逾期 '+Math.abs(days)+' 天）':(days===0?'（今天）':('（还有 '+days+' 天）')));
+}
+
+// ============================================================
+// 项目表单：复购项目勾选
+// ============================================================
+
+// 跟谁比：本客户已保存的项目 + 同一张表单里还没保存的其它条目
+// （一次把去年、今年两条一起录进去时，今年这条也要能认出来是复购）
+function peRenewalCandidates(entry){
+  var list=[];
+  var src=(typeof formProjects!=='undefined'&&formProjects)?formProjects:[];
+  for(var i=0;i<src.length;i++)list.push(src[i]);
+  var entries=document.querySelectorAll('#project-list .project-entry');
+  for(var j=0;j<entries.length;j++){
+    if(entries[j]===entry)continue;
+    var nm=String((entries[j].querySelector('.pe-project')||{}).value||'').trim();
+    if(!nm)continue;
+    list.push({project_name:nm,bidding_date:String((entries[j].querySelector('.pe-bidding-date')||{}).value||'')});
+  }
+  return list;
+}
+
+// 项目名 / 招标日期一变就重算：认出同名旧项目就自动勾上，让用户当场看见
+function peRenewalSync(el){
+  var entry=el&&el.closest?el.closest('.project-entry'):null;
+  if(!entry)return;
+  if(typeof projectRenewalOf!=='function')return;
+  var p={
+    project_name:String((entry.querySelector('.pe-project')||{}).value||''),
+    bidding_date:String((entry.querySelector('.pe-bidding-date')||{}).value||'')
+  };
+  var rw=projectRenewalOf(p,peRenewalCandidates(entry));
+  var prev=rw&&rw.prevDate?rw.prevDate:'';
+  if(prev)entry.setAttribute('data-renewal-had','1');else entry.removeAttribute('data-renewal-had');
+  entry.setAttribute('data-renewal-prev',prev);
+  var chk=entry.querySelector('.pe-renewal');
+  // 用户手动取消过的（data-renewal-touched）不再自动往回勾，否则取消不掉
+  if(chk&&!chk.checked&&prev&&entry.getAttribute('data-renewal-touched')!=='1'){
+    chk.checked=true;
+    entry.setAttribute('data-renewal-auto','1');
+  }
+  peRenewalRender(entry);
+}
+
+function peRenewalToggle(chk){
+  var entry=chk&&chk.closest?chk.closest('.project-entry'):null;
+  if(!entry)return;
+  entry.setAttribute('data-renewal-touched','1');
+  peRenewalRender(entry);
+}
+
+function peRenewalRender(entry){
+  if(!entry)return;
+  var chk=entry.querySelector('.pe-renewal');
+  var hint=entry.querySelector('.pe-renewal-hint');
+  if(!hint)return;
+  if(chk&&chk.checked){
+    var prev=entry.getAttribute('data-renewal-prev')||'';
+    hint.textContent=prev?('上次招标 '+prev+'，这单算复购'):'这单算复购（客户之前做过同类项目）';
+    hint.style.color='var(--warning)';
+  }else{
+    hint.textContent=entry.getAttribute('data-renewal-had')==='1'
+      ?'已取消复购标记（保存后不再算复购）'
+      :'客户之前做过同类项目才勾，统计复购率用';
+    hint.style.color='';
+  }
 }
