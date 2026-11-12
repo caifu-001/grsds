@@ -312,10 +312,22 @@ async function renderClient360Overview(c,orders){
         pfields=[['招标日期',pr.bidding_date||'-'],['中标人',bidderLabel(pr)||'-'],['中标人电话',pr.bidder_phone||'-'],['中标公司',bcTxt],['项目预算',pr.project_budget?formatMoney(pr.project_budget):'-'],['中标金额',pr.bid_amount?formatMoney(pr.bid_amount):'-'],['甲方负责人',ocTxt]];
       }
       for(var pf=0;pf<pfields.length;pf++)html+='<div class="c360-info-row" style="font-size:12px"><span class="c360-info-label">'+pfields[pf][0]+'</span><span class="c360-info-value">'+h(pfields[pf][1])+'</span></div>';
+      // 周期性采购：把「多久一次 / 下次什么时候」直接标在项目卡上，
+      // 否则用户看不出这个项目会被年度提醒
+      var _rnDue=(typeof projectRenewalDue==='function')?projectRenewalDue(pr):'';
+      var _rnCfg=(typeof projectRecurOf==='function')?projectRecurOf(pr):null;
+      if(_rnCfg){
+        var _rnTxt='🔁 每 '+_rnCfg.months+' 个月';
+        if(_rnCfg.off)_rnTxt+='（已停止提醒）';
+        else if(_rnDue)_rnTxt+=' · 下次 '+_rnDue;
+        html+='<div class="c360-info-row" style="font-size:12px"><span class="c360-info-label">年度复购</span><span class="c360-info-value" style="'+(String(_rnCfg.off)?'color:var(--text3)':'color:var(--primary)')+'">'+h(_rnTxt)+'</span></div>';
+      }
       html+='</div>';
     }
     html+='</div>';
   }
+  // ── 年度复购提醒（只有该客户确实有到期的复购项目时才出现）
+  if(typeof renewal360CardHtml==='function')html+=renewal360CardHtml(c);
   // ── 基本信息
   html+='<div class="c360-card"><div class="c360-card-title">📋 基本信息</div>';
   var rows=[

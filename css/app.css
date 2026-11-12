@@ -101,6 +101,10 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
 .card-name{font-size:16px;font-weight:700;margin-bottom:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);letter-spacing:.2px}
 .card-addr{font-size:12px;color:var(--text3);margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .card-project{font-size:12px;color:var(--primary);margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+/* 年度复购到点：客户卡片上的提示条（逾期用红，临近用琥珀） */
+.card-renewal{display:flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:#B45309;background:#FFFBEB;border:1px solid #FDE68A;border-radius:6px;padding:3px 8px;margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.card-renewal.over{color:#B91C1C;background:#FEF2F2;border-color:#FECACA}
+.card-renewal-more{flex-shrink:0;font-size:10px;font-weight:700;color:inherit;opacity:.75}
 .card-contact{font-size:12px;color:var(--text2);padding-top:10px;margin-top:4px;border-top:1px solid var(--border);display:flex;flex-wrap:wrap;align-items:center;gap:4px}
 .card-contact .contact-phone-link{display:inline-flex;align-items:center;gap:3px;font-size:12px;color:var(--primary);text-decoration:none;padding:5px 12px;border-radius:var(--radius-full);background:var(--primary-light);transition:background var(--transition),transform var(--transition);font-weight:600}
 .card-contact .contact-phone-link:hover{background:rgba(99,102,241,.15);transform:scale(1.02)}
@@ -901,6 +905,43 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
 .reminder-title{font-weight:500;color:var(--text)}
 .reminder-detail{color:var(--text3);font-size:11px}
 .reminder-date{color:var(--text3);flex-shrink:0;font-size:11px}
+
+/* ── 年度复购商机（经营总览 / 客户 360 / 客户卡片共用） ── */
+.rn-list{display:flex;flex-direction:column;gap:8px}
+.rn-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:var(--bg);font-size:12px;flex-wrap:wrap}
+.rn-item.rn-over{background:#fef2f2}
+.rn-main{flex:1;min-width:200px}
+.rn-title{display:flex;align-items:center;gap:6px;flex-wrap:wrap;color:var(--text);font-size:12px}
+.rn-client{font-weight:600}
+.rn-proj{color:var(--text2)}
+.rn-sub{color:var(--text3);font-size:11px;margin-top:3px}
+.rn-acts{display:flex;gap:6px;flex-shrink:0}
+.rn-btn{padding:4px 10px;font-size:11px;font-weight:600;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text2);cursor:pointer;white-space:nowrap}
+.rn-btn:hover{border-color:var(--primary);color:var(--primary)}
+.rn-btn-primary{background:var(--primary);border-color:var(--primary);color:#fff}
+.rn-btn-primary:hover{background:var(--primary-hover);color:#fff}
+.rn-btn-ghost{background:transparent;color:var(--text3)}
+.rn-badge{display:inline-flex;align-items:center;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;flex-shrink:0}
+.rn-badge-over{background:#FEE2E2;color:#B91C1C}
+.rn-badge-due{background:#FEF3C7;color:#B45309}
+.rn-badge-future{background:var(--border-light);color:var(--text3)}
+@media(max-width:640px){
+  .rn-item{align-items:flex-start}
+  .rn-acts{width:100%;justify-content:flex-end}
+}
+
+/* ── 项目表单：周期性采购 ── */
+.pe-recur-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;cursor:pointer;font-size:13px;font-weight:600;color:var(--text)}
+.pe-recur-row input[type=checkbox]{width:15px;height:15px;flex-shrink:0;cursor:pointer;accent-color:var(--primary)}
+.pe-recur-name{flex-shrink:0}
+.pe-recur-hint{font-size:11px;font-weight:400;color:var(--text3);min-width:0}
+.pe-recur-cfg{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px;font-size:12px;color:var(--text2)}
+.pe-recur-cfg.hidden{display:none}
+.pe-recur-lbl{color:var(--text3);font-size:11px}
+.pe-recur-cfg select{padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--card);color:var(--text)}
+.pe-recur-next-preview{font-size:11px;color:var(--primary);min-width:0}
+.pe-recur-resume{padding:2px 8px;font-size:11px;border-radius:10px;border:1px solid var(--warning);background:var(--warning-light);color:#B45309;cursor:pointer}
+.pe-recur-resume.hidden{display:none}
 .dash-actions{display:flex;flex-wrap:wrap;gap:8px}
 .dash-action-btn{padding:10px 18px;border-radius:10px;border:1px solid var(--border);background:var(--card-bg);color:var(--text);font-size:13px;cursor:pointer;transition:all .15s;font-weight:500}
 .dash-action-btn:hover{background:var(--primary);color:#fff;border-color:var(--primary)}

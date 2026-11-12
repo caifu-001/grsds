@@ -678,6 +678,17 @@ function renderList(){
         '<div class="card-name">'+h(c.name)+(gradeBadge?' '+gradeBadge:'')+'</div>'+
         (c.address?'<div class="card-addr">📍 '+h(c.address)+'</div>':'')+
         (function(){
+      // 年度复购到点 → 卡片上直接标出来，销售翻列表时一眼看到该打给谁
+      if(typeof clientRenewalOpps!=='function')return '';
+      var _rl=clientRenewalOpps(c);
+      if(!_rl.length)return '';
+      var _o=_rl[0];
+      var _tip=_o.state==='overdue'?('🔁 待复购 · 逾期 '+Math.abs(_o.days)+' 天'):('🔁 待复购 · 还有 '+_o.days+' 天');
+      var _title='';
+      for(var _ri=0;_ri<_rl.length;_ri++)_title+=(_ri?'\n':'')+_rl[_ri].name+' → 应于 '+_rl[_ri].due+' 续做';
+      return '<div class="card-renewal'+(_o.state==='overdue'?' over':'')+'" title="'+h(_title)+'">'+h(_tip+' · '+_o.name)+(_rl.length>1?'<span class="card-renewal-more">+' +(_rl.length-1)+'</span>':'')+'</div>';
+    })()+
+        (function(){
       var projs=[];
       try{projs=JSON.parse(c.projects||'[]');if(!Array.isArray(projs))projs=[];}catch(e){projs=[]}
       if(projs.length===0&&c.project)projs=[{project_name:c.project,bidding_date:c.bidding_date||''}];
@@ -1040,13 +1051,16 @@ function addProjectEntry(prefill,toTop){
   var list=document.getElementById('project-list');
   if(!list)return;
   var idx=list.children.length+1;
+  // 老数据没有 recur 字段、但项目名像年度服务（等保/测评/维保…）→ 表单里先按勾上显示，
+  // 否则用户看到「没勾」却照旧被提醒，会以为坏了
+  var _rnOn=(prefill.recur===true)||(prefill.recur===undefined&&typeof RN_INFER_RE!=='undefined'&&RN_INFER_RE.test(String(prefill.project_name||'')));
   var div=document.createElement('div');
   div.className='project-entry';
   div.innerHTML=
     '<div class="pe-header"><span class="pe-num">项目 '+idx+'</span><button type="button" class="pe-remove" onclick="removeProjectEntry(this)">×</button></div>'+
     '<div class="form-row">'+
-      '<div class="form-group"><label>项目名称</label><input class="pe-project" placeholder="项目名称" value="'+h(prefill.project_name||'')+'"></div>'+
-      '<div class="form-group"><label>招标日期</label><input type="date" class="pe-bidding-date" value="'+(prefill.bidding_date||'')+'"></div>'+
+      '<div class="form-group"><label>项目名称</label><input class="pe-project" placeholder="项目名称" value="'+h(prefill.project_name||'')+'" oninput="peRecurNameHint(this)"></div>'+
+      '<div class="form-group"><label>招标日期</label><input type="date" class="pe-bidding-date" value="'+(prefill.bidding_date||'')+'" oninput="peRecurSync(this)" onchange="peRecurSync(this)"></div>'+
     '</div>'+
     '<div class="form-row">'+
       '<div class="form-group pe-top-budget"><label>项目预算</label><input type="number" min="0" step="0.01" class="pe-budget" placeholder="元，如 1200000" value="'+h(prefill.project_budget==null?'':prefill.project_budget)+'"></div>'+
@@ -1060,6 +1074,31 @@ function addProjectEntry(prefill,toTop){
     '</div>'+
     '<div class="form-row">'+
       '<div class="form-group" style="grid-column:1/-1"><label>备注</label><input class="pe-notes" placeholder="项目备注" value="'+h(prefill.notes||'')+'"></div>'+
+    '</div>'+
+    // 周期性采购：等保测评 / 维保 / 年费这类每年都要做的服务，勾上就在明年到点提醒
+    '<div class="form-row">'+
+      '<div class="form-group" style="grid-column:1/-1">'+
+        '<label class="pe-recur-row">'+
+          '<input type="checkbox" class="pe-recur" onchange="peRecurToggle(this)"'+(_rnOn?' checked':'')+'>'+
+          '<span class="pe-recur-name">🔁 周期性采购</span>'+
+          '<span class="pe-recur-hint">等保测评、维保、年费这类每年都要做的，到期自动提醒</span>'+
+        '</label>'+
+        '<input type="hidden" class="pe-recur-next" value="'+h(prefill.recur_next||'')+'">'+
+        '<input type="hidden" class="pe-recur-snooze" value="'+h(prefill.recur_snooze||'')+'">'+
+        '<input type="hidden" class="pe-recur-off" value="'+(prefill.recur_off?'1':'')+'">'+
+        '<div class="pe-recur-cfg'+(_rnOn?'':' hidden')+'">'+
+          '<span class="pe-recur-lbl">周期</span>'+
+          '<select class="pe-recur-months" onchange="peRecurSync(this)">'+
+            '<option value="12"'+((!prefill.recur_months||parseInt(prefill.recur_months,10)===12)?' selected':'')+'>每年（12 个月）</option>'+
+            '<option value="6"'+(parseInt(prefill.recur_months,10)===6?' selected':'')+'>每半年（6 个月）</option>'+
+            '<option value="3"'+(parseInt(prefill.recur_months,10)===3?' selected':'')+'>每季度（3 个月）</option>'+
+            '<option value="24"'+(parseInt(prefill.recur_months,10)===24?' selected':'')+'>每 2 年（24 个月）</option>'+
+            '<option value="36"'+(parseInt(prefill.recur_months,10)===36?' selected':'')+'>每 3 年（36 个月）</option>'+
+          '</select>'+
+          '<span class="pe-recur-next-preview"></span>'+
+          '<button type="button" class="pe-recur-resume'+(prefill.recur_off?'':' hidden')+'" onclick="peRecurResume(this)">已停止提醒，点此恢复</button>'+
+        '</div>'+
+      '</div>'+
     '</div>'+
     '<div class="form-row">'+
       '<div class="form-group pe-owner-group">'+
@@ -1080,6 +1119,12 @@ function addProjectEntry(prefill,toTop){
   // 回显时联系人可能还没加载完（openForm 先渲染项目、后等接口回填联系人），
   // 关联信息由 refCt() 收尾时统一补，这里只是让已加载的场景立刻可见。
   peOwnerChipsRefresh(div.querySelector('.pe-owner-group'));
+  // 周期性采购：回显时若勾着，先把周期/下次时间渲染出来
+  if(_rnOn){
+    // 只有「明确勾过」的才标记 touched；按项目名推定的保持可一键取消
+    if(prefill.recur===true)div.setAttribute('data-recur-touched','1');
+    peRecurRender(div);
+  }
   if(toTop){
     try{div.scrollIntoView({block:'nearest',behavior:'smooth'})}catch(e){}
     var _pf=div.querySelector('.pe-project');

@@ -222,6 +222,27 @@ function collectProjectEntries(){
       }
       // 真分包（多包，或单包但填了包名）才写 packages；否则保持老结构
       if(packed)pj.packages=packs.map(awardPackPayload);
+      // 周期性采购（等保测评 / 维保 / 年费这类年度服务）：勾了才写，
+      // 不勾就整组字段都不出现 —— 老项目的 JSON 保持原样，零影响
+      var recurChk=e.querySelector('.pe-recur');
+      if(recurChk&&recurChk.checked){
+        var monthsEl=e.querySelector('.pe-recur-months');
+        var rmv=parseInt(monthsEl&&monthsEl.value,10);
+        pj.recur=true;
+        pj.recur_months=(rmv>0?rmv:12);
+        // 这几个是「提醒状态」，表单里没有可见编辑入口，必须原样带回，
+        // 否则用户改个备注就把「稍后提醒 / 已停止」清空了
+        var rnNext=((e.querySelector('.pe-recur-next')||{}).value||'').trim();
+        var rnSnooze=((e.querySelector('.pe-recur-snooze')||{}).value||'').trim();
+        var rnOff=((e.querySelector('.pe-recur-off')||{}).value||'').trim();
+        if(rnNext)pj.recur_next=rnNext;
+        if(rnSnooze)pj.recur_snooze=rnSnooze;
+        if(rnOff)pj.recur_off=true;
+      }else if(recurChk&&typeof RN_KEYWORD_RE!=='undefined'&&RN_KEYWORD_RE.test(pn)){
+        // 取消勾选 + 项目名像年度服务：必须显式写 recur:false，
+        // 否则读的时候会被「老数据按名字推定」又当成周期性，等于取消不掉
+        pj.recur=false;
+      }
       projectsArr.push(pj);
     }
   }

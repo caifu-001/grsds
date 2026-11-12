@@ -604,7 +604,10 @@ function switchAnalyticsTab(tab){
   }
   _destroyAllCharts();
   switch(tab){
-    case 'overview':renderAnalyticsOverview();checkBirthdayReminders();loadDashReminders();break;
+    case 'overview':renderAnalyticsOverview();checkBirthdayReminders();loadDashReminders();
+      // 年度复购商机：等保测评 / 维保这类每年都要做的服务，到点主动报到
+      try{renderRenewalCard()}catch(e){console.warn('[Analytics] renewal card failed',e)}
+      break;
     case 'sales-funnel':renderAnSalesFunnel();break;
     case 'collection':renderCollectionAnalysis();break;
     case 'profit':renderProfitAnalysis();break;
