@@ -725,7 +725,7 @@ function searchSupplierLinkClient(){
   var list=document.getElementById('sup-link-list');
   if(q.length<1){list.classList.add('hidden');return}
   if(!allClients.length){list.innerHTML='<div class="search-list-item" style="color:var(--text3)">\u52a0\u8f7d\u5ba2\u6237\u4e2d...</div>';list.classList.remove('hidden');loadClients().then(function(){searchSupplierLinkClient()});return}
-  var matches=allClients.filter(function(c){var cn=(c.name||'').toLowerCase();return cn.indexOf(q)>=0}).slice(0,8);
+  var matches=searchClientsByName(q,8);
   if(!matches.length){list.innerHTML='<div class="search-list-item" style="color:var(--text3)">\u65e0\u5339\u914d\u5ba2\u6237</div>';list.classList.remove('hidden');return}
   var h='';
   for(var i=0;i<matches.length;i++){h+='<div class="search-list-item" onclick="selectSupLinkClient(\''+matches[i].id+'\',\''+escHtml(matches[i].name)+'\')"><div class="name">'+escHtml(matches[i].name)+'</div></div>'}

@@ -1685,7 +1685,7 @@ function onOppCompanyInput(){
   var sug=document.getElementById('opp-company-suggestions');
   if(!sug)return;
   if(val.length<1){sug.classList.add('hidden');return}
-  var matches=allClients.filter(function(c){return c.name&&c.name.toLowerCase().indexOf(val.toLowerCase())>=0}).slice(0,8);
+  var matches=searchClientsByName(val,8);
   if(!matches.length){sug.classList.add('hidden');return}
   var s='';
   for(var i=0;i<matches.length;i++){
@@ -1741,7 +1741,7 @@ function onCompSearchInput(){
   var sug=document.getElementById('wb-comp-suggestions');
   if(!sug)return;
   if(val.length<1){sug.classList.add('hidden');return}
-  var matches=allClients.filter(function(c){return c.name&&c.name.toLowerCase().indexOf(val.toLowerCase())>=0}).slice(0,8);
+  var matches=searchClientsByName(val,8);
   if(!matches.length){sug.classList.add('hidden');return}
   var s='';
   for(var i=0;i<matches.length;i++){
@@ -1891,7 +1891,7 @@ function onTrainingOrgInput(){
   var sug=document.getElementById('wb-training-suggestions');
   if(!sug)return;
   if(val.length<1){sug.classList.add('hidden');return}
-  var matches=allClients.filter(function(c){return c.name&&c.name.toLowerCase().indexOf(val.toLowerCase())>=0}).slice(0,8);
+  var matches=searchClientsByName(val,8);
   if(!matches.length){sug.classList.add('hidden');return}
   var s='';
   for(var i=0;i<matches.length;i++){

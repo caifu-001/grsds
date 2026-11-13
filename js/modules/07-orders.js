@@ -1588,7 +1588,7 @@ function searchOrderClient(){
   if(q.length<2){list.classList.add('hidden');list.innerHTML='';return}
   // Show spinner while potentially loading
   if(!allClients.length){list.classList.remove('hidden');list.innerHTML='<div class="search-list-item" style="color:var(--text3)">加载客户中...</div>';loadClients().then(function(){searchOrderClient()});return}
-  var matches=allClients.filter(function(c){return c.name.toLowerCase().indexOf(q)>=0}).slice(0,8);
+  var matches=searchClientsByName(q,8);
   if(!matches.length){list.innerHTML='<div class="search-list-item" style="color:var(--text3)">无匹配客户</div>';list.classList.remove('hidden');return}
   var h='';
   for(var i=0;i<matches.length;i++)h+='<div class="search-list-item" onclick="pickOrderClient(\''+matches[i].id+'\',\''+escHtml(matches[i].name)+'\')"><div class="name">'+escHtml(matches[i].name)+'</div></div>';

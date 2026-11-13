@@ -132,3 +132,57 @@ function skLines(n,widths){
   for(var i=0;i<n;i++){s+='<div class="sk sk-line" style="width:'+((widths&&widths[i])||'100%')+'"></div>'}
   return s;
 }
+
+// ==========================================================================
+// 搜索排序：名称「完全匹配」永远排最前
+// --------------------------------------------------------------------------
+// 客户库里同一家单位常常挂着一堆下级：「重庆市公安局」下面有「重庆市公安局渝中分局」
+// 「重庆市公安局XX派出所」。按录入顺序排列时，搜「重庆市公安局」分局反而排到本部前面，
+// 选错客户的概率很高。统一口径：
+//   0 名称完全匹配 → 1 名称前缀匹配 → 2 名称包含 → 3 只靠地址/项目/联系人等其它字段命中
+// 比对前先去掉空白，避免「重庆市 公安局」这类录入差异让完全匹配失效。
+// ==========================================================================
+function searchNorm(s){return String(s==null?'':s).replace(/\s+/g,'').toLowerCase()}
+// 关键词命中：原文命中即通过；输入里带空白时再去掉空白比一次（「重庆市 公安局」也能搜到）
+function searchHit(text,kw){
+  var s=String(text==null?'':text).toLowerCase();
+  var q=String(kw==null?'':kw).toLowerCase();
+  if(!q)return true;
+  if(s.indexOf(q)>=0)return true;
+  return /\s/.test(q)&&searchNorm(s).indexOf(searchNorm(q))>=0;
+}
+function searchNameRank(name,kw){
+  var n=searchNorm(name);
+  var q=searchNorm(kw);
+  if(!q)return 0;
+  if(!n)return 3;
+  if(n===q)return 0;
+  if(n.indexOf(q)===0)return 1;
+  if(n.indexOf(q)>=0)return 2;
+  return 3;
+}
+// 按名称匹配度稳定排序：同分保持原有顺序（客户列表不按招标日期排序，别打乱原有观感）
+function sortBySearchRank(list,kw){
+  var arr=list||[];
+  if(arr.length<2)return arr.slice();
+  var tmp=[];
+  for(var i=0;i<arr.length;i++)tmp.push({v:arr[i],i:i,r:searchNameRank(arr[i]&&arr[i].name,kw)});
+  tmp.sort(function(a,b){return (a.r-b.r)||(a.i-b.i)});
+  var out=[];
+  for(var j=0;j<tmp.length;j++)out.push(tmp[j].v);
+  return out;
+}
+// 客户名搜索：只按名称命中，完全匹配优先；limit 用于下拉候选（传 8）
+function searchClientsByName(kw,limit){
+  var q=searchNorm(kw);
+  var src=(typeof allClients!=='undefined'&&allClients)?allClients:[];
+  var out=[];
+  for(var i=0;i<src.length;i++){
+    var c=src[i];
+    if(!c||!c.name)continue;
+    if(q&&searchNorm(c.name).indexOf(q)<0)continue;
+    out.push(c);
+  }
+  out=sortBySearchRank(out,q);
+  return (limit&&out.length>limit)?out.slice(0,limit):out;
+}

@@ -1320,7 +1320,7 @@ function onFWClientInput(){
   var q=(inp.value||'').trim().toLowerCase();
   var list=document.getElementById('fw-vm-client-list');if(!list)return;
   if(!q||!allClients.length){list.classList.add('hidden');list.innerHTML='';return}
-  var matches=allClients.filter(function(c){return (c.name||'').toLowerCase().indexOf(q)>=0}).slice(0,8);
+  var matches=searchClientsByName(q,8);
   if(!matches.length){list.classList.add('hidden');list.innerHTML='';return}
   fwClientSuggList=matches;fwClientSuggIdx=0;
   var h='';

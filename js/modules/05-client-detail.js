@@ -481,9 +481,16 @@ function gsCollect(q){
   if(!q)return out;
   // 客户
   var n=0;
-  for(i=0;i<allClients.length&&n<8;i++){
-    var c=allClients[i],hay=(c.name||'')+' '+(c.address||'')+' '+(c.notes||'')+' '+parseTypes(c.type).join(' ');
-    if(hay.toLowerCase().indexOf(q)>=0){out.push({group:'客户',icon:'🏢',title:c.name||'(未命名)',sub:[parseTypes(c.type).join('、'),c.address].filter(Boolean).join(' · '),type:'client',id:c.id});n++}
+  // 名称完全匹配/前缀匹配的排前面，否则「重庆市公安局」会被自家分局挤出前 8 条
+  var _cc=[];
+  for(i=0;i<allClients.length;i++){
+    var _ci=allClients[i],hay=(_ci.name||'')+' '+(_ci.address||'')+' '+(_ci.notes||'')+' '+parseTypes(_ci.type).join(' ');
+    if(searchHit(hay,q))_cc.push(_ci);
+  }
+  _cc=sortBySearchRank(_cc,q);
+  for(i=0;i<_cc.length&&n<8;i++){
+    var c=_cc[i];
+    out.push({group:'客户',icon:'🏢',title:c.name||'(未命名)',sub:[parseTypes(c.type).join('、'),c.address].filter(Boolean).join(' · '),type:'client',id:c.id});n++;
   }
   // 联系人
   n=0;
@@ -608,12 +615,14 @@ function renderList(){
       try{var phs=JSON.parse(co.phone||'[]');if(Array.isArray(phs))arr=arr.concat(phs)}
       catch(exc){if(co.phone)arr.push(co.phone)}
     }
-    return arr.some(function(v){return v&&v.toString().toLowerCase().indexOf(q)>=0});
+    return arr.some(function(v){return searchHit(v,q)});
   });
   if(currentFilter!=='all') list=list.filter(function(c){
     var types=parseTypes(c.type);
     return types.indexOf(currentFilter)>=0;
   });
+  // 名称完全匹配的排最前：搜「重庆市公安局」不该被「重庆市公安局XX分局」顶掉
+  if(q) list=sortBySearchRank(list,q);
 
   // 完整筛选结果：供「全选结果」与批量弹窗的提示条/预选使用，不受复核视图影响
   _clientFiltered=list;
@@ -1092,7 +1101,7 @@ function searchMoveTarget(){
   var q=(document.getElementById('move-search').value||'').trim().toLowerCase();
   var excludeId=editId||c360ClientId;
   var list=excludeId?allClients.filter(function(c){return c.id!==excludeId}):allClients;
-  if(q) list=list.filter(function(c){return(c.name||'').toLowerCase().indexOf(q)>=0});
+  if(q){list=list.filter(function(c){return(c.name||'').toLowerCase().indexOf(q)>=0});list=sortBySearchRank(list,q)}
   var container=document.getElementById('move-list'),html='';
   if(list.length===0)html='<div class="empty">无匹配客户</div>';
   else{
@@ -1750,7 +1759,8 @@ function peBidCoCandidates(inp,kwOverride){
     }
     out.push(c);
   }
-  return out;
+  // 名称完全匹配的放最前（选中标公司时同样容易点到「XX分局」）
+  return sortBySearchRank(out,kw);
 }
 // all=true 时不按输入框内容过滤（点开就先看全部）
 function peBidCoRender(inp,all){
