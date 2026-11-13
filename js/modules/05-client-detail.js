@@ -1114,7 +1114,13 @@ async function openForm(id){
     var fGrade=document.getElementById('f-grade');if(fGrade)fGrade.value='';updateGradeSelect('');
     var fLifecycle=document.getElementById('f-lifecycle-stage');if(fLifecycle)fLifecycle.value='prospect';
   }
+  // 联系人重建成折叠前后的最终态：回显时一律按「总条数」重新判定（_open 只代表用户在
+  // 本次表单里点过的意图，不该被上一次打开/其它链路残留下来）。
+  for(var _ci=0;_ci<formContacts.length;_ci++)delete formContacts[_ci]._open;
   refCt();
+  // 项目也再来一次，且这次是 force：只要回显时条数 >2 就一定收起。
+  // （打开表单前条目已渲过一次并折好，这里只兜底「之后被追加/被意外展开」的情况）
+  peApplyDefaultCollapse(true);
   vfClearAll(document.getElementById('form-modal'));
   loadConfigCenter().then(function(){
     renderClientCustomFields(_cfData);
@@ -1372,12 +1378,15 @@ function peToggle(el){
   peSetOpen(entry,entry.classList.contains('collapsed'));
 }
 // 回显时按总条数决定：≤2 条不折（没必要多点一次），多了就全部收起
-function peApplyDefaultCollapse(){
+// force=true 表示「这是回显场景，按总数说了算」：忽略 data-open，
+// 避免某条被前面某次渲染写死成展开、之后就一直不折。
+function peApplyDefaultCollapse(force){
   var entries=document.querySelectorAll('#project-list .project-entry');
   var open=entries.length<=2;
   for(var i=0;i<entries.length;i++){
-    // 用户已经手动点过、或刚新增的条目（data-open 已写死）保持原样
-    if(entries[i].getAttribute('data-open')===null)peSetOpen(entries[i],open);
+    // 用户已经手动点过、或刚新增的条目（data-open 已写死）保持原样（force 时除外）
+    if(!force&&entries[i].getAttribute('data-open')!==null)continue;
+    peSetOpen(entries[i],open);
   }
   peUpdateAllBtn();
 }
