@@ -153,6 +153,21 @@ function contactsIndex(){
   return m;
 }
 function contactsOf(id){return contactsIndex()[id]||[]}
+// 按 id 反查联系人：项目 JSON 里的甲方负责人 / 中标人只记了 cid，
+// 展示时要读联系人的**当前**姓名，否则联系人改名后项目里永远挂着旧名
+var _contactByIdIdx=null,_contactByIdSrc=null;
+function contactById(id){
+  if(!id)return null;
+  if(!_contactByIdIdx||_contactByIdSrc!==allContacts){
+    var m={};
+    for(var i=0;i<allContacts.length;i++){
+      var co=allContacts[i];
+      if(co&&co.id)m[String(co.id)]=co;
+    }
+    _contactByIdIdx=m;_contactByIdSrc=allContacts;
+  }
+  return _contactByIdIdx[String(id)]||null;
+}
 // 输入防抖
 function _debounce(fn,ms){
   var t=null;
@@ -912,7 +927,30 @@ function scrollToLastContact(){
   }catch(e){}
 }
 var rmCt=function(i){formContacts.splice(i,1);refCt()};
-var upCt=function(i,f,v){if(i>=0&&i<formContacts.length)formContacts[i][f]=v};
+// 联系人改名 → 项目里关联这个联系人的「甲方负责人」chip 立刻跟着变，
+// 不用等保存/重开表单；保存时 rebindProjectOwnerIds 还会再以联系人姓名为准落库一次。
+function peOwnerNameSync(co){
+  if(!co||!co.id)return;
+  var chips=document.querySelectorAll('#project-list .pe-owner-chip');
+  for(var i=0;i<chips.length;i++){
+    if(String(chips[i].getAttribute('data-cid')||'')===String(co.id))peOwnerChipRefresh(chips[i]);
+  }
+}
+// 收起状态下联系人只显示一行摘要，改名时要同步这一行（否则收起后还是旧名）
+function ctSyncSumName(i){
+  var item=document.querySelector('#contacts-container .contact-item[data-idx="'+i+'"]');
+  var co=formContacts[i];
+  if(!item||!co)return;
+  var sp=ctSumParts(co),el=item.querySelector('.ct-name');
+  if(el)el.textContent=sp.name;
+  var sum=item.querySelector('.ct-sum');
+  if(sum)sum.setAttribute('title',((sp.name||'')+' '+(sp.meta?('· '+sp.meta+' '):'')+(sp.phone||'')).trim());
+}
+var upCt=function(i,f,v){
+  if(i<0||i>=formContacts.length)return;
+  formContacts[i][f]=v;
+  if(f==='name'){peOwnerNameSync(formContacts[i]);ctSyncSumName(i)}
+};
 var upCtPh=function(i,p,v){if(formContacts[i]&&formContacts[i].phones)formContacts[i].phones[p]=(v||'').replace(/\s+/g,'')};
 var addPh=function(i){if(!formContacts[i].phones)formContacts[i].phones=[];formContacts[i].phones.push('');refCt()};
 var rmPh=function(i,p){formContacts[i].phones.splice(p,1);if(!formContacts[i].phones.length)formContacts[i].phones=[''];refCt()};
@@ -1248,9 +1286,10 @@ function addProjectEntry(prefill,toTop){
   peAwardInit(div,prefill);
   // 甲方负责人：一个项目可以挂多个负责人，各用一个 chip 表示（chip 是唯一数据源）
   peOwnerInit(div,projectOwnersOf(prefill));
-  // 回显时联系人可能还没加载完（openForm 先渲染项目、后等接口回填联系人），
-  // 关联信息由 refCt() 收尾时统一补，这里只是让已加载的场景立刻可见。
-  peOwnerChipsRefresh(div.querySelector('.pe-owner-group'));
+  // 回显时联系人可能还没加载完（openForm 先渲染项目、后等接口回填联系人）→ pending=true，
+  // 找不到人也不动 cid（否则打开一次编辑就把关联打断一次），等 refCt() 收尾时再判；
+  // 已加载的场景这里就能显示联系人的最新姓名。
+  peOwnerChipsRefresh(div.querySelector('.pe-owner-group'),true);
   // 周期性采购：回显时若勾着，先把周期/下次时间渲染出来
   if(_rnOn){
     // 只有「明确勾过」的才标记 touched；按项目名推定的保持可一键取消
@@ -2342,11 +2381,18 @@ function peOwnerFind(cid){
 // 把项目里存的负责人统一读成 [{name,cid}]：
 // · 新格式 client_owners: [{name,cid}]（一个项目可多个）
 // · 旧格式 client_owner（单串，可能是「张三、李四」）+ client_owner_contact_id
+// 关联了联系人的一律以联系人**当前姓名**为准：项目 JSON 里的 name 只是保存那一刻的快照，
+// 联系人改名后如果照读快照，项目详情 / 列表气泡 / 客户 360 都还挂着旧名。
+// 老数据不用重存也能自动显示新名；联系人已被删掉时退回快照里的名字。
 function projectOwnersOf(p){
   p=p||{};
   var out=[],seen={};
   function push(name,cid){
     name=String(name||'').trim();cid=String(cid||'').trim();
+    if(cid){
+      var _co=contactById(cid),nm=_co?String(_co.name||'').trim():'';
+      if(nm)name=nm;
+    }
     if(!name&&!cid)return;
     var key=cid?('id:'+cid):('nm:'+name);
     if(seen[key])return;seen[key]=1;
@@ -2380,7 +2426,12 @@ function peOwnerHasChip(group,cid,name){
   return null;
 }
 // 关联 id 指向的联系人已不在表单里时：丢掉 id、保留姓名，退化成纯文本，不挂指向空行的引用。
-function peOwnerChipRefresh(chip){
+// 但「找不到人」有两种原因，不能一概清空：
+//   ① openForm 是「先渲染项目、后 await 回填联系人」，渲染那一刻 formContacts 还是空的 ——
+//      这时候清 cid 等于每打开一次编辑就把甲方负责人的关联打断一次（历史 bug）；
+//   ② 联系人真被删掉了 —— 才该退化成纯文本。
+// pending=true 表示「联系人还没就绪，先别判死刑」；refCt() 收尾时用 pending=false 再判一次。
+function peOwnerChipRefresh(chip,pending){
   if(!chip)return;
   var cid=String(chip.getAttribute('data-cid')||''),co=cid?peOwnerFind(cid):null;
   var nmEl=chip.querySelector('.pe-owner-chip-name'),mEl=chip.querySelector('.pe-owner-chip-meta');
@@ -2392,12 +2443,12 @@ function peOwnerChipRefresh(chip){
   if(mEl)mEl.textContent=dt?' · '+dt:'';
   chip.setAttribute('title',(nm||'未命名')+(dt?' · '+dt:'')+(co?'':'（未关联联系人，仅记录姓名）'));
   chip.classList.toggle('linked',!!co);
-  if(cid&&!co)chip.setAttribute('data-cid','');
+  if(cid&&!co&&!pending)chip.setAttribute('data-cid','');
 }
-function peOwnerChipsRefresh(group){
+function peOwnerChipsRefresh(group,pending){
   if(!group)return;
   var cs=peOwnerChipList(group);
-  for(var i=0;i<cs.length;i++)peOwnerChipRefresh(cs[i]);
+  for(var i=0;i<cs.length;i++)peOwnerChipRefresh(cs[i],pending);
 }
 function peOwnerAddChip(inp,cid,name){
   var group=peOwnerGroupOf(inp);
@@ -2414,7 +2465,9 @@ function peOwnerAddChip(inp,cid,name){
   chip.innerHTML='<span class="pe-owner-chip-name"></span><span class="pe-owner-chip-meta"></span>'+
     '<button type="button" class="pe-owner-chip-x" aria-label="移除该负责人" onclick="peOwnerRemoveChip(this)">×</button>';
   box.appendChild(chip);
-  peOwnerChipRefresh(chip);
+  // pending=true：chip 可能是在「联系人还没回填」的回显阶段建的（openForm 先渲染项目），
+  // 此时找不到人是正常的，不能顺手把刚写上的 cid 抹掉 —— 那正是关联被打开的编辑框打断的根因
+  peOwnerChipRefresh(chip,true);
   return chip;
 }
 function peOwnerRemoveChip(btn){
@@ -2549,6 +2602,24 @@ function rebindProjectOwnerIds(projectsArr,contacts,savedIds){
       var real=ids[idx];
       if(real&&String(real)!==String(cid)){o.cid=real;changed=true}
       if(o.contact_id){o.cid=cid;delete o.contact_id;changed=true}
+      // 姓名跟着联系人走：关联了 cid 的人，姓名真相在联系人表里。
+      // 不刷新的话，联系人改名后项目里（列表气泡 / 项目详情 / 客户 360）一直是旧名，
+      // 而且旧名会被一直写回去，永远纠正不了。
+      var nowName=String(cs[idx].name||'').trim();
+      if(nowName&&String(o.name||'')!==nowName){o.name=nowName;changed=true}
+    }
+    // client_owner 是「姓名用、连接」的旧单串（列表卡片 / 搜索 / 旧代码都还在读），
+    // 名字改了必须一起重写，否则旧链路读到的还是旧名
+    if(Array.isArray(p.client_owners)&&p.client_owners.length){
+      var ownerNames=[];
+      for(var n2=0;n2<p.client_owners.length;n2++){
+        var _nm=String((p.client_owners[n2]||{}).name||'').trim();
+        if(_nm)ownerNames.push(_nm);
+      }
+      var joined=ownerNames.join('、');
+      // 只在项目本来就有这列时才重写（老结构没有 client_owner 就别凭空多写一个字段，
+      // 否则「已是真实 id、名字也没变」的项目也会被判成有改动，白写一次库）
+      if(p.client_owner!==undefined&&joined!==String(p.client_owner||'')){p.client_owner=joined;changed=true}
     }
   }
   return changed;
