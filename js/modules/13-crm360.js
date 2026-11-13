@@ -312,11 +312,37 @@ async function renderClient360Overview(c,orders){
   var projs=[];
   try{projs=JSON.parse(c.projects||'[]');if(!Array.isArray(projs))projs=[]}catch(e){projs=[]}
   if(projs.length>0){
-    html+='<div class="c360-card"><div class="c360-card-title">📦 项目信息</div>';
+    // 项目一多（十个八个），平铺出来要滚很久才看得到下面的「基本信息」。
+    // 与编辑表单同一套约定：≤2 条不折（没必要多点一次），多了默认收起成一行摘要，点哪条开哪条。
+    // 360 每次切 tab 都会重建 innerHTML，所以展开状态存 _c360Fold（按 clientId+序号），不存 DOM。
+    var _pjAllOpen=projs.length<=2;
+    html+='<div class="c360-card"><div class="c360-card-title">'
+      +'<span style="flex:1;min-width:0">📦 项目信息 · '+projs.length+' 个</span>'
+      +(projs.length>2?'<button type="button" id="c360-fold-btn-pj" class="c360-fold-all" onclick="c360FoldAll(\'pj\')">'+(c360AnyClosed('pj:'+c.id+':',projs.length,_pjAllOpen)?'⇕ 展开全部':'⇕ 收起全部')+'</button>':'')
+      +'</div>';
     for(var pj=0;pj<projs.length;pj++){
       var pr=projs[pj];
-      html+='<div style="margin-bottom:10px;padding:10px;background:var(--primary-light);border-radius:8px">';
-      html+='<div style="font-weight:600;font-size:14px;margin-bottom:6px">'+h(pr.project_name||'项目#'+(pj+1))+'</div>';
+      var _pKey='pj:'+c.id+':'+pj;
+      var _pOpen=c360FoldOpen(_pKey,_pjAllOpen);
+      // 收起时头部只留一行摘要：金额 + 复购/周期标记。
+      // 日期不放进来：项目名里多半带年份，而日期一放就把长项目名挤成「（2025 年...」，
+      // 想确认日期点开就有；完整的「名称 · 日期 · 金额」另挂在 title 上，鼠标悬停可见。
+      var _pSum=[];
+      var _pAmt=projectBidAmount(pr);
+      if(_pAmt>0)_pSum.push(formatMoney(_pAmt));
+      if(projectRenewalFlag(pr,projs))_pSum.push('♻️复购');
+      var _pCfg=(typeof projectRecurOf==='function')?projectRecurOf(pr):null;
+      if(_pCfg&&!_pCfg.off)_pSum.push('🔁');
+      var _pTitle=(pr.project_name||'项目#'+(pj+1))
+        +(pr.bidding_date?(' · '+pr.bidding_date):'')
+        +(_pAmt>0?(' · '+formatMoney(_pAmt)):'');
+      html+='<div class="c360-fold'+( _pOpen?'':' collapsed')+'" data-kind="pj" data-fold="'+_pKey+'">';
+      html+='<div class="c360-fold-head" onclick="c360FoldToggle(this)" title="'+h(_pTitle)+'">'
+        +'<span class="c360-fold-caret">'+(_pOpen?'▾':'▸')+'</span>'
+        +'<span class="c360-fold-title">'+h(pr.project_name||'项目#'+(pj+1))+'</span>'
+        +'<span class="c360-fold-sum">'+h(_pSum.join(' · '))+'</span>'
+        +'</div>';
+      html+='<div class="c360-fold-body">';
       // 甲方负责人可能多个：逐个带上职务，方便判断要找的是哪位
       var ocTxt='-';
       var _ownList=projectOwnersOf(pr);
@@ -377,7 +403,7 @@ async function renderClient360Overview(c,orders){
         else if(_rnDue)_rnTxt+=' · 下次 '+_rnDue;
         html+='<div class="c360-info-row" style="font-size:12px"><span class="c360-info-label">年度复购</span><span class="c360-info-value" style="'+(String(_rnCfg.off)?'color:var(--text3)':'color:var(--primary)')+'">'+h(_rnTxt)+'</span></div>';
       }
-      html+='</div>';
+      html+='</div></div>';   // .c360-fold-body + .c360-fold
     }
     html+='</div>';
   }
@@ -419,11 +445,73 @@ async function renderClient360Overview(c,orders){
   document.getElementById('c360-body').innerHTML=html;
 }
 
+// ============================================================
+// 客户 360 · 项目 / 联系人折叠
+// ------------------------------------------------------------
+// 与编辑表单同一个约定：≤2 条不折，多了默认收起成一行摘要，点开看详情。
+// 状态存内存（_c360Fold），因为切 tab / 换客户都会重建 innerHTML，存 DOM 会丢；
+// key 带上 clientId，换个客户不会串味。
+// ============================================================
+var _c360Fold={};
+function c360FoldOpen(key,defOpen){
+  var v=_c360Fold[key];
+  return v===undefined?!!defOpen:!!v;
+}
+function c360AnyClosed(prefix,n,defOpen){
+  for(var i=0;i<n;i++)if(!c360FoldOpen(prefix+i,defOpen))return true;
+  return false;
+}
+function c360FoldBtnSync(kind){
+  var btn=document.getElementById('c360-fold-btn-'+kind);
+  if(!btn)return;
+  var boxes=document.querySelectorAll('#c360-body .c360-fold[data-kind="'+kind+'"]');
+  if(!boxes.length){btn.style.display='none';return}
+  var anyClosed=false;
+  for(var i=0;i<boxes.length;i++)if(boxes[i].classList.contains('collapsed')){anyClosed=true;break}
+  btn.textContent=anyClosed?'⇕ 展开全部':'⇕ 收起全部';
+}
+function c360FoldSet(box,open){
+  if(!box)return;
+  box.classList.toggle('collapsed',!open);
+  var k=box.getAttribute('data-fold');
+  if(k)_c360Fold[k]=!!open;
+  var c=box.querySelector('.c360-fold-caret');
+  if(c)c.textContent=open?'▾':'▸';
+  c360FoldBtnSync(box.getAttribute('data-kind'));
+}
+function c360FoldToggle(el){
+  var box=el&&el.closest?el.closest('.c360-fold'):null;
+  if(!box)return;
+  // 当前是收起态就展开（与 peToggle / ctToggle 同一写法，别取反两次）
+  c360FoldSet(box,box.classList.contains('collapsed'));
+}
+// 一次切开全部：某一条还收着就全展开，否则全收起（与表单的「⇕ 展开全部」同一手感）
+function c360FoldAll(kind){
+  var boxes=document.querySelectorAll('#c360-body .c360-fold[data-kind="'+kind+'"]');
+  if(!boxes.length)return;
+  var anyClosed=false;
+  for(var i=0;i<boxes.length;i++)if(boxes[i].classList.contains('collapsed')){anyClosed=true;break}
+  for(var j=0;j<boxes.length;j++){
+    var open=anyClosed;
+    boxes[j].classList.toggle('collapsed',!open);
+    var k=boxes[j].getAttribute('data-fold');
+    if(k)_c360Fold[k]=!!open;
+    var c=boxes[j].querySelector('.c360-fold-caret');
+    if(c)c.textContent=open?'▾':'▸';
+  }
+  c360FoldBtnSync(kind);
+}
+
 function renderClient360Contacts(c){
   var contacts=allContacts.filter(function(co){return co.client_id===c.id});
   var html='';
   if(contacts.length===0)html='<div class="empty" style="padding:40px">暂无联系人</div>';
   else{
+    var _ctAllOpen=contacts.length<=2;
+    html+='<div class="c360-card"><div class="c360-card-title">'
+      +'<span style="flex:1;min-width:0">👤 联系人 · '+contacts.length+' 人</span>'
+      +(contacts.length>2?'<button type="button" id="c360-fold-btn-ct" class="c360-fold-all" onclick="c360FoldAll(\'ct\')">'+(c360AnyClosed('ct:'+c.id+':',contacts.length,_ctAllOpen)?'⇕ 展开全部':'⇕ 收起全部')+'</button>':'')
+      +'</div>';
     for(var i=0;i<contacts.length;i++){
       var co=contacts[i];
       var dm=co.is_decision_maker?' ⭐':'',bd='';
@@ -433,16 +521,32 @@ function renderClient360Contacts(c){
       try{phs=JSON.parse(co.phone||'[]');if(!Array.isArray(phs))phs=[co.phone||'']}catch(e){phs=['']}
       try{lls=JSON.parse(co.landline||'[]');if(!Array.isArray(lls))lls=[]}catch(e){lls=[]}
       try{ems=JSON.parse(co.email||'[]');if(!Array.isArray(ems))ems=[]}catch(e){ems=[]}
-      html+='<div class="c360-contact-item"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div class="c360-contact-name">'+h(co.name||'未命名')+dm+'</div><button onclick="event.stopPropagation();transferFrom360(\''+co.id+'\')" style="font-size:11px;color:var(--primary);border:1px solid var(--primary);border-radius:12px;background:transparent;padding:2px 10px;cursor:pointer;flex-shrink:0">转移</button></div>';
+      phs=phs.filter(Boolean);lls=lls.filter(Boolean);ems=ems.filter(Boolean);
+      // 收起时一行摘要：部门 · 职务 · 首个电话（多余号码不占位，点开才看全）
+      var _cKey='ct:'+c.id+':'+i;
+      var _cOpen=c360FoldOpen(_cKey,_ctAllOpen);
+      var _cSum=[];
+      if(co.dept)_cSum.push(String(co.dept));
+      if(co.position)_cSum.push(String(co.position));
+      if(phs.length)_cSum.push('📞 '+phs[0]+(phs.length>1?' +'+(phs.length-1):''));
+      html+='<div class="c360-contact-item c360-fold'+(_cOpen?'':' collapsed')+'" data-kind="ct" data-fold="'+_cKey+'">';
+      html+='<div class="c360-fold-head" onclick="c360FoldToggle(this)">'
+        +'<span class="c360-fold-caret">'+(_cOpen?'▾':'▸')+'</span>'
+        +'<span class="c360-fold-title c360-contact-name">'+h(co.name||'未命名')+dm+'</span>'
+        +'<span class="c360-fold-sum">'+h(_cSum.join(' · '))+'</span>'
+        +'<button onclick="event.stopPropagation();transferFrom360(\''+co.id+'\')" style="font-size:11px;color:var(--primary);border:1px solid var(--primary);border-radius:12px;background:transparent;padding:2px 10px;cursor:pointer;flex-shrink:0">转移</button>'
+        +'</div>';
+      html+='<div class="c360-fold-body">';
       html+='<div class="c360-contact-info">';
       if(co.dept)html+='<span>🏢 '+h(co.dept)+'</span>';
       if(co.position)html+='<span>💼 '+h(co.position)+'</span>';
-      if(phs.length&&phs[0])html+='<span>📞 '+h(phs.join(' / '))+'</span>';
-      if(lls.length&&lls[0])html+='<span>🖥 '+h(lls.join(' / '))+'</span>';
-      if(ems.length&&ems[0])html+='<span>📧 '+h(ems.join(' / '))+'</span>';
+      if(phs.length)html+='<span>📞 '+h(phs.join(' / '))+'</span>';
+      if(lls.length)html+='<span>🖥 '+h(lls.join(' / '))+'</span>';
+      if(ems.length)html+='<span>📧 '+h(ems.join(' / '))+'</span>';
       var ed=co.entered_date?'<span style="font-size:11px;color:var(--text3)">📝 录入时间: '+h(String(co.entered_date).slice(0,10))+'</span>':'';
-      html+='</div><div class="c360-contact-badges">'+bd+rel+ed+'</div></div>';
+      html+='</div><div class="c360-contact-badges">'+bd+rel+ed+'</div></div></div>';
     }
+    html+='</div>';
   }
   document.getElementById('c360-body').innerHTML=html;
 }
