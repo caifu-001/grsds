@@ -567,39 +567,126 @@ async function doDelete(){
 }
 
 // === Import/Export ===
+// 导出客户数据
+// ---------------------------------------------------------------------------
+// 两个历史问题一起修：
+// ① 数据源用 sb.from('clients').select('*') 直连 → 受 RLS 约束，成员账号（以及部分管理员）
+//    查出来是 0 行，导出的文件里只有表头；而且没带 company_id，管理员反而会捞到别的公司的数据。
+//    改成用内存里的 allClients / allContacts —— 那是登录后按「当前公司 + 本人可见范围」加载好的，
+//    导出的正是眼前看到的这些，权限口径天然一致，也不用再等一次网络往返。
+// ② 原来的「项目」列读的是客户顶层的旧字段 project/bidding_date，项目改存 projects JSON 之后
+//    这一列对各客户永远是空的。现在单独出一张「项目」表，项目名/日期/金额/中标人/负责人都在里面。
+//    客户表列顺序保持前 7 列不变（导入靠固定下标读），「项目数」加在末尾，导入会自动忽略。
 function doExport(){
+  var btn=document.getElementById('export-btn');
+  function busy(on){
+    if(!btn)return;
+    if(on){btn.setAttribute('data-busy','1');btn.disabled=true;btn.textContent='导出中…'}
+    else{btn.removeAttribute('data-busy');btn.disabled=false;btn.textContent='导出 Excel'}
+  }
+  if(btn&&btn.getAttribute('data-busy')==='1')return;
+  busy(true);
+  showToast('正在生成表格…');
+
+  function jarr(s){
+    try{var a=JSON.parse(s||'[]');return Array.isArray(a)?a:[]}catch(e){return []}
+  }
+  function pick(arr){
+    // 多值字段统一压成一格：手机/座机/邮箱都是 JSON 数组
+    if(!Array.isArray(arr))return '';
+    return arr.map(function(x){return String(x==null?'':x).trim()}).filter(Boolean).join(' / ');
+  }
+
   ensureXlsx().then(function(){
-  sb.from('clients').select('*').order('created_at').then(function(r1){
-    sb.from('contacts').select('*').order('created_at').then(function(r2){
-      var wb=XLSX.utils.book_new();
+    var clients=(typeof allClients!=='undefined'&&allClients)?allClients:[];
+    if(!clients.length){busy(false);showToast('当前没有可导出的客户数据','error');return}
 
-      var clients=r1.data||[],contacts=r2.data||[];
-      var crows=[["名称","属性","项目","招标日期","地址","备注","联系人数"]];
-      for(var i=0;i<clients.length;i++){
-        var c=clients[i],types=parseTypes(c.type).join('、');
-        crows.push([c.name||'',types,c.project||'',c.bidding_date||'',c.address||'',c.notes||'',c.contact_count||0]);
+    // 只导出「这批客户」的联系人：allContacts 是全公司的，直接全导会带出未授权客户的联系人
+    var cidMap={},contacts=[];
+    for(var ci=0;ci<clients.length;ci++)cidMap[String(clients[ci].id)]=clients[ci].name||'';
+    var allCts=(typeof allContacts!=='undefined'&&allContacts)?allContacts:[];
+    for(var k=0;k<allCts.length;k++){
+      if(cidMap[String(allCts[k].client_id)]!==undefined)contacts.push(allCts[k]);
+    }
+
+    var wb=XLSX.utils.book_new();
+
+    // ── 客户表（前 7 列与导入格式一致，勿调顺序）──
+    var crows=[["名称","属性","项目","招标日期","地址","备注","联系人数","项目数"]];
+    // ── 项目表 ──
+    var jrows=[["客户名称","项目名称","招标日期","中标日期","项目预算","中标金额","中标人","甲方负责人","项目性质","年度复购"]];
+    var projCount=0,noProjClient=0;
+
+    for(var i=0;i<clients.length;i++){
+      var c=clients[i];
+      var projs=(typeof client360ProjectsOf==='function')?client360ProjectsOf(c):jarr(c.projects);
+      var types=parseTypes(c.type).join('、');
+      crows.push([c.name||'',types,c.project||'',c.bidding_date||'',c.address||'',c.notes||'',c.contact_count||0,projs.length]);
+      if(!projs.length){noProjClient++;continue}
+
+      for(var pj=0;pj<projs.length;pj++){
+        var pr=projs[pj]||{};
+        var bidders=(typeof projectBiddersOf==='function')?projectBiddersOf(pr):[];
+        var owners=(typeof projectOwnersOf==='function')?projectOwnersOf(pr):[];
+        var isRenew=(typeof projectRenewalFlag==='function')?projectRenewalFlag(pr,projs):(pr.is_renewal===true);
+        var recurTxt='';
+        var cfg=(typeof projectRecurOf==='function')?projectRecurOf(pr):null;
+        if(cfg&&!cfg.off){
+          var due=(typeof projectRenewalDue==='function')?projectRenewalDue(pr):'';
+          recurTxt='每'+cfg.months+'个月'+(due?'（下次 '+due+'）':'');
+        }
+        var amt=(typeof projectBidAmount==='function')?projectBidAmount(pr):(parseFloat(pr.bid_amount)||0);
+        jrows.push([
+          c.name||'',
+          pr.project_name||'',
+          pr.bidding_date||'',
+          pr.bid_date||pr.won_date||'',
+          pr.project_budget||'',
+          amt>0?amt:'',
+          bidders.join('、'),
+          owners.map(function(o){return o.name}).filter(Boolean).join('、'),
+          isRenew?'复购':'新项目',
+          recurTxt
+        ]);
+        projCount++;
       }
-      var cs=XLSX.utils.aoa_to_sheet(crows);
-      cs['!cols']=[{wch:30},{wch:25},{wch:20},{wch:12},{wch:30},{wch:30},{wch:10}];
-      XLSX.utils.book_append_sheet(wb,cs,'客户');
+    }
 
-      var prows=[["客户名称","姓名","部门","职务","电话","邮箱","办公室房号"]];
-      for(var i=0;i<contacts.length;i++){
-        var co=contacts[i];
-        var cn='';for(var j=0;j<clients.length;j++){if(clients[j].id===co.client_id){cn=clients[j].name;break}}
-        var phones=[];try{phones=JSON.parse(co.phone||'[]');if(!Array.isArray(phones))phones=[co.phone||'']}catch(e){phones=[co.phone||'']}
-        var emailsExp=[];try{emailsExp=JSON.parse(co.email||'[]');if(!Array.isArray(emailsExp))emailsExp=co.email?[co.email]:['']}catch(e){emailsExp=[]}
-        prows.push([cn,co.name||'',co.dept||'',co.position||'',phones.join(' / '),emailsExp.join(' / '),co.room||'']);
-      }
-      var ps=XLSX.utils.aoa_to_sheet(prows);
-      ps['!cols']=[{wch:30},{wch:12},{wch:14},{wch:14},{wch:25},{wch:22},{wch:12}];
-      XLSX.utils.book_append_sheet(wb,ps,'联系人');
+    var cs=XLSX.utils.aoa_to_sheet(crows);
+    cs['!cols']=[{wch:30},{wch:25},{wch:20},{wch:12},{wch:30},{wch:30},{wch:10},{wch:8}];
+    XLSX.utils.book_append_sheet(wb,cs,'客户');
 
+    if(projCount){
+      var js=XLSX.utils.aoa_to_sheet(jrows);
+      js['!cols']=[{wch:30},{wch:34},{wch:12},{wch:12},{wch:14},{wch:14},{wch:30},{wch:20},{wch:10},{wch:24}];
+      XLSX.utils.book_append_sheet(wb,js,'项目');
+    }
+
+    var prows=[["客户名称","姓名","部门","职务","电话","邮箱","办公室房号"]];
+    for(var t=0;t<contacts.length;t++){
+      var co=contacts[t];
+      prows.push([
+        cidMap[String(co.client_id)]===undefined?'':cidMap[String(co.client_id)],
+        co.name||'',co.dept||'',co.position||'',
+        pick(jarr(co.phone)),pick(jarr(co.email)),co.room||''
+      ]);
+    }
+    var ps=XLSX.utils.aoa_to_sheet(prows);
+    ps['!cols']=[{wch:30},{wch:12},{wch:14},{wch:14},{wch:25},{wch:22},{wch:12}];
+    XLSX.utils.book_append_sheet(wb,ps,'联系人');
+
+    try{
       XLSX.writeFile(wb,'crm-export-'+new Date().toISOString().slice(0,10)+'.xlsx');
-      showToast('导出成功');
-    }).catch(function(){showToast('导出失败')});
-  }).catch(function(){showToast('导出失败')});
-  }).catch(function(e){showToast(e.message||'导出失败','error')});
+    }catch(e){
+      busy(false);showToast('生成文件失败：'+((e&&e.message)||'未知错误'),'error');return;
+    }
+    busy(false);
+    showToast('已导出 '+clients.length+' 个客户 · '+projCount+' 个项目 · '+contacts.length+' 个联系人'+(noProjClient?'（'+noProjClient+' 个客户暂无项目）':''));
+    dbg&&dbg('[doExport] clients='+clients.length+' projs='+projCount+' contacts='+contacts.length);
+  }).catch(function(e){
+    busy(false);
+    showToast((e&&e.message)||'导出失败，请检查网络后重试','error');
+  });
 }
 
 function handleImport(input){

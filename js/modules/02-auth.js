@@ -59,17 +59,40 @@ function jsStr(s){
     .replace(/'/g,'\\&#39;');
 }
 // SheetJS 按需加载（xlsx.full.min.js 约 900KB，仅导入/导出用得到，避免首屏阻塞）
+// ---------------------------------------------------------------------------
+// 三个必须：多源、超时、可重试。
+// 原来只挂 cdn.sheetjs.com 一个源，该域名在国内经常直接连不通；而「连不通」和
+// 「明确失败」在浏览器里表现不同——连不通时 onerror 要等浏览器自己超时（可能 1~2 分钟），
+// 这期间 ensureXlsx 的 Promise 既不 resolve 也不 reject，用户看到的就是
+// 「点了导出，什么反应都没有」。所以每个源都加 8 秒超时，超时即换下一个源。
+// 顺序按国内可达性排：360 前端库 → jsdelivr(主) → jsdelivr(fastly)。
+var XLSX_CDN=[
+  'https://lib.baomitu.com/xlsx/0.18.5/xlsx.full.min.js',
+  'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
+  'https://fastly.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'
+];
 var _xlsxPromise=null;
 function ensureXlsx(){
   if(window.XLSX)return Promise.resolve(window.XLSX);
   if(_xlsxPromise)return _xlsxPromise;
   _xlsxPromise=new Promise(function(resolve,reject){
-    var s=document.createElement('script');
-    s.async=true;
-    s.src='https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
-    s.onload=function(){resolve(window.XLSX)};
-    s.onerror=function(){_xlsxPromise=null;reject(new Error('表格组件加载失败，请检查网络后重试'))};
-    document.head.appendChild(s);
+    var idx=0;
+    function cleanup(node){try{node&&node.parentNode&&node.parentNode.removeChild(node)}catch(e){}}
+    function tryNext(){
+      if(window.XLSX)return resolve(window.XLSX);
+      if(idx>=XLSX_CDN.length){_xlsxPromise=null;return reject(new Error('表格组件加载失败，请检查网络后重试'))}
+      var src=XLSX_CDN[idx++],settled=false;
+      var s=document.createElement('script');
+      s.async=true;s.src=src;
+      var timer=setTimeout(function(){if(settled)return;settled=true;cleanup(s);tryNext()},8000);
+      s.onload=function(){
+        if(settled)return;settled=true;clearTimeout(timer);
+        if(window.XLSX)resolve(window.XLSX);else{cleanup(s);tryNext()}
+      };
+      s.onerror=function(){if(settled)return;settled=true;clearTimeout(timer);cleanup(s);tryNext()};
+      document.head.appendChild(s);
+    }
+    tryNext();
   });
   return _xlsxPromise;
 }
