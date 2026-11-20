@@ -294,6 +294,14 @@ function rnAmountChip(o){
 // ============================================================
 // 经营总览 · 复购商机卡片
 // ============================================================
+// 收起时保留前 N 条（allRenewalOpps 按应做日期升序 → 前几条就是最该打的电话），
+// 不是整块藏起来：把最紧急的几条留住，既不占屏幕也不丢信息。
+var RN_CARD_MAX=3;
+var rnCardOpen=false;   // 展开状态存内存：renderRenewalCard 每次都重建 innerHTML，存 DOM 会丢
+function rnToggleCard(){
+  rnCardOpen=!rnCardOpen;
+  renderRenewalCard();
+}
 async function renderRenewalCard(){
   var box=document.getElementById('rn-list');
   if(!box)return;
@@ -323,12 +331,20 @@ async function renderRenewalCard(){
     if(agg.miss)tips.push(agg.miss+' 项缺金额');
     head.textContent=tips.join(' · ');
   }
+  // 条数 ≤ N 时不折也不显示按钮（折叠只是徒增一次点击）
+  var needFold=list.length>RN_CARD_MAX;
+  var foldBtn=document.getElementById('rn-fold-btn');
+  if(foldBtn){
+    if(!needFold){foldBtn.classList.add('hidden');foldBtn.textContent=''}
+    else{foldBtn.classList.remove('hidden');foldBtn.textContent=rnCardOpen?'收起 ▴':('展开全部（'+list.length+'）▾')}
+  }
   if(!list.length){
     box.innerHTML='<div class="empty-state">🎉 暂无到期的复购商机</div>';
     return;
   }
+  var shown=(!needFold||rnCardOpen)?list.length:RN_CARD_MAX;
   var html='<div class="rn-list">';
-  for(var i=0;i<list.length;i++){
+  for(var i=0;i<shown;i++){
     var o=list[i];
     html+='<div class="rn-item'+(o.state==='overdue'?' rn-over':'')+'">'
       +'<div class="rn-main">'
@@ -341,6 +357,9 @@ async function renderRenewalCard(){
         +'<button class="rn-btn rn-btn-ghost" onclick="renewalStop(\''+o.client.id+'\','+o.idx+')">不再提醒</button>'
       +'</div>'
     +'</div>';
+  }
+  if(needFold&&!rnCardOpen){
+    html+='<div class="rn-more" onclick="rnToggleCard()">还有 '+(list.length-shown)+' 项未显示，点此展开全部 ▾</div>';
   }
   html+='</div>';
   box.innerHTML=html;
