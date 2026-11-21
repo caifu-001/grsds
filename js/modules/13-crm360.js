@@ -517,10 +517,10 @@ function renderClient360Contacts(c){
       var dm=co.is_decision_maker?' ⭐':'',bd='';
       if(co.birthday){var bdDate=new Date(co.birthday);if(!isNaN(bdDate.getTime()))bd='<span style="font-size:11px;color:var(--warning)">🎂 '+bdDate.toLocaleDateString('zh-CN')+'</span>'}
       var rel=co.relationship_to?'<span style="font-size:11px;color:var(--text3)">关系: '+h(co.relationship_to)+'</span>':'';
-      var phs=[],lls=[],ems=[];
-      try{phs=JSON.parse(co.phone||'[]');if(!Array.isArray(phs))phs=[co.phone||'']}catch(e){phs=['']}
-      try{lls=JSON.parse(co.landline||'[]');if(!Array.isArray(lls))lls=[]}catch(e){lls=[]}
-      try{ems=JSON.parse(co.email||'[]');if(!Array.isArray(ems))ems=[]}catch(e){ems=[]}
+      // 号码字段兼容两种历史写法（JSON 数组 / 「023-123 / 138…」纯串），
+      // 只按 JSON 解析的老数据在这里会整个消失，360 里看不到号码
+      var phs=leadNumList(co.phone),lls=leadNumList(co.landline),ems=[];
+      try{ems=JSON.parse(co.email||'[]');if(!Array.isArray(ems))ems=[]}catch(e){ems=co.email?[String(co.email)]:[]}
       phs=phs.filter(Boolean);lls=lls.filter(Boolean);ems=ems.filter(Boolean);
       // 收起时一行摘要：部门 · 职务 · 首个电话（多余号码不占位，点开才看全）
       var _cKey='ct:'+c.id+':'+i;
@@ -784,42 +784,148 @@ function leadIndustryOf(l){
 }
 
 /**
+ * 项目名归一：拿去比对「是不是同一个标的」。
+ * 同一个标的会在不同批次反复挂出来——「XX项目」「XX项目（第二次）」「XX项目（重新招标）」，
+ * 严格同名判断会把它们当成三个新项目，客户的近期项目越审越多、复购提醒也跟着重复。
+ * 只剥「重招/更正/延期」这类尾巴，不动主干名称，免得把不同标的并成一个。
+ */
+var LEAD_PROJ_RETRY_RE=/[（(]\s*(?:第[一二三四五六七八九十\d]+次|二次|三次|重新招标|重新采购|重新发布|废标重招|再次招标|延期|更正|变更|中止|终止)[^）)]*[)）]/g;
+function leadProjKey(s){
+  var t=String(s||'').replace(/\s+/g,'').toLowerCase();
+  t=t.replace(LEAD_PROJ_RETRY_RE,'');
+  // 主干够长才剥「项目」二字：「XX系统」与「XX系统采购项目」是同一个标的
+  if(t.length>=6)t=t.replace(/(采购项目|招标项目|项目)$/,'');
+  return t;
+}
+
+/** 项目条目里记的招标编号（存在 notes 里的「招标编号 XXX」） */
+function leadProjNoOf(p){
+  var m=String((p&&p.notes)||'').match(/招标编号[：:\s]*([A-Za-z0-9\-_\/\.]+)/);
+  return m?m[1].replace(/\s+/g,'').toUpperCase():'';
+}
+
+/**
+ * 号码字段 → 原始号码数组（保留 023- 这类格式，只去空和重复）。
+ * contacts.phone / landline 有两种历史写法：JSON 数组（新）和「023-123 / 138…」纯串
+ * （老数据、导入的）。只按 JSON 解析会让老数据读成「一个号都没有」，
+ * 于是同一个号被一遍遍追加进去——「已有的电话又加了一遍」就是这么来的。
+ */
+function leadNumList(v){
+  var out=[];
+  function add(x){
+    var s=String(x==null?'':x).trim();
+    if(s&&out.indexOf(s)<0)out.push(s);
+  }
+  if(Array.isArray(v)){v.forEach(add);return out}
+  var s=String(v||'').trim();
+  if(!s)return out;
+  if(s.charAt(0)==='['){
+    try{var a=JSON.parse(s);if(Array.isArray(a)){a.forEach(add);return out}}catch(e){}
+  }
+  s.split(/[\s\/、,，;；\n|]+/).forEach(add);
+  return out;
+}
+
+/**
+ * 号码比对键：手机 11 位全等；座机比后 8 位（区号可能带也可能不带，
+ * 「023-62292550」与「62292550」必须认成同一个号）。
+ */
+function leadNumKey(v){
+  var d=String(v==null?'':v).replace(/\D/g,'');
+  if(/^1[3-9]\d{9}$/.test(d))return d;
+  if(d.length>=10)return d.slice(-8);
+  return d.replace(/^0+/,'')||d;
+}
+
+/** 两条姓名记录是不是同一个人（有一边没名字时只能靠号码；「李思文」与「李思文(采购办)」算同一人） */
+function leadSamePerson(a,b){
+  var x=String(a||'').replace(/\s+/g,'').toLowerCase();
+  var y=String(b||'').replace(/\s+/g,'').toLowerCase();
+  if(!x||!y)return true;
+  if(x===y)return true;
+  return x.indexOf(y)>=0||y.indexOf(x)>=0;
+}
+
+/**
  * 把这条招标公告挂到客户的「近期项目」里（客户表单那个「近期项目」区）。
  * 字段名与 collectProjectEntries() 完全一致，客户 360 / 列表卡片 / 复购提醒都认。
- * 同名项目已存在就不重复加——同一家单位一年投两次同一个项目是常态。
+ *
+ * 核对已有项目：先按招标编号、再按归一后的项目名。命中就是同一个标的——
+ * 不再新增一条，只把它空着的预算 / 招标日期 / 甲方负责人补齐（人工改过的不动）。
+ * 没命中才是新标的，追加一条。
+ * @returns {{added:boolean,filled:boolean,dup:boolean}}
  */
 async function leadAppendProject(clientRow,l,ownerName,ownerCid){
-  if(!clientRow||!clientRow.id)return false;
+  var res={added:false,filled:false,dup:false};
+  var cid=clientRow&&clientRow.id;
+  if(!cid)return res;
   var pname=String(l.project_name||'').trim();
-  if(!pname)return false;
+  if(!pname)return res;
+  // 核对基准要现读一次：内存里的 projects 可能是几分钟前的快照，
+  // 别人刚在客户详情里加过项目，照快照判断就会把同一个标的再加一遍
+  var raw=null;
+  try{
+    var q=await sb.from('clients').select('id,projects').eq('id',cid).limit(1);
+    if(q&&!q.error&&q.data&&q.data.length)raw=q.data[0].projects;
+  }catch(e){}
+  if(raw==null)raw=clientRow.projects;
   var projs=[];
-  try{projs=JSON.parse(clientRow.projects||'[]');if(!Array.isArray(projs))projs=[]}catch(e){projs=[]}
-  var key=function(s){return String(s||'').replace(/\s+/g,'').toLowerCase()};
+  try{projs=JSON.parse(raw||'[]');if(!Array.isArray(projs))projs=[]}catch(e){projs=[]}
+  var key=leadProjKey(pname);
+  var pno=String(l.project_no||'').replace(/\s+/g,'').toUpperCase();
+  var hit=null;
   for(var i=0;i<projs.length;i++){
-    if(key(projs[i]&&projs[i].project_name)===key(pname))return false;
+    var e=projs[i]||{};
+    if(pno&&leadProjNoOf(e)===pno){hit=e;break}
+    if(key&&leadProjKey(e.project_name)===key){hit=e;break}
   }
+  var dateStr=l.publish_date?String(l.publish_date).slice(0,10):'';
   var notes=[];
   if(l.project_no)notes.push('招标编号 '+l.project_no);
   if(l.source_url)notes.push('公告原文 '+l.source_url);
-  var entry={
-    project_name:pname,
-    bidding_date:l.publish_date?String(l.publish_date).slice(0,10):null,
-    bidder_name:'',bidder_phone:'',bidder_company:'',
-    project_budget:Number(l.budget)>0?String(Math.round(Number(l.budget))):'',
-    bid_amount:'',
-    client_owner:ownerName||'',
-    notes:notes.join('；')
-  };
-  // 甲方负责人：cid 是真相，name 只是快照。刚建的联系人这时已经有 id 了
-  if(ownerName)entry.client_owners=[ownerCid?{name:ownerName,cid:ownerCid}:{name:ownerName}];
-  projs.push(entry);
-  var w=await safeWriteById('clients','update',{projects:JSON.stringify(projs),updated_at:new Date().toISOString()},clientRow.id);
-  if(!w.hit)return false;
+  var changed=false;
+  if(hit){
+    // 同一个标的：只补空，不覆盖人工填过的内容
+    if(!String(hit.bidding_date||'').trim()&&dateStr){hit.bidding_date=dateStr;changed=true}
+    if(!String(hit.project_budget||'').trim()&&Number(l.budget)>0){
+      hit.project_budget=String(Math.round(Number(l.budget)));changed=true;
+    }
+    if(!String(hit.client_owner||'').trim()&&ownerName){hit.client_owner=ownerName;changed=true}
+    if(ownerName&&ownerCid){
+      if(!Array.isArray(hit.client_owners))hit.client_owners=[];
+      var hasCid=hit.client_owners.some(function(o){return String(o&&o.cid)===String(ownerCid)});
+      if(!hasCid){hit.client_owners.push({name:ownerName,cid:ownerCid});changed=true}
+    }
+    var oldNotes=String(hit.notes||'');
+    if(l.project_no&&oldNotes.indexOf(String(l.project_no))<0){
+      hit.notes=(oldNotes?oldNotes+'；':'')+'招标编号 '+l.project_no;changed=true;
+    }else if(l.source_url&&oldNotes.indexOf(String(l.source_url))<0){
+      hit.notes=(oldNotes?oldNotes+'；':'')+'公告原文 '+l.source_url;changed=true;
+    }
+    if(!changed)return {added:false,filled:false,dup:true};
+    res.filled=true;
+  }else{
+    var entry={
+      project_name:pname,
+      bidding_date:dateStr||null,
+      bidder_name:'',bidder_phone:'',bidder_company:'',
+      project_budget:Number(l.budget)>0?String(Math.round(Number(l.budget))):'',
+      bid_amount:'',
+      client_owner:ownerName||'',
+      notes:notes.join('；')
+    };
+    // 甲方负责人：cid 是真相，name 只是快照。刚建的联系人这时已经有 id 了
+    if(ownerName)entry.client_owners=[ownerCid?{name:ownerName,cid:ownerCid}:{name:ownerName}];
+    projs.push(entry);
+    res.added=true;
+  }
+  var w=await safeWriteById('clients','update',{projects:JSON.stringify(projs),updated_at:new Date().toISOString()},cid);
+  if(!w.hit){res.added=false;res.filled=false;return res}
   // 内存里同步一份，返回客户列表时卡片上立刻就有这个项目气泡
   for(var k=0;k<(allClients||[]).length;k++){
-    if(String(allClients[k].id)===String(clientRow.id))allClients[k].projects=JSON.stringify(projs);
+    if(String(allClients[k].id)===String(cid))allClients[k].projects=JSON.stringify(projs);
   }
-  return true;
+  return res;
 }
 
 /**
@@ -838,11 +944,16 @@ function leadEnteredDate(l){
  * 判定顺序：采集时已匹配的 client_id → 名称完全一致 → 库里再查一次。
  * 命中已有客户就不重复建档，只把联系人、项目、空着的地址补进去——
  * 一条公告建一个客户，客户列表很快就没法看了。
- * @returns {clientId,created,clientName,contactAdded,projectAdded,error}
+ *
+ * 「新增的招标信息要核对已有信息」落在这里：
+ *  - 项目：同一个标的（招标编号相同 / 项目名归一后相同）只补空字段，新标的才追加
+ *  - 联系人：同名或同号算同一个人，只补他没有的号码；真不认识的人才新建一条
+ * @returns {clientId,created,clientName,contactAdded,phoneAdded,projectAdded,projectFilled,error}
  */
 async function leadToClientProfile(l){
   l=l||{};
-  var out={clientId:null,created:false,clientName:'',contactAdded:false,projectAdded:false,error:null};
+  var out={clientId:null,created:false,clientName:'',contactAdded:false,phoneAdded:0,
+    projectAdded:false,projectFilled:false,error:null};
   var nm=String(l.name||'').trim();
   if(!nm){out.error='线索没有单位名称，无法建客户';return out}
   var norm=function(s){return String(s||'').replace(/\s+/g,'').toLowerCase()};
@@ -911,6 +1022,13 @@ async function leadToClientProfile(l){
   // 联系人：手机全进 phone、座机全进 landline。
   // 一个人可能挂 2~3 个号（座机连写、手机两个），全都存进去，
   // 不然销售换个号码就打不通，也看不出「这人还有第二个手机」。
+  //
+  // 但「新增」之前必须先核对库里的人：认人是**先认名字、再认号码**。
+  //  1) 姓名相同 → 就是这个人（同一个人会在多份公告里反复出现，名字最稳）
+  //  2) 姓名对不上 / 这次公告没给名字 → 用号码认人，且姓名不能互相打架
+  //     （「王工」和「王建国」可能是同一人；「张三」和「李四」共用总机号则是两个人）
+  // 只按号码认会出两种错：同一个人换个号码就被建成第二条；
+  // 新联系人跟老联系人共用总机号，被并进别人的档案里，名字永远丢。
   var phAll=leadPhonesOf(l);
   var mobList=phAll.mobiles, telList=phAll.telnums;
   var ownerCid='';
@@ -918,32 +1036,45 @@ async function leadToClientProfile(l){
   if(mobList.length||telList.length||l.contact_name){
     var ec=await sb.from('contacts').select('id,name,phone,landline,entered_date').eq('client_id',out.clientId).eq('company_id',currentCompanyId);
     var rows=ec.data||[],dupRow=null;
-    var numOf=function(v){return String(v||'').replace(/[^\d]/g,'')};
-    for(var i=0;i<rows.length&&!dupRow;i++){
-      var cur=[];
-      try{cur=JSON.parse(rows[i].phone||'[]');if(!Array.isArray(cur))cur=[]}catch(e){cur=[]}
-      try{var ll=JSON.parse(rows[i].landline||'[]');if(Array.isArray(ll))cur=cur.concat(ll)}catch(e){}
-      cur=cur.map(numOf).filter(Boolean);
-      var hitMob=mobList.some(function(x){return cur.indexOf(x)>=0});
-      var hitTel=telList.some(function(x){return cur.indexOf(numOf(x))>=0});
-      if(hitMob||hitTel)dupRow=rows[i];
-      else if(!mobList.length&&!telList.length&&l.contact_name&&norm(rows[i].name)===norm(l.contact_name))dupRow=rows[i];
+    var nameKey=norm(String(l.contact_name||''));
+    if(nameKey){
+      for(var ni=0;ni<rows.length;ni++){
+        if(norm(String(rows[ni].name||''))===nameKey){dupRow=rows[ni];break}
+      }
+    }
+    if(!dupRow&&(mobList.length||telList.length)){
+      var inKeys=mobList.concat(telList).map(leadNumKey);
+      for(var i=0;i<rows.length&&!dupRow;i++){
+        var curKeys=leadNumList(rows[i].phone).concat(leadNumList(rows[i].landline)).map(leadNumKey);
+        var hitNum=false;
+        for(var kk=0;kk<inKeys.length&&!hitNum;kk++)hitNum=curKeys.indexOf(inKeys[kk])>=0;
+        if(hitNum&&leadSamePerson(rows[i].name,l.contact_name))dupRow=rows[i];
+      }
     }
     if(dupRow){
       // 同一个人已经在客户档案里：不重复插，项目里的甲方负责人直接指向他。
-      // 新公告带来他没存过的号码就补进去——客户档案里只有 1 个号是常态，
-      // 后面公告再冒出第二个号时，销售应该能看到全部
+      // 新公告带来他没存过的号码才补进去——档案里只有 1 个号是常态，
+      // 后面公告再冒出第二个号时，销售应该能看到全部；
+      // 已经有的号一个都不再写一遍（同一条公告重复审核也只会补新号）。
       ownerCid=dupRow.id;
-      var curP=[],curL=[];
-      try{curP=JSON.parse(dupRow.phone||'[]');if(!Array.isArray(curP))curP=[]}catch(e){curP=[]}
-      try{curL=JSON.parse(dupRow.landline||'[]');if(!Array.isArray(curL))curL=[]}catch(e){curL=[]}
-      var have=curP.concat(curL).map(numOf).filter(Boolean);
-      var addM=mobList.filter(function(x){return have.indexOf(x)<0});
-      var addT=telList.filter(function(x){return have.indexOf(numOf(x))<0});
+      var curP=leadNumList(dupRow.phone),curL=leadNumList(dupRow.landline);
+      var haveKeys=curP.concat(curL).map(leadNumKey);
+      var addM=[],addT=[];
+      mobList.forEach(function(x){
+        var k=leadNumKey(x);
+        if(haveKeys.indexOf(k)<0){haveKeys.push(k);addM.push(x)}
+      });
+      telList.forEach(function(x){
+        var k=leadNumKey(x);
+        if(haveKeys.indexOf(k)<0){haveKeys.push(k);addT.push(x)}
+      });
       var ctPatch={};
-      if(addM.length)ctPatch.phone=JSON.stringify(curP.filter(Boolean).concat(addM));
-      if(addT.length)ctPatch.landline=JSON.stringify(curL.filter(Boolean).concat(addT));
+      if(addM.length)ctPatch.phone=JSON.stringify(curP.concat(addM));
+      if(addT.length)ctPatch.landline=JSON.stringify(curL.concat(addT));
       if(enteredDate&&!String(dupRow.entered_date||'').trim())ctPatch.entered_date=enteredDate;
+      // 档案里这条只有号码没名字（以前只按号码认人时会这样），公告给了名字就补上
+      if(!String(dupRow.name||'').trim()&&String(l.contact_name||'').trim())ctPatch.name=String(l.contact_name).trim();
+      out.phoneAdded=addM.length+addT.length;
       if(Object.keys(ctPatch).length){
         var uw=await safeWriteContacts('update',ctPatch,dupRow.id);
         if(uw.hit){
@@ -988,8 +1119,25 @@ async function leadToClientProfile(l){
     if(String(allClients[ri].id)===String(out.clientId)){row=allClients[ri];break}
   }
   if(!row)row={id:out.clientId,projects:'[]'};
-  out.projectAdded=await leadAppendProject(row,l,ownerName,ownerCid);
+  var pr=await leadAppendProject(row,l,ownerName,ownerCid);
+  out.projectAdded=!!pr.added;
+  out.projectFilled=!!pr.filled;
   return out;
+}
+
+/**
+ * 审核完成后的一句话补充：让人看得出「核对」到底核对出什么。
+ * 新建客户时项目/联系人本来就是一条，不用再报；并入已有客户才值得说清楚，
+ * 否则销售会以为又建了一条重复项目。
+ */
+function leadMergeSummary(r){
+  if(!r||r.created)return '';
+  var bits=[];
+  if(r.projectAdded)bits.push('新增项目 1');
+  else if(r.projectFilled)bits.push('项目已存在，补全信息');
+  if(r.contactAdded)bits.push('新增联系人 1');
+  else if(r.phoneAdded)bits.push('补号码 '+r.phoneAdded+' 个');
+  return bits.length?('（'+bits.join(' · ')+'）'):'';
 }
 
 /** 同意一条：直接落成客户档案（客户列表里马上能看到），线索标记已转化 */
@@ -1008,7 +1156,7 @@ async function approveLead(id){
   pendingLeads=(pendingLeads||[]).filter(function(x){return String(x.id)!==String(id)});
   renderPendingLeads();
   await Promise.all([loadPoolLeads(),loadClients()]);
-  showToast(r.created?('已创建客户「'+r.clientName+'」'):('已并入客户「'+r.clientName+'」'));
+  showToast(r.created?('已创建客户「'+r.clientName+'」'):('已并入客户「'+r.clientName+'」'+leadMergeSummary(r)));
 }
 
 /** 忽略一条：pending → junk。不删除，误点了还能从「无效」筛回来 */
@@ -1027,7 +1175,9 @@ async function rejectLead(id){
 async function approveAllPending(){
   var n=(pendingLeads||[]).length;
   if(!n){showToast('没有待审核的线索');return}
-  var yes=await uiConfirm('剩下的 '+n+' 条会全部通过审核，并直接创建成客户档案（客户库里已有同名的只补联系人，不会重复建档）。'
+  var yes=await uiConfirm('剩下的 '+n+' 条会全部通过审核，并直接创建成客户档案。'
+    +'客户库里已有同名的不会重复建档：同一个标的（招标编号或项目名相同）只把空着的预算/日期/负责人补全，新标的才新增；'
+    +'联系人是同一个人（同名或同号）只补他没存过的号码，已有的电话不会再写一遍。'
     +'机器抓的难免有同名不同单位、代理机构混进采购人的情况，建议先逐条看过。',
     {okText:'全部通过',cancelText:'再看看',danger:false});
   if(yes)await doApproveAll();
@@ -1038,7 +1188,7 @@ async function doApproveAll(){
   var list=(pendingLeads||[]).slice();
   if(!list.length)return;
   showToast('正在建客户…');
-  var ok=0,joined=0,fail=0;
+  var ok=0,joined=0,fail=0,newP=0,newC=0;
   for(var i=0;i<list.length;i++){
     var l=list[i];
     var r=await leadToClientProfile(l);
@@ -1050,9 +1200,13 @@ async function doApproveAll(){
     },l.id,{allowProxy:false});
     if(!w.hit){fail++;continue}
     if(r.created)ok++;else joined++;
+    if(r.projectAdded)newP++;
+    if(r.contactAdded)newC++;
   }
   await Promise.all([loadPendingLeads(),loadPoolLeads(),loadClients()]);
-  showToast('新建客户 '+ok+' 家'+(joined?('、并入已有 '+joined+' 家'):'')+(fail?('，失败 '+fail+' 条'):''));
+  showToast('新建客户 '+ok+' 家'+(joined?('、并入已有 '+joined+' 家'):'')
+    +(newP?('、新增项目 '+newP+' 个'):'')+(newC?('、新增联系人 '+newC+' 位'):'')
+    +(fail?('，失败 '+fail+' 条'):''));
 }
 
 /** 采集站点 → 卡片徽标上的短名。全称「招标公告 · 重庆市公共资源交易网」会把徽标挤满一行 */
@@ -1707,7 +1861,7 @@ async function convertLeadToClient(id){
     status:'converted',client_id:r.clientId,converted_client_id:r.clientId,converted_at:now,updated_at:now
   },id,{allowProxy:false});
   await Promise.all([loadClients(),loadPoolLeads(),loadLeads()]);
-  showToast(r.created?('已创建客户「'+r.clientName+'」'):('已并入客户「'+r.clientName+'」'));
+  showToast(r.created?('已创建客户「'+r.clientName+'」'):('已并入客户「'+r.clientName+'」'+leadMergeSummary(r)));
 }
 
 function openLeadImport(){
