@@ -1210,7 +1210,7 @@ async function doApproveAll(){
 }
 
 /** 采集站点 → 卡片徽标上的短名。全称「招标公告 · 重庆市公共资源交易网」会把徽标挤满一行 */
-var LEAD_SITE_LABEL={'cqggzy.com':'交易网','gec123.com':'行采家','ccgp.gov.cn':'政采网'};
+var LEAD_SITE_LABEL={'cqggzy.com':'交易网','gec123.com':'行采家','ccgp.gov.cn':'政采网','ccgp-chongqing.gov.cn':'重庆政采','xj.ccgp-chongqing.gov.cn':'竞采中心'};
 
 /**
  * 客户属性（客户表单最上面那排「客户属性 *」多选）。
