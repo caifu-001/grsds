@@ -42,6 +42,8 @@ async function showLeads(){
   document.getElementById('topbar-title').textContent='线索公海';
   document.getElementById('main-fab').classList.add('hidden');
   await loadPoolLeads();
+  // 13 模块的待审核区：定义在后，运行时一定已加载，但守一手别把公海一起带挂
+  if(typeof loadPendingLeads==='function')await loadPendingLeads();
 }
 function closeDir(){
   var ds=document.getElementById('dir-screen');

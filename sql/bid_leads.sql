@@ -49,3 +49,6 @@ where table_schema = 'public' and table_name = 'lead_pool'
                       'buyer_norm','auto_fetched','contact_mobile','contact_addr',
                       'agency_name','agency_phone','attachments')
 order by column_name;
+
+-- 审核闸门字段见 sql/lead_review.sql（采集先落「待审核」，人工点同意才进公海）。
+-- 新建环境请依次执行：bid_leads.sql → lead_review.sql

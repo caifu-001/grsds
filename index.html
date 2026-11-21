@@ -9,7 +9,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👔</text></svg>">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<link rel="stylesheet" href="css/app.css?v=1570811f">
+<link rel="stylesheet" href="css/app.css?v=d78a1418">
 
 <!-- 百度地图改为按需加载（见 js/app_v2.js 的 ensureBaiduMap），避免首屏同步阻塞 -->
 </head>
@@ -2150,7 +2150,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 <script src="js/modules/02-auth.js?v=83e65c71"></script>
 <script src="js/modules/03-settings.js?v=1eb73362"></script>
 <script src="js/modules/04-client-list.js?v=67661223"></script>
-<script src="js/modules/05-client-detail.js?v=0d554d67"></script>
+<script src="js/modules/05-client-detail.js?v=00c8f326"></script>
 <script src="js/modules/06-client-tools.js?v=8e08fe03"></script>
 <script src="js/modules/07-orders.js?v=799264d1"></script>
 <script src="js/modules/08-admin.js?v=d16f5cf8"></script>
@@ -2158,7 +2158,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 <script src="js/modules/10-charts.js?v=5122efef"></script>
 <script src="js/modules/11-inventory.js?v=def5b4e8"></script>
 <script src="js/modules/12-performance.js?v=398faa67"></script>
-<script src="js/modules/13-crm360.js?v=58a7791a"></script>
+<script src="js/modules/13-crm360.js?v=5f7eeb72"></script>
 <script src="js/modules/14-hr-config.js?v=08066fa1"></script>
 <script src="js/modules/15-workflow.js?v=11a24d5e"></script>
 <script src="js/modules/16-projects.js?v=9faeaceb"></script>
@@ -2173,6 +2173,20 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 
 <div id="leads-view" class="hidden">
   <div class="stats-bar" id="leads-stats-bar"></div>
+  <!-- 自动采集的招标信息先进这里，人工点同意才进公海 -->
+  <div id="pending-panel" class="pending-panel hidden">
+    <div class="pending-head">
+      <div class="pending-title">🆕 自动采集待审核 <span id="pending-count">0</span></div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button class="btn-sm" style="background:#fff;color:var(--success);border:1px solid var(--success)" onclick="approveAllPending()">全部同意</button>
+        <button class="btn-sm" style="background:#fff;color:var(--text2);border:1px solid var(--border)" id="pending-fold" onclick="pendingToggle()">收起 ▴</button>
+      </div>
+    </div>
+    <div class="pending-tip">这些是自动从招标网抓来的，还没进公海。确认是真项目、联系人对得上，再点「同意入库」。</div>
+    <div id="pending-body">
+      <div class="client-grid" id="pending-grid"></div>
+    </div>
+  </div>
   <div class="toolbar" style="position:static">
     <select id="lead-pool-filter" onchange="renderPoolLeads()"><option value="all">全部状态</option><option value="new">新线索</option><option value="assigned">已分配</option><option value="contacted">已联系</option><option value="converted">已转化</option><option value="recycled">已回收</option><option value="junk">无效</option></select>
     <div class="search-wrap"><input id="lead-pool-search" placeholder="搜索线索..." oninput="renderPoolLeads()"></div>

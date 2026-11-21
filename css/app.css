@@ -1164,6 +1164,21 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
 .lead-status-badge.converted{background:#8B5CF6}
 .lead-status-badge.recycled{background:#EF4444}
 .lead-status-badge.junk{background:#94A3B8}
+.lead-status-badge.pending{background:#F97316}
+/* ===== 自动采集待审核区 ===== */
+.pending-panel{margin:0 16px 12px;background:var(--card);border:1px solid #F97316;border-left-width:4px;border-radius:12px;padding:10px 12px;box-shadow:var(--shadow)}
+.pending-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
+.pending-title{font-size:14px;font-weight:700;color:var(--text)}
+.pending-title span{display:inline-block;min-width:20px;text-align:center;background:#F97316;color:#fff;border-radius:10px;padding:1px 7px;font-size:12px;margin-left:2px}
+.pending-tip{font-size:11px;color:var(--text3);line-height:1.5;margin-bottom:8px}
+.pending-panel .client-grid{margin:0}
+/* 一次可能积压几十条，不限高会把下面公海整个挤出屏幕。
+   限高 + 内部滚动：待审核区最多占六成屏，公海始终露得出来。 */
+#pending-body{max-height:62vh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-right:2px}
+.pending-card{border-color:#FDBA74;margin-bottom:8px}
+.pending-card:last-child{margin-bottom:0}
+/* 「为什么抓进来」——采集日志摘要，单行省略，title 看全 */
+.pending-why{font-size:11px;color:var(--text3);margin-top:2px;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lead-actions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
 .lead-actions button{padding:5px 12px;border-radius:6px;font-size:11px;border:1px solid var(--border);cursor:pointer;background:#fff;color:var(--text);font-weight:500;transition:all .15s}
 .lead-actions button:active{background:var(--bg);transform:scale(.95)}

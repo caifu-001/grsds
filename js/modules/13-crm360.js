@@ -693,11 +693,117 @@ var poolLeads=[];
 async function loadPoolLeads(){
   try{
   // Lead pool: unassigned leads only, exclude converted
+  // status='pending' 是「自动采集待审核」，还没入库，不能混进公海让人当线索打
   var {data,error}=await sb.from('lead_pool').select('*').eq('company_id',currentCompanyId).is('assigned_to',null).neq('status','converted').neq('status','junk').order('updated_at',{ascending:false});
   if(error){console.error('loadPoolLeads:',error);}
-  poolLeads=data||[];
+  // 待审核的还没入库：本地过滤掉。不用 neq 参数是因为 review_status 列没建时
+  // 整个查询会 42703 报错，公海直接空掉——本地过滤能安全降级（undefined !== 'pending'）
+  poolLeads=(data||[]).filter(function(l){return l.review_status!=='pending'});
   }catch(e){console.error('loadPoolLeads exception:',e);poolLeads=[]}
   renderPoolLeads();
+}
+
+// ===== 自动采集待审核区 =====
+// 采集脚本写进来的是 status='pending'，不直接进公海。
+// 人点「同意入库」才变 new，点「忽略」变 junk（不删，误删能从「无效」筛回来）。
+var pendingLeads=[];
+var pendingOpen=true;
+async function loadPendingLeads(){
+  try{
+    var {data,error}=await sb.from('lead_pool').select('*').eq('company_id',currentCompanyId).eq('review_status','pending').order('updated_at',{ascending:false});
+    if(error)console.error('loadPendingLeads:',error);
+    pendingLeads=data||[];
+  }catch(e){console.error('loadPendingLeads exception:',e);pendingLeads=[]}
+  renderPendingLeads();
+}
+
+function pendingToggle(){
+  pendingOpen=!pendingOpen;
+  var body=document.getElementById('pending-body');
+  var btn=document.getElementById('pending-fold');
+  if(body)body.style.display=pendingOpen?'':'none';
+  if(btn)btn.textContent=pendingOpen?'收起 ▴':'展开 ▾';
+}
+
+function renderPendingLeads(){
+  var box=document.getElementById('pending-panel');
+  if(!box)return;
+  var list=pendingLeads||[];
+  if(!list.length){box.classList.add('hidden');return}
+  box.classList.remove('hidden');
+  var cnt=document.getElementById('pending-count');
+  if(cnt)cnt.textContent=String(list.length);
+  var grid=document.getElementById('pending-grid');
+  if(!grid)return;
+  var body=document.getElementById('pending-body');
+  if(body)body.style.display=pendingOpen?'':'none';
+  var html='';
+  for(var i=0;i<list.length;i++){
+    var l=list[i];
+    html+='<div class="lead-card pending-card">';
+    html+='<div class="lead-name">'+h(l.name)+'</div>';
+    if(l.project_name)html+='<div class="lead-project" style="font-size:12px;color:var(--text2);margin-bottom:4px">📋 '+h(l.project_name)+'</div>';
+    html+='<div class="lead-contact">'+leadContactHtml(l)+'</div>';
+    html+=leadFetchedMetaHtml(l);
+    // 采集失败时至少把「为什么判断是这条」露出来，方便人工排除误抓
+    if(l.notes)html+='<div class="pending-why" title="'+h(l.notes)+'">'+h(String(l.notes).slice(0,120))+'</div>';
+    html+='<div class="lead-actions">';
+    html+='<button class="btn-lead-success" onclick="event.stopPropagation();approveLead(\''+l.id+'\')">✓ 同意入库</button>';
+    html+='<button class="btn-lead-danger" onclick="event.stopPropagation();rejectLead(\''+l.id+'\')">✗ 忽略</button>';
+    html+='<button class="btn-lead-primary" onclick="event.stopPropagation();openLeadForm(\''+l.id+'\')">编辑</button>';
+    html+='</div></div>';
+  }
+  grid.innerHTML=html;
+}
+
+/** 同意一条：pending → new，进入公海正常流转 */
+async function approveLead(id){
+  var r=await safeWriteById('lead_pool','update',{review_status:'approved',reviewed_at:new Date().toISOString(),status:'new',updated_at:new Date().toISOString()},id,{allowProxy:false});
+  if(!r.hit){
+    showToast('入库失败：'+((r.error&&r.error.message)||'没有写入权限'));
+    return;
+  }
+  pendingLeads=(pendingLeads||[]).filter(function(x){return x.id!==id});
+  renderPendingLeads();
+  await loadPoolLeads();
+  showToast('已入库，在下方公海等待分配');
+}
+
+/** 忽略一条：pending → junk。不删除，误点了还能从「无效」筛回来 */
+async function rejectLead(id){
+  var r=await safeWriteById('lead_pool','update',{review_status:'rejected',reviewed_at:new Date().toISOString(),status:'junk',updated_at:new Date().toISOString()},id,{allowProxy:false});
+  if(!r.hit){
+    showToast('忽略失败：'+((r.error&&r.error.message)||'没有写入权限'));
+    return;
+  }
+  pendingLeads=(pendingLeads||[]).filter(function(x){return x.id!==id});
+  renderPendingLeads();
+  showToast('已忽略');
+}
+
+/** 剩下的都是好线索时才用。先弹确认，避免手滑把噪音整批放进公海 */
+async function approveAllPending(){
+  var n=(pendingLeads||[]).length;
+  if(!n){showToast('没有待审核的线索');return}
+  var yes=await uiConfirm('剩下的 '+n+' 条自动采集线索会全部进入公海，销售可以直接认领跟进。'
+    +'建议先逐条看过再点——机器抓的难免有同名不同单位、代理机构混进采购人的情况。',
+    {okText:'确认全部入库',cancelText:'再看看',danger:false});
+  if(yes)await doApproveAll();
+}
+
+/** 真正执行批量入库。逐条写，单条失败不影响其它条 */
+async function doApproveAll(){
+  var ids=(pendingLeads||[]).map(function(x){return x.id});
+  if(!ids.length)return;
+  showToast('正在入库…');
+  var ok=0,fail=0;
+  for(var i=0;i<ids.length;i++){
+    var r=await safeWriteById('lead_pool','update',{review_status:'approved',reviewed_at:new Date().toISOString(),status:'new',updated_at:new Date().toISOString()},ids[i],{allowProxy:false});
+    if(r.hit)ok++;else fail++;
+  }
+  await loadPendingLeads();
+  await loadPoolLeads();
+  showToast('已入库 '+ok+' 条'+(fail?('，失败 '+fail+' 条（可能没有写入权限）'):''));
 }
 
 /**
@@ -773,7 +879,7 @@ function renderLeads(){
   var grid=document.getElementById('sales-lead-grid'),empty=document.getElementById('sales-lead-empty');
   if(!list.length){grid.innerHTML='';if(empty)empty.classList.remove('hidden');return}
   if(empty)empty.classList.add('hidden');
-  var statusMap={new:'新线索',assigned:'已分配',contacted:'已联系',converted:'已转化',recycled:'已回收',junk:'无效'};
+  var statusMap={new:'新线索',pending:'待审核',assigned:'已分配',contacted:'已联系',converted:'已转化',recycled:'已回收',junk:'无效'};
   var html='';
   for(var i=0;i<list.length;i++){
     var l=list[i];
@@ -817,7 +923,7 @@ function renderPoolLeads(){
   var grid=document.getElementById('lead-grid'),empty=document.getElementById('lead-empty');
   if(!list.length){grid.innerHTML='';if(empty)empty.classList.remove('hidden');return}
   if(empty)empty.classList.add('hidden');
-  var statusMap={new:'新线索',assigned:'已分配',contacted:'已联系',converted:'已转化',recycled:'已回收',junk:'无效'};
+  var statusMap={new:'新线索',pending:'待审核',assigned:'已分配',contacted:'已联系',converted:'已转化',recycled:'已回收',junk:'无效'};
   var html='';
   for(var i=0;i<list.length;i++){
     var l=list[i];
@@ -1005,7 +1111,7 @@ function openLeadForm(id){
   document.getElementById('lf-creator').value='';
   document.getElementById('lf-created-at').value='';
   if(id){
-    var l=(allLeads||[]).concat(poolLeads||[]).find(function(x){return x.id==id||String(x.id)===String(id)});
+    var l=(allLeads||[]).concat(poolLeads||[]).concat(pendingLeads||[]).find(function(x){return x.id==id||String(x.id)===String(id)});
     if(l){
       document.getElementById('lf-name').value=l.name||'';
       document.getElementById('lf-contact-name').value=l.contact_name||'';
@@ -1096,6 +1202,7 @@ async function saveLead(){
   }
   closeLeadForm();
   await loadPoolLeads();
+  if(typeof loadPendingLeads==='function')await loadPendingLeads();
   if(currentUser&&currentUser.id)await loadLeads();
   showToast(leadEditId?'已更新':'已创建');
 }
