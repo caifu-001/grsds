@@ -1188,6 +1188,11 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
 .card-name-row .lead-status-badge{flex:0 0 auto}
 .card-fetch{font-size:11px;color:var(--text3);display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-top:6px}
 .card-fetch a,.card-fetch span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* 中标行：结果公告回填进来的「谁中了、多少钱」。
+   绿色实底太抢眼，用浅绿药丸 + 深绿字，和来源那行小字区分开就行 */
+.card-win{display:inline-flex;align-items:center;max-width:100%;font-size:11px;line-height:18px;
+  padding:1px 7px;margin:0 0 4px;border-radius:9px;background:#ecfdf3;color:#067647;
+  border:1px solid #abefc6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* 卡片内操作区：跟上面的信息用虚线隔开，别跟联系电话糊在一起；贴底对齐，同排按钮才在一条线上 */
 .client-card .lead-actions{margin-top:auto;padding-top:8px;border-top:1px dashed var(--border)}
 .lead-as-client .pending-why{margin-bottom:0}

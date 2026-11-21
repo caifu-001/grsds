@@ -880,6 +880,12 @@ async function leadAppendProject(clientRow,l,ownerName,ownerCid){
     if(key&&leadProjKey(e.project_name)===key){hit=e;break}
   }
   var dateStr=l.publish_date?String(l.publish_date).slice(0,10):'';
+  // 结果公告已经回填过中标信息（sync-results.js）：建客户 / 并入项目时一起写进去，
+  // 客户 360 里点开项目就能看到「中标公司 / 中标金额」。
+  var winInfo=leadWinOf(l);
+  var winCos=winInfo?String(winInfo.bidder||'').split('、').filter(Boolean):[];
+  var winAmt=(winInfo&&winInfo.amount>0)?String(Math.round(winInfo.amount)):'';
+  var winPacks=(winInfo&&winInfo.packsN>1)?winInfo.packs:[];
   var notes=[];
   if(l.project_no)notes.push('招标编号 '+l.project_no);
   if(l.source_url)notes.push('公告原文 '+l.source_url);
@@ -896,6 +902,21 @@ async function leadAppendProject(clientRow,l,ownerName,ownerCid){
       var hasCid=hit.client_owners.some(function(o){return String(o&&o.cid)===String(ownerCid)});
       if(!hasCid){hit.client_owners.push({name:ownerName,cid:ownerCid});changed=true}
     }
+    // 中标信息同样只补空：人工填过真实成交价的，采集的公告值不覆盖
+    if(winAmt&&!String(hit.bid_amount||'').trim()){hit.bid_amount=winAmt;changed=true}
+    if(winCos.length&&!String(hit.bidder_company||'').trim()){hit.bidder_company=winCos.join('、');changed=true}
+    if(winCos.length&&!(Array.isArray(hit.bidder_companies)&&hit.bidder_companies.length)){
+      hit.bidder_companies=winCos.map(function(n){return{name:n}});changed=true;
+    }
+    if(winPacks.length&&!(Array.isArray(hit.packages)&&hit.packages.length)){
+      hit.packages=winPacks.map(function(p,i){
+        return{
+          name:'包'+(p.no||(i+1)),
+          bid_amount:Number(p.amount)>0?String(Math.round(Number(p.amount))):'',
+          bidders:String(p.bidder||'').split('、').filter(Boolean).map(function(n){return{name:n}})
+        };
+      });changed=true;
+    }
     var oldNotes=String(hit.notes||'');
     if(l.project_no&&oldNotes.indexOf(String(l.project_no))<0){
       hit.notes=(oldNotes?oldNotes+'；':'')+'招标编号 '+l.project_no;changed=true;
@@ -908,14 +929,25 @@ async function leadAppendProject(clientRow,l,ownerName,ownerCid){
     var entry={
       project_name:pname,
       bidding_date:dateStr||null,
-      bidder_name:'',bidder_phone:'',bidder_company:'',
+      bidder_name:'',bidder_phone:'',bidder_company:winCos.join('、'),
       project_budget:Number(l.budget)>0?String(Math.round(Number(l.budget))):'',
-      bid_amount:'',
+      bid_amount:winAmt,
       client_owner:ownerName||'',
       notes:notes.join('；')
     };
     // 甲方负责人：cid 是真相，name 只是快照。刚建的联系人这时已经有 id 了
     if(ownerName)entry.client_owners=[ownerCid?{name:ownerName,cid:ownerCid}:{name:ownerName}];
+    // 中标公司多值 / 分包明细：旧链路读 bidder_company 单串，新链路读这两个数组
+    if(winCos.length)entry.bidder_companies=winCos.map(function(n){return{name:n}});
+    if(winPacks.length){
+      entry.packages=winPacks.map(function(p,i){
+        return{
+          name:'包'+(p.no||(i+1)),
+          bid_amount:Number(p.amount)>0?String(Math.round(Number(p.amount))):'',
+          bidders:String(p.bidder||'').split('、').filter(Boolean).map(function(n){return{name:n}})
+        };
+      });
+    }
     projs.push(entry);
     res.added=true;
   }
@@ -1288,6 +1320,61 @@ function leadCardTypesHtml(l){
  * 项目名普遍三十字往上，所以金额和负责人用 · 接在后面，只截前面几个字，
  * 完整信息（编号/日期/地区）全留在 title 里。
  */
+/**
+ * 这条线索的中标信息（结果公告回填进来的）。
+ * 正常情况下采集脚本写 win_bidder / win_amount / win_packages；
+ * 但 win_* 是三列新字段，要跑过 sql/lead_result_win.sql 才有——列没建时脚本
+ * 只能把「中标 xxx 万 · 中标人 xxx」写进 notes。两种都认，卡片不至于空着。
+ * @returns {{bidder:string,amount:number,packs:object[],packsN:number}|null}
+ */
+function leadWinOf(l){
+  l=l||{};
+  var bidder=String(l.win_bidder||'').trim();
+  var amount=Number(l.win_amount)>0?Number(l.win_amount):0;
+  var packs=Array.isArray(l.win_packages)?l.win_packages.filter(Boolean):[];
+  var date=String(l.win_date||'').slice(0,10);
+  if(!bidder&&!amount){
+    var nt=String(l.notes||'');
+    if(nt.indexOf('中标')<0)return null;
+    var mb=nt.match(/中标人\s+([^·；]+)/);
+    if(mb)bidder=mb[1].trim();
+    var ma=nt.match(/中标\s+([\d.]+)\s*万/);
+    if(ma)amount=Math.round(parseFloat(ma[1])*10000);
+    else{
+      var ma2=nt.match(/中标\s+([\d,]+)\s*元/);
+      if(ma2)amount=Number(String(ma2[1]).replace(/,/g,''))||0;
+    }
+  }
+  if(!bidder&&!amount)return null;
+  return {bidder:bidder,amount:amount,packs:packs,packsN:packs.length,date:date};
+}
+
+/**
+ * 中标行：「🏆 中标 579.58万 · 中电智安科技有限公司」。
+ * 中标了说明预算落地、项目真的在干；中标价还能反推自己的报价空间。
+ * 中标人可能有 4 家（多包 / 联合体），气泡里只放前两家，全名和分包放 title。
+ */
+function leadWinHtml(l){
+  var w=leadWinOf(l);
+  if(!w)return '';
+  var bits=[];
+  if(w.amount>0)bits.push('中标 '+formatMoney(w.amount));
+  if(w.packsN>1)bits.push(w.packsN+'包');
+  var names=String(w.bidder||'').split('、').filter(Boolean);
+  var coShow=names.length>2?(names.slice(0,2).join('、')+' 等'+names.length+'家'):names.join('、');
+  var tip=['中标人：'+(w.bidder||'-')];
+  if(w.amount>0)tip.push('中标金额：'+formatMoney(w.amount));
+  if(w.packsN>1){
+    for(var i=0;i<w.packsN;i++){
+      var pk=w.packs[i]||{};
+      tip.push('包'+(pk.no||(i+1))+':'+(pk.bidder||'-')+(Number(pk.amount)>0?(' '+formatMoney(pk.amount)):''));
+    }
+  }
+  if(w.date)tip.push('中标公告：'+w.date);
+  return '<div class="card-win" title="'+h(tip.join(' / '))+'">🏆 '+h(bits.join(' · '))
+    +(coShow?(' · '+h(coShow)):'')+'</div>';
+}
+
 function leadCardProjectHtml(l){
   l=l||{};
   var name=String(l.project_name||'').trim();
@@ -1423,6 +1510,7 @@ function leadClientCardHtml(l,opts){
     +'<span class="lead-status-badge '+h(stCls)+'">'+h(stTxt)+'</span></div>';
   if(addr)html+='<div class="card-addr" title="'+h(addr)+'">📍 '+h(addr)+'</div>';
   html+=leadCardProjectHtml(l);
+  html+=leadWinHtml(l);
   html+=leadContactHtml(l);
   // 品目、关键词这类「为什么抓进来」的信息并到最后一行，不再单独占一行
   var extra=[];
