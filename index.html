@@ -9,7 +9,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👔</text></svg>">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<link rel="stylesheet" href="css/app.css?v=64b5a74f">
+<link rel="stylesheet" href="css/app.css?v=9ef04312">
 
 <!-- 百度地图改为按需加载（见 js/app_v2.js 的 ensureBaiduMap），避免首屏同步阻塞 -->
 </head>
@@ -2158,7 +2158,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 <script src="js/modules/10-charts.js?v=5122efef"></script>
 <script src="js/modules/11-inventory.js?v=def5b4e8"></script>
 <script src="js/modules/12-performance.js?v=398faa67"></script>
-<script src="js/modules/13-crm360.js?v=93480231"></script>
+<script src="js/modules/13-crm360.js?v=cdc7ee47"></script>
 <script src="js/modules/14-hr-config.js?v=08066fa1"></script>
 <script src="js/modules/15-workflow.js?v=11a24d5e"></script>
 <script src="js/modules/16-projects.js?v=9faeaceb"></script>
@@ -2665,7 +2665,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
   <h3 id="lead-form-title">新建线索</h3>
   <div class="form-group" style="position:relative"><label>公司/单位名称 *</label><input id="lf-name" placeholder="🔍 搜索客户库选择公司..." autocomplete="off" oninput="onLeadCompanyInput()" onkeydown="onLeadCompanyKey(event)"><div class="name-suggestions hidden" id="lead-name-suggestions"></div><input type="hidden" id="lf-client-id" value=""></div>
   <div class="form-group" style="position:relative"><label>联系人 <a href="javascript:void(0)" onclick="onLeadContactPicker()" style="font-size:11px;color:var(--primary);margin-left:6px">[切换联系人]</a></label><input id="lf-contact-name" placeholder="选择客户后自动填充" readonly style="background:var(--bg2);color:var(--text3)"><div class="name-suggestions hidden" id="lead-contact-suggestions"></div></div>
-  <div class="form-group"><label>联系人电话</label><textarea id="lf-contact-phone" placeholder="选择客户后自动填充（多号分行）" readonly style="background:var(--bg2);color:var(--text3);resize:vertical;min-height:38px" rows="2"></textarea></div>
+  <div class="form-group"><label>联系人电话</label><textarea id="lf-contact-phone" placeholder="手机号 / 座机，每行一个（第一行是手机就会存成手机号）" style="resize:vertical;min-height:38px" rows="2" oninput="this.value=this.value.replace(/[ \t]+/g,'')"></textarea></div>
   <div class="form-group"><label>联系人邮箱</label><input id="lf-contact-email" placeholder="选择客户后自动填充" readonly style="background:var(--bg2);color:var(--text3)"></div>
   <div class="form-row">
    <div class="form-group"><label>来源</label><select id="lf-source"><option value="">请选择</option><option value="自主开发">自主开发</option><option value="客户介绍">客户介绍</option><option value="展会">展会</option><option value="网络推广">网络推广</option><option value="电话营销">电话营销</option><option value="合作伙伴">合作伙伴</option><option value="其他">其他</option></select></div>
@@ -2686,7 +2686,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
   </div>
   <div class="form-row">
    <div class="form-group"><label>客户类型 *</label><select id="lf-customer-type" onchange="onLeadTypeChange()"><option value="">请选择</option><option value="B2B">B2B 企业客户</option><option value="B2C">B2C 个人客户</option></select></div>
-   <div class="form-group"><label>统一社会信用代码</label><input id="lf-credit-code" placeholder="B2B客户填写" readonly style="background:var(--bg2);color:var(--text3)"></div><div class="form-group"><label>客户地址</label><input id="lf-address" placeholder="选择客户后自动填充" readonly style="background:var(--bg2);color:var(--text3)"></div>
+   <div class="form-group"><label>统一社会信用代码</label><input id="lf-credit-code" placeholder="B2B客户填写" readonly style="background:var(--bg2);color:var(--text3)"></div><div class="form-group"><label>客户地址</label><input id="lf-address" placeholder="详细地址"></div>
   </div>
   <div class="form-row">
    <div class="form-group"><label>归属销售</label><input id="lf-assigned-sales" placeholder="销售人员姓名"></div>

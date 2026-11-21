@@ -1181,6 +1181,8 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
 .pending-why{font-size:11px;color:var(--text3);margin-top:2px;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* 线索卡片复用客户卡片样式后补的两处：标题行（名称 + 状态徽标）、采集元信息行 */
 .lead-as-client{display:flex;flex-direction:column}
+/* 招标项目名普遍三十字往上：气泡给两行，否则末尾的预算金额会被整段截掉 */
+.lead-as-client .card-project-tag{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;white-space:normal;overflow:hidden;line-height:1.55}
 .card-name-row{display:flex;align-items:center;gap:6px;margin-bottom:8px}
 .card-name-row .card-name{margin-bottom:0;flex:1;min-width:0}
 .card-name-row .lead-status-badge{flex:0 0 auto}
