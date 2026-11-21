@@ -772,11 +772,13 @@ function leadIndustryOf(l){
   var opts=['信息技术','制造业','建筑业','金融','教育','医疗','政府','能源','零售','物流','房地产','其他'];
   if(hit&&opts.indexOf(hit)>=0)return hit;
   var n=String(l.name||'');
-  if(/大学|学院|学校|中学|小学|幼儿园|教育局|教委/.test(n))return '教育';
-  if(/医院|卫生院|疾控|妇幼|保健院|血站/.test(n))return '医疗';
-  if(/人民政府|管委会|街道办|委员会|公安局|法院|检察院|局$|厅$|办公室/.test(n))return '政府';
+  if(leadIsEdu(n))return '教育';
+  if(/医院|卫生院|疾控|疾病预防|妇幼|保健院|血站|医疗|卫生/.test(n))return '医疗';
+  if(/人民政府|管委会|街道办|委员会|公安局|法院|检察院|局$|厅$|办公室|管理处|管理站|管理所|人防|航道/.test(n))return '政府';
   if(/电网|电力|燃气|能源|石油|石化/.test(n))return '能源';
   if(/银行|保险|证券|信托|基金/.test(n))return '金融';
+  if(/建设|建筑|工程|施工/.test(n))return '建筑业';
+  if(/制造|实业|工厂|食品|材料|装备|机械|建材|化工/.test(n))return '制造业';
   if(/信息|网络|数据|软件|科技|电子|通信|智能/.test(n))return '信息技术';
   return '';
 }
@@ -906,36 +908,49 @@ async function leadToClientProfile(l){
       industry:ctype,source:payload.source,lifecycle_stage:'prospect',notes:payload.notes,
       created_at:new Date().toISOString(),updated_at:new Date().toISOString()});
   }
-  // 联系人：手机进 phone、座机进 landline，和客户详情里的存法一致
-  var mob=String(l.contact_mobile||'').trim();
-  var tel=String(l.contact_phone||'').trim();
-  if(!mob&&/^1[3-9]\d{9}$/.test(tel.replace(/[-－—()（）\s]/g,''))){mob=tel.replace(/[-－—()（）\s]/g,'');tel=''}
-  // 两个字段存了同一个号（采集端有的站点点/手机都填进 phone）时，
-  // 别再往座机里塞一份，否则客户详情里「📱138… / 🖥138…」看着像两个号
-  if(mob&&tel&&tel.replace(/\D/g,'')===mob.replace(/\D/g,''))tel='';
+  // 联系人：手机全进 phone、座机全进 landline。
+  // 一个人可能挂 2~3 个号（座机连写、手机两个），全都存进去，
+  // 不然销售换个号码就打不通，也看不出「这人还有第二个手机」。
+  var phAll=leadPhonesOf(l);
+  var mobList=phAll.mobiles, telList=phAll.telnums;
   var ownerCid='';
   var enteredDate=leadEnteredDate(l);
-  if(mob||tel||l.contact_name){
+  if(mobList.length||telList.length||l.contact_name){
     var ec=await sb.from('contacts').select('id,name,phone,landline,entered_date').eq('client_id',out.clientId).eq('company_id',currentCompanyId);
     var rows=ec.data||[],dupRow=null;
+    var numOf=function(v){return String(v||'').replace(/[^\d]/g,'')};
     for(var i=0;i<rows.length&&!dupRow;i++){
-      var ph=[];
-      try{ph=JSON.parse(rows[i].phone||'[]');if(!Array.isArray(ph))ph=[]}catch(e){ph=[]}
-      try{var ll=JSON.parse(rows[i].landline||'[]');if(Array.isArray(ll))ph=ph.concat(ll)}catch(e){}
-      if(mob&&ph.indexOf(mob)>=0)dupRow=rows[i];
-      else if(!mob&&tel&&ph.indexOf(tel)>=0)dupRow=rows[i];
-      else if(!mob&&!tel&&l.contact_name&&norm(rows[i].name)===norm(l.contact_name))dupRow=rows[i];
+      var cur=[];
+      try{cur=JSON.parse(rows[i].phone||'[]');if(!Array.isArray(cur))cur=[]}catch(e){cur=[]}
+      try{var ll=JSON.parse(rows[i].landline||'[]');if(Array.isArray(ll))cur=cur.concat(ll)}catch(e){}
+      cur=cur.map(numOf).filter(Boolean);
+      var hitMob=mobList.some(function(x){return cur.indexOf(x)>=0});
+      var hitTel=telList.some(function(x){return cur.indexOf(numOf(x))>=0});
+      if(hitMob||hitTel)dupRow=rows[i];
+      else if(!mobList.length&&!telList.length&&l.contact_name&&norm(rows[i].name)===norm(l.contact_name))dupRow=rows[i];
     }
     if(dupRow){
       // 同一个人已经在客户档案里：不重复插，项目里的甲方负责人直接指向他。
-      // 他的录入时间空着就用这条公告的日期补上；人工填过的不动
+      // 新公告带来他没存过的号码就补进去——客户档案里只有 1 个号是常态，
+      // 后面公告再冒出第二个号时，销售应该能看到全部
       ownerCid=dupRow.id;
-      if(enteredDate&&!String(dupRow.entered_date||'').trim()){
-        var uw=await safeWriteContacts('update',{entered_date:enteredDate},dupRow.id);
+      var curP=[],curL=[];
+      try{curP=JSON.parse(dupRow.phone||'[]');if(!Array.isArray(curP))curP=[]}catch(e){curP=[]}
+      try{curL=JSON.parse(dupRow.landline||'[]');if(!Array.isArray(curL))curL=[]}catch(e){curL=[]}
+      var have=curP.concat(curL).map(numOf).filter(Boolean);
+      var addM=mobList.filter(function(x){return have.indexOf(x)<0});
+      var addT=telList.filter(function(x){return have.indexOf(numOf(x))<0});
+      var ctPatch={};
+      if(addM.length)ctPatch.phone=JSON.stringify(curP.filter(Boolean).concat(addM));
+      if(addT.length)ctPatch.landline=JSON.stringify(curL.filter(Boolean).concat(addT));
+      if(enteredDate&&!String(dupRow.entered_date||'').trim())ctPatch.entered_date=enteredDate;
+      if(Object.keys(ctPatch).length){
+        var uw=await safeWriteContacts('update',ctPatch,dupRow.id);
         if(uw.hit){
-          dupRow.entered_date=enteredDate;
           for(var ui=0;ui<(allContacts||[]).length;ui++){
-            if(String(allContacts[ui].id)===String(dupRow.id))allContacts[ui].entered_date=enteredDate;
+            if(String(allContacts[ui].id)===String(dupRow.id)){
+              for(var uk in ctPatch)allContacts[ui][uk]=ctPatch[uk];
+            }
           }
         }
       }
@@ -944,8 +959,8 @@ async function leadToClientProfile(l){
         client_id:out.clientId,
         name:l.contact_name||'',
         dept:'',position:'',room:'',
-        phone:JSON.stringify(mob?[mob]:['']),
-        landline:JSON.stringify(tel?[tel]:['']),
+        phone:JSON.stringify(mobList.length?mobList:['']),
+        landline:JSON.stringify(telList.length?telList:['']),
         email:JSON.stringify(l.contact_email?[l.contact_email]:['']),
         entered_date:enteredDate,
         company_id:currentCompanyId,
@@ -1049,26 +1064,56 @@ var LEAD_SITE_LABEL={'cqggzy.com':'交易网','gec123.com':'行采家','ccgp.gov
  * 两边用同一套标签、同一个 tColor 配色，看起来才是同一个东西。
  */
 var LEAD_TYPE_RULES=[
-  [/大学|学院|学校|中学|小学|幼儿园|教育局|教委/, '教育'],
-  [/医院|卫生院|疾控|妇幼|保健院|血站|医疗卫生/, '医疗'],
-  [/公安|法院|检察院|司法|监狱|戒毒|交警|看守所/, '司法'],
-  [/部队|军分区|警备区|武警|军区|武装部/, '军队'],
-  [/人民政府|管委会|管理委员会|街道办|委员会|办公室|管理局|局$|厅$/, '党政'],
-  [/设计院|规划设计|勘察设计/, '设计院'],
-  [/电信|移动通信|联通|广电|铁塔/, '运营商'],
-  [/^(中国|中铁|中交|中建|中电|中核|国家|华润|招商)/, '国央企']
+  [/医院|卫生院|疾控|疾病预防|预防控制|妇幼|保健院|血站|医疗卫生|医保|医疗保障|医学|卫生/, '医疗'],
+  [/公安|法院|检察院|司法|监狱|戒毒|交警|看守所|仲裁/, '司法'],
+  [/部队|军分区|警备区|武警|军区|武装部|消防/, '军队'],
+  [/人民政府|管委会|管理委员会|街道办|委员会|办公室|管理局|管理处|管理站|管理所|局$|厅$|中心$|研究院|科学院|档案馆|图书馆|人防|航道|地震台/, '党政'],
+  [/设计院|规划设计|勘察设计|勘测设计|建筑设计院/, '设计院'],
+  [/电信|移动通信|联通|广电|铁塔|通信集团/, '运营商'],
+  [/^(中国|中铁|中交|中建|中电|中核|国家|华润|招商|华能|大唐|三峡集团)/, '国央企']
 ];
+/**
+ * 是不是教育口。「学院」不能直接当教育特征——
+ * 「预防医学科学院」「医学院」「设计学院」里也有「学院」，
+ * 一个 regex 会把疾控中心打成教育。宁可多写一个判断函数。
+ */
+function leadIsEdu(nm){
+  nm=String(nm||'');
+  if(/大学|学校|中学|小学|幼儿园|教育局|教委|教育委员会|教育科学研究院|教育评估|教育考试|教育技术|职业技术学院/.test(nm))return true;
+  return /学院/.test(nm)&&!/科学院|医学院|设计学院|研究生院|商学院/.test(nm);
+}
+/**
+ * 机关 / 事业单位的特征词。命中它就不再按企业性质归类，
+ * 否则「重庆市xx集团有限公司」「xx区人民医院有限公司」也会被硬算成制造业。
+ */
+var LEAD_ORG_RE=/局$|厅$|委员会|人民政府|管委会|街道办|办公室|中心|研究院|科学院|大学|学院|学校|医院|疾控|妇幼|法院|检察院|公安|监狱|部队|军分区|设计院/;
+/**
+ * 企业性质：只认名称里明确的行业词。
+ * 「重庆xx建设有限公司」这种没有明确行业词的，宁可只留「甲方」也不乱标——
+ * 客户属性是给人筛客户用的，标错比空着更糟。
+ */
+function leadEnterpriseLabel(nm){
+  if(!nm||LEAD_ORG_RE.test(nm))return '';
+  if(/制造|实业|工厂|厂$|生产|食品|榨菜|材料|装备|机械|建材|化工|钢铁|水泥|纺织|印刷|包装|制药|药业|医药|酒业|乳业|饲料|家具|服装|仪器|电子元件/.test(nm))return '制造业';
+  return '';
+}
 /** 线索应该打哪几个客户属性。建客户时写进 clients.type，卡片上就是这几个徽标 */
 function leadTypeLabels(l){
   l=l||{};
   var nm=String(l.name||'');
   var all=(typeof allTypes==='function')?allTypes():BUILTIN_TYPES;
   var out=['甲方'];
+  var add=function(t){
+    if(!t||t==='甲方')return;
+    if(out.indexOf(t)<0&&all.indexOf(t)>=0)out.push(t);
+  };
+  // 教育要单独判（「学院」在科学院/医学院里也有），且排在最前，徽标顺序跟以前一致
+  if(leadIsEdu(nm))add('教育');
   for(var i=0;i<LEAD_TYPE_RULES.length;i++){
-    var t=LEAD_TYPE_RULES[i][1];
-    if(t==='甲方')continue;
-    if(LEAD_TYPE_RULES[i][0].test(nm)&&out.indexOf(t)<0&&all.indexOf(t)>=0)out.push(t);
+    if(LEAD_TYPE_RULES[i][0].test(nm))add(LEAD_TYPE_RULES[i][1]);
   }
+  // 领域分类（医疗/教育/党政…）和企业性质（制造业）可以同时命中，所以是多选
+  add(leadEnterpriseLabel(nm));
   return out;
 }
 
@@ -1111,22 +1156,70 @@ function leadCardProjectHtml(l){
  * 客户表单里联系人有姓名/部门/职务/房号，招标公告基本只给姓名和电话，
  * 没有的就不渲染（空着），不编造。
  */
+/**
+ * 这个人的所有号码，手机和座机分开。
+ * 同一联系人挂几个号在招标公告里很常见（座机连写、手机两个），
+ * 只显示一个等于让销售「换个号码就打不通」。
+ * 手机和座机必须分流：座机塞进手机栏，发短信失败，导出的名单也是错的。
+ * @returns {{mobiles:string[], telnums:string[]}}
+ */
+function leadPhonesOf(l){
+  l=l||{};
+  var mobs=[],tels=[];
+  function one(s){
+    var d=s.replace(/[^0-9]/g,'');
+    if(/^20\d{6}$/.test(d))return;          // 20251119 这种日期别当号码
+    if(/^1[3-9]\d{9}$/.test(d)){
+      if(mobs.indexOf(d)<0)mobs.push(d);
+    }else if(d.length>=7&&d.length<=13){
+      var key=s.replace(/\s+/g,'');
+      if(tels.indexOf(key)<0&&tels.indexOf(d)<0)tels.push(key);
+    }
+  }
+  function push(v){
+    var s=String(v||'').trim();
+    if(!s)return;
+    // 一段里可能连写多个号：「023-62292550 62293081」。
+    // 拆开逐个认，后一个没带区号就继承前一个的（62293081 → 023-62293081）
+    var parts=s.split(/\s+/).filter(Boolean);
+    if(parts.length<=1){one(s);return}
+    var area='';
+    for(var i=0;i<parts.length;i++){
+      var p=parts[i];
+      var m=p.match(/^(0\d{2,3})[-－—]?\d{7,8}/);
+      if(m)area=m[1];
+      else if(area&&/^\d{7,8}$/.test(p.replace(/\D/g,'')))p=area+'-'+p.replace(/\D/g,'');
+      one(p);
+    }
+  }
+  push(l.contact_mobile);
+  var raw=String(l.contact_phone||'').trim();
+  if(raw.charAt(0)==='['){
+    // 线索表单存多号用 JSON 数组，采集端用 ' / ' 连接，两种都要认
+    try{var arr=JSON.parse(raw);if(Array.isArray(arr))arr.forEach(push)}catch(e){}
+  }else{
+    raw.split(/[\/、,，;；\n]+/).forEach(push);
+  }
+  return {mobiles:mobs,telnums:tels};
+}
+
+/** 手机 / 座机药丸：最多各两个，其余折成 +N，完整列表放 title */
 function leadContactHtml(l){
   l=l||{};
   var out='';
   var nm=String(l.contact_name||'').trim();
   if(nm)out+='<span class="card-contact-count">👤 '+h(nm)+'</span>';
-  var mob=String(l.contact_mobile||'').trim();
-  var tel=String(l.contact_phone||'').trim();
-  if(!mob&&/^1[3-9]\d{9}$/.test(tel.replace(/[-－—()（）\s]/g,''))){mob=tel.replace(/[-－—()（）\s]/g,'');tel=''}
-  if(mob)out+='<a class="contact-phone-link" href="tel:'+h(mob.replace(/[^\d\-\/]/g,'').split('/')[0])+'" onclick="event.stopPropagation()"><span class="ph-icon">📱</span>'+h(mob)+'</a>';
-  if(tel&&tel!==mob){
-    // 座机可能多个（「023-1 / 023-2」）：只把第一个做成可拨链接，其余折成 +N
-    var _ts=tel.split('/').map(function(x){return x.trim()}).filter(Boolean);
-    var _t0=_ts[0]||tel;
-    out+='<a class="contact-phone-link" href="tel:'+h(_t0.replace(/\s+/g,''))+'" onclick="event.stopPropagation()"><span class="ph-icon">📞</span>'+h(_t0)+'</a>';
-    if(_ts.length>1)out+='<span style="font-size:11px;color:var(--text3)" title="'+h(_ts.slice(1).join(' / '))+'">+' +(_ts.length-1)+'</span>';
+  var ph=leadPhonesOf(l);
+  var maxShow=2;
+  var tip=function(a){return h(a.join(' / '))};
+  for(var i=0;i<ph.mobiles.length&&i<maxShow;i++){
+    out+='<a class="contact-phone-link" href="tel:'+h(ph.mobiles[i])+'" title="'+tip(ph.mobiles)+'" onclick="event.stopPropagation()"><span class="ph-icon">📱</span>'+h(ph.mobiles[i])+'</a>';
   }
+  if(ph.mobiles.length>maxShow)out+='<span style="font-size:11px;color:var(--text3)" title="'+tip(ph.mobiles.slice(maxShow))+'">+'+(ph.mobiles.length-maxShow)+'</span>';
+  for(var j=0;j<ph.telnums.length&&j<maxShow;j++){
+    out+='<a class="contact-phone-link" href="tel:'+h(ph.telnums[j].replace(/[^0-9+]/g,''))+'" title="'+tip(ph.telnums)+'" onclick="event.stopPropagation()"><span class="ph-icon">📞</span>'+h(ph.telnums[j])+'</a>';
+  }
+  if(ph.telnums.length>maxShow)out+='<span style="font-size:11px;color:var(--text3)" title="'+tip(ph.telnums.slice(maxShow))+'">+'+(ph.telnums.length-maxShow)+'</span>';
   if(l.contact_email)out+='<a class="contact-phone-link" href="mailto:'+h(l.contact_email)+'" onclick="event.stopPropagation()"><span class="ph-icon">📧</span>'+h(l.contact_email)+'</a>';
   return out?'<div class="card-contact">'+out+'</div>':'';
 }
@@ -1447,16 +1540,11 @@ function openLeadForm(id){
     if(l){
       document.getElementById('lf-name').value=l.name||'';
       document.getElementById('lf-contact-name').value=l.contact_name||'';
-      // 手机、座机都放进同一个输入框（第一行手机），审核时能直接改号码
+      // 手机、座机都放进同一个输入框（第一行手机），审核时能直接改号码。
+      // 一个人多个号就一行一个，保存时再按号码形态分流
       (function(){
-        var lines=[];
-        var mob=String(l.contact_mobile||'').trim();
-        if(mob)lines.push(mob);
-        fmtMulti(l.contact_phone).split('\n').forEach(function(x){
-          x=String(x||'').trim();
-          if(x&&lines.indexOf(x)<0)lines.push(x);
-        });
-        document.getElementById('lf-contact-phone').value=lines.join('\n');
+        var ph=leadPhonesOf(l);
+        document.getElementById('lf-contact-phone').value=ph.mobiles.concat(ph.telnums).join('\n');
       })();
       document.getElementById('lf-contact-email').value=l.contact_email||'';
       var _addrIn=document.getElementById('lf-address');
