@@ -2158,7 +2158,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 <script src="js/modules/10-charts.js?v=5122efef"></script>
 <script src="js/modules/11-inventory.js?v=def5b4e8"></script>
 <script src="js/modules/12-performance.js?v=398faa67"></script>
-<script src="js/modules/13-crm360.js?v=692dbf88"></script>
+<script src="js/modules/13-crm360.js?v=36ea7310"></script>
 <script src="js/modules/14-hr-config.js?v=08066fa1"></script>
 <script src="js/modules/15-workflow.js?v=11a24d5e"></script>
 <script src="js/modules/16-projects.js?v=9faeaceb"></script>
@@ -2178,7 +2178,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
     <div class="pending-head">
       <div class="pending-title">🆕 自动采集待审核 <span id="pending-count">0</span></div>
       <div style="display:flex;gap:6px;align-items:center">
-        <button class="btn-sm" style="background:#fff;color:var(--success);border:1px solid var(--success)" onclick="approveAllPending()">全部通过</button>
+        <button id="btn-approve-all" class="btn-sm" style="background:#fff;color:var(--success);border:1px solid var(--success)" onclick="approveAllPending()">全部通过</button>
         <button class="btn-sm" style="background:#fff;color:var(--text2);border:1px solid var(--border)" id="pending-fold" onclick="pendingToggle()">收起 ▴</button>
       </div>
     </div>

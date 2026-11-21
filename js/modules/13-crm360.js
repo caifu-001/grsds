@@ -1165,13 +1165,32 @@ async function leadToClientProfile(l){
     var ins=await sb.from('clients').insert(payload).select('id');
     var cid=(ins.data&&ins.data[0]&&ins.data[0].id)||null;
     if(!cid){
-      // clients 的读链路本来就走 service_role（admin-proxy），写这里回退不会越权：
-      // 代理会给非超管注入 company_id 并校验范围
-      var pr=await callAdmin('insert','clients',{payload:payload});
-      cid=(pr&&pr.data&&pr.data[0]&&pr.data[0].id)||null;
-      if(!cid){
-        out.error=((ins.error&&ins.error.message)||(pr&&pr.error&&pr.error.message)||'客户档案写入失败');
-        return out;
+      // 只有「明确报错」才回退代理。clients 的读链路本来就走 service_role（admin-proxy），
+      // 所以这里回退不会越权：代理会给非超管注入 company_id 并校验范围。
+      //
+      // 但绝不能把「没拿到 id」一律当成「没写进去」：
+      // PostgREST 在 INSERT 成功、SELECT 又被行策略过滤掉时，会返回 200、没有 error、
+      // 却拿不到刚插的那行。无脑回退＝同一家客户插两遍。
+      // 2026-11-21 13:39~13:44 一口气冒出 23 组同名客户（创建时间同一秒、内容一模一样），
+      // 就是这条回退路径干的，不是并发。
+      if(ins.error){
+        var pr=await callAdmin('insert','clients',{payload:payload});
+        cid=(pr&&pr.data&&pr.data[0]&&pr.data[0].id)||null;
+        if(!cid){
+          out.error=((ins.error&&ins.error.message)||(pr&&pr.error&&pr.error.message)||'客户档案写入失败');
+          return out;
+        }
+      }else{
+        // 没报错却没 id：先回查一次，确实没有再报错，绝不盲插第二次
+        var chk=null;
+        try{
+          chk=await sb.from('clients').select('id').eq('company_id',currentCompanyId).eq('name',nm).limit(1);
+        }catch(e){}
+        cid=(chk&&chk.data&&chk.data[0]&&chk.data[0].id)||null;
+        if(!cid){
+          out.error='客户档案可能已写入但读不到 id（多半是行权限），请刷新确认后再操作，不要重复点';
+          return out;
+        }
       }
     }
     out.clientId=cid;out.created=true;out.clientName=nm;
@@ -1309,23 +1328,51 @@ function leadMergeSummary(r){
   return bits.length?('（'+bits.join(' · ')+'）'):'';
 }
 
+/**
+ * 审核并发锁：建客户是「查库 → 没有就插入」两步，两个并行任务在同一瞬间都查不到对方，
+ * 于是同一条线索建出两份客户档案。2026-11-21 13:39~13:44 一口气冒出 23 组同名客户，
+ * 就是这么来的——批量通过要跑 5 分钟，界面只有一句「正在建客户…」，又点了一次。
+ *
+ * 一把全局锁比服务端幂等简单得多，也够用：单人操作的内部系统，
+ * 需要防的就是同一个界面上的重复提交。另一个兜底是慢操作必须报进度，
+ * 让人知道它还在跑，不会以为是卡住了。
+ */
+var LEAD_APPROVING=false;
+
+/** 审核进行中：批量按钮置灰，避免重复点 */
+function leadApprovingUI(on){
+  var b=document.getElementById('btn-approve-all');
+  if(!b)return;
+  b.disabled=!!on;
+  b.style.opacity=on?'0.5':'';
+  b.style.cursor=on?'not-allowed':'';
+}
+
 /** 同意一条：直接落成客户档案（客户列表里马上能看到），线索标记已转化 */
 async function approveLead(id){
+  if(LEAD_APPROVING){showToast('正在处理，稍等一下…');return}
   var l=(pendingLeads||[]).filter(function(x){return String(x.id)===String(id)})[0];
   if(!l){showToast('这条线索已不在待审核里，刷新看看');return}
-  showToast('正在建客户…');
-  var r=await leadToClientProfile(l);
-  if(r.error){showToast('建客户失败：'+r.error);return}
-  var now=new Date().toISOString();
-  var w=await safeWriteById('lead_pool','update',{
-    review_status:'approved',reviewed_at:now,status:'converted',
-    client_id:r.clientId,converted_client_id:r.clientId,converted_at:now,updated_at:now
-  },id,{allowProxy:false});
-  if(!w.hit){showToast('客户已建，但线索状态没写进去：'+((w.error&&w.error.message)||'没有写入权限'));return}
-  pendingLeads=(pendingLeads||[]).filter(function(x){return String(x.id)!==String(id)});
-  renderPendingLeads();
-  await Promise.all([loadPoolLeads(),loadClients()]);
-  showToast(r.created?('已创建客户「'+r.clientName+'」'):('已并入客户「'+r.clientName+'」'+leadMergeSummary(r)));
+  LEAD_APPROVING=true;
+  leadApprovingUI(true);
+  try{
+    showToast('正在建客户…');
+    var r=await leadToClientProfile(l);
+    if(r.error){showToast('建客户失败：'+r.error);return}
+    var now=new Date().toISOString();
+    var w=await safeWriteById('lead_pool','update',{
+      review_status:'approved',reviewed_at:now,status:'converted',
+      client_id:r.clientId,converted_client_id:r.clientId,converted_at:now,updated_at:now
+    },id,{allowProxy:false});
+    if(!w.hit){showToast('客户已建，但线索状态没写进去：'+((w.error&&w.error.message)||'没有写入权限'));return}
+    pendingLeads=(pendingLeads||[]).filter(function(x){return String(x.id)!==String(id)});
+    renderPendingLeads();
+    await Promise.all([loadPoolLeads(),loadClients()]);
+    showToast(r.created?('已创建客户「'+r.clientName+'」'):('已并入客户「'+r.clientName+'」'+leadMergeSummary(r)));
+  }finally{
+    LEAD_APPROVING=false;
+    leadApprovingUI(false);
+  }
 }
 
 /** 忽略一条：pending → junk。不删除，误点了还能从「无效」筛回来 */
@@ -1342,24 +1389,35 @@ async function rejectLead(id){
 
 /** 剩下的都是真项目时才用。先弹确认，避免手滑把噪音整批变成客户 */
 async function approveAllPending(){
+  if(LEAD_APPROVING){showToast('正在处理，稍等一下…');return}
   var n=(pendingLeads||[]).length;
   if(!n){showToast('没有待审核的线索');return}
-  var yes=await uiConfirm('剩下的 '+n+' 条会全部通过审核，并直接创建成客户档案。'
-    +'客户库里已有同名的不会重复建档：同一个标的（招标编号或项目名相同）只把空着的预算/日期/负责人补全，新标的才新增；'
-    +'联系人是同一个人（同名或同号）只补他没存过的号码，已有的电话不会再写一遍。'
-    +'机器抓的难免有同名不同单位、代理机构混进采购人的情况，建议先逐条看过。',
-    {okText:'全部通过',cancelText:'再看看',danger:false});
-  if(yes)await doApproveAll();
+  // 确认框还没弹出来/还没点的时候也要挡住第二次点击，否则会并行跑两轮
+  LEAD_APPROVING=true;
+  leadApprovingUI(true);
+  try{
+    var yes=await uiConfirm('剩下的 '+n+' 条会全部通过审核，并直接创建成客户档案。'
+      +'客户库里已有同名的不会重复建档：同一个标的（招标编号或项目名相同）只把空着的预算/日期/负责人补全，新标的才新增；'
+      +'联系人是同一个人（同名或同号）只补他没存过的号码，已有的电话不会再写一遍。'
+      +'机器抓的难免有同名不同单位、代理机构混进采购人的情况，建议先逐条看过。',
+      {okText:'全部通过',cancelText:'再看看',danger:false});
+    if(yes)await doApproveAll();
+  }finally{
+    LEAD_APPROVING=false;
+    leadApprovingUI(false);
+  }
 }
 
 /** 真正执行批量通过。逐条建客户，单条失败不影响其它条 */
 async function doApproveAll(){
   var list=(pendingLeads||[]).slice();
   if(!list.length)return;
-  showToast('正在建客户…');
   var ok=0,joined=0,fail=0,newP=0,newC=0;
   for(var i=0;i<list.length;i++){
     var l=list[i];
+    // 必须报进度：一轮几十条要跑好几分钟，只写「正在建客户…」会让人以为卡死，
+    // 转身再点一次就是两份客户档案（这正是 23 组重复的成因）
+    showToast('正在建客户 '+(i+1)+'/'+list.length+'…');
     var r=await leadToClientProfile(l);
     if(r.error){fail++;continue}
     var now=new Date().toISOString();
