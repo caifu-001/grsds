@@ -700,6 +700,68 @@ async function loadPoolLeads(){
   renderPoolLeads();
 }
 
+/**
+ * 线索卡片上的联系方式。
+ * 手机号排最前且可点击复制——销售是照着号码打电话的，别让人手工抄。
+ * 地址可能很长，单行省略 + title 看全。
+ */
+function leadContactHtml(l){
+  l=l||{};
+  var out='';
+  if(l.contact_name)out+='<span>👤 '+h(l.contact_name)+'</span>';
+  var mob=String(l.contact_mobile||'').trim();
+  var tel=String(l.contact_phone||'').trim();
+  // 老数据只有 contact_phone，且里面存的就是手机号
+  if(!mob&&/^1[3-9]\d{9}$/.test(tel.replace(/[-－—()（）\s]/g,''))){mob=tel.replace(/[-－—()（）\s]/g,'');tel=''}
+  if(mob)out+='<span class="lead-phone" title="点击复制手机号" onclick="event.stopPropagation();copyLeadPhone(\''+h(mob)+'\')">📱 '+h(mob)+'</span>';
+  if(tel&&tel!==mob)out+='<span class="lead-phone" title="点击复制电话" onclick="event.stopPropagation();copyLeadPhone(\''+h(tel)+'\')">📞 '+h(tel)+'</span>';
+  if(l.contact_email)out+='<span>📧 '+h(l.contact_email)+'</span>';
+  if(l.contact_addr)out+='<span style="max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+h(l.contact_addr)+'">🏠 '+h(l.contact_addr)+'</span>';
+  return out;
+}
+
+/** 自动采集来的招标信息：预算 / 公告日 / 地区 / 代理 / 附件 / 原文链接 */
+function leadFetchedMetaHtml(l){
+  if(!(l.auto_fetched||l.source_url))return '';
+  var bd='';
+  if(l.budget>0)bd+='<span style="font-weight:600;color:var(--danger)">💰 '+h(formatMoney(l.budget))+'</span>';
+  if(l.publish_date)bd+='<span>📅 '+h(String(l.publish_date).slice(0,10))+'</span>';
+  if(l.region)bd+='<span>📍 '+h(l.region)+'</span>';
+  if(l.client_id)bd+='<span style="color:var(--success)">✓ 已在客户库</span>';
+  if(l.agency_name)bd+='<span title="'+h(l.agency_phone||'')+'">🏢 代理 '+h(String(l.agency_name).slice(0,16))+'</span>';
+  if(l.attachments&&l.attachments.length)bd+=leadAttLinksHtml(l.attachments);
+  if(l.source_url)bd+='<a href="'+h(l.source_url)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--primary);text-decoration:none">📄 查看公告原文</a>';
+  return bd?'<div class="lead-meta" style="margin-top:4px">'+bd+'</div>':'';
+}
+
+/** 招标公告附件：最多列 3 个可直接下载的，其余折叠成「+N」 */
+function leadAttLinksHtml(atts){
+  var out='',n=0,rest=0;
+  for(var i=0;i<atts.length;i++){
+    var a=atts[i]||{};
+    var nm=String(a.name||'附件');
+    if(n>=3){rest=atts.length-n;break}
+    if(a.url){
+      out+='<a href="'+h(a.url)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--primary);text-decoration:none" title="下载 '+h(nm)+'">📎 '+h(nm.slice(0,16))+'</a>';
+    }else{
+      // 交易网的附件拿不到直链，只能提示去原文下
+      out+='<span title="需到公告原文下载：'+h(nm)+'">📎 '+h(nm.slice(0,16))+'</span>';
+    }
+    n++;
+  }
+  if(rest>0)out+='<span title="其余附件请点开公告原文查看">+'+rest+'</span>';
+  return out;
+}
+
+/** 复制电话到剪贴板（手机上点一下就能拨） */
+function copyLeadPhone(p){
+  var t=String(p||'').trim();
+  if(!t)return;
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(t).then(function(){showToast('已复制 '+t)},function(){showToast(t)});
+  }else{showToast(t)}
+}
+
 function renderLeads(){
   // Sales pipeline leads (assigned to current user)
   var list=allLeads||[];
@@ -720,17 +782,14 @@ function renderLeads(){
     html+='<div class="lead-card">';
     html+='<div class="lead-name">'+h(l.name)+'</div>';
     if(l.project_name)html+='<div class="lead-project" style="font-size:12px;color:var(--primary);margin-bottom:4px">📋 '+h(l.project_name)+'</div>';
-    html+='<div class="lead-contact">';
-    if(l.contact_name)html+='<span>👤 '+h(l.contact_name)+'</span>';
-    if(l.contact_phone)html+='<span>📞 '+h(l.contact_phone)+'</span>';
-    if(l.contact_email)html+='<span>📧 '+h(l.contact_email)+'</span>';
-    html+='</div>';
+    html+='<div class="lead-contact">'+leadContactHtml(l)+'</div>';
     html+='<div class="lead-meta">';
     html+='<span class="lead-status-badge '+h(l.stage||l.status)+'">'+(l.stage||statusMap[l.status]||l.status)+'</span>';
     if(l.source)html+='<span>来源: '+h(l.source)+'</span>';
     if(assignee)html+='<span>分配: '+h(assignee)+'</span>';
     if(l.last_follow_up)html+='<span>跟进: '+l.last_follow_up+'</span>';
     html+='</div>';
+    html+=leadFetchedMetaHtml(l);
     html+='<div class="lead-actions">';
     html+='<button class="btn-lead-primary" onclick="event.stopPropagation();openLeadForm(\''+l.id+'\')">编辑</button>';
     var li=_leadProjectCache.length;
@@ -764,11 +823,7 @@ function renderPoolLeads(){
     var l=list[i];
     html+='<div class="lead-card">';
     html+='<div class="lead-name">'+h(l.name)+'</div>';
-    html+='<div class="lead-contact">';
-    if(l.contact_name)html+='<span>👤 '+h(l.contact_name)+'</span>';
-    if(l.contact_phone)html+='<span>📞 '+h(l.contact_phone)+'</span>';
-    if(l.contact_email)html+='<span>📧 '+h(l.contact_email)+'</span>';
-    html+='</div>';
+    html+='<div class="lead-contact">'+leadContactHtml(l)+'</div>';
     html+='<div class="lead-meta">';
     html+='<span class="lead-status-badge '+h(l.status)+'">'+(statusMap[l.status]||l.status)+'</span>';
     if(l.source)html+='<span>来源: '+h(l.source)+'</span>';
@@ -776,15 +831,7 @@ function renderPoolLeads(){
     html+='</div>';
     // 自动采集的招标公告：把「值多少钱 / 哪天发的 / 原文在哪」放到卡片上，
     // 否则销售得逐条点开才知道该不该跟。
-    if(l.auto_fetched||l.source_url){
-      var _bd='';
-      if(l.budget>0)_bd+='<span style="font-weight:600;color:var(--danger)">💰 '+h(formatMoney(l.budget))+'</span>';
-      if(l.publish_date)_bd+='<span>📅 '+h(String(l.publish_date).slice(0,10))+'</span>';
-      if(l.region)_bd+='<span>📍 '+h(l.region)+'</span>';
-      if(l.client_id)_bd+='<span style="color:var(--success)">✓ 已在客户库</span>';
-      if(l.source_url)_bd+='<a href="'+h(l.source_url)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--primary);text-decoration:none">📄 查看公告原文</a>';
-      if(_bd)html+='<div class="lead-meta" style="margin-top:4px">'+_bd+'</div>';
-    }
+    html+=leadFetchedMetaHtml(l);
     html+='<div class="lead-actions">';
     html+='<button class="btn-lead-primary" onclick="event.stopPropagation();openLeadForm(\''+l.id+'\')">编辑</button>';
     html+='<button class="btn-lead-primary" onclick="event.stopPropagation();assignLead(\''+l.id+'\')">分配</button>';

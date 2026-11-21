@@ -1153,6 +1153,9 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
 .lead-card .lead-name{font-size:15px;font-weight:700;margin-bottom:4px}
 .lead-card .lead-contact{font-size:12px;color:var(--text2);margin-bottom:4px;display:flex;flex-wrap:wrap;gap:8px}
 .lead-card .lead-meta{font-size:11px;color:var(--text3);display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px}
+/* 招标公告抓来的手机号/座机：可点击复制，视觉上要一眼能看出可点 */
+.lead-card .lead-phone{cursor:pointer;color:var(--primary);font-weight:600;text-decoration:underline dotted;text-underline-offset:2px}
+.lead-card .lead-phone:active{opacity:.6}
 .lead-status-badge{font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600;color:#fff}
 .lead-status-badge.new{background:#6366F1}
 .lead-status-badge.assigned{background:#3B82F6}
