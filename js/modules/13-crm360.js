@@ -972,20 +972,93 @@ function leadEnteredDate(l){
 }
 
 /**
+ * 按电话认单位：线索里的号码如果已经在某位联系人名下，这家单位其实就在库里了。
+ *
+ * 公海线索转客户时，名称经常和库里对不上——「重庆市巴南区中医院」与「巴南区中医院」、
+ * 「XX局（本级）」与「XX局」——于是同一条公告多建一份客户档案，
+ * 同一个人在两边各存一行联系人，销售在哪个客户里都看不全跟进记录。
+ * 这里用号码反查：命中就把线索并入那位联系人所属的客户，
+ * 后面的联系人环节会自然命中同一行（只补他没存过的号），不再新建。
+ *
+ * 手机号实名唯一，命中即认；座机可能整栋楼共用（总机），
+ * 必须姓名也对得上才算，免得把两个单位并成一家。
+ * @returns {{client:Object,contactId:string,contactName:string,via:string}|null}
+ */
+async function leadFindClientByPhone(l){
+  l=l||{};
+  var ph=leadPhonesOf(l);
+  if(!ph.mobiles.length&&!ph.telnums.length)return null;
+  var mobKeys=ph.mobiles.map(leadNumKey);
+  var telKeys=ph.telnums.map(leadNumKey);
+  var nm=String(l.contact_name||'').trim();
+  var rows=[];
+  // 分批拉：PostgREST 单次默认最多回 1000 行，公司联系人早就超过这个数，
+  // 一次全拉会被静默截断，要认的人恰好在后面那批就漏了
+  var page=1000,off=0;
+  for(var pg=0;pg<30;pg++){
+    var okPage=false;
+    try{
+      var q=await sb.from('contacts').select('id,name,phone,landline,client_id').eq('company_id',currentCompanyId).order('id').range(off,off+page-1);
+      if(q&&!q.error&&q.data){
+        okPage=true;
+        rows=rows.concat(q.data);
+        if(q.data.length<page)break;
+      }
+    }catch(e){}
+    if(!okPage)break;
+    off+=page;
+  }
+  // 查不到（权限 / 网络）时退回内存里那份，客户列表加载时已经全量拉过一遍
+  if(!rows.length)rows=allContacts||[];
+  var best=null,bestScore=-1;
+  for(var i=0;i<rows.length;i++){
+    var r=rows[i]||{};
+    if(!r.client_id||r.deleted_at)continue;
+    var nameOk=!!nm&&leadSamePerson(r.name,nm);
+    var curKeys=leadNumList(r.phone).concat(leadNumList(r.landline)).map(leadNumKey);
+    var hitMob=false,hitTel=false;
+    for(var j=0;j<curKeys.length;j++){
+      if(mobKeys.indexOf(curKeys[j])>=0)hitMob=true;
+      else if(telKeys.indexOf(curKeys[j])>=0)hitTel=true;
+    }
+    if(!hitMob&&!(hitTel&&nameOk))continue;
+    // 名字也对的排前面：同号多行时（历史重复数据）优先选得住的那条
+    var score=(hitMob?2:1)+(nameOk?2:0);
+    if(score>bestScore){
+      bestScore=score;
+      best={contactId:r.id,contactName:r.name||'',clientId:r.client_id,via:hitMob?'mobile':'tel'};
+    }
+  }
+  if(!best)return null;
+  // 客户行要现拿：名称 / 地址 / 属性都要用，而且软删掉的不能并进去
+  var cl=(allClients||[]).filter(function(c){return String(c.id)===String(best.clientId)})[0]||null;
+  if(!cl){
+    try{
+      var cq=await sb.from('clients').select('id,name,address,type,industry,deleted_at').eq('id',best.clientId).limit(1);
+      if(cq&&!cq.error&&cq.data&&cq.data.length)cl=cq.data[0];
+    }catch(e){}
+  }
+  if(!cl||cl.deleted_at)return null;
+  best.client=cl;
+  return best;
+}
+
+/**
  * 线索 → 客户档案（审核通过和公海「转为客户」共用这一条路）。
- * 判定顺序：采集时已匹配的 client_id → 名称完全一致 → 库里再查一次。
+ * 判定顺序：采集时已匹配的 client_id → 名称完全一致 → 库里再查一次
+ * → 名称都对不上时按联系人电话反查（同一个甲方换了种写法）。
  * 命中已有客户就不重复建档，只把联系人、项目、空着的地址补进去——
  * 一条公告建一个客户，客户列表很快就没法看了。
  *
  * 「新增的招标信息要核对已有信息」落在这里：
  *  - 项目：同一个标的（招标编号相同 / 项目名归一后相同）只补空字段，新标的才追加
  *  - 联系人：同名或同号算同一个人，只补他没有的号码；真不认识的人才新建一条
- * @returns {clientId,created,clientName,contactAdded,phoneAdded,projectAdded,projectFilled,error}
+ * @returns {clientId,created,clientName,contactAdded,phoneAdded,projectAdded,projectFilled,matchedBy,error}
  */
 async function leadToClientProfile(l){
   l=l||{};
   var out={clientId:null,created:false,clientName:'',contactAdded:false,phoneAdded:0,
-    projectAdded:false,projectFilled:false,error:null};
+    projectAdded:false,projectFilled:false,matchedBy:'',matchedName:'',error:null};
   var nm=String(l.name||'').trim();
   if(!nm){out.error='线索没有单位名称，无法建客户';return out}
   var norm=function(s){return String(s||'').replace(/\s+/g,'').toLowerCase()};
@@ -995,6 +1068,18 @@ async function leadToClientProfile(l){
   if(!target){
     var q=await sb.from('clients').select('id,name,address').eq('company_id',currentCompanyId).eq('name',nm).limit(1);
     if(q.data&&q.data.length)target=q.data[0];
+  }
+  if(!target){
+    // 名称对不上（同一个甲方换了种写法）时用电话认单位：
+    // 号码已经在某位联系人名下 → 这家单位就在库里，并进去而不是再建一份档案。
+    // 这条分支命中后，下面联系人环节会捞到同一行，只补他没存过的号，不新建联系人。
+    var byPh=await leadFindClientByPhone(l);
+    if(byPh){
+      target=byPh.client;
+      out.matchedBy='phone';
+      out.matchedVia=byPh.via;
+      out.matchedName=byPh.contactName||'';
+    }
   }
   if(target){
     out.clientId=target.id;
@@ -1165,6 +1250,9 @@ async function leadToClientProfile(l){
 function leadMergeSummary(r){
   if(!r||r.created)return '';
   var bits=[];
+  // 说清楚「为什么并进了这个客户」：名称没对上、是号码对上的，
+  // 不然销售会以为系统把两家不相干的单位合成了一家
+  if(r.matchedBy==='phone')bits.push('电话命中已有联系人'+(r.matchedName?'「'+r.matchedName+'」':''));
   if(r.projectAdded)bits.push('新增项目 1');
   else if(r.projectFilled)bits.push('项目已存在，补全信息');
   if(r.contactAdded)bits.push('新增联系人 1');
