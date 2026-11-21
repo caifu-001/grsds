@@ -734,7 +734,7 @@ function renderLeads(){
     html+='<div class="lead-actions">';
     html+='<button class="btn-lead-primary" onclick="event.stopPropagation();openLeadForm(\''+l.id+'\')">编辑</button>';
     var li=_leadProjectCache.length;
-    _leadProjectCache.push({id:l.id,projectName:l.project_name||l.name||'',companyName:l.name||'',clientId:l.client_id||''});
+    _leadProjectCache.push({id:l.id,projectName:l.project_name||l.name||'',companyName:l.name||'',clientId:l.client_id||'',budget:l.budget||null});
     html+='<button class="btn-lead-success" onclick="event.stopPropagation();openProjectFormFromLeadIdx('+li+')">转项目</button>';
     html+='<button class="btn-lead-danger" onclick="event.stopPropagation();deleteLead(\''+l.id+'\')">删除</button>';
     html+='</div></div>';
@@ -774,11 +774,22 @@ function renderPoolLeads(){
     if(l.source)html+='<span>来源: '+h(l.source)+'</span>';
     if(l.industry)html+='<span>行业: '+h(l.industry)+'</span>';
     html+='</div>';
+    // 自动采集的招标公告：把「值多少钱 / 哪天发的 / 原文在哪」放到卡片上，
+    // 否则销售得逐条点开才知道该不该跟。
+    if(l.auto_fetched||l.source_url){
+      var _bd='';
+      if(l.budget>0)_bd+='<span style="font-weight:600;color:var(--danger)">💰 '+h(formatMoney(l.budget))+'</span>';
+      if(l.publish_date)_bd+='<span>📅 '+h(String(l.publish_date).slice(0,10))+'</span>';
+      if(l.region)_bd+='<span>📍 '+h(l.region)+'</span>';
+      if(l.client_id)_bd+='<span style="color:var(--success)">✓ 已在客户库</span>';
+      if(l.source_url)_bd+='<a href="'+h(l.source_url)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--primary);text-decoration:none">📄 查看公告原文</a>';
+      if(_bd)html+='<div class="lead-meta" style="margin-top:4px">'+_bd+'</div>';
+    }
     html+='<div class="lead-actions">';
     html+='<button class="btn-lead-primary" onclick="event.stopPropagation();openLeadForm(\''+l.id+'\')">编辑</button>';
     html+='<button class="btn-lead-primary" onclick="event.stopPropagation();assignLead(\''+l.id+'\')">分配</button>';
     var li=_leadProjectCache.length;
-    _leadProjectCache.push({id:l.id,projectName:l.project_name||l.name||'',companyName:l.name||'',clientId:l.client_id||''});
+    _leadProjectCache.push({id:l.id,projectName:l.project_name||l.name||'',companyName:l.name||'',clientId:l.client_id||'',budget:l.budget||null});
     html+='<button class="btn-lead-success" onclick="event.stopPropagation();openProjectFormFromLeadIdx('+li+')">转项目</button>';
     html+='<button class="btn-lead-danger" onclick="event.stopPropagation();deleteLead(\''+l.id+'\')">删除</button>';
     html+='</div></div>';

@@ -1520,9 +1520,9 @@ function _wfModuleError(listId,msg){
 function openProjectFormFromLeadIdx(idx){
   var entry=_leadProjectCache[idx];
   if(!entry){showToast('线索数据丢失');return}
-  openProjectFormFromLead(entry.id,entry.projectName,entry.companyName,entry.clientId);
+  openProjectFormFromLead(entry.id,entry.projectName,entry.companyName,entry.clientId,entry.budget);
 }
-async function openProjectFormFromLead(leadId,projectName,companyName,clientId){
+async function openProjectFormFromLead(leadId,projectName,companyName,clientId,budget){
   oppLeadId=leadId||null;
   oppEditId=null;
   var title=document.getElementById('opp-form-title');
@@ -1540,7 +1540,8 @@ async function openProjectFormFromLead(leadId,projectName,companyName,clientId){
   pfContactsData=[];renderPfContacts();
   document.getElementById('pf-assigned-sales').value=currentUser?(currentUser.realname||currentUser.name||''):'';
   document.getElementById('pf-co-sales').value='';
-  document.getElementById('pf-budget').value='';
+  // 从招标线索转过来时带出公告预算（销售可改），避免重复手敲
+  document.getElementById('pf-budget').value=(budget>0?budget:'');
   document.getElementById('pjf-status').value='planning';
   document.getElementById('pf-conclusion').value='';
   if(document.getElementById('pf-conclusion-notes'))document.getElementById('pf-conclusion-notes').value='';
