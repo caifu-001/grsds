@@ -821,6 +821,17 @@ async function leadAppendProject(clientRow,l,ownerName,ownerCid){
 }
 
 /**
+ * 联系人的「录入时间」= 招标文件上的日期（公告发布日）。
+ * 客户详情里手工新增联系人默认今天，是因为人当场才知道这个人；
+ * 招标线索不一样，对方是公告那天挂出来的，按抓取时刻记会显得「今天才认识」。
+ * @returns {string|null} YYYY-MM-DD；采集没拿到公告日就 null（表单里空着）
+ */
+function leadEnteredDate(l){
+  var s=String((l&&l.publish_date)||'').trim().slice(0,10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(s)?s:null;
+}
+
+/**
  * 线索 → 客户档案（审核通过和公海「转为客户」共用这一条路）。
  * 判定顺序：采集时已匹配的 client_id → 名称完全一致 → 库里再查一次。
  * 命中已有客户就不重复建档，只把联系人、项目、空着的地址补进去——
@@ -899,21 +910,35 @@ async function leadToClientProfile(l){
   var mob=String(l.contact_mobile||'').trim();
   var tel=String(l.contact_phone||'').trim();
   if(!mob&&/^1[3-9]\d{9}$/.test(tel.replace(/[-－—()（）\s]/g,''))){mob=tel.replace(/[-－—()（）\s]/g,'');tel=''}
+  // 两个字段存了同一个号（采集端有的站点点/手机都填进 phone）时，
+  // 别再往座机里塞一份，否则客户详情里「📱138… / 🖥138…」看着像两个号
+  if(mob&&tel&&tel.replace(/\D/g,'')===mob.replace(/\D/g,''))tel='';
   var ownerCid='';
+  var enteredDate=leadEnteredDate(l);
   if(mob||tel||l.contact_name){
-    var ec=await sb.from('contacts').select('id,name,phone,landline').eq('client_id',out.clientId).eq('company_id',currentCompanyId);
-    var rows=ec.data||[],dupId='';
-    for(var i=0;i<rows.length&&!dupId;i++){
+    var ec=await sb.from('contacts').select('id,name,phone,landline,entered_date').eq('client_id',out.clientId).eq('company_id',currentCompanyId);
+    var rows=ec.data||[],dupRow=null;
+    for(var i=0;i<rows.length&&!dupRow;i++){
       var ph=[];
       try{ph=JSON.parse(rows[i].phone||'[]');if(!Array.isArray(ph))ph=[]}catch(e){ph=[]}
       try{var ll=JSON.parse(rows[i].landline||'[]');if(Array.isArray(ll))ph=ph.concat(ll)}catch(e){}
-      if(mob&&ph.indexOf(mob)>=0)dupId=rows[i].id;
-      else if(!mob&&tel&&ph.indexOf(tel)>=0)dupId=rows[i].id;
-      else if(!mob&&!tel&&l.contact_name&&norm(rows[i].name)===norm(l.contact_name))dupId=rows[i].id;
+      if(mob&&ph.indexOf(mob)>=0)dupRow=rows[i];
+      else if(!mob&&tel&&ph.indexOf(tel)>=0)dupRow=rows[i];
+      else if(!mob&&!tel&&l.contact_name&&norm(rows[i].name)===norm(l.contact_name))dupRow=rows[i];
     }
-    if(dupId){
-      // 同一个人已经在客户档案里：不重复插，项目里的甲方负责人直接指向他
-      ownerCid=dupId;
+    if(dupRow){
+      // 同一个人已经在客户档案里：不重复插，项目里的甲方负责人直接指向他。
+      // 他的录入时间空着就用这条公告的日期补上；人工填过的不动
+      ownerCid=dupRow.id;
+      if(enteredDate&&!String(dupRow.entered_date||'').trim()){
+        var uw=await safeWriteContacts('update',{entered_date:enteredDate},dupRow.id);
+        if(uw.hit){
+          dupRow.entered_date=enteredDate;
+          for(var ui=0;ui<(allContacts||[]).length;ui++){
+            if(String(allContacts[ui].id)===String(dupRow.id))allContacts[ui].entered_date=enteredDate;
+          }
+        }
+      }
     }else{
       var cr=await sb.from('contacts').insert({
         client_id:out.clientId,
@@ -922,6 +947,7 @@ async function leadToClientProfile(l){
         phone:JSON.stringify(mob?[mob]:['']),
         landline:JSON.stringify(tel?[tel]:['']),
         email:JSON.stringify(l.contact_email?[l.contact_email]:['']),
+        entered_date:enteredDate,
         company_id:currentCompanyId,
         user_id:currentUser?currentUser.id:null
       }).select('id');
