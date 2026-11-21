@@ -404,7 +404,7 @@ async function saveClient(){
 
   // Sync contacts
   var existingIds=[];
-  if(editId){var {data:oc}=await sb.from('contacts').select('id').eq('client_id',editId);existingIds=(oc||[]).map(function(x){return x.id})}
+  if(editId){var {data:oc}=await sb.from('contacts').select('id').eq('client_id',editId).is('deleted_at',null);existingIds=(oc||[]).map(function(x){return x.id})}
 
   var savedIds=[];
   for(var i=0;i<formContacts.length;i++){

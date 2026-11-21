@@ -1088,7 +1088,9 @@ async function openForm(id){
     }else{
       setSelectedTypes([]);
     }
-    var {data}=await sb.from('contacts').select('*').eq('client_id',id).order('created_at',{ascending:true});
+    // 软删的联系人（合并重复时收掉的）不该再出现在编辑表单里，
+    // 否则「看起来还在」而且一保存又被写回去
+    var {data}=await sb.from('contacts').select('*').eq('client_id',id).is('deleted_at',null).order('created_at',{ascending:true});
     if(data&&data.length>0){
       for(var i=0;i<data.length;i++){
         var co=data[i],phones=[],landlines=[];
@@ -1181,7 +1183,8 @@ async function doMove(targetId,targetName){
 function openMoveFrom360(contactObj){moveContactIdx=-1;moveContactObj=contactObj;document.getElementById('move-modal').classList.remove('hidden');searchMoveTarget()}
 function transferFrom360(id){var co=allContacts.find(function(x){return x.id===id});if(co)openMoveFrom360(co);else showToast('联系人未找到')}
 async function updateContactCount(clientId){
-  var {count,error}=await sb.from('contacts').select('*',{count:'exact',head:true}).eq('client_id',clientId);
+  // 软删的（合并重复时收掉的）不算人，否则卡片上会显示「3 人」实际只有 2 位
+  var {count,error}=await sb.from('contacts').select('*',{count:'exact',head:true}).eq('client_id',clientId).is('deleted_at',null);
   // 计数同步同样走统一写通道：直连被 RLS 过滤时至少还能落到代理通道，避免计数器长期偏旧
   if(!error) await safeWriteById('clients','update',{contact_count:count||0},clientId);
 }

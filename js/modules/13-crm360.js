@@ -881,6 +881,50 @@ function leadSamePerson(a,b){
 }
 
 /**
+ * 插入后的并发兜底：同一人刚插进去，库里已经有一条「同客户 + 同名 + 同号」，
+ * 说明两个请求几乎同时跑完了插入前的查重（各自都没看到对方），各插了一条。
+ *
+ * 这里不猜谁对：创建时间早的留下、同一秒则 id 小的留下。
+ * 两边算出来的赢家必然同一个，所以最后一定收敛成一条，不会互删、也不会都保留。
+ * 只有「同号」才判重——同名但号码完全不同的是两个人（共用总机的那种），不能删。
+ * @returns {{dup:boolean,keepId:string}|null}
+ */
+async function leadContactAfterInsertGuard(newId,clientId,nameKey,mobList,telList){
+  if(!newId||!clientId)return null;
+  var want=(mobList||[]).concat(telList||[]).map(leadNumKey).filter(Boolean);
+  if(!want.length)return null;
+  var rows=[];
+  try{
+    var q=await sb.from('contacts').select('id,name,phone,landline,created_at,deleted_at')
+      .eq('client_id',clientId).eq('company_id',currentCompanyId);
+    rows=(q&&q.data)||[];
+  }catch(e){return null}
+  var self=null,twins=[];
+  for(var i=0;i<rows.length;i++){
+    var r=rows[i];
+    if(!r||r.deleted_at)continue;
+    if(String(r.id)===String(newId)){self=r;continue}
+    var rn=String(r.name||'').replace(/\s+/g,'').toLowerCase();
+    if(nameKey&&rn&&rn!==nameKey)continue;
+    var ks=leadNumList(r.phone).concat(leadNumList(r.landline)).map(leadNumKey);
+    var hit=false;
+    for(var k=0;k<want.length&&!hit;k++)hit=ks.indexOf(want[k])>=0;
+    if(hit)twins.push(r);
+  }
+  if(!self||!twins.length)return null;
+  var all=[self].concat(twins);
+  all.sort(function(a,b){
+    var ta=String(a.created_at||''),tb=String(b.created_at||'');
+    if(ta!==tb)return ta<tb?-1:1;
+    return String(a.id)<String(b.id)?-1:1;
+  });
+  var keep=all[0];
+  if(String(keep.id)===String(newId))return {dup:false,keepId:newId};
+  var w=await safeWriteContacts('update',{deleted_at:new Date().toISOString()},newId);
+  return {dup:true,keepId:keep.id,removed:!!(w&&w.hit)};
+}
+
+/**
  * 把这条招标公告挂到客户的「近期项目」里（客户表单那个「近期项目」区）。
  * 字段名与 collectProjectEntries() 完全一致，客户 360 / 列表卡片 / 复购提醒都认。
  *
@@ -1099,7 +1143,24 @@ async function leadFindClientByPhone(l){
  *  - 联系人：同名或同号算同一个人，只补他没有的号码；真不认识的人才新建一条
  * @returns {clientId,created,clientName,contactAdded,phoneAdded,projectAdded,projectFilled,matchedBy,error}
  */
-async function leadToClientProfile(l){
+// 同一条线索正在建客户时，第二次调用直接复用第一次的结果。
+// 光靠按钮置灰挡不住「两个标签页/两个人同时点」，也挡不住批量通过跑到一半又被点一次；
+// 而建客户的「先查后插」不是原子的：两个请求都在对方写库之前查完，就会各插一条联系人
+// （2026-11-21 库里 27 组重复联系人，两条创建时间只差 0~1 秒，就是这个窗口）。
+var leadProfileInflight={};
+function leadToClientProfile(l){
+  var key=String((l&&l.id)||'');
+  if(key&&leadProfileInflight[key])return leadProfileInflight[key];
+  var p=leadToClientProfileRun(l);
+  if(key){
+    leadProfileInflight[key]=p;
+    var done=function(){delete leadProfileInflight[key]};
+    p.then(done,done);
+  }
+  return p;
+}
+
+async function leadToClientProfileRun(l){
   l=l||{};
   var out={clientId:null,created:false,clientName:'',contactAdded:false,phoneAdded:0,
     projectAdded:false,projectFilled:false,matchedBy:'',matchedName:'',error:null};
@@ -1280,8 +1341,18 @@ async function leadToClientProfile(l){
       if(cr.error){
         // 没权限/校验失败不挡住建档，只是项目里挂不上负责人 id
       }else{
+        var newCid=(cr.data&&cr.data[0]&&cr.data[0].id)||'';
+        ownerCid=newCid;
         out.contactAdded=true;
-        ownerCid=(cr.data&&cr.data[0]&&cr.data[0].id)||'';
+        // 并发兜底：真撞上「两个标签页同时点」时，上面那次查重双方都没看到对方，
+        // 于是同一个人插了两条。插入后再核一遍，留最早的一条，把自己这条收掉。
+        if(newCid){
+          var guard=await leadContactAfterInsertGuard(newCid,out.clientId,nameKey,mobList,telList);
+          if(guard&&guard.dup){
+            ownerCid=guard.keepId||'';
+            out.contactAdded=false;
+          }
+        }
       }
     }
   }
@@ -2130,6 +2201,7 @@ async function doAssignLead(){
 }
 
 async function convertLeadToClient(id){
+  if(LEAD_APPROVING){showToast('正在处理，稍等一下…');return}
   // 公海里的「转为客户」：和审核通过走同一条建客户逻辑（同名不重复建档、只补联系人）
   var l=(poolLeads||[]).concat(allLeads||[]).filter(function(x){return String(x.id)===String(id)})[0];
   if(!l){
@@ -2137,6 +2209,9 @@ async function convertLeadToClient(id){
     if(le||!rows||!rows.length){showToast('线索未找到: '+(le?le.message:'数据为空'));return}
     l=rows[0];
   }
+  LEAD_APPROVING=true;
+  leadApprovingUI(true);
+  try{
   var r=await leadToClientProfile(l);
   if(r.error){showToast('转化失败: '+r.error);return}
   var now=new Date().toISOString();
@@ -2145,6 +2220,10 @@ async function convertLeadToClient(id){
   },id,{allowProxy:false});
   await Promise.all([loadClients(),loadPoolLeads(),loadLeads()]);
   showToast(r.created?('已创建客户「'+r.clientName+'」'):('已并入客户「'+r.clientName+'」'+leadMergeSummary(r)));
+  }finally{
+    LEAD_APPROVING=false;
+    leadApprovingUI(false);
+  }
 }
 
 function openLeadImport(){
