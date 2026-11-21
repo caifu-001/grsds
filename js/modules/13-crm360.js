@@ -986,6 +986,9 @@ function leadEnteredDate(l){
  */
 async function leadFindClientByPhone(l){
   l=l||{};
+  // 代理机构不参与按号合并：招标代理的人在甲方那边也留过手机（库里的
+  // 「三信建设咨询集团 → 特殊教育中心 甘老师」就是这种），按号认会把代理公司并进甲方档案
+  if(LEAD_AGENCY_RE.test(String(l.name||'')))return null;
   var ph=leadPhonesOf(l);
   if(!ph.mobiles.length&&!ph.telnums.length)return null;
   var mobKeys=ph.mobiles.map(leadNumKey);
