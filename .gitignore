@@ -1,5 +1,8 @@
 # 本地工具与运行产物
 .workbuddy/
+# 一键采集启动器（内含本机 node 绝对路径，不进仓库）
+run-bids.cmd
+run-bids.ps1
 
 # 系统文件
 .DS_Store
