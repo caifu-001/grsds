@@ -798,6 +798,40 @@ function leadProjKey(s){
   return t;
 }
 
+/**
+ * 招标日期归一成 YYYY-MM-DD（认 2026-11-05 / 2026/11/5 / 2026年11月5日 / 20261105）。
+ * 解析不出来给 ''，由调用方当「判断不了」处理。
+ */
+function leadDateNorm(s){
+  var t=String(s==null?'':s).trim();
+  if(!t)return '';
+  var m=t.match(/(\d{4})\s*[-/年.]\s*(\d{1,2})\s*[-/月.]\s*(\d{1,2})/);
+  if(m)return m[1]+'-'+(m[2].length<2?'0'+m[2]:m[2])+'-'+(m[3].length<2?'0'+m[3]:m[3]);
+  var m2=t.match(/^(\d{4})(\d{2})(\d{2})$/);
+  if(m2)return m2[1]+'-'+m2[2]+'-'+m2[3];
+  return '';
+}
+
+/**
+ * 两条记录的招标时间是不是同一时段 —— 判同标的必须过这一关。
+ *
+ * 项目名相同太常见了：「等保测评」「网络安全运维」「XX系统维保」这类名字年年重复，
+ * 去年做过今年还要做，那是**两笔独立的生意**，也正是系统该提醒去跟进的复购。
+ * 只按名称合并，今年的新商机就被塞进去年那条项目里（日期、预算、负责人都还是旧的）。
+ *
+ * 一个标的从招标公告 → 更正/延期 → 中标结果，跨度一般 1~3 个月，取 120 天：
+ * 去年 10 月到现在 11 月差 395 天，不会被误合；12 月底的公告和次年 1 月的更正公告
+ * 仍然算同一标。
+ * @returns 1 同一标的 / 0 不是 / -1 有一边没日期，判断不了
+ */
+var LEAD_SAME_DAYS=120;
+function leadDateSame(a,b){
+  var x=leadDateNorm(a),y=leadDateNorm(b);
+  if(!x||!y)return -1;
+  var dx=new Date(x+'T00:00:00Z').getTime(),dy=new Date(y+'T00:00:00Z').getTime();
+  return Math.abs(dy-dx)<=LEAD_SAME_DAYS*86400000?1:0;
+}
+
 /** 项目条目里记的招标编号（存在 notes 里的「招标编号 XXX」） */
 function leadProjNoOf(p){
   var m=String((p&&p.notes)||'').match(/招标编号[：:\s]*([A-Za-z0-9\-_\/\.]+)/);
@@ -856,7 +890,7 @@ function leadSamePerson(a,b){
  * @returns {{added:boolean,filled:boolean,dup:boolean}}
  */
 async function leadAppendProject(clientRow,l,ownerName,ownerCid){
-  var res={added:false,filled:false,dup:false};
+  var res={added:false,filled:false,dup:false,sameNameOther:''};
   var cid=clientRow&&clientRow.id;
   if(!cid)return res;
   var pname=String(l.project_name||'').trim();
@@ -873,13 +907,19 @@ async function leadAppendProject(clientRow,l,ownerName,ownerCid){
   try{projs=JSON.parse(raw||'[]');if(!Array.isArray(projs))projs=[]}catch(e){projs=[]}
   var key=leadProjKey(pname);
   var pno=String(l.project_no||'').replace(/\s+/g,'').toUpperCase();
-  var hit=null;
+  var dateStr=l.publish_date?String(l.publish_date).slice(0,10):'';
+  var hit=null,sameNameOther='';
   for(var i=0;i<projs.length;i++){
     var e=projs[i]||{};
+    // 编号一致就是同一个标（编号里带年份，跨年不会撞）
     if(pno&&leadProjNoOf(e)===pno){hit=e;break}
-    if(key&&leadProjKey(e.project_name)===key){hit=e;break}
+    if(!key||leadProjKey(e.project_name)!==key)continue;
+    // 名称一致还要过时间关：去年那笔等保测评和今年这笔是两码事。
+    // 判断不了（对方没填招标日期）时按新标处理 —— 宁可多一条看得见，
+    // 也别把新商机并进旧项目里，那正是复购提醒最该抓住的东西。
+    if(leadDateSame(e.bidding_date,dateStr)===1){hit=e;break}
+    if(!sameNameOther)sameNameOther=String(e.bidding_date||'').slice(0,10)||'（未填）';
   }
-  var dateStr=l.publish_date?String(l.publish_date).slice(0,10):'';
   // 结果公告已经回填过中标信息（sync-results.js）：建客户 / 并入项目时一起写进去，
   // 客户 360 里点开项目就能看到「中标公司 / 中标金额」。
   var winInfo=leadWinOf(l);
@@ -923,7 +963,7 @@ async function leadAppendProject(clientRow,l,ownerName,ownerCid){
     }else if(l.source_url&&oldNotes.indexOf(String(l.source_url))<0){
       hit.notes=(oldNotes?oldNotes+'；':'')+'公告原文 '+l.source_url;changed=true;
     }
-    if(!changed)return {added:false,filled:false,dup:true};
+    if(!changed)return {added:false,filled:false,dup:true,sameNameOther:sameNameOther};
     res.filled=true;
   }else{
     var entry={
@@ -950,6 +990,7 @@ async function leadAppendProject(clientRow,l,ownerName,ownerCid){
     }
     projs.push(entry);
     res.added=true;
+    res.sameNameOther=sameNameOther;
   }
   var w=await safeWriteById('clients','update',{projects:JSON.stringify(projs),updated_at:new Date().toISOString()},cid);
   if(!w.hit){res.added=false;res.filled=false;return res}
@@ -1242,6 +1283,7 @@ async function leadToClientProfile(l){
   var pr=await leadAppendProject(row,l,ownerName,ownerCid);
   out.projectAdded=!!pr.added;
   out.projectFilled=!!pr.filled;
+  out.sameNameOther=pr.sameNameOther||'';
   return out;
 }
 
@@ -1256,7 +1298,11 @@ function leadMergeSummary(r){
   // 说清楚「为什么并进了这个客户」：名称没对上、是号码对上的，
   // 不然销售会以为系统把两家不相干的单位合成了一家
   if(r.matchedBy==='phone')bits.push('电话命中已有联系人'+(r.matchedName?'「'+r.matchedName+'」':''));
-  if(r.projectAdded)bits.push('新增项目 1');
+  if(r.projectAdded){
+    // 同名但招标时间对不上（去年做过、今年又做），按新标的单列一条——
+    // 不解释一句的话，销售会以为系统又建了个重复项目
+    bits.push('新增项目 1'+(r.sameNameOther?(' · 与 '+r.sameNameOther+' 那条同名，按新标单列'):''));
+  }
   else if(r.projectFilled)bits.push('项目已存在，补全信息');
   if(r.contactAdded)bits.push('新增联系人 1');
   else if(r.phoneAdded)bits.push('补号码 '+r.phoneAdded+' 个');
