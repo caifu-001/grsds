@@ -1179,6 +1179,16 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
 .pending-card:last-child{margin-bottom:0}
 /* 「为什么抓进来」——采集日志摘要，单行省略，title 看全 */
 .pending-why{font-size:11px;color:var(--text3);margin-top:2px;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* 线索卡片复用客户卡片样式后补的两处：标题行（名称 + 状态徽标）、采集元信息行 */
+.lead-as-client{display:flex;flex-direction:column}
+.card-name-row{display:flex;align-items:center;gap:6px;margin-bottom:8px}
+.card-name-row .card-name{margin-bottom:0;flex:1;min-width:0}
+.card-name-row .lead-status-badge{flex:0 0 auto}
+.card-fetch{font-size:11px;color:var(--text3);display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-top:6px}
+.card-fetch a,.card-fetch span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* 卡片内操作区：跟上面的信息用虚线隔开，别跟联系电话糊在一起；贴底对齐，同排按钮才在一条线上 */
+.client-card .lead-actions{margin-top:auto;padding-top:8px;border-top:1px dashed var(--border)}
+.lead-as-client .pending-why{margin-bottom:0}
 .lead-actions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
 .lead-actions button{padding:5px 12px;border-radius:6px;font-size:11px;border:1px solid var(--border);cursor:pointer;background:#fff;color:var(--text);font-weight:500;transition:all .15s}
 .lead-actions button:active{background:var(--bg);transform:scale(.95)}

@@ -740,33 +740,137 @@ function renderPendingLeads(){
   var html='';
   for(var i=0;i<list.length;i++){
     var l=list[i];
-    html+='<div class="lead-card pending-card">';
-    html+='<div class="lead-name">'+h(l.name)+'</div>';
-    if(l.project_name)html+='<div class="lead-project" style="font-size:12px;color:var(--text2);margin-bottom:4px">📋 '+h(l.project_name)+'</div>';
-    html+='<div class="lead-contact">'+leadContactHtml(l)+'</div>';
-    html+=leadFetchedMetaHtml(l);
-    // 采集失败时至少把「为什么判断是这条」露出来，方便人工排除误抓
-    if(l.notes)html+='<div class="pending-why" title="'+h(l.notes)+'">'+h(String(l.notes).slice(0,120))+'</div>';
-    html+='<div class="lead-actions">';
-    html+='<button class="btn-lead-success" onclick="event.stopPropagation();approveLead(\''+l.id+'\')">✓ 同意入库</button>';
-    html+='<button class="btn-lead-danger" onclick="event.stopPropagation();rejectLead(\''+l.id+'\')">✗ 忽略</button>';
-    html+='<button class="btn-lead-primary" onclick="event.stopPropagation();openLeadForm(\''+l.id+'\')">编辑</button>';
-    html+='</div></div>';
+    var acts='<button class="btn-lead-success" onclick="event.stopPropagation();approveLead(\''+l.id+'\')">✓ 通过并建客户</button>'
+      +'<button class="btn-lead-danger" onclick="event.stopPropagation();rejectLead(\''+l.id+'\')">✗ 忽略</button>'
+      +'<button class="btn-lead-primary" onclick="event.stopPropagation();openLeadForm(\''+l.id+'\')">编辑</button>';
+    html+=leadClientCardHtml(l,{mode:'pending',actions:acts});
   }
   grid.innerHTML=html;
 }
 
-/** 同意一条：pending → new，进入公海正常流转 */
-async function approveLead(id){
-  var r=await safeWriteById('lead_pool','update',{review_status:'approved',reviewed_at:new Date().toISOString(),status:'new',updated_at:new Date().toISOString()},id,{allowProxy:false});
-  if(!r.hit){
-    showToast('入库失败：'+((r.error&&r.error.message)||'没有写入权限'));
-    return;
+/** 把招标信息压成客户档案的备注：几个月后回看，得知道这家客户是从哪条公告来的 */
+function leadProfileNotes(l){
+  var bits=[];
+  if(l.project_name)bits.push('项目：'+l.project_name);
+  if(l.project_no)bits.push('编号：'+l.project_no);
+  if(Number(l.budget)>0)bits.push('预算：'+formatMoney(l.budget));
+  if(l.publish_date)bits.push('公告日：'+String(l.publish_date).slice(0,10));
+  if(l.region)bits.push('地区：'+l.region);
+  if(l.agency_name)bits.push('代理：'+l.agency_name+(l.agency_phone?(' '+l.agency_phone):''));
+  if(l.source_url)bits.push('原文：'+l.source_url);
+  if(l.auto_fetched)bits.push('来源：招标公告自动采集');
+  return bits.join('\n');
+}
+
+/**
+ * 线索 → 客户档案（审核通过和公海「转为客户」共用这一条路）。
+ * 判定顺序：采集时已匹配的 client_id → 名称完全一致 → 库里再查一次。
+ * 命中已有客户就不重复建档，只把联系人补进去——一条公告建一个客户，
+ * 客户列表很快就没法看了。
+ * @returns {clientId,created,clientName,contactAdded,error}
+ */
+async function leadToClientProfile(l){
+  l=l||{};
+  var out={clientId:null,created:false,clientName:'',contactAdded:false,error:null};
+  var nm=String(l.name||'').trim();
+  if(!nm){out.error='线索没有单位名称，无法建客户';return out}
+  var norm=function(s){return String(s||'').replace(/\s+/g,'').toLowerCase()};
+  var target=null;
+  if(l.client_id)target=(allClients||[]).filter(function(c){return String(c.id)===String(l.client_id)})[0]||null;
+  if(!target)target=(allClients||[]).filter(function(c){return norm(c.name)===norm(nm)})[0]||null;
+  if(!target){
+    var q=await sb.from('clients').select('id,name,address').eq('company_id',currentCompanyId).eq('name',nm).limit(1);
+    if(q.data&&q.data.length)target=q.data[0];
   }
-  pendingLeads=(pendingLeads||[]).filter(function(x){return x.id!==id});
+  if(target){
+    out.clientId=target.id;
+    out.clientName=target.name||nm;
+    // 客户档案里地址空着才补，不覆盖人工填过的地址
+    if(l.contact_addr&&!String(target.address||'').trim()){
+      await safeWriteById('clients','update',{address:l.contact_addr,updated_at:new Date().toISOString()},target.id);
+    }
+  }else{
+    var ctype=String(l.industry||l.customer_type||'').trim();
+    var typeJson='[]';
+    try{if(ctype&&typeof allTypes==='function'&&allTypes().indexOf(ctype)>=0)typeJson=JSON.stringify([ctype])}catch(e){}
+    var payload={
+      name:nm,
+      type:typeJson,
+      address:l.contact_addr||'',
+      notes:leadProfileNotes(l),
+      industry:ctype,
+      source:l.source||'招标采集',
+      lifecycle_stage:'prospect',
+      user_id:currentUser?currentUser.id:null,
+      company_id:currentCompanyId
+    };
+    var ins=await sb.from('clients').insert(payload).select('id');
+    var cid=(ins.data&&ins.data[0]&&ins.data[0].id)||null;
+    if(!cid){
+      // clients 的读链路本来就走 service_role（admin-proxy），写这里回退不会越权：
+      // 代理会给非超管注入 company_id 并校验范围
+      var pr=await callAdmin('insert','clients',{payload:payload});
+      cid=(pr&&pr.data&&pr.data[0]&&pr.data[0].id)||null;
+      if(!cid){
+        out.error=((ins.error&&ins.error.message)||(pr&&pr.error&&pr.error.message)||'客户档案写入失败');
+        return out;
+      }
+    }
+    out.clientId=cid;out.created=true;out.clientName=nm;
+    // 立刻塞进内存，紧接着的下一张卡片去重时不会又把同一家建一遍
+    (allClients||[]).push({id:cid,name:nm,type:typeJson,address:l.contact_addr||'',projects:'[]',
+      industry:ctype,source:payload.source,lifecycle_stage:'prospect',notes:payload.notes,
+      created_at:new Date().toISOString(),updated_at:new Date().toISOString()});
+  }
+  // 联系人：手机进 phone、座机进 landline，和客户详情里的存法一致
+  var mob=String(l.contact_mobile||'').trim();
+  var tel=String(l.contact_phone||'').trim();
+  if(!mob&&/^1[3-9]\d{9}$/.test(tel.replace(/[-－—()（）\s]/g,''))){mob=tel.replace(/[-－—()（）\s]/g,'');tel=''}
+  if(mob||tel||l.contact_name){
+    var ec=await sb.from('contacts').select('id,name,phone,landline').eq('client_id',out.clientId).eq('company_id',currentCompanyId);
+    var rows=ec.data||[],dup=false;
+    for(var i=0;i<rows.length&&!dup;i++){
+      var ph=[];
+      try{ph=JSON.parse(rows[i].phone||'[]');if(!Array.isArray(ph))ph=[]}catch(e){ph=[]}
+      try{var ll=JSON.parse(rows[i].landline||'[]');if(Array.isArray(ll))ph=ph.concat(ll)}catch(e){}
+      if(mob&&ph.indexOf(mob)>=0)dup=true;
+      else if(!mob&&tel&&ph.indexOf(tel)>=0)dup=true;
+      else if(!mob&&!tel&&l.contact_name&&norm(rows[i].name)===norm(l.contact_name))dup=true;
+    }
+    if(!dup){
+      var cr=await sb.from('contacts').insert({
+        client_id:out.clientId,
+        name:l.contact_name||'',
+        dept:'',position:'',room:'',
+        phone:JSON.stringify(mob?[mob]:['']),
+        landline:JSON.stringify(tel?[tel]:['']),
+        email:JSON.stringify(l.contact_email?[l.contact_email]:['']),
+        company_id:currentCompanyId,
+        user_id:currentUser?currentUser.id:null
+      });
+      if(!cr.error)out.contactAdded=true;
+    }
+  }
+  return out;
+}
+
+/** 同意一条：直接落成客户档案（客户列表里马上能看到），线索标记已转化 */
+async function approveLead(id){
+  var l=(pendingLeads||[]).filter(function(x){return String(x.id)===String(id)})[0];
+  if(!l){showToast('这条线索已不在待审核里，刷新看看');return}
+  showToast('正在建客户…');
+  var r=await leadToClientProfile(l);
+  if(r.error){showToast('建客户失败：'+r.error);return}
+  var now=new Date().toISOString();
+  var w=await safeWriteById('lead_pool','update',{
+    review_status:'approved',reviewed_at:now,status:'converted',
+    client_id:r.clientId,converted_client_id:r.clientId,converted_at:now,updated_at:now
+  },id,{allowProxy:false});
+  if(!w.hit){showToast('客户已建，但线索状态没写进去：'+((w.error&&w.error.message)||'没有写入权限'));return}
+  pendingLeads=(pendingLeads||[]).filter(function(x){return String(x.id)!==String(id)});
   renderPendingLeads();
-  await loadPoolLeads();
-  showToast('已入库，在下方公海等待分配');
+  await Promise.all([loadPoolLeads(),loadClients()]);
+  showToast(r.created?('已创建客户「'+r.clientName+'」'):('已并入客户「'+r.clientName+'」'));
 }
 
 /** 忽略一条：pending → junk。不删除，误点了还能从「无效」筛回来 */
@@ -781,63 +885,140 @@ async function rejectLead(id){
   showToast('已忽略');
 }
 
-/** 剩下的都是好线索时才用。先弹确认，避免手滑把噪音整批放进公海 */
+/** 剩下的都是真项目时才用。先弹确认，避免手滑把噪音整批变成客户 */
 async function approveAllPending(){
   var n=(pendingLeads||[]).length;
   if(!n){showToast('没有待审核的线索');return}
-  var yes=await uiConfirm('剩下的 '+n+' 条自动采集线索会全部进入公海，销售可以直接认领跟进。'
-    +'建议先逐条看过再点——机器抓的难免有同名不同单位、代理机构混进采购人的情况。',
-    {okText:'确认全部入库',cancelText:'再看看',danger:false});
+  var yes=await uiConfirm('剩下的 '+n+' 条会全部通过审核，并直接创建成客户档案（客户库里已有同名的只补联系人，不会重复建档）。'
+    +'机器抓的难免有同名不同单位、代理机构混进采购人的情况，建议先逐条看过。',
+    {okText:'全部通过',cancelText:'再看看',danger:false});
   if(yes)await doApproveAll();
 }
 
-/** 真正执行批量入库。逐条写，单条失败不影响其它条 */
+/** 真正执行批量通过。逐条建客户，单条失败不影响其它条 */
 async function doApproveAll(){
-  var ids=(pendingLeads||[]).map(function(x){return x.id});
-  if(!ids.length)return;
-  showToast('正在入库…');
-  var ok=0,fail=0;
-  for(var i=0;i<ids.length;i++){
-    var r=await safeWriteById('lead_pool','update',{review_status:'approved',reviewed_at:new Date().toISOString(),status:'new',updated_at:new Date().toISOString()},ids[i],{allowProxy:false});
-    if(r.hit)ok++;else fail++;
+  var list=(pendingLeads||[]).slice();
+  if(!list.length)return;
+  showToast('正在建客户…');
+  var ok=0,joined=0,fail=0;
+  for(var i=0;i<list.length;i++){
+    var l=list[i];
+    var r=await leadToClientProfile(l);
+    if(r.error){fail++;continue}
+    var now=new Date().toISOString();
+    var w=await safeWriteById('lead_pool','update',{
+      review_status:'approved',reviewed_at:now,status:'converted',
+      client_id:r.clientId,converted_client_id:r.clientId,converted_at:now,updated_at:now
+    },l.id,{allowProxy:false});
+    if(!w.hit){fail++;continue}
+    if(r.created)ok++;else joined++;
   }
-  await loadPendingLeads();
-  await loadPoolLeads();
-  showToast('已入库 '+ok+' 条'+(fail?('，失败 '+fail+' 条（可能没有写入权限）'):''));
+  await Promise.all([loadPendingLeads(),loadPoolLeads(),loadClients()]);
+  showToast('新建客户 '+ok+' 家'+(joined?('、并入已有 '+joined+' 家'):'')+(fail?('，失败 '+fail+' 条'):''));
+}
+
+/** 采集站点 → 卡片徽标上的短名。全称「招标公告 · 重庆市公共资源交易网」会把徽标挤满一行 */
+var LEAD_SITE_LABEL={'cqggzy.com':'交易网','gec123.com':'行采家','ccgp.gov.cn':'政采网'};
+
+/** 线索卡片的类型徽标：来源站点在前、客户类型在后，沿用客户卡片的 .card-type 样式 */
+function leadCardTypesHtml(l){
+  l=l||{};
+  var out='';
+  var site=LEAD_SITE_LABEL[l.source_site]||'';
+  if(!site&&l.auto_fetched)site='招标采集';
+  // 手工线索只有 source 文本（如「手动录入」「展会」），取前 10 字当徽标
+  if(!site&&l.source){
+    var src=String(l.source).replace(/^招标公告\s*[·,，]\s*/,'').replace(/\s+/g,' ').trim();
+    if(src)site=src.length>10?src.slice(0,10):src;
+  }
+  if(site)out+='<span class="card-type" style="background:#F97316">'+h(site)+'</span>';
+  var ct=String(l.industry||l.customer_type||'').trim();
+  if(ct&&ct!==site){
+    var col=tColor(ct);if(!col||col==='#999')col='#64748B';
+    out+='<span class="card-type" style="background:'+h(col)+'">'+h(ct)+'</span>';
+  }
+  return out?'<div class="card-types">'+out+'</div>':'';
 }
 
 /**
- * 线索卡片上的联系方式。
- * 手机号排最前且可点击复制——销售是照着号码打电话的，别让人手工抄。
- * 地址可能很长，单行省略 + title 看全。
+ * 项目气泡 —— 与客户卡片上的「📋 项目名 · 中标人 · 负责人」同一位置。
+ * 气泡只放项目名：招标项目名普遍三十字往上，再塞金额日期就会被切成「· 20」这种残片。
+ * 金额/日期/地区挪到下面一行 meta，完整信息留在 title 里。
+ */
+function leadCardProjectHtml(l){
+  l=l||{};
+  var name=String(l.project_name||'').trim();
+  if(!name)return '';
+  var tip=[];
+  tip.push('项目：'+name);
+  if(Number(l.budget)>0)tip.push('预算：'+formatMoney(l.budget));
+  if(l.publish_date)tip.push('公告日：'+String(l.publish_date).slice(0,10));
+  if(l.region)tip.push('地区：'+l.region);
+  if(l.project_no)tip.push('编号：'+l.project_no);
+  if(l.agency_name)tip.push('代理：'+l.agency_name+(l.agency_phone?(' '+l.agency_phone):''));
+  return '<div class="card-projects"><span class="card-project-tag" title="'+h(tip.join(' / '))+'">📋 '+h(name)+'</span></div>';
+}
+
+/**
+ * 卡片底部的联系方式 —— 与客户卡片完全一致：
+ * 手机/座机都是 tel: 药丸，手机上点一下直接拨，桌面点一下拉起拨号。
+ * 老数据只有 contact_phone 且里面存的就是手机号，这里继续兼容。
  */
 function leadContactHtml(l){
   l=l||{};
   var out='';
-  if(l.contact_name)out+='<span>👤 '+h(l.contact_name)+'</span>';
+  if(l.contact_name)out+='<span class="contact-name">👤 '+h(l.contact_name)+'</span>';
   var mob=String(l.contact_mobile||'').trim();
   var tel=String(l.contact_phone||'').trim();
-  // 老数据只有 contact_phone，且里面存的就是手机号
   if(!mob&&/^1[3-9]\d{9}$/.test(tel.replace(/[-－—()（）\s]/g,''))){mob=tel.replace(/[-－—()（）\s]/g,'');tel=''}
-  if(mob)out+='<span class="lead-phone" title="点击复制手机号" onclick="event.stopPropagation();copyLeadPhone(\''+h(mob)+'\')">📱 '+h(mob)+'</span>';
-  if(tel&&tel!==mob)out+='<span class="lead-phone" title="点击复制电话" onclick="event.stopPropagation();copyLeadPhone(\''+h(tel)+'\')">📞 '+h(tel)+'</span>';
-  if(l.contact_email)out+='<span>📧 '+h(l.contact_email)+'</span>';
-  if(l.contact_addr)out+='<span style="max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+h(l.contact_addr)+'">🏠 '+h(l.contact_addr)+'</span>';
-  return out;
+  if(mob)out+='<a class="contact-phone-link" href="tel:'+h(mob)+'" onclick="event.stopPropagation()"><span class="ph-icon">📱</span>'+h(mob)+'</a>';
+  if(tel&&tel!==mob)out+='<a class="contact-phone-link" href="tel:'+h(tel.replace(/\s+/g,''))+'" onclick="event.stopPropagation()"><span class="ph-icon">📞</span>'+h(tel)+'</a>';
+  if(l.contact_email)out+='<a class="contact-phone-link" href="mailto:'+h(l.contact_email)+'" onclick="event.stopPropagation()"><span class="ph-icon">📧</span>'+h(l.contact_email)+'</a>';
+  return out?'<div class="card-contact">'+out+'</div>':'';
 }
 
-/** 自动采集来的招标信息：预算 / 公告日 / 地区 / 代理 / 附件 / 原文链接 */
+/** 采集元信息：预算 / 公告日 / 地区 / 客户库已有 / 附件 / 公告原文 */
 function leadFetchedMetaHtml(l){
-  if(!(l.auto_fetched||l.source_url))return '';
   var bd='';
-  if(l.budget>0)bd+='<span style="font-weight:600;color:var(--danger)">💰 '+h(formatMoney(l.budget))+'</span>';
+  if(Number(l.budget)>0)bd+='<span style="color:var(--danger);font-weight:700">💰 '+h(formatMoney(l.budget))+'</span>';
   if(l.publish_date)bd+='<span>📅 '+h(String(l.publish_date).slice(0,10))+'</span>';
   if(l.region)bd+='<span>📍 '+h(l.region)+'</span>';
-  if(l.client_id)bd+='<span style="color:var(--success)">✓ 已在客户库</span>';
-  if(l.agency_name)bd+='<span title="'+h(l.agency_phone||'')+'">🏢 代理 '+h(String(l.agency_name).slice(0,16))+'</span>';
+  if(l.client_id)bd+='<span style="color:var(--success);font-weight:600">✓ 客户库已有</span>';
   if(l.attachments&&l.attachments.length)bd+=leadAttLinksHtml(l.attachments);
-  if(l.source_url)bd+='<a href="'+h(l.source_url)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--primary);text-decoration:none">📄 查看公告原文</a>';
-  return bd?'<div class="lead-meta" style="margin-top:4px">'+bd+'</div>':'';
+  if(l.source_url)bd+='<a href="'+h(l.source_url)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--primary);text-decoration:none">📄 公告原文</a>';
+  return bd?'<div class="card-fetch">'+bd+'</div>':'';
+}
+
+/**
+ * 线索卡片 = 客户卡片。
+ * 同一家单位今天在线索里、明天就进了客户库，两套视觉只会让人反复重新认。
+ * 直接复用 .client-card / .card-name / .card-projects / .card-contact 全套类名。
+ * @param {object} l      lead_pool 行
+ * @param {object} opts   {mode:'pending'|'pool'|'mine', actions:'按钮 HTML'}
+ */
+function leadClientCardHtml(l,opts){
+  opts=opts||{};
+  var mode=opts.mode||'pool';
+  var stMap={new:'新线索',assigned:'已分配',contacted:'已联系',converted:'已转化',recycled:'已回收',junk:'无效',lost:'已失效'};
+  var stTxt=mode==='pending'?'待审核':(stMap[l.status]||l.status||'线索');
+  var stCls=mode==='pending'?'pending':(l.status||'');
+  var addr=String(l.contact_addr||l.address||'').trim();
+  var html='<div class="client-card lead-as-client" onclick="openLeadForm(\''+h(l.id)+'\')">';
+  html+=leadCardTypesHtml(l);
+  html+='<div class="card-name-row"><div class="card-name" title="'+h(l.name||'')+'">'+h(l.name||'（未填单位）')+'</div>'
+    +'<span class="lead-status-badge '+h(stCls)+'">'+h(stTxt)+'</span></div>';
+  if(addr)html+='<div class="card-addr" title="'+h(addr)+'">📍 '+h(addr)+'</div>';
+  html+=leadCardProjectHtml(l);
+  html+=leadContactHtml(l);
+  html+=leadFetchedMetaHtml(l);
+  // 「为什么抓进来」：留给人工判断同名不同单位、代理机构混进采购人
+  if(mode==='pending'&&l.notes){
+    var why=String(l.notes).replace(/^自动采集\s*[·,，]?\s*/,'');
+    if(why)html+='<div class="pending-why" title="'+h(why)+'">'+h(why.slice(0,120))+'</div>';
+  }
+  if(opts.actions)html+='<div class="lead-actions" onclick="event.stopPropagation()">'+opts.actions+'</div>';
+  html+='</div>';
+  return html;
 }
 
 /** 招标公告附件：最多列 3 个可直接下载的，其余折叠成「+N」 */
@@ -848,10 +1029,10 @@ function leadAttLinksHtml(atts){
     var nm=String(a.name||'附件');
     if(n>=3){rest=atts.length-n;break}
     if(a.url){
-      out+='<a href="'+h(a.url)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--primary);text-decoration:none" title="下载 '+h(nm)+'">📎 '+h(nm.slice(0,16))+'</a>';
+      out+='<a href="'+h(a.url)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--primary);text-decoration:none" title="下载 '+h(nm)+'">📎 '+h(nm.slice(0,10))+'</a>';
     }else{
       // 交易网的附件拿不到直链，只能提示去原文下
-      out+='<span title="需到公告原文下载：'+h(nm)+'">📎 '+h(nm.slice(0,16))+'</span>';
+      out+='<span title="需到公告原文下载：'+h(nm)+'">📎 '+h(nm.slice(0,10))+'</span>';
     }
     n++;
   }
@@ -879,30 +1060,19 @@ function renderLeads(){
   var grid=document.getElementById('sales-lead-grid'),empty=document.getElementById('sales-lead-empty');
   if(!list.length){grid.innerHTML='';if(empty)empty.classList.remove('hidden');return}
   if(empty)empty.classList.add('hidden');
-  var statusMap={new:'新线索',pending:'待审核',assigned:'已分配',contacted:'已联系',converted:'已转化',recycled:'已回收',junk:'无效'};
   var html='';
   for(var i=0;i<list.length;i++){
     var l=list[i];
     var assignee='';
     if(l.assigned_to&&allUsers){var u=allUsers.find(function(x){return x.user_id===l.assigned_to});assignee=u?(u.display_name||u.email||''):''}
-    html+='<div class="lead-card">';
-    html+='<div class="lead-name">'+h(l.name)+'</div>';
-    if(l.project_name)html+='<div class="lead-project" style="font-size:12px;color:var(--primary);margin-bottom:4px">📋 '+h(l.project_name)+'</div>';
-    html+='<div class="lead-contact">'+leadContactHtml(l)+'</div>';
-    html+='<div class="lead-meta">';
-    html+='<span class="lead-status-badge '+h(l.stage||l.status)+'">'+(l.stage||statusMap[l.status]||l.status)+'</span>';
-    if(l.source)html+='<span>来源: '+h(l.source)+'</span>';
-    if(assignee)html+='<span>分配: '+h(assignee)+'</span>';
-    if(l.last_follow_up)html+='<span>跟进: '+l.last_follow_up+'</span>';
-    html+='</div>';
-    html+=leadFetchedMetaHtml(l);
-    html+='<div class="lead-actions">';
-    html+='<button class="btn-lead-primary" onclick="event.stopPropagation();openLeadForm(\''+l.id+'\')">编辑</button>';
+    var acts='';
+    if(assignee)acts+='<span style="font-size:11px;color:var(--text3);margin-right:2px">分配：'+h(assignee)+'</span>';
+    acts+='<button class="btn-lead-primary" onclick="event.stopPropagation();openLeadForm(\''+l.id+'\')">编辑</button>';
     var li=_leadProjectCache.length;
     _leadProjectCache.push({id:l.id,projectName:l.project_name||l.name||'',companyName:l.name||'',clientId:l.client_id||'',budget:l.budget||null});
-    html+='<button class="btn-lead-success" onclick="event.stopPropagation();openProjectFormFromLeadIdx('+li+')">转项目</button>';
-    html+='<button class="btn-lead-danger" onclick="event.stopPropagation();deleteLead(\''+l.id+'\')">删除</button>';
-    html+='</div></div>';
+    acts+='<button class="btn-lead-success" onclick="event.stopPropagation();openProjectFormFromLeadIdx('+li+')">转项目</button>';
+    acts+='<button class="btn-lead-danger" onclick="event.stopPropagation();deleteLead(\''+l.id+'\')">删除</button>';
+    html+=leadClientCardHtml(l,{mode:'mine',actions:acts});
   }
   grid.innerHTML=html;
 }
@@ -923,29 +1093,17 @@ function renderPoolLeads(){
   var grid=document.getElementById('lead-grid'),empty=document.getElementById('lead-empty');
   if(!list.length){grid.innerHTML='';if(empty)empty.classList.remove('hidden');return}
   if(empty)empty.classList.add('hidden');
-  var statusMap={new:'新线索',pending:'待审核',assigned:'已分配',contacted:'已联系',converted:'已转化',recycled:'已回收',junk:'无效'};
   var html='';
   for(var i=0;i<list.length;i++){
     var l=list[i];
-    html+='<div class="lead-card">';
-    html+='<div class="lead-name">'+h(l.name)+'</div>';
-    html+='<div class="lead-contact">'+leadContactHtml(l)+'</div>';
-    html+='<div class="lead-meta">';
-    html+='<span class="lead-status-badge '+h(l.status)+'">'+(statusMap[l.status]||l.status)+'</span>';
-    if(l.source)html+='<span>来源: '+h(l.source)+'</span>';
-    if(l.industry)html+='<span>行业: '+h(l.industry)+'</span>';
-    html+='</div>';
-    // 自动采集的招标公告：把「值多少钱 / 哪天发的 / 原文在哪」放到卡片上，
-    // 否则销售得逐条点开才知道该不该跟。
-    html+=leadFetchedMetaHtml(l);
-    html+='<div class="lead-actions">';
-    html+='<button class="btn-lead-primary" onclick="event.stopPropagation();openLeadForm(\''+l.id+'\')">编辑</button>';
-    html+='<button class="btn-lead-primary" onclick="event.stopPropagation();assignLead(\''+l.id+'\')">分配</button>';
+    var acts='<button class="btn-lead-success" onclick="event.stopPropagation();convertLeadToClient(\''+l.id+'\')">✓ 转为客户</button>';
+    acts+='<button class="btn-lead-primary" onclick="event.stopPropagation();assignLead(\''+l.id+'\')">分配</button>';
+    acts+='<button class="btn-lead-primary" onclick="event.stopPropagation();openLeadForm(\''+l.id+'\')">编辑</button>';
     var li=_leadProjectCache.length;
     _leadProjectCache.push({id:l.id,projectName:l.project_name||l.name||'',companyName:l.name||'',clientId:l.client_id||'',budget:l.budget||null});
-    html+='<button class="btn-lead-success" onclick="event.stopPropagation();openProjectFormFromLeadIdx('+li+')">转项目</button>';
-    html+='<button class="btn-lead-danger" onclick="event.stopPropagation();deleteLead(\''+l.id+'\')">删除</button>';
-    html+='</div></div>';
+    acts+='<button class="btn-lead-primary" onclick="event.stopPropagation();openProjectFormFromLeadIdx('+li+')">转项目</button>';
+    acts+='<button class="btn-lead-danger" onclick="event.stopPropagation();deleteLead(\''+l.id+'\')">删除</button>';
+    html+=leadClientCardHtml(l,{mode:'pool',actions:acts});
   }
   grid.innerHTML=html;
 }
@@ -1234,42 +1392,21 @@ async function doAssignLead(){
 }
 
 async function convertLeadToClient(id){
-  // Fetch lead from Supabase directly
-  var {data:leads,error:le}=await sb.from('lead_pool').select('*').eq('id',id).single();
-  if(le||!leads){showToast('线索未找到: '+(le?le.message:'数据为空'));return}
-  var l=leads;
-  // Dedup: check if a client with the same name already exists in this company
-  var clientId=null;
-  var {data:existing}=await sb.from('clients').select('id,name').eq('company_id',currentCompanyId).ilike('name',l.name).limit(1);
-  if(existing&&existing.length>0){
-    clientId=existing[0].id;
-    // Update existing client fields (merge: line info enriches client)
-    var patch={};
-    if(l.industry&&!existing[0].industry)patch.industry=l.industry;
-    if(l.scale)patch.scale=l.scale;
-    if(l.source)patch.source=l.source;
-    if(Object.keys(patch).length>0){await safeWriteById('clients','update',patch,clientId)}
-  }else{
-    var client={name:l.name,type:'[]',address:'',notes:l.notes||'',industry:l.industry||'',scale:l.scale||'',source:l.source||'',lifecycle_stage:'prospect',user_id:currentUser.id,company_id:currentCompanyId};
-    var {data:cd,error}=await sb.from('clients').insert(client).select('id');
-    if(error){showToast('转化失败: '+error.message);return}
-    clientId=cd[0].id;
+  // 公海里的「转为客户」：和审核通过走同一条建客户逻辑（同名不重复建档、只补联系人）
+  var l=(poolLeads||[]).concat(allLeads||[]).filter(function(x){return String(x.id)===String(id)})[0];
+  if(!l){
+    var {data:rows,error:le}=await sb.from('lead_pool').select('*').eq('id',id).limit(1);
+    if(le||!rows||!rows.length){showToast('线索未找到: '+(le?le.message:'数据为空'));return}
+    l=rows[0];
   }
-  // Always add contact (dedup by phone within this client)
-  if(l.contact_name||l.contact_phone||l.contact_email){
-    var phoneArr=l.contact_phone?[l.contact_phone]:[''];
-    // Check if same phone already exists for this client
-    var {data:ec}=await sb.from('contacts').select('id,phone').eq('client_id',clientId);
-    var dupPhone=false;
-    if(ec)for(var ci=0;ci<ec.length;ci++){try{var eph=JSON.parse(ec[ci].phone||'[]');if(!Array.isArray(eph))eph=[String(eph||'')];if(eph.indexOf(l.contact_phone)>=0&&l.contact_phone){dupPhone=true;break}}catch(ex){}}
-    if(!dupPhone){
-      await sb.from('contacts').insert({client_id:clientId,name:l.contact_name||'',phone:JSON.stringify(phoneArr),email:JSON.stringify(l.contact_email?[l.contact_email]:['']),company_id:currentCompanyId,user_id:currentUser.id});
-    }
-  }
-  // Update lead
-  await sb.from('lead_pool').update({status:'converted',converted_client_id:clientId,converted_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',id);
-  loadClients();await loadPoolLeads();await loadLeads();
-  showToast(existing&&existing.length>0?'线索已关联到已有客户「'+existing[0].name+'」':'已转化为客户');
+  var r=await leadToClientProfile(l);
+  if(r.error){showToast('转化失败: '+r.error);return}
+  var now=new Date().toISOString();
+  await safeWriteById('lead_pool','update',{
+    status:'converted',client_id:r.clientId,converted_client_id:r.clientId,converted_at:now,updated_at:now
+  },id,{allowProxy:false});
+  await Promise.all([loadClients(),loadPoolLeads(),loadLeads()]);
+  showToast(r.created?('已创建客户「'+r.clientName+'」'):('已并入客户「'+r.clientName+'」'));
 }
 
 function openLeadImport(){

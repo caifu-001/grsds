@@ -9,7 +9,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👔</text></svg>">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<link rel="stylesheet" href="css/app.css?v=d78a1418">
+<link rel="stylesheet" href="css/app.css?v=64b5a74f">
 
 <!-- 百度地图改为按需加载（见 js/app_v2.js 的 ensureBaiduMap），避免首屏同步阻塞 -->
 </head>
@@ -2158,7 +2158,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 <script src="js/modules/10-charts.js?v=5122efef"></script>
 <script src="js/modules/11-inventory.js?v=def5b4e8"></script>
 <script src="js/modules/12-performance.js?v=398faa67"></script>
-<script src="js/modules/13-crm360.js?v=5f7eeb72"></script>
+<script src="js/modules/13-crm360.js?v=93480231"></script>
 <script src="js/modules/14-hr-config.js?v=08066fa1"></script>
 <script src="js/modules/15-workflow.js?v=11a24d5e"></script>
 <script src="js/modules/16-projects.js?v=9faeaceb"></script>
@@ -2178,11 +2178,11 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
     <div class="pending-head">
       <div class="pending-title">🆕 自动采集待审核 <span id="pending-count">0</span></div>
       <div style="display:flex;gap:6px;align-items:center">
-        <button class="btn-sm" style="background:#fff;color:var(--success);border:1px solid var(--success)" onclick="approveAllPending()">全部同意</button>
+        <button class="btn-sm" style="background:#fff;color:var(--success);border:1px solid var(--success)" onclick="approveAllPending()">全部通过</button>
         <button class="btn-sm" style="background:#fff;color:var(--text2);border:1px solid var(--border)" id="pending-fold" onclick="pendingToggle()">收起 ▴</button>
       </div>
     </div>
-    <div class="pending-tip">这些是自动从招标网抓来的，还没进公海。确认是真项目、联系人对得上，再点「同意入库」。</div>
+    <div class="pending-tip">这些是自动从招标网抓来的。确认是真项目、联系人对得上，再点「通过并建客户」——通过后直接进客户列表（客户库已有同名的只补联系人，不重复建档）。</div>
     <div id="pending-body">
       <div class="client-grid" id="pending-grid"></div>
     </div>
