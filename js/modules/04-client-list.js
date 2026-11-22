@@ -567,61 +567,123 @@ async function doRefresh(){
   finally{setTimeout(function(){btn.classList.remove('refreshing')},300)}
 }
 let _loadClientsBusy=false;
-async function loadClients(){
+// ── 客户页秒开：会话内缓存 + 后台静默校正 ─────────────────────────────
+// 全量 clients 约 2600 行 / 5MB，contacts 约 4600 行 / 2.4MB，单次拉完要 4~5 秒；
+// 以前每次点「客户」都重拉一遍并把列表换成骨架屏，所以每次都像重新加载。
+// 现在把成功拉到的原始行留在内存：切回客户页先同步渲染缓存（0 延迟），
+// 再后台静默拉一次校正，只在数据真的变了才重绘 —— 写操作后的刷新仍走全量，不吃缓存。
+var _clientCache={at:0,raw:null,contacts:null,sig:''};
+var CLIENT_CACHE_TTL=5*60*1000;   // 5 分钟内切页直接用缓存
+var _clientBgRefreshing=false;
+
+function clientRowsSig(raw,contacts){
+  var r=raw||[],c=contacts||[];
+  var head=r.length?String(r[0].updated_at||r[0].id||''):'';
+  return r.length+'/'+c.length+'/'+head;
+}
+
+// 客户与联系人互不依赖 → 拆成两个请求并行（原来串行等，白等一倍）
+async function fetchClientRows(){
+  // 非管理员用 callAdmin 绕过 RLS，再前端 canAccess 过滤
+  if(!isAdmin()){
+    var r=await callAdmin('select','clients',{query:'*',filters:[{col:'company_id',op:'eq',val:currentCompanyId},{col:'',op:'order',val:'updated_at.desc'},{col:'',op:'limit',val:'50000'}]});
+    return {data:(r&&r.data)||[],error:r&&r.error};
+  }
+  var res=await sb.from('clients').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
+  return {data:(res&&res.data)||[],error:res&&res.error};
+}
+async function fetchContactRows(){
+  var res=await sb.from('contacts').select('*').eq('company_id',currentCompanyId);
+  return {data:(res&&res.data)||[],error:res&&res.error};
+}
+
+// 把原始行应用成全局状态并渲染。缓存路径与网络路径共用同一段逻辑，避免两套走偏。
+function applyClientRows(raw,contacts,opts){
+  opts=opts||{};
+  var clientsData=raw||[];
+  allClients=clientsData;
+  if(!isAdmin()){
+    var _before=allClients.length;
+    allClients=allClients.filter(function(cl){return canAccess('clients',cl.id)});
+    if(_before!==allClients.length)dbg('[loadClients] grants filter: '+_before+' → '+allClients.length);
+  }else{
+    allClients=allClients.slice();   // 与缓存数组脱钩，别处原地改动不会污染缓存
+  }
+  allContacts=(contacts||[]).slice();
+  // 回收站：把软删除的客户分离出来，其余逻辑完全不受影响
+  _softDeleteReady=false;_customDataReady=false;
+  for(var _di=0;_di<allClients.length;_di++){
+    if(!allClients[_di])continue;
+    if(allClients[_di].deleted_at!==undefined)_softDeleteReady=true;
+    if(allClients[_di].custom_data!==undefined)_customDataReady=true;
+    if(_softDeleteReady&&_customDataReady)break;
+  }
+  if(_softDeleteReady){
+    var _alive=[],_trash=[];
+    for(var _dj=0;_dj<allClients.length;_dj++){var _c=allClients[_dj];if(_c&&_c.deleted_at)_trash.push(_c);else _alive.push(_c)}
+    allDeletedClients=_trash;
+    allClients=_alive;
+    allDeletedContacts=allContacts.filter(function(co){return co&&co.deleted_at});
+    allContacts=allContacts.filter(function(co){return !co||!co.deleted_at});
+  }else{
+    allDeletedClients=[];allDeletedContacts=[];
+  }
+  updateRecycleBadge();
+  _clientOrderCache={};       // 订单数据变了，卡片上的成交概览要重算
+  buildFilterSelect();        // 客户数据变了，刷新筛选下拉的计数
+  renderList();
+  if(typeof checkBirthdayReminders==='function')checkBirthdayReminders();
+}
+
+async function _bgRefreshClients(){
+  if(_clientBgRefreshing)return;
+  _clientBgRefreshing=true;
+  try{await loadClients({silent:true})}
+  catch(e){dbg('[loadClients] bg refresh failed:',e&&e.message)}
+  finally{_clientBgRefreshing=false}
+}
+
+async function loadClients(opts){
+  opts=opts||{};
+  var silent=!!opts.silent;
+  // 切页秒开：缓存还新鲜就直接渲染，再后台校正（写操作后的刷新不传 cache，照旧全量）
+  if(opts.cache&&_clientCache.raw&&(Date.now()-_clientCache.at<CLIENT_CACHE_TTL)){
+    dbg('[loadClients] cache hit rows='+_clientCache.raw.length+' age='+(Date.now()-_clientCache.at)+'ms');
+    applyClientRows(_clientCache.raw,_clientCache.contacts,{fromCache:true});
+    if(!_loadClientsBusy&&Date.now()-_clientCache.at>15000)_bgRefreshClients();
+    return;
+  }
   if(_loadClientsBusy){dbg('[loadClients] skipped (busy)');return}
   _loadClientsBusy=true;
-  try{
   var grid=document.getElementById('client-grid');
   var statsBar=document.getElementById('stats-bar');
-  grid.innerHTML=skCards(6);
-  statsBar.innerHTML=skStatCards(3);
+  // 静默校正时绝不清空列表 —— 那一下闪骨架屏正是「每次都很慢」的观感来源
+  if(!silent&&grid){grid.innerHTML=skCards(6);statsBar.innerHTML=skStatCards(3)}
+  var _scrollY=window.scrollY||0;
   try{
-    var clientsData,clientsError;
-    // 非管理员用 callAdmin 绕过 RLS，再前端 canAccess 过滤
-    if(!isAdmin()){
-      var r=await callAdmin('select','clients',{query:'*',filters:[{col:'company_id',op:'eq',val:currentCompanyId},{col:'',op:'order',val:'updated_at.desc'},{col:'',op:'limit',val:'50000'}]});
-      clientsData=r&&r.data||[];clientsError=r&&r.error;
-      dbg('[loadClients] callAdmin for member, data:',(clientsData||[]).length,'error:',clientsError);
-    }else{
-      var res=await sb.from('clients').select('*').eq('company_id',currentCompanyId).order('updated_at',{ascending:false});
-      clientsData=res.data;clientsError=res.error;
+    // clients / contacts / orders 三者互不依赖 → 一次并行，别串行等
+    var out=await Promise.all([
+      fetchClientRows(),
+      fetchContactRows(),
+      loadOrders().then(function(){return null},function(e){return e})
+    ]);
+    var cres=out[0],kres=out[1];
+    if(cres.error){
+      if(!silent&&grid){grid.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div>加载失败<br><span style="font-size:12px;color:var(--text3)">'+h(cres.error.message||'')+'</span></div>';statsBar.innerHTML=''}
+      return;
     }
-    if(clientsError){grid.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div>加载失败<br><span style="font-size:12px;color:var(--text3)">'+h(clientsError.message)+'</span></div>';statsBar.innerHTML='';return}
-    allClients=(clientsData||[]);
-    dbg('[loadClients] fetched '+allClients.length+' clients, currentCompanyRole='+currentCompanyRole+' isSuperAdmin='+isSuperAdmin);
-    if(!isAdmin()){
-      dbg('[loadClients] filtering by grants, memberGrants.clients=',JSON.stringify(memberGrants.clients));
-      if(allClients.length>0)dbg('[loadClients] sample client id:',JSON.stringify(allClients[0].id),' grant sample:',JSON.stringify(memberGrants.clients&&memberGrants.clients[0]));
-      allClients=allClients.filter(function(cl){var ok=canAccess('clients',cl.id);if(!ok)dbg('[loadClients] DENY client '+cl.id+' not in grants (case check: '+JSON.stringify(memberGrants.clients)+')');return ok});
-      dbg('[loadClients] after filter: '+allClients.length+' clients');
-    }
-    var {data:cd}=await sb.from('contacts').select('*').eq('company_id',currentCompanyId);
-    allContacts=(cd||[]);
-    // 回收站：把软删除的客户分离出来，其余逻辑完全不受影响
-    _softDeleteReady=false;_customDataReady=false;
-    for(var _di=0;_di<allClients.length;_di++){
-      if(!allClients[_di])continue;
-      if(allClients[_di].deleted_at!==undefined)_softDeleteReady=true;
-      if(allClients[_di].custom_data!==undefined)_customDataReady=true;
-      if(_softDeleteReady&&_customDataReady)break;
-    }
-    if(_softDeleteReady){
-      var _alive=[],_trash=[];
-      for(var _dj=0;_dj<allClients.length;_dj++){var _c=allClients[_dj];if(_c&&_c.deleted_at)_trash.push(_c);else _alive.push(_c)}
-      allDeletedClients=_trash;
-      allClients=_alive;
-      allDeletedContacts=allContacts.filter(function(co){return co&&co.deleted_at});
-      allContacts=allContacts.filter(function(co){return !co||!co.deleted_at});
-    }else{
-      allDeletedClients=[];allDeletedContacts=[];
-    }
-    updateRecycleBadge();
-    await loadOrders();
-    checkBirthdayReminders();
-    _clientOrderCache={};
-    buildFilterSelect();  // 客户数据变了，刷新筛选下拉的计数
-    renderList();
-  }catch(e){grid.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div>加载失败</div>';statsBar.innerHTML=''}
-  }finally{_loadClientsBusy=false;}
+    // 联系人拉失败不该挡住客户列表：退化成沿用上一批联系人
+    if(kres.error)console.warn('[loadClients] contacts failed:',kres.error);
+    var _kRows=kres.error?(allContacts||[]):kres.data;
+    dbg('[loadClients] fetched '+cres.data.length+' clients / '+_kRows.length+' contacts, role='+currentCompanyRole);
+    _clientCache={at:Date.now(),raw:cres.data,contacts:_kRows,sig:clientRowsSig(cres.data,_kRows)};
+    applyClientRows(cres.data,_kRows,{silent:silent});
+    // 静默校正后把滚动位置还原，别让用户翻到一半被弹回顶部
+    if(silent&&_scrollY)try{window.scrollTo(0,_scrollY)}catch(e){}
+  }catch(e){
+    dbg('[loadClients] error:',e&&e.message);
+    if(!silent&&grid){grid.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div>加载失败</div>';statsBar.innerHTML=''}
+  }
+  finally{_loadClientsBusy=false;}
 }
 

@@ -1245,7 +1245,8 @@ function switchTab(tab){
     cv.classList.remove('hidden');tc.classList.add('active');
     fab.classList.remove('hidden');fab.textContent='+';fab.onclick=function(){openForm()};
     document.getElementById('topbar-title').textContent='客户管理';
-    loadClients();
+    // cache:true → 有会话内缓存就秒开（先渲染再静默校正），没有再全量拉
+    loadClients({cache:true});
   }else if(tab==='orders'){
     ov.classList.remove('hidden');to.classList.add('active');
     fab.classList.remove('hidden');fab.textContent='+';fab.onclick=function(){openOrderForm()};
