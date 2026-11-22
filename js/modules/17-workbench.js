@@ -2117,7 +2117,7 @@ function showPdEditModal(b,blockKey,overrides,tplStep){
     '<label>所属阶段</label><input id="pd-edit-phase" value="'+escHtml(phase)+'" placeholder="如：线索、商机">'+
     '<label>面板类型</label><select id="pd-edit-panel">'+panelOptions+'</select>'+
     '<label>下一步骤</label><select id="pd-edit-next">'+stepOptions+'</select>'+
-    '<div style="margin-top:12px;padding:10px;background:#fff3e0;border-radius:8px">'+
+    '<div style="margin-top:12px;padding:10px;background:var(--warning-light);border-radius:8px">'+
     '<label style="display:flex;align-items:center;gap:6px;margin-top:0"><input type="checkbox" id="pd-edit-decision" '+(decision?'checked':'')+' onchange="var d=this.checked;document.getElementById(\'pd-edit-da\').style.display=d?\'block\':\'none\';document.getElementById(\'pd-edit-dy\').style.display=d?\'block\':\'none\';document.getElementById(\'pd-edit-dn\').style.display=d?\'block\':\'none\'"> 这是判断节点</label>'+
     '<div id="pd-edit-da" style="display:'+(decision?'block':'none')+'"><label>判断问题</label><input id="pd-edit-decision-ask" value="'+escHtml(decisionAsk)+'" placeholder="如：是否通过？"></div>'+
     '<div id="pd-edit-dy" style="display:'+(decision?'block':'none')+'"><label>✓ 是 → 跳转步骤</label><select id="pd-edit-decision-yes">'+stepOptions.replace(/默认/g,'不跳转')+'</select></div>'+

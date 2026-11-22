@@ -93,7 +93,7 @@ function renderTargets(){
     var actual=getPerfActual(t.user_id,t.target_year,t.target_month);
     var rate=t.amount>0?Math.round(actual/t.amount*100):0;
     var rc=rate>=100?'var(--success)':rate>=60?'var(--warning)':'var(--danger)';
-    h+='<tr><td>'+escHtml(uname)+'</td><td>'+t.target_year+'-'+String(t.target_month).padStart(2,'0')+'</td><td style="font-weight:600">¥'+fmtNum(t.amount)+'</td><td>¥'+fmtNum(actual)+'</td><td style="color:'+rc+';font-weight:600">'+rate+'%</td><td>'+targetStatusBadge(rate)+'</td><td><button class="btn-sm" style="background:var(--surface);border:1px solid var(--border)" onclick="openTargetForm('+t.id+')">编辑</button> <button class="btn-sm" style="background:#fff;color:var(--danger);border:1px solid var(--danger)" onclick="deleteTarget('+t.id+')">删除</button></td></tr>';
+    h+='<tr><td>'+escHtml(uname)+'</td><td>'+t.target_year+'-'+String(t.target_month).padStart(2,'0')+'</td><td style="font-weight:600">¥'+fmtNum(t.amount)+'</td><td>¥'+fmtNum(actual)+'</td><td style="color:'+rc+';font-weight:600">'+rate+'%</td><td>'+targetStatusBadge(rate)+'</td><td><button class="btn-sm" style="background:var(--surface);border:1px solid var(--border)" onclick="openTargetForm('+t.id+')">编辑</button> <button class="btn-sm" style="background:var(--danger-light);color:var(--danger);border:1px solid var(--danger)" onclick="deleteTarget('+t.id+')">删除</button></td></tr>';
   }
   tbody.innerHTML=h;
 }
@@ -380,7 +380,7 @@ function renderCommission(){
     h+='<tr><td>'+escHtml(uname)+'</td><td>'+c.calc_year+'-'+String(c.calc_month).padStart(2,'0')+'</td><td>¥'+fmtNum(c.actual_amount)+'</td><td>¥'+fmtNum(c.target_amount)+'</td><td>'+(parseFloat(c.target_completion_rate)||0)+'%</td><td style="font-weight:600;color:var(--primary)">¥'+fmtNum(c.commission_amount)+'</td><td>'+(statusLabels[c.status]||c.status)+'</td><td>';
     if(c.status==='pending')h+='<button class="btn-sm" style="background:var(--success);color:#fff;border:none" onclick="updateCommissionStatus('+c.id+',\'confirmed\')">确认</button> ';
     if(c.status==='confirmed')h+='<button class="btn-sm" style="background:var(--primary);color:#fff;border:none" onclick="updateCommissionStatus('+c.id+',\'paid\')">已发放</button> ';
-    h+='<button class="btn-sm" style="background:#fff;color:var(--danger);border:1px solid var(--danger)" onclick="deleteCommission('+c.id+')">删除</button></td></tr>';
+    h+='<button class="btn-sm" style="background:var(--danger-light);color:var(--danger);border:1px solid var(--danger)" onclick="deleteCommission('+c.id+')">删除</button></td></tr>';
   }
   tbody.innerHTML=h;
   if(bar)bar.textContent='合计提成: ¥'+fmtNum(total)+' | 已发放: ¥'+fmtNum(paid)+' | 待发放: ¥'+fmtNum(total-paid);
@@ -473,7 +473,7 @@ function renderCommissionRules(){
   var h='';
   for(var i=0;i<allCommissionRules.length;i++){
     var r=allCommissionRules[i];
-    h+='<div class="rule-card"><div><div class="rc-name">'+escHtml(r.name)+'</div><div class="rc-range">¥'+fmtNum(r.min_amount)+' - ¥'+fmtNum(r.max_amount)+'</div></div><div class="rc-rate">'+r.rate+'%</div><div class="rc-action"><button class="btn-sm" style="background:var(--surface);border:1px solid var(--border)" onclick="openRuleForm('+r.id+')">编辑</button> <button class="btn-sm" style="background:#fff;color:var(--danger);border:1px solid var(--danger)" onclick="deleteRule('+r.id+')">删除</button></div></div>';
+    h+='<div class="rule-card"><div><div class="rc-name">'+escHtml(r.name)+'</div><div class="rc-range">¥'+fmtNum(r.min_amount)+' - ¥'+fmtNum(r.max_amount)+'</div></div><div class="rc-rate">'+r.rate+'%</div><div class="rc-action"><button class="btn-sm" style="background:var(--surface);border:1px solid var(--border)" onclick="openRuleForm('+r.id+')">编辑</button> <button class="btn-sm" style="background:var(--danger-light);color:var(--danger);border:1px solid var(--danger)" onclick="deleteRule('+r.id+')">删除</button></div></div>';
   }
   el.innerHTML=h;
 }
@@ -639,7 +639,7 @@ function renderSuppliers(){
     if(sp.contact_name||phoneStr)h+='<div class="sc-contact">\U0001f464 '+escHtml(sp.contact_name||'\u672a\u77e5')+(phoneStr?' &nbsp; <a href="tel:'+phones[0]+'">'+escHtml(phoneStr)+'</a>':'')+'</div>';
     if(sp.linked_client_name)h+='<div class="sc-linked"><span style="opacity:0.6">\u2192 \u5173\u8054\u5ba2\u6237:</span> '+escHtml(sp.linked_client_name)+'</div>';
     if(prodRows)h+='<table class="sup-products"><thead><tr><th>\u4ea7\u54c1</th><th>MOQ</th><th>\u5355\u4ef7</th></tr></thead><tbody>'+prodRows+'</tbody></table>';
-    h+='<div class="sc-footer"><div class="sc-meta"><span>\U0001f4cd \u5408\u4f5c '+(sp.cooperation_count||0)+' \u6b21</span><span class="'+drCls+'">\u26a0\ufe0f \u6b21\u54c1\u7387 '+(sp.defect_rate||0)+'%</span></div><div class="sc-actions"><button class="btn-sm" style="background:var(--surface);border:1px solid var(--border)" onclick="openSupplierForm('+sp.id+')">\u7f16\u8f91</button><button class="btn-sm" style="background:#fff;color:var(--danger);border:1px solid var(--danger)" onclick="deleteSupplier('+sp.id+')">\u5220\u9664</button></div></div></div>';
+    h+='<div class="sc-footer"><div class="sc-meta"><span>\U0001f4cd \u5408\u4f5c '+(sp.cooperation_count||0)+' \u6b21</span><span class="'+drCls+'">\u26a0\ufe0f \u6b21\u54c1\u7387 '+(sp.defect_rate||0)+'%</span></div><div class="sc-actions"><button class="btn-sm" style="background:var(--surface);border:1px solid var(--border)" onclick="openSupplierForm('+sp.id+')">\u7f16\u8f91</button><button class="btn-sm" style="background:var(--danger-light);color:var(--danger);border:1px solid var(--danger)" onclick="deleteSupplier('+sp.id+')">\u5220\u9664</button></div></div></div>';
   }
   el.innerHTML=h;
 }
@@ -675,7 +675,7 @@ function openSupplierForm(id){
     var row=document.createElement('div');
     row.className='sup-prod-row';
     row.style.marginBottom='6px';
-    row.innerHTML='<input value="'+escHtml(supPhones[i])+'" oninput="syncSupPhones()" placeholder="\u8054\u7cfb\u7535\u8bdd '+ (i+1) +'" style="flex:2">'+(supPhones.length>1?'<button class="btn-sm" style="background:#fff;color:var(--danger);border:1px solid var(--danger)" onclick="this.parentElement.remove();syncSupPhones()">\u00d7</button>':'');
+    row.innerHTML='<input value="'+escHtml(supPhones[i])+'" oninput="syncSupPhones()" placeholder="\u8054\u7cfb\u7535\u8bdd '+ (i+1) +'" style="flex:2">'+(supPhones.length>1?'<button class="btn-sm" style="background:var(--danger-light);color:var(--danger);border:1px solid var(--danger)" onclick="this.parentElement.remove();syncSupPhones()">\u00d7</button>':'');
     phEl.appendChild(row);
   }
   // Products
@@ -688,7 +688,7 @@ function openSupplierForm(id){
     var pr=supProds[j];
     var row2=document.createElement('div');
     row2.className='sup-prod-row';
-    row2.innerHTML='<input class="prod-name" value="'+escHtml(pr.name||'')+'" oninput="syncSupProducts()" placeholder="\u4ea7\u54c1\u540d\u79f0"><input class="prod-moq" value="'+escHtml(pr.moq||'')+'" oninput="syncSupProducts()" placeholder="MOQ"><input class="prod-price" value="'+escHtml(pr.unit_price||'')+'" oninput="syncSupProducts()" type="number" step="0.01" placeholder="\u5355\u4ef7">'+(supProds.length>1?'<button class="btn-sm" style="background:#fff;color:var(--danger);border:1px solid var(--danger)" onclick="this.parentElement.remove();syncSupProducts()">\u00d7</button>':'');
+    row2.innerHTML='<input class="prod-name" value="'+escHtml(pr.name||'')+'" oninput="syncSupProducts()" placeholder="\u4ea7\u54c1\u540d\u79f0"><input class="prod-moq" value="'+escHtml(pr.moq||'')+'" oninput="syncSupProducts()" placeholder="MOQ"><input class="prod-price" value="'+escHtml(pr.unit_price||'')+'" oninput="syncSupProducts()" type="number" step="0.01" placeholder="\u5355\u4ef7">'+(supProds.length>1?'<button class="btn-sm" style="background:var(--danger-light);color:var(--danger);border:1px solid var(--danger)" onclick="this.parentElement.remove();syncSupProducts()">\u00d7</button>':'');
     prEl.appendChild(row2);
   }
   document.getElementById('sup-btn-delete').classList.toggle('hidden',!sp);
@@ -716,8 +716,8 @@ function syncSupProducts(){
   }
 }
 
-function addSupPhone(){var el=document.getElementById('sup-phones');var row=document.createElement('div');row.className='sup-prod-row';row.style.marginBottom='6px';row.innerHTML='<input oninput="syncSupPhones()" placeholder="\u8054\u7cfb\u7535\u8bdd" style="flex:2"><button class="btn-sm" style="background:#fff;color:var(--danger);border:1px solid var(--danger)" onclick="this.parentElement.remove();syncSupPhones()">\u00d7</button>';el.appendChild(row)}
-function addSupProduct(){var el=document.getElementById('sup-products');var row=document.createElement('div');row.className='sup-prod-row';row.innerHTML='<input class="prod-name" oninput="syncSupProducts()" placeholder="\u4ea7\u54c1\u540d\u79f0"><input class="prod-moq" oninput="syncSupProducts()" placeholder="MOQ"><input class="prod-price" oninput="syncSupProducts()" type="number" step="0.01" placeholder="\u5355\u4ef7"><button class="btn-sm" style="background:#fff;color:var(--danger);border:1px solid var(--danger)" onclick="this.parentElement.remove();syncSupProducts()">\u00d7</button>';el.appendChild(row)}
+function addSupPhone(){var el=document.getElementById('sup-phones');var row=document.createElement('div');row.className='sup-prod-row';row.style.marginBottom='6px';row.innerHTML='<input oninput="syncSupPhones()" placeholder="\u8054\u7cfb\u7535\u8bdd" style="flex:2"><button class="btn-sm" style="background:var(--danger-light);color:var(--danger);border:1px solid var(--danger)" onclick="this.parentElement.remove();syncSupPhones()">\u00d7</button>';el.appendChild(row)}
+function addSupProduct(){var el=document.getElementById('sup-products');var row=document.createElement('div');row.className='sup-prod-row';row.innerHTML='<input class="prod-name" oninput="syncSupProducts()" placeholder="\u4ea7\u54c1\u540d\u79f0"><input class="prod-moq" oninput="syncSupProducts()" placeholder="MOQ"><input class="prod-price" oninput="syncSupProducts()" type="number" step="0.01" placeholder="\u5355\u4ef7"><button class="btn-sm" style="background:var(--danger-light);color:var(--danger);border:1px solid var(--danger)" onclick="this.parentElement.remove();syncSupProducts()">\u00d7</button>';el.appendChild(row)}
 
 
 function searchSupplierLinkClient(){
@@ -788,7 +788,7 @@ function doImportContact(ct){
       var row=document.createElement('div');
       row.className='sup-prod-row';
       row.style.marginBottom='6px';
-      row.innerHTML='<input value="'+escHtml(phones[j])+'" oninput="syncSupPhones()" placeholder="\u8054\u7cfb\u7535\u8bdd '+(j+1)+'" style="flex:2">'+(phones.length>1?'<button class="btn-sm" style="background:#fff;color:var(--danger);border:1px solid var(--danger)" onclick="this.parentElement.remove();syncSupPhones()">\u00d7</button>':'');
+      row.innerHTML='<input value="'+escHtml(phones[j])+'" oninput="syncSupPhones()" placeholder="\u8054\u7cfb\u7535\u8bdd '+(j+1)+'" style="flex:2">'+(phones.length>1?'<button class="btn-sm" style="background:var(--danger-light);color:var(--danger);border:1px solid var(--danger)" onclick="this.parentElement.remove();syncSupPhones()">\u00d7</button>':'');
       phEl.appendChild(row);
     }
   }

@@ -1223,9 +1223,9 @@ function switchTab(tab){
   var fab=document.getElementById('main-fab');
   closeMoreMenu();
   _destroyAllCharts();
-  // 离开报表/总览这类深色驾驶舱页面时，把 Chart.js 默认配色还原成浅色，
-  // 否则客户详情、订单等页面的图表会被一起改黑。
-  if(typeof cpChartTheme==='function')cpChartTheme(false);
+  // Chart.js 的默认配色是全局的：全站深色皮肤（body.dk）下不能还原成浅色，
+  // 否则客户详情、订单等页面的图表在深底上出现黑字黑轴。
+  if(typeof cpChartTheme==='function')cpChartTheme(document.body.classList.contains('dk'));
   document.getElementById('settings-screen').style.display='none';
   document.getElementById('my-screen').style.display='none';
   // Hide all views first
@@ -2461,3 +2461,7 @@ function exportBuyerCSV(){
     showToast('已导出 '+_buyerLastRows.length+' 条');
   }catch(e){showToast('导出失败：'+e.message)}
 }
+
+// 全站深色皮肤（body.dk）：Chart.defaults 是全局配置，启动即切深色，
+// 否则总览/订单/业绩等页面首次渲染的图表仍是黑轴黑字。
+if(document.body.classList.contains('dk')&&typeof cpChartTheme==='function')cpChartTheme(true);

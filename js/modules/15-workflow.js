@@ -241,7 +241,7 @@ function wfShowProps(idx){
       return '<option value="'+v+'"'+(s.panel===v?' selected':'')+'>'+v+'</option>'
     }).join('')+'</select>';
   if(s.decision){
-    h+='<div style="margin-top:8px;padding:8px;background:#fff3e0;border-radius:6px">';
+    h+='<div style="margin-top:8px;padding:8px;background:var(--warning-light);border-radius:6px">';
     h+='<label>判断问题</label><input value="'+escHtml(s.decisionAsk||'')+'" onchange="wfSetProp('+idx+',\'decisionAsk\',this.value)">';
     h+='<label>✓ 是 → 跳转到步骤</label><input type="number" value="'+escHtml(s.decisionYes||'')+'" onchange="wfSetProp('+idx+',\'decisionYes\',String(this.value))">';
     h+='<label>✗ 否 → 跳转到步骤</label><input type="number" value="'+escHtml(s.decisionNo||'')+'" onchange="wfSetProp('+idx+',\'decisionNo\',String(this.value))">';

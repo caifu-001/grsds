@@ -2064,3 +2064,401 @@ body:has(#login-screen:not(.hidden)){background:linear-gradient(135deg,#EEF2FF 0
 /* 驾驶舱内文字兜底：浅色变量被覆盖后，仍有硬编码深色文字的地方统一提亮 */
 .cockpit .tc,.cockpit .empty-state,.cockpit .vendor-result{color:#7B90B4}
 .cockpit a{color:#8FD8FF}
+
+/* ==================================================================
+   GLOBAL DARK COCKPIT · 全站驾驶舱皮肤（2026-11-22）
+   作用域：body.dk（index.html 上直接挂 class，登录页同样走深色）
+   ⚠️ 铁律：本段只覆盖 颜色 / 背景 / 边框色 / 阴影 / 字重 / 过渡；
+      不新增 border 宽度、不改 padding、字号、宽高、栅格列数，
+      避免 138 项 UI 断言（窄屏顶栏、统计卡宽度、折叠高度、移动端溢出）失效。
+      需要「描边」时一律用 inset box-shadow，不占用盒模型。
+   ================================================================== */
+body.dk{
+  /* 让原生控件（勾选框 / 单选 / 日期选择 / 滚动条）跟着转深色 */
+  color-scheme:dark;
+  accent-color:#38BDF8;
+  /* ── 语义色：深空底 + 霓虹青紫 ── */
+  --bg:#050A14;--card:rgba(255,255,255,.045);--surface:rgba(255,255,255,.05);
+  --primary:#38BDF8;--primary-hover:#22D3EE;--primary-light:rgba(56,189,248,.13);--primary-glow:rgba(56,189,248,.22);
+  --text:#E6EEFF;--text2:#A9BCDD;--text3:#7B90B4;--text-inverse:#04101F;
+  --border:rgba(120,170,255,.16);--border-light:rgba(120,170,255,.10);
+  --danger:#F87171;--danger-light:rgba(239,68,68,.16);
+  --success:#34D399;--success-light:rgba(16,185,129,.16);
+  --warning:#FBBF24;--warning-light:rgba(245,158,11,.16);
+  --info:#60A5FA;--info-light:rgba(59,130,246,.16);
+  --card-bg:rgba(255,255,255,.05);--bg2:rgba(255,255,255,.05);--bg-hover:rgba(56,189,248,.10);--hover:rgba(56,189,248,.10);
+  --text-secondary:#A9BCDD;--muted:#8FA9CE;
+  --border2:rgba(120,170,255,.26);--primary-soft:rgba(56,189,248,.12);--accent:#A78BFA;--accent2:#A78BFA;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.35);
+  --shadow:0 8px 24px rgba(2,8,22,.34);
+  --shadow-md:0 10px 30px rgba(2,8,22,.42);
+  --shadow-lg:0 16px 44px rgba(2,8,22,.50);
+  --shadow-xl:0 24px 64px rgba(1,5,16,.58);
+  /* ── 深空底：星云光晕 + 科技网格（网格压在最底层） ── */
+  background:
+    radial-gradient(1200px 560px at 8% -12%,rgba(56,189,248,.16),transparent 62%),
+    radial-gradient(1000px 500px at 94% -6%,rgba(167,139,250,.14),transparent 60%),
+    radial-gradient(760px 420px at 50% 116%,rgba(34,211,238,.08),transparent 72%),
+    repeating-linear-gradient(0deg,rgba(96,165,250,.045) 0 1px,transparent 1px 52px),
+    repeating-linear-gradient(90deg,rgba(96,165,250,.045) 0 1px,transparent 1px 52px),
+    linear-gradient(168deg,#050A14 0%,#070F1F 46%,#05090F 100%);
+  background-attachment:fixed;
+  color:var(--text);
+}
+/* 登录壳 / 设置页 / 我的页 自带浅底，统一换成深色渐变 */
+body.dk:has(#login-screen:not(.hidden)){background:
+  radial-gradient(1100px 620px at 50% -18%,rgba(56,189,248,.22),transparent 62%),
+  radial-gradient(900px 520px at 88% 112%,rgba(167,139,250,.20),transparent 64%),
+  linear-gradient(168deg,#050A14 0%,#081228 52%,#04070F 100%)}
+body.dk #settings-screen,body.dk #my-screen{
+  background:
+    radial-gradient(900px 420px at 8% -10%,rgba(56,189,248,.14),transparent 60%),
+    radial-gradient(800px 380px at 94% 0%,rgba(167,139,250,.12),transparent 58%),
+    linear-gradient(170deg,#050A14 0%,#070F1F 48%,#05090F 100%)!important;
+}
+body.dk ::selection{background:rgba(56,189,248,.30);color:#EAF6FF}
+body.dk ::-webkit-scrollbar-thumb{background:rgba(120,170,255,.26)}
+body.dk ::-webkit-scrollbar-thumb:hover{background:rgba(120,170,255,.42)}
+
+/* ── 顶栏：深色玻璃 + 霓虹描边（不改高度） ── */
+body.dk .topbar{
+  background:linear-gradient(96deg,rgba(9,20,40,.94) 0%,rgba(14,28,54,.94) 46%,rgba(21,18,48,.94) 100%);
+  box-shadow:0 10px 30px rgba(2,8,22,.55),inset 0 -1px 0 rgba(56,189,248,.24);
+  -webkit-backdrop-filter:blur(16px) saturate(150%);backdrop-filter:blur(16px) saturate(150%);
+}
+body.dk #topbar-title{
+  color:#EAF4FF;
+  background:linear-gradient(90deg,#FFFFFF 0%,#9FE2FF 58%,#C9B8FF 100%);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+}
+@supports not ((-webkit-background-clip:text) or (background-clip:text)){body.dk #topbar-title{color:#EAF4FF;background:none}}
+body.dk .topbar-btn{color:#CFE6FF}
+body.dk .topbar-btn:hover{background:rgba(56,189,248,.16);color:#fff}
+body.dk .topbar-tab{background:rgba(255,255,255,.06);color:#A9BCDD;box-shadow:inset 0 0 0 1px rgba(120,170,255,.14)}
+body.dk .topbar-tab:hover{background:rgba(56,189,248,.15);color:#EAF4FF;box-shadow:inset 0 0 0 1px rgba(88,166,255,.34)}
+body.dk .topbar-tab.active{
+  background:linear-gradient(135deg,#38BDF8,#A78BFA);color:#04101F;
+  box-shadow:0 0 18px rgba(56,189,248,.42),inset 0 1px 0 rgba(255,255,255,.45);
+}
+/* 顶栏右侧的公司徽标 / 成员按钮：内联背景色，这里压成同色系 */
+body.dk #current-company-badge{background:linear-gradient(135deg,#38BDF8,#A78BFA)!important;color:#04101F!important;box-shadow:0 0 14px rgba(56,189,248,.34)}
+body.dk #btn-members{background:rgba(255,255,255,.06)!important;border-color:rgba(120,170,255,.22)!important;color:#CFE6FF}
+body.dk .notif-bell{color:#CFE6FF}
+
+/* ── 二级页签 / 工具条 / 目录页签：半透明深色吸顶条 ── */
+body.dk .toolbar,body.dk .biz-tabs,body.dk .dir-tabs,body.dk .reports-tabs,body.dk .analytics-tabs,body.dk .admin-tabs{
+  background:rgba(6,12,24,.82)!important;
+  border-bottom-color:rgba(88,166,255,.18)!important;
+  -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+}
+body.dk .dir-tab,body.dk .admin-subtab,body.dk .biz-subtab{color:#A9BCDD}
+body.dk .dir-tab.active,body.dk .admin-subtab.active{color:#8FD8FF;border-bottom-color:#38BDF8;text-shadow:0 0 14px rgba(56,189,248,.45)}
+body.dk .biz-subtab{background:rgba(255,255,255,.05)}
+body.dk .biz-subtab:hover{background:rgba(56,189,248,.14);color:#fff}
+body.dk .biz-subtab.active{background:linear-gradient(135deg,#38BDF8,#A78BFA);color:#04101F;box-shadow:0 0 16px rgba(56,189,248,.34)}
+
+/* ── 表单控件全局深色（含内联 white 兜底） ── */
+body.dk input:not([type=checkbox]):not([type=radio]):not([type=file]),
+body.dk select,body.dk textarea{
+  background-color:rgba(9,18,34,.88)!important;color:#E6EEFF;border-color:rgba(88,166,255,.24)
+}
+body.dk input:not([type=checkbox]):not([type=radio]):not([type=file]):focus,
+body.dk select:focus,body.dk textarea:focus{
+  border-color:#38BDF8;box-shadow:0 0 0 3px rgba(56,189,248,.16),0 0 18px rgba(56,189,248,.16)
+}
+body.dk input::placeholder,body.dk textarea::placeholder{color:#5E7BA6}
+body.dk select option{background:#0B1428;color:#E6EEFF}
+body.dk .toolbar select{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%237B90B4'%3E%3Cpath d='M6 8L1 3h10z'/%3E%3C/svg%3E")!important;
+  background-repeat:no-repeat!important;background-position:right 10px center!important;
+}
+body.dk .toolbar .search-wrap input{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%237B90B4' viewBox='0 0 16 16'%3E%3Cpath d='M11.74 10.34a6.5 6.5 0 1 0-1.4 1.4l3.85 3.86a1 1 0 0 0 1.42-1.42l-3.85-3.85zM6.5 10.5a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E")!important;
+  background-repeat:no-repeat!important;background-position:12px center!important;
+}
+
+/* ── 通用玻璃卡：统计卡 / 客户卡 / 订单卡 / 目录项 / 设置行 ── */
+body.dk .stat-card,body.dk .order-stat,body.dk .client-card,body.dk .order-card,
+body.dk .dir-item,body.dk .contact-item,body.dk .settings-item,body.dk .my-row{
+  background:linear-gradient(165deg,rgba(255,255,255,.055),rgba(255,255,255,.018));
+  border-color:rgba(120,170,255,.16);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 8px 22px rgba(2,8,22,.34);
+}
+body.dk .stat-card,body.dk .order-stat{position:relative;overflow:hidden}
+body.dk .stat-card::after,body.dk .order-stat::after{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,#38BDF8,#A78BFA);opacity:.85;
+}
+body.dk .stat-card:hover,body.dk .client-card:hover{
+  border-color:rgba(56,189,248,.42);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 12px 30px rgba(2,8,22,.46),0 0 22px rgba(56,189,248,.16);
+}
+body.dk .stat-card .stat-num,body.dk .order-stat .os-num,body.dk .order-card .oc-amount{
+  color:#8FD8FF;text-shadow:0 0 22px rgba(56,189,248,.40);font-variant-numeric:tabular-nums;
+}
+body.dk .stat-card .stat-label,body.dk .order-stat .os-label{color:#8FA9CE}
+body.dk .client-card::before{background:linear-gradient(180deg,#38BDF8,#A78BFA);opacity:.75;box-shadow:0 0 14px rgba(56,189,248,.45)}
+body.dk .client-card:hover::before{opacity:1}
+body.dk .card-name,body.dk .di-name,body.dk .oc-client{color:#EAF2FF}
+body.dk .card-addr,body.dk .card-contact-count,body.dk .oc-number,body.dk .oc-dates,body.dk .di-label{color:#7B90B4}
+body.dk .card-project,body.dk .di-item .di-badge{color:#8FD8FF}
+body.dk .card-project{text-shadow:0 0 16px rgba(56,189,248,.28)}
+body.dk .card-contact{border-top-color:rgba(120,170,255,.14)}
+body.dk .card-contact .contact-phone-link{background:rgba(56,189,248,.12);color:#8FD8FF}
+body.dk .card-contact .contact-phone-link:hover{background:rgba(56,189,248,.22)}
+body.dk .card-contact-count{background:rgba(255,255,255,.06)}
+body.dk .card-type-more{background:rgba(255,255,255,.08);color:#A9BCDD}
+/* 复购提示条 */
+body.dk .card-renewal{color:#FBBF24;background:rgba(245,158,11,.14);border-color:rgba(245,158,11,.32)}
+body.dk .card-renewal.over{color:#FCA5A5;background:rgba(239,68,68,.16);border-color:rgba(239,68,68,.34)}
+body.dk .di-item .di-badge{background:rgba(56,189,248,.14)}
+body.dk .order-card::before{background:linear-gradient(180deg,#22D3EE,#A78BFA);box-shadow:0 0 12px rgba(34,211,238,.40)}
+body.dk .oc-project,body.dk .oc-notes{color:#A9BCDD}
+
+/* ── 表格：深色表头 + 霓虹悬停 ── */
+body.dk .stock-table th,body.dk .check-table th,body.dk .user-table th,
+body.dk .report-table th,body.dk .perm-matrix th,body.dk .an-table th{
+  background:rgba(56,189,248,.08)!important;color:#8FA9CE!important;
+  border-bottom:2px solid rgba(88,166,255,.22)!important;
+}
+body.dk .stock-table td,body.dk .check-table td,body.dk .user-table td,
+body.dk .report-table td,body.dk .perm-matrix td{border-bottom-color:rgba(88,166,255,.10);color:#D5E3FA}
+body.dk .stock-table tbody tr:hover td,body.dk .user-table tbody tr:hover td,
+body.dk .report-table tbody tr:hover td,body.dk .check-table tbody tr:hover td{background:rgba(56,189,248,.07)!important}
+body.dk .check-table input{background:rgba(9,18,34,.88);color:#E6EEFF;border-color:rgba(88,166,255,.24)}
+
+/* ── 弹窗 / 抽屉 / 确认框：不透明深色玻璃，避免透出底下内容 ── */
+body.dk .modal,body.dk .modal-sheet{
+  background:linear-gradient(168deg,#0B1730 0%,#0A1426 55%,#091020 100%);
+  box-shadow:0 28px 70px rgba(1,5,16,.70),inset 0 1px 0 rgba(255,255,255,.07),0 0 0 1px rgba(88,166,255,.18);
+  color:#E6EEFF;
+}
+body.dk .modal-overlay,body.dk .confirm-overlay,body.dk .client-360-overlay{
+  background:rgba(2,6,16,.66);-webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px)
+}
+body.dk .sheet-head,body.dk #form-modal .modal-actions{
+  background:linear-gradient(180deg,rgba(12,24,46,.98),rgba(9,18,34,.98))!important;
+  border-bottom-color:rgba(88,166,255,.18);border-top-color:rgba(88,166,255,.18);
+  box-shadow:0 -2px 14px rgba(2,8,22,.45);
+}
+body.dk .modal-sheet h3,body.dk .sheet-head h3,body.dk .modal-header h3{color:#EAF2FF}
+body.dk .modal-close,body.dk .sheet-close{background:rgba(255,255,255,.07);color:#A9BCDD}
+body.dk .modal-close:hover,body.dk .sheet-close:hover{background:rgba(239,68,68,.20);color:#FCA5A5}
+body.dk .confirm-box{
+  background:linear-gradient(168deg,#0C1930,#0A1426);
+  box-shadow:0 28px 70px rgba(1,5,16,.70),0 0 0 1px rgba(88,166,255,.20);
+}
+body.dk .confirm-box p{color:#E6EEFF}
+body.dk .more-menu,body.dk .notif-panel{
+  background:linear-gradient(168deg,#0C1930,#0A1426);
+  box-shadow:0 24px 60px rgba(1,5,16,.65),0 0 0 1px rgba(88,166,255,.20);
+  color:#E6EEFF;border-left-color:rgba(88,166,255,.18);
+}
+body.dk .more-item{color:#D5E3FA}
+body.dk .more-item:hover{background:rgba(56,189,248,.12);color:#fff}
+body.dk .more-divider{border-color:rgba(88,166,255,.16)}
+body.dk .notif-panel>div[style*="border-bottom"]{border-bottom-color:rgba(88,166,255,.16)!important}
+body.dk .search-list-item{border-bottom-color:rgba(88,166,255,.12)}
+body.dk .search-list-item:hover,body.dk .search-list-item:active{background:rgba(56,189,248,.10)}
+
+/* ── 表单分组 / 复选 / 批量改属性 ── */
+body.dk .form-group label{color:#A9BCDD}
+body.dk .form-group input,body.dk .form-group select,body.dk .form-group textarea{
+  background:rgba(9,18,34,.88)!important;border-color:rgba(88,166,255,.24)!important;color:#E6EEFF!important;
+}
+body.dk .type-chk{background:rgba(255,255,255,.04);border-color:rgba(120,170,255,.18);color:#A9BCDD}
+body.dk .type-chk.checked{border-color:#38BDF8;background:rgba(56,189,248,.16);color:#8FD8FF}
+body.dk .bulk-row{background:rgba(255,255,255,.04);border-color:rgba(120,170,255,.16)}
+body.dk .bulk-row.on{border-color:rgba(56,189,248,.48);background:rgba(56,189,248,.10)}
+body.dk .bulk-head{color:#EAF2FF}
+body.dk .bulk-hint{background:rgba(56,189,248,.12);color:#8FD8FF}
+body.dk .section-title{border-bottom-color:rgba(56,189,248,.55);text-shadow:0 0 16px rgba(56,189,248,.25)}
+body.dk .contact-header{color:#8FD8FF}
+body.dk .contact-item .mv-btn{background:rgba(255,255,255,.06);border-color:rgba(120,170,255,.20);color:#A9BCDD}
+
+/* ── 按钮：主按钮霓虹渐变，次按钮玻璃边 ── */
+body.dk .btn-save,body.dk .btn-confirm,body.dk .fab{
+  background:linear-gradient(135deg,#38BDF8,#A78BFA)!important;color:#04101F!important;
+  box-shadow:0 8px 24px rgba(56,189,248,.30);
+}
+body.dk .btn-save:hover,body.dk .btn-confirm:hover{filter:brightness(1.08);box-shadow:0 10px 30px rgba(56,189,248,.42)}
+body.dk .btn-cancel{background:rgba(255,255,255,.07)!important;color:#C3D4EC!important;border-color:rgba(120,170,255,.22)!important}
+body.dk .btn-cancel:hover{background:rgba(255,255,255,.12)!important}
+body.dk .btn-delete{background:rgba(239,68,68,.16)!important;color:#FCA5A5!important;border-color:rgba(239,68,68,.32)!important}
+body.dk .btn-delete:hover{background:rgba(239,68,68,.26)!important}
+body.dk .section-title .add-btn{border-color:rgba(56,189,248,.55);color:#8FD8FF}
+
+/* ── 状态徽标：霓虹化（保留原有语义色） ── */
+body.dk .stage-badge{box-shadow:inset 0 0 0 1px rgba(255,255,255,.10),0 0 14px rgba(56,189,248,.14)}
+body.dk .stage-negotiating{background:rgba(245,158,11,.18)!important;color:#FBBF24!important}
+body.dk .stage-signed{background:rgba(59,130,246,.20)!important;color:#93C5FD!important}
+body.dk .stage-executing{background:rgba(56,189,248,.20)!important;color:#8FD8FF!important}
+body.dk .stage-completed,body.dk .stage-won{background:rgba(16,185,129,.20)!important;color:#4ADE80!important}
+body.dk .stage-cancelled{background:rgba(148,163,184,.18)!important;color:#94A3B8!important}
+
+/* ── 空态 / 加载骨架 / 分页 ── */
+body.dk .empty{color:#7B90B4}
+body.dk .empty-icon{background:rgba(56,189,248,.10);color:#8FD8FF}
+body.dk .sk-card,body.dk .sk-line,body.dk .sk-row,body.dk .sk-avatar{background:rgba(255,255,255,.06)}
+body.dk .loading{color:#8FA9CE}
+
+/* ── 顶栏「更多」菜单里内外联浅底的图标块 ── */
+body.dk .more-item .mi-icon{color:#8FD8FF}
+/* 页面里写死 background:#fff 的次级按钮（售后「回访任务」、公海「批量导入」等） */
+body.dk [style*="background:#fff;"],body.dk [style*="background:#fff "],
+body.dk [style*="background: #fff;"],body.dk [style*="background:#ffffff"]{
+  background-color:rgba(255,255,255,.07)!important;border-color:rgba(120,170,255,.20);
+}
+/* 内联用主色的按钮：主色变亮后白字看不清，统一改渐变 + 深字 */
+body.dk [style*="background:var(--primary)"],body.dk [style*="background: var(--primary)"]{
+  background-image:linear-gradient(135deg,#38BDF8,#A78BFA)!important;color:#04101F!important;
+}
+
+/* ── 页面级光效：每个视图顶部一道扫描光带 ── */
+body.dk #client-view,body.dk #order-view,body.dk #sales-view,body.dk #performance-view,
+body.dk #inventory-view,body.dk #admin-view,body.dk #collab-view,body.dk #service-view,
+body.dk #projects-view,body.dk #leads-view,body.dk #fieldwork-view{position:relative}
+body.dk #client-view::before,body.dk #order-view::before,body.dk #sales-view::before,
+body.dk #performance-view::before,body.dk #inventory-view::before,body.dk #admin-view::before,
+body.dk #collab-view::before,body.dk #service-view::before,body.dk #projects-view::before,
+body.dk #leads-view::before,body.dk #fieldwork-view::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;z-index:5;pointer-events:none;
+  background:linear-gradient(90deg,transparent,#38BDF8,#A78BFA,transparent);
+  background-size:200% 100%;animation:cpScan 7s linear infinite;opacity:.75;
+}
+
+/* ── 登录页：深空霓虹 ── */
+body.dk .login-wrap h1{
+  background:linear-gradient(120deg,#FFFFFF 0%,#9FE2FF 45%,#C4B5FD 100%);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  text-shadow:0 0 40px rgba(56,189,248,.30);
+}
+@supports not ((-webkit-background-clip:text) or (background-clip:text)){body.dk .login-wrap h1{color:#EAF4FF;background:none}}
+body.dk .login-wrap .sub{color:#8FA9CE}
+body.dk .login-wrap input{background:rgba(9,18,34,.82);border-color:rgba(88,166,255,.24);color:#E6EEFF}
+body.dk .login-wrap input:focus{border-color:#38BDF8;box-shadow:0 0 0 3px rgba(56,189,248,.16),0 0 24px rgba(56,189,248,.22)}
+body.dk .login-wrap .btn-primary{background:linear-gradient(135deg,#38BDF8,#A78BFA);color:#04101F;box-shadow:0 8px 26px rgba(56,189,248,.32)}
+body.dk .login-wrap .btn-primary:hover{filter:brightness(1.08);transform:translateY(-1px)}
+body.dk .login-wrap .btn-ghost{background:rgba(255,255,255,.05);color:#8FD8FF;border-color:rgba(56,189,248,.42)}
+body.dk .login-wrap .err{color:#FCA5A5}
+body.dk .login-wrap .hint,body.dk .pw-strength .bar{color:#7B90B4}
+body.dk .captcha-row input{background:rgba(9,18,34,.82);border-color:rgba(88,166,255,.24);color:#E6EEFF}
+body.dk .captcha-row canvas{border-color:rgba(88,166,255,.24);box-shadow:0 0 18px rgba(56,189,248,.16)}
+body.dk .captcha-row .captcha-refresh{background:rgba(255,255,255,.06);border-color:rgba(120,170,255,.22);color:#A9BCDD}
+body.dk .captcha-row .captcha-refresh:hover{background:rgba(56,189,248,.14);color:#8FD8FF}
+
+/* ── 其余自定义区块里写死的深色文字，统一提亮兜底 ── */
+body.dk .tc,body.dk .muted,body.dk .hint,body.dk .sub{color:#8FA9CE}
+body.dk a{color:#8FD8FF}
+body.dk hr{border-color:rgba(88,166,255,.16)}
+
+/* ── 二级页签「选中态」统一霓虹渐变 + 深色字（原来是主色底白字，深色底下对比不足） ── */
+body.dk [class*="subtab"].active,
+body.dk .sub-tab.active,
+body.dk .analytics-tabs button.active,
+body.dk .fw-tabs button.active,
+body.dk .my-office-tabs button.active,
+body.dk .mo-filter-bar button.active,
+body.dk .mo-doc-filter button.active{
+  background:linear-gradient(135deg,#38BDF8,#A78BFA)!important;color:#04101F!important;
+  box-shadow:0 0 16px rgba(56,189,248,.34);text-shadow:none;
+}
+body.dk [class*="subtab"]:hover,body.dk .sub-tab:hover{background:rgba(56,189,248,.16);color:#EAF4FF}
+
+/* 售后页 / 其它页里未定义样式的原生 .sub-tab 按钮（浏览器默认浅灰底） */
+body.dk .sub-tab{
+  padding:6px 14px;border-radius:14px;border:none;cursor:pointer;
+  background:rgba(255,255,255,.05);color:#A9BCDD;font-size:13px;font-weight:600;
+  transition:background .16s,color .16s,box-shadow .16s;
+}
+
+/* 客户列表的「多选」开关：原来写死白底 */
+body.dk .bulk-toggle-btn{background:rgba(255,255,255,.06);border-color:rgba(120,170,255,.20);color:#C3D4EC}
+body.dk .bulk-toggle-btn:hover{border-color:#38BDF8;color:#8FD8FF}
+body.dk .bulk-toggle-btn.on{
+  background:linear-gradient(135deg,#38BDF8,#A78BFA)!important;border-color:transparent;color:#04101F;
+}
+
+/* ── 主按钮族：统一渐变（补齐未被 .btn-save 规则覆盖的入口） ── */
+body.dk .btn-primary,body.dk .btn-sm-primary,body.dk .btn-approve,
+body.dk .lead-actions .btn-lead-primary,body.dk .mo-msg-input-wrap button,
+body.dk .wf-toolbar button.primary,body.dk .fab{
+  background:linear-gradient(135deg,#38BDF8,#A78BFA)!important;color:#04101F!important;
+  border-color:transparent;
+}
+body.dk .dash-action-btn:hover,body.dk .mo-quick-btn:hover,body.dk .mo-quick-btn:active,
+body.dk .sup-cat-tag:hover{
+  background:linear-gradient(135deg,#38BDF8,#A78BFA)!important;color:#04101F!important;border-color:transparent;
+}
+
+/* ── 流程 / 项目页的小序号徽标：主色底 + 白字在深色皮肤下对比不足 ── */
+body.dk .wf-node .wf-node-seq,body.dk .pd-seq-badge{
+  background:linear-gradient(135deg,#38BDF8,#A78BFA);color:#04101F;
+}
+
+/* ── 琥珀色提示文字（复购 / 到期）在深底上提亮一级 ── */
+body.dk .card-renewal,body.dk .rn-badge-due,body.dk .rn-total,body.dk .pe-recur-resume{color:#FBBF24}
+body.dk .card-renewal.over{color:#FCA5A5}
+
+/* ── 写死白底的容器 / 抽屉 / 卡片：统一换成深色玻璃 ── */
+body.dk .client-360-sheet{
+  background:linear-gradient(168deg,#0B1730 0%,#0A1426 55%,#091020 100%);
+  box-shadow:0 28px 70px rgba(1,5,16,.72),inset 0 1px 0 rgba(255,255,255,.07);
+  color:#E6EEFF;
+}
+body.dk .client-360-close{color:#A9BCDD}
+body.dk .client-360-close:hover{color:#FCA5A5}
+body.dk .client-360-tabs{border-bottom-color:rgba(88,166,255,.20)}
+body.dk .client-360-tab{color:#A9BCDD}
+body.dk .client-360-tab.active{color:#8FD8FF;border-bottom-color:#38BDF8;text-shadow:0 0 14px rgba(56,189,248,.45)}
+body.dk .c360-card,body.dk .c360-contact-item,body.dk .c360-contact-item.c360-fold{
+  background:linear-gradient(165deg,rgba(255,255,255,.055),rgba(255,255,255,.018));
+  border-color:rgba(120,170,255,.16);
+}
+body.dk .c360-card-title,body.dk .c360-info-value,body.dk .c360-contact-name{color:#EAF2FF}
+body.dk .c360-info-label,body.dk .c360-stat-label{color:#7B90B4}
+body.dk .c360-stat-item{background:rgba(255,255,255,.05);box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 6px 18px rgba(2,8,22,.32)}
+body.dk .c360-stat-num{color:#8FD8FF;text-shadow:0 0 18px rgba(56,189,248,.35)}
+body.dk .c360-fold{background:rgba(56,189,248,.10)}
+body.dk .c360-fold-all{border-color:rgba(56,189,248,.50);color:#8FD8FF}
+body.dk .back-row{background:rgba(6,12,24,.82);border-bottom-color:rgba(88,166,255,.18)}
+body.dk .back-row button{background:rgba(255,255,255,.06);border-color:rgba(120,170,255,.20);color:#C3D4EC}
+body.dk .project-entry{background:rgba(255,255,255,.05);border-color:rgba(120,170,255,.16)}
+body.dk .alert-card.warning{background:rgba(245,158,11,.12)}
+body.dk .an-badge-attention,body.dk .fw-visit-card .vw-result.follow{background:rgba(245,158,11,.16);color:#FBBF24}
+body.dk .an-alert-row{background:rgba(245,158,11,.10);border-left-color:#F59E0B}
+body.dk .wf-node.decision,body.dk .wf-step-tpl.decision{background:rgba(245,158,11,.16);border-color:rgba(245,158,11,.42);color:#FBBF24}
+body.dk .wf-sidebar,body.dk .wf-props-panel,body.dk .wf-canvas-wrap,body.dk .wf-canvas{
+  background:rgba(9,18,34,.72);border-color:rgba(88,166,255,.16);color:#E6EEFF;
+}
+body.dk .wf-node{background:linear-gradient(165deg,rgba(255,255,255,.06),rgba(255,255,255,.02));border-color:rgba(120,170,255,.18);color:#E6EEFF}
+body.dk .wf-node.selected{border-color:#38BDF8;box-shadow:0 0 0 2px rgba(56,189,248,.24),0 0 22px rgba(56,189,248,.30)}
+body.dk .wf-props-panel h4,body.dk .wf-sidebar h4{color:#8FD8FF}
+
+/* ── 未设字色的原生按钮：默认黑字在深底上看不见，统一跟随父级 ── */
+body.dk button{color:inherit}
+body.dk .card-type{text-shadow:0 1px 2px rgba(0,0,0,.40)}
+
+/* ── 登录页：给表单套一层玻璃面板（只在 .dk 下生效） ── */body.dk .login-card{
+  width:100%;max-width:404px;padding:34px 30px 26px;border-radius:22px;
+  background:linear-gradient(168deg,rgba(16,30,54,.86),rgba(8,15,30,.90));
+  border:1px solid rgba(88,166,255,.20);
+  box-shadow:0 30px 80px rgba(1,5,16,.62),inset 0 1px 0 rgba(255,255,255,.08),0 0 60px rgba(56,189,248,.10);
+  -webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);
+  position:relative;overflow:hidden;
+}
+body.dk .login-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,#38BDF8,#A78BFA,transparent);
+  background-size:200% 100%;animation:cpScan 6s linear infinite;
+}
+body.dk .login-card .field,body.dk .login-card .pw-strength,
+body.dk .login-card .hint,body.dk .login-card .err,body.dk .login-card .btn{max-width:100%}
+body.dk .login-wrap{padding:40px 18px}
+@media(prefers-reduced-motion:reduce){body.dk .login-card::before{animation:none}}
+@media(prefers-reduced-motion:reduce){
+  body.dk #client-view::before,body.dk #order-view::before,body.dk #sales-view::before,
+  body.dk #performance-view::before,body.dk #inventory-view::before,body.dk #admin-view::before,
+  body.dk #collab-view::before,body.dk #service-view::before,body.dk #projects-view::before,
+  body.dk #leads-view::before,body.dk #fieldwork-view::before{animation:none}
+}
