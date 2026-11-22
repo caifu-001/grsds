@@ -2482,3 +2482,80 @@ body.dk .of-amount-pull{background:rgba(56,189,248,.14);color:#7DD3FC;border-col
 body.dk .of-amount-pull:hover{background:rgba(56,189,248,.30);color:#E0F2FE}
 body.dk .of-amount-src{background:rgba(56,189,248,.10);border-color:rgba(88,166,255,.26);color:#9FB6D6}
 body.dk .of-amount-src b{color:#7DD3FC}
+
+/* ── 批量归类：范围选择 + 实时预览 ── */
+.bc-scope{border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;background:var(--surface)}
+.bc-scope-h{font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px}
+.bc-scope-opts{display:flex;gap:6px;flex-wrap:wrap}
+.bc-scope-btn{flex:1 1 96px;min-width:0;padding:8px 6px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--card);color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:all .15s}
+.bc-scope-btn b{font-weight:700;color:var(--primary);margin-left:2px}
+.bc-scope-btn:hover{border-color:var(--primary);color:var(--primary)}
+.bc-scope-btn.on{background:var(--primary-light);border-color:var(--primary);color:var(--primary)}
+.bc-kw{width:100%;box-sizing:border-box;margin-top:8px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--card);color:var(--text);outline:none}
+.bc-kw:focus{border-color:var(--primary)}
+.bc-scope-tip{margin-top:6px;font-size:11px;line-height:1.6;color:var(--text3)}
+#bulk-preview{margin-top:14px}
+.bc-prev-head{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius) var(--radius) 0 0;font-size:12px;color:var(--text2)}
+.bc-prev-head b{color:var(--primary)}
+.bc-prev-head .bs-spacer{flex:1}
+.bc-prev-head button{padding:3px 9px;border:1px solid var(--border);border-radius:20px;background:var(--card);color:var(--text2);font-size:11px;font-weight:600;cursor:pointer}
+.bc-prev-head button:hover{border-color:var(--primary);color:var(--primary)}
+.bc-list{max-height:238px;overflow-y:auto;border:1px solid var(--border);border-radius:0 0 var(--radius) var(--radius)}
+.bc-empty{padding:20px 12px;text-align:center;font-size:12px;line-height:1.7;color:var(--text3);border:1px solid var(--border);border-radius:0 0 var(--radius) var(--radius)}
+.bc-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--border-light);font-size:12px;cursor:pointer}
+.bc-item:last-child{border-bottom:none}
+.bc-item:hover{background:var(--primary-light)}
+.bc-item input{flex:0 0 auto;width:15px;height:15px;accent-color:var(--primary);cursor:pointer}
+.bc-item:not(.on){opacity:.55}
+.bc-name{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
+.bc-move{flex:0 0 auto;display:flex;align-items:center;gap:4px;color:var(--text3)}
+.bc-move em{font-style:normal;color:var(--text3)}
+.bc-tag{display:inline-block;padding:1px 6px;border-radius:20px;font-size:10px;line-height:1.7;color:#fff;white-space:nowrap}
+.bc-tag-empty{background:var(--border)!important;color:var(--text3)!important}
+.bc-more-tip{padding:6px 10px;font-size:11px;color:var(--text3);border:1px solid var(--border);border-top:none;border-radius:0 0 var(--radius) var(--radius)}
+.bc-progress{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.bc-progress.hidden{display:none}
+.bc-bar{flex:1;height:6px;border-radius:6px;background:var(--border);overflow:hidden}
+.bc-bar i{display:block;height:100%;width:0;border-radius:6px;background:var(--primary);transition:width .2s}
+.bc-ptxt{font-size:11px;font-weight:600;color:var(--text2);white-space:nowrap}
+@media(max-width:520px){.bulk-btn-txt{display:none}}
+body.dk .bc-scope{background:rgba(255,255,255,.04);border-color:rgba(120,170,255,.16)}
+body.dk .bc-scope-h{color:#A9BCDD}
+body.dk .bc-scope-btn{background:rgba(255,255,255,.05);border-color:rgba(120,170,255,.18);color:#C3D4EC}
+body.dk .bc-scope-btn b{color:#8FD8FF}
+body.dk .bc-scope-btn.on{background:rgba(56,189,248,.16);border-color:#38BDF8;color:#8FD8FF}
+body.dk .bc-kw{background:rgba(255,255,255,.05);border-color:rgba(120,170,255,.18);color:#EAF2FF}
+body.dk .bc-kw::placeholder{color:#7387A6}
+body.dk .bc-scope-tip,body.dk .bc-more-tip{color:#8FA9CE}
+body.dk .bc-prev-head{background:rgba(255,255,255,.04);border-color:rgba(120,170,255,.16);color:#A9BCDD}
+body.dk .bc-prev-head b{color:#8FD8FF}
+body.dk .bc-prev-head button{background:rgba(255,255,255,.05);border-color:rgba(120,170,255,.18);color:#C3D4EC}
+body.dk .bc-list,body.dk .bc-empty{border-color:rgba(120,170,255,.16)}
+body.dk .bc-item{border-bottom-color:rgba(120,170,255,.10)}
+body.dk .bc-item:hover{background:rgba(56,189,248,.10)}
+body.dk .bc-name{color:#EAF2FF}
+body.dk .bc-move,body.dk .bc-move em{color:#8FA9CE}
+body.dk .bc-tag-empty{background:rgba(255,255,255,.10)!important;color:#8FA9CE!important}
+body.dk .bc-empty{color:#8FA9CE}
+body.dk .bc-bar{background:rgba(255,255,255,.10)}
+body.dk .bc-bar i{background:#38BDF8}
+body.dk .bc-ptxt{color:#C3D4EC}
+
+/* 预览固定在弹窗底部：属性行在中间滚动，勾什么都能立刻看到会改哪些客户 */
+.confirm-box.bulk-box .bulk-prev-wrap{flex:0 0 auto;padding:8px 24px 4px;border-top:1px solid var(--border-light);display:flex;flex-direction:column;min-height:0;max-height:46vh}
+.confirm-box.bulk-box #bulk-preview{display:flex;flex-direction:column;min-height:0;overflow:hidden;margin-top:0}
+.confirm-box.bulk-box .bc-prev-head{flex:0 0 auto}
+.confirm-box.bulk-box .bc-list{flex:1 1 auto;min-height:0;max-height:none;overflow-y:auto}
+.confirm-box.bulk-box .bc-more-tip{flex:0 0 auto}
+.confirm-box.bulk-box .bc-empty{flex:0 0 auto;border-top:none;border-radius:0;padding:14px 10px}
+body.dk .confirm-box.bulk-box .bulk-prev-wrap{border-top-color:rgba(120,170,255,.16)}
+/* 属性区可滚动：底边加一道内阴影，提示下面还有内容（否则半截被裁看着像错位） */
+.confirm-box.bulk-box .bulk-body{box-shadow:inset 0 -14px 14px -14px rgba(15,23,42,.16)}
+body.dk .confirm-box.bulk-box .bulk-body{box-shadow:inset 0 -14px 16px -14px rgba(0,0,0,.6)}
+/* 其它属性折叠入口 */
+.bulk-more-btn{width:100%;margin-top:10px;padding:9px 12px;border:1px dashed var(--border);border-radius:var(--radius);background:transparent;color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
+.bulk-more-btn:hover{border-color:var(--primary);color:var(--primary)}
+.bulk-extra{margin-top:10px;display:flex;flex-direction:column;gap:10px}
+.bulk-extra.hidden{display:none}
+body.dk .bulk-more-btn{border-color:rgba(120,170,255,.24);color:#A9BCDD}
+body.dk .bulk-more-btn:hover{border-color:#38BDF8;color:#8FD8FF}

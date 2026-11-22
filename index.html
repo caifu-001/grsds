@@ -9,7 +9,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👔</text></svg>">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<link rel="stylesheet" href="css/app.css?v=64097e36">
+<link rel="stylesheet" href="css/app.css?v=06f07b51">
 
 <!-- 百度地图改为按需加载（见 js/app_v2.js 的 ensureBaiduMap），避免首屏同步阻塞 -->
 </head>
@@ -153,6 +153,7 @@
   <div class="toolbar">
    <select id="filter-select" onchange="onFilterChange()"><option value="all">全部类型</option></select>
    <div class="search-wrap"><input id="search-input" placeholder="搜索客户..." oninput="clientSearchInput()"></div>
+   <button class="bulk-toggle-btn" id="client-bulk-classify" onclick="bulkOpenClassify()" title="批量归类：按当前筛选结果或名称关键词批量改客户属性">🏷<span class="bulk-btn-txt"> 归类</span></button>
    <button class="bulk-toggle-btn" id="client-bulk-toggle" onclick="toggleBulkMode()" title="多选模式">☑ 多选</button>
   </div>
   <div class="bulk-selbar hidden" id="client-selbar"></div>
@@ -2240,7 +2241,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 <script src="js/modules/02-auth.js?v=fa0a682f"></script>
 <script src="js/modules/03-settings.js?v=8f73bb51"></script>
 <script src="js/modules/04-client-list.js?v=67661223"></script>
-<script src="js/modules/05-client-detail.js?v=4f163f55"></script>
+<script src="js/modules/05-client-detail.js?v=1347ea6e"></script>
 <script src="js/modules/06-client-tools.js?v=5fdb1d0b"></script>
 <script src="js/modules/07-orders.js?v=9fb039d1"></script>
 <script src="js/modules/08-admin.js?v=d16f5cf8"></script>
@@ -2248,7 +2249,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 <script src="js/modules/10-charts.js?v=5122efef"></script>
 <script src="js/modules/11-inventory.js?v=def5b4e8"></script>
 <script src="js/modules/12-performance.js?v=3427176b"></script>
-<script src="js/modules/13-crm360.js?v=296b26ca"></script>
+<script src="js/modules/13-crm360.js?v=98d8313c"></script>
 <script src="js/modules/14-hr-config.js?v=08066fa1"></script>
 <script src="js/modules/15-workflow.js?v=094dba1e"></script>
 <script src="js/modules/16-projects.js?v=9faeaceb"></script>
