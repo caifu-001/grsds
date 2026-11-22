@@ -152,8 +152,27 @@ async function openMy(){
   if(rs){row.style.display='flex';document.getElementById('my-resign-status').textContent={'pending':'待审批','approved':'已通过','rejected':'已拒绝'}[rs]||rs;if(rs==='pending'||rs==='approved')btn.style.display='none';else if(currentCompanyId)btn.style.display='block'}else{if(currentCompanyId)btn.style.display='block';else btn.style.display='none';row.style.display='none'}
   if(rs==='approved'&&profile.resignation_date){warn.style.display='block';document.getElementById('my-resign-warn-date').textContent='离职日期: '+profile.resignation_date}else{warn.style.display='none'}
   // Load invitations
+  // 注意：老代码这里的 myInvitations / renderMyInvitations 从未实现过，
+  // 一旦走到就抛 ReferenceError，把后面的 enableMyEditing() 一起中断（我的页内联编辑失效）。
+  // 改成直接查待处理邀请数，命中才渲染提示卡。
   var invSection=document.getElementById('my-invitation-section');
-  if(!currentCompanyId){await loadMyInvitations();if(myInvitations.length>0){invSection.style.display='block';renderMyInvitations()}else{invSection.style.display='none'}}else{invSection.style.display='none'}
+  if(invSection){
+    invSection.style.display='none';
+    if(!currentCompanyId&&currentUser&&currentUser.email){
+      try{
+        var invResp=await sb.from('invitations').select('id').eq('to_email',currentUser.email).eq('status','pending');
+        var invRows=(invResp&&invResp.data)||[];
+        if(invRows.length){
+          var invBox=document.getElementById('my-invitation-list');
+          if(invBox){
+            invBox.innerHTML='<div class="my-invite-card"><span>你有 '+invRows.length+' 条待处理的加入邀请</span>'+
+              '<button class="btn-sm btn-sm-primary" onclick="closeMy();toggleNotifPanel();switchNotifTab(\'invitations\')">去处理</button></div>';
+          }
+          invSection.style.display='block';
+        }
+      }catch(e){if(typeof dbg==='function')dbg('load my invitations failed',e)}
+    }
+  }
   enableMyEditing();
 }
 

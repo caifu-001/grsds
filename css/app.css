@@ -2462,3 +2462,9 @@ body.dk .login-wrap{padding:40px 18px}
   body.dk #collab-view::before,body.dk #service-view::before,body.dk #projects-view::before,
   body.dk #leads-view::before,body.dk #fieldwork-view::before{animation:none}
 }
+
+/* ── 我的页：待处理邀请提示卡（变量驱动，浅/深色通用） ── */
+.my-invite-card{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card);
+  font-size:13px;color:var(--text2);line-height:1.5}
+.my-invite-card .btn-sm{flex:0 0 auto;white-space:nowrap}

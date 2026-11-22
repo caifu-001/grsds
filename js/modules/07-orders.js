@@ -1113,7 +1113,7 @@ async function loadMyInvitations(){
       var c=companyMap[inv.from_company_id];
       var cname=c?c.name:('公司#'+inv.from_company_id);
       var d=new Date(inv.created_at);var t=d.toLocaleDateString('zh-CN')+' '+d.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
-      h+='<div style="padding:14px;border:1px solid var(--border);border-radius:10px;margin-bottom:10px;background:#f8fafc">';
+      h+='<div style="padding:14px;border:1px solid var(--border);border-radius:10px;margin-bottom:10px;background:var(--card)">';
       h+='<div style="font-weight:600;margin-bottom:4px">'+escHtml(cname)+'</div>';
       h+='<div style="font-size:13px;color:var(--text2);margin-bottom:8px">邀请你加入 · '+t+'</div>';
       h+='<div style="display:flex;gap:8px">';
