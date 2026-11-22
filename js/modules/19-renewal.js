@@ -294,10 +294,86 @@ function rnAmountChip(o){
 // ============================================================
 // 经营总览 · 复购商机卡片
 // ============================================================
-// 收起时保留前 N 条（allRenewalOpps 按应做日期升序 → 前几条就是最该打的电话），
-// 不是整块藏起来：把最紧急的几条留住，既不占屏幕也不丢信息。
+// 收起时保留前 N 条（按当前排序口径的前几条），
+// 不是整块藏起来：把最该看的几条留住，既不占屏幕也不丢信息。
 var RN_CARD_MAX=3;
 var rnCardOpen=false;   // 展开状态存内存：renderRenewalCard 每次都重建 innerHTML，存 DOM 会丢
+
+// ── 经营总览 · 自定义排序 ──
+// 只在总览渲染时二次排序：clientRenewalOpps / allRenewalOpps 仍按应做日期升序，
+// 客户 360 与别处的调用口径不变。偏好存 localStorage，刷新后保持。
+var RN_SORT_KEY='due';
+var RN_SORT_DIR=1;      // 1 升序 / -1 降序
+var RN_SORT_OPTS=[
+  {k:'due',label:'应做日期',def:1},
+  {k:'amount',label:'预估金额',def:-1},   // 金额默认大的在前
+  {k:'overdue',label:'逾期优先',def:1},
+  {k:'client',label:'客户名称',def:1},
+  {k:'project',label:'项目名称',def:1}
+];
+function rnLoadSort(){
+  try{
+    var raw=localStorage.getItem('grsds.rn.sort');
+    if(!raw)return;
+    var o=JSON.parse(raw),ok=false;
+    for(var i=0;i<RN_SORT_OPTS.length;i++)if(RN_SORT_OPTS[i].k===o.key)ok=true;
+    if(ok)RN_SORT_KEY=o.key;
+    if(o.dir===1||o.dir===-1)RN_SORT_DIR=o.dir;
+  }catch(e){}
+}
+function rnSaveSort(){
+  try{localStorage.setItem('grsds.rn.sort',JSON.stringify({key:RN_SORT_KEY,dir:RN_SORT_DIR}))}catch(e){}
+}
+// silent=true 只改状态不重渲（门禁初始化用）
+function rnSetSort(key,silent){
+  for(var i=0;i<RN_SORT_OPTS.length;i++){
+    if(RN_SORT_OPTS[i].k===key){
+      RN_SORT_KEY=key;
+      RN_SORT_DIR=RN_SORT_OPTS[i].def;
+      rnSaveSort();
+      if(!silent)renderRenewalCard();
+      return;
+    }
+  }
+}
+function rnToggleSortDir(){
+  RN_SORT_DIR=-RN_SORT_DIR;
+  rnSaveSort();
+  renderRenewalCard();
+}
+function rnSortValue(o){
+  if(RN_SORT_KEY==='amount')return o.amount||0;
+  if(RN_SORT_KEY==='client')return String((o.client&&o.client.name)||'');
+  if(RN_SORT_KEY==='project')return String(o.name||'');
+  if(RN_SORT_KEY==='overdue'){
+    // 逾期(−)永远排在未到期前面，组内按逾期/剩余天数从急到缓
+    return o.state==='overdue'?(-100000+o.days):o.days;
+  }
+  return o.due;
+}
+function rnSortOpps(list){
+  var arr=(list||[]).slice();
+  arr.sort(function(a,b){
+    var x=rnSortValue(a),y=rnSortValue(b),c;
+    if(typeof x==='number'&&typeof y==='number')c=x<y?-1:(x>y?1:0);
+    else c=String(x).localeCompare(String(y),'zh-CN');
+    if(!c)c=a.due<b.due?-1:(a.due>b.due?1:0);   // 同值保序：按应做日期兜底
+    if(!c)c=String(a.name).localeCompare(String(b.name),'zh-CN');
+    return c*RN_SORT_DIR;
+  });
+  return arr;
+}
+function rnSyncSortUI(){
+  var sel=document.getElementById('rn-sort-select');
+  if(sel)sel.value=RN_SORT_KEY;
+  var btn=document.getElementById('rn-sort-dir');
+  if(btn){
+    btn.textContent=RN_SORT_DIR===1?'↑':'↓';
+    btn.title=RN_SORT_DIR===1?'当前升序，点一下改降序':'当前降序，点一下改升序';
+  }
+}
+rnLoadSort();
+
 function rnToggleCard(){
   rnCardOpen=!rnCardOpen;
   renderRenewalCard();
@@ -310,7 +386,8 @@ async function renderRenewalCard(){
     box.innerHTML='<div class="empty-state">加载中...</div>';
     try{await loadClients()}catch(e){console.warn('[renewal] loadClients failed',e)}
   }
-  var list=allRenewalOpps();
+  rnSyncSortUI();
+  var list=rnSortOpps(allRenewalOpps());
   var cntEl=document.getElementById('rn-count');
   if(cntEl)cntEl.textContent=list.length?'（'+list.length+'）':'';
   var agg=rnRenewalSum(list);

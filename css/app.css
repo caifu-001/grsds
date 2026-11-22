@@ -957,9 +957,17 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
 .rn-head h4{margin:0;flex:1;min-width:0}
 .rn-fold-btn{flex:0 0 auto;padding:4px 12px;font-size:12px;font-weight:600;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text2);cursor:pointer;white-space:nowrap}
 .rn-fold-btn:hover{border-color:var(--primary);color:var(--primary)}
+/* 自定义排序：字段下拉 + 升降序切换；偏好存本地，下次进来还是上次挑的口径 */
+.rn-head-tools{display:flex;align-items:center;gap:6px;flex:0 0 auto;flex-wrap:wrap}
+.rn-sort-select{padding:4px 8px;font-size:12px;font-weight:600;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text2);cursor:pointer;white-space:nowrap}
+.rn-sort-select:hover{border-color:var(--primary);color:var(--primary)}
+.rn-sort-dir{width:28px;height:26px;padding:0;font-size:13px;font-weight:700;line-height:1;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--primary);cursor:pointer}
+.rn-sort-dir:hover{border-color:var(--primary);background:var(--border-light)}
 .rn-more{margin-top:2px;padding:8px;text-align:center;font-size:12px;color:var(--text3);background:var(--bg);border:1px dashed var(--border);border-radius:8px;cursor:pointer}
 .rn-more:hover{color:var(--primary);border-color:var(--primary)}
 @media(max-width:640px){
+  .rn-head{flex-wrap:wrap}
+  .rn-head-tools{width:100%}
   .rn-item{align-items:flex-start}
   .rn-acts{width:100%;justify-content:flex-end}
 }
