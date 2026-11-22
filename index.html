@@ -9,7 +9,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👔</text></svg>">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<link rel="stylesheet" href="css/app.css?v=0fee0c04">
+<link rel="stylesheet" href="css/app.css?v=2337c167">
 
 <!-- 百度地图改为按需加载（见 js/app_v2.js 的 ensureBaiduMap），避免首屏同步阻塞 -->
 </head>
@@ -932,7 +932,11 @@
   </div>
 
   <!-- ===== 销售报表面板 ===== -->
-  <div id="rp-sales-panel" class="report-panel">
+  <div id="rp-sales-panel" class="report-panel cockpit">
+   <div class="cp-head">
+    <div class="cp-title"><i class="cp-dot"></i>销售报表<span class="cp-en">SALES · COCKPIT</span></div>
+    <div class="cp-meta"><span class="cp-live"></span>数据快照 <b data-cp-time>--:--:--</b></div>
+   </div>
    <div class="report-toolbar">
     <select id="rp-sales-year" onchange="renderReportSales()"></select>
     <select id="rp-sales-quarter" onchange="renderReportSales()"><option value="0">全年</option><option value="1">Q1</option><option value="2">Q2</option><option value="3">Q3</option><option value="4">Q4</option></select>
@@ -950,7 +954,11 @@
   </div>
 
   <!-- ===== 客户分析面板 ===== -->
-  <div id="rp-clients-panel" class="report-panel hidden">
+  <div id="rp-clients-panel" class="report-panel cockpit hidden">
+   <div class="cp-head">
+    <div class="cp-title"><i class="cp-dot"></i>客户分析<span class="cp-en">CUSTOMER · COCKPIT</span></div>
+    <div class="cp-meta"><span class="cp-live"></span>数据快照 <b data-cp-time>--:--:--</b></div>
+   </div>
    <div class="report-toolbar">
     <select id="rp-clients-year" onchange="renderReportClients()"></select>
     <select id="rp-clients-quarter" onchange="renderReportClients()"><option value="0">全年</option><option value="1">Q1</option><option value="2">Q2</option><option value="3">Q3</option><option value="4">Q4</option></select>
@@ -975,7 +983,11 @@
   </div>
 
   <!-- ===== 回款分析面板 ===== -->
-  <div id="rp-collections-panel" class="report-panel hidden">
+  <div id="rp-collections-panel" class="report-panel cockpit hidden">
+   <div class="cp-head">
+    <div class="cp-title"><i class="cp-dot"></i>回款分析<span class="cp-en">COLLECTION · COCKPIT</span></div>
+    <div class="cp-meta"><span class="cp-live"></span>数据快照 <b data-cp-time>--:--:--</b></div>
+   </div>
    <div class="report-toolbar">
     <select id="rp-collections-year" onchange="renderReportCollections()"></select>
     <select id="rp-collections-quarter" onchange="renderReportCollections()"><option value="0">全年</option><option value="1">Q1</option><option value="2">Q2</option><option value="3">Q3</option><option value="4">Q4</option></select>
@@ -995,7 +1007,11 @@
   </div>
 
   <!-- ===== 订单统计面板（Chart.js升级版） ===== -->
-  <div id="rp-orders-panel" class="report-panel hidden">
+  <div id="rp-orders-panel" class="report-panel cockpit hidden">
+   <div class="cp-head">
+    <div class="cp-title"><i class="cp-dot"></i>订单统计<span class="cp-en">ORDER · COCKPIT</span></div>
+    <div class="cp-meta"><span class="cp-live"></span>数据快照 <b data-cp-time>--:--:--</b></div>
+   </div>
    <div class="report-toolbar">
     <select id="rp-orders-year" onchange="renderReportOrders()"></select>
     <select id="rp-orders-quarter" onchange="renderReportOrders()"><option value="0">全年</option><option value="1">Q1</option><option value="2">Q2</option><option value="3">Q3</option><option value="4">Q4</option></select>
@@ -1015,7 +1031,7 @@
   <div id="rp-vendor-panel" class="report-panel cockpit hidden">
    <div class="cp-head">
     <div class="cp-title"><i class="cp-dot"></i>集成商分析<span class="cp-en">VENDOR · COCKPIT</span></div>
-    <div class="cp-meta"><span class="cp-live"></span>数据快照 <b id="cp-vendor-time">--:--:--</b></div>
+    <div class="cp-meta"><span class="cp-live"></span>数据快照 <b id="cp-vendor-time" data-cp-time>--:--:--</b></div>
    </div>
    <div class="report-toolbar">
     <input id="rp-vendor-q" list="rp-vendor-list" class="vendor-q" placeholder="输入集成商公司名称（可只输关键字，如：中电智安）" oninput="vendorSuggest()" onkeydown="if(event.key==='Enter')renderVendorAnalysis()">
@@ -1033,7 +1049,7 @@
   <div id="rp-buyer-panel" class="report-panel cockpit hidden">
    <div class="cp-head">
     <div class="cp-title"><i class="cp-dot"></i>甲方分析<span class="cp-en">BUYER · COCKPIT</span></div>
-    <div class="cp-meta"><span class="cp-live"></span>数据快照 <b id="cp-buyer-time">--:--:--</b></div>
+    <div class="cp-meta"><span class="cp-live"></span>数据快照 <b id="cp-buyer-time" data-cp-time>--:--:--</b></div>
    </div>
    <div class="report-toolbar">
     <input id="rp-buyer-q" list="rp-buyer-list" class="vendor-q" placeholder="输入甲方公司名称（可只输关键字，如：重庆大学）" oninput="buyerSuggest()" onkeydown="if(event.key==='Enter')renderBuyerAnalysis()">
@@ -1048,7 +1064,11 @@
   </div>
 
   <!-- ===== 自定义仪表盘面板 ===== -->
-  <div id="rp-dashboard-panel" class="report-panel hidden">
+  <div id="rp-dashboard-panel" class="report-panel cockpit hidden">
+   <div class="cp-head">
+    <div class="cp-title"><i class="cp-dot"></i>自定义仪表盘<span class="cp-en">DASHBOARD · COCKPIT</span></div>
+    <div class="cp-meta"><span class="cp-live"></span>数据快照 <b data-cp-time>--:--:--</b></div>
+   </div>
    <div class="report-toolbar">
     <select id="rp-dashboard-selector" onchange="renderCustomDashboard()"><option value="">新建仪表盘</option></select>
     <input type="text" id="rp-dashboard-title" placeholder="仪表盘名称" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);font-size:13px;width:160px" value="我的仪表盘">
@@ -2055,7 +2075,11 @@
 
 
   <!-- ── 经营总览 ── -->
-  <div id="an-overview" class="an-panel">
+  <div id="an-overview" class="an-panel cockpit">
+    <div class="cp-head">
+      <div class="cp-title"><i class="cp-dot"></i>经营总览<span class="cp-en">OVERVIEW · COCKPIT</span></div>
+      <div class="cp-meta"><span class="cp-live"></span>数据快照 <b data-cp-time>--:--:--</b></div>
+    </div>
     <div id="birthday-section" class="an-table-card" style="display:none;margin-bottom:14px">
       <h4>🎂 近期生日提醒（7 天内）</h4>
       <div id="birthday-reminders"></div>
@@ -2100,7 +2124,11 @@
   </div>
 
   <!-- ── 销售漏斗 ── -->
-  <div id="an-sales-funnel" class="an-panel hidden">
+  <div id="an-sales-funnel" class="an-panel cockpit hidden">
+    <div class="cp-head">
+      <div class="cp-title"><i class="cp-dot"></i>销售漏斗<span class="cp-en">SALES FUNNEL · COCKPIT</span></div>
+      <div class="cp-meta"><span class="cp-live"></span>数据快照 <b data-cp-time>--:--:--</b></div>
+    </div>
     <div class="an-filter-bar">
       <select id="an-funnel-period" onchange="renderAnSalesFunnel()">
         <option value="this_month">本月</option>
@@ -2126,7 +2154,11 @@
   </div>
 
   <!-- ── 回款分析 ── -->
-  <div id="an-collection" class="an-panel hidden">
+  <div id="an-collection" class="an-panel cockpit hidden">
+    <div class="cp-head">
+      <div class="cp-title"><i class="cp-dot"></i>回款分析<span class="cp-en">COLLECTION · COCKPIT</span></div>
+      <div class="cp-meta"><span class="cp-live"></span>数据快照 <b data-cp-time>--:--:--</b></div>
+    </div>
     <div class="an-kpi-row" id="an-col-kpi"></div>
     <div class="an-chart-row">
       <div class="an-chart-card"><h4>📋 应收账龄分析</h4><div class="an-chart-wrap"><canvas id="an-col-aging-pie"></canvas></div></div>
@@ -2143,7 +2175,11 @@
   </div>
 
   <!-- ── 盈利分析 ── -->
-  <div id="an-profit" class="an-panel hidden">
+  <div id="an-profit" class="an-panel cockpit hidden">
+    <div class="cp-head">
+      <div class="cp-title"><i class="cp-dot"></i>盈利分析<span class="cp-en">PROFIT · COCKPIT</span></div>
+      <div class="cp-meta"><span class="cp-live"></span>数据快照 <b data-cp-time>--:--:--</b></div>
+    </div>
     <div class="an-kpi-row" id="an-prof-kpi"></div>
     <div class="an-chart-row">
       <div class="an-chart-card"><h4>📈 收入 vs 成本 vs 利润 月度趋势</h4><div class="an-chart-wrap"><canvas id="an-prof-trend"></canvas></div></div>
@@ -2163,7 +2199,11 @@
   </div>
 
   <!-- ── 客户健康度 ── -->
-  <div id="an-client-health" class="an-panel hidden">
+  <div id="an-client-health" class="an-panel cockpit hidden">
+    <div class="cp-head">
+      <div class="cp-title"><i class="cp-dot"></i>客户健康<span class="cp-en">HEALTH · COCKPIT</span></div>
+      <div class="cp-meta"><span class="cp-live"></span>数据快照 <b data-cp-time>--:--:--</b></div>
+    </div>
     <div class="an-kpi-row" id="an-ch-kpi"></div>
     <div class="an-chart-row">
       <div class="an-chart-card"><h4>👥 客户分级分布</h4><div class="an-chart-wrap"><canvas id="an-ch-tier-pie"></canvas></div></div>
@@ -2200,7 +2240,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 <script src="js/modules/04-client-list.js?v=67661223"></script>
 <script src="js/modules/05-client-detail.js?v=4f163f55"></script>
 <script src="js/modules/06-client-tools.js?v=5fdb1d0b"></script>
-<script src="js/modules/07-orders.js?v=e7aa4f65"></script>
+<script src="js/modules/07-orders.js?v=34aea1fb"></script>
 <script src="js/modules/08-admin.js?v=d16f5cf8"></script>
 <script src="js/modules/09-sales.js?v=83d62ee5"></script>
 <script src="js/modules/10-charts.js?v=5122efef"></script>
@@ -2210,7 +2250,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 <script src="js/modules/14-hr-config.js?v=08066fa1"></script>
 <script src="js/modules/15-workflow.js?v=11a24d5e"></script>
 <script src="js/modules/16-projects.js?v=9faeaceb"></script>
-<script src="js/modules/17-workbench.js?v=679aa70e"></script>
+<script src="js/modules/17-workbench.js?v=7f544791"></script>
 <script src="js/modules/18-templates.js?v=efe0ac1f"></script>
 <script src="js/modules/19-renewal.js?v=12b4cbe1"></script>
 

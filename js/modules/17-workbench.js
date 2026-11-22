@@ -590,6 +590,9 @@ var _anCurrentTab='overview';
 
 function switchAnalyticsTab(tab){
   dbg('[Analytics] switching to',tab);
+  // 经营分析各面板统一为深色驾驶舱：开时钟 + 图表深色默认值
+  if(typeof cpChartTheme==='function')cpChartTheme(true);
+  if(typeof cpStartClock==='function')cpStartClock();
   _anCurrentTab=tab;
   var btns=document.querySelectorAll('.analytics-tabs button');
   for(var i=0;i<btns.length;i++)btns[i].classList.remove('active');

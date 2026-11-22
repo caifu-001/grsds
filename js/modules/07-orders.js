@@ -229,6 +229,9 @@ function _destroyAllReportCharts(){ for(var k in _reportCharts)_destroyReportCha
 
 // ===== Tab 切换 =====
 function switchReportsTab(sub){
+  // 报表中心所有面板都是深色驾驶舱：统一开时钟 + 图表深色默认值
+  if(typeof cpChartTheme==='function')cpChartTheme(true);
+  if(typeof cpStartClock==='function')cpStartClock();
   // 销毁当前活跃tab的所有图表实例
   _destroyAllReportCharts();
   var panels={'sales':'rp-sales-panel','clients':'rp-clients-panel','collections':'rp-collections-panel','orders':'rp-orders-panel','vendor':'rp-vendor-panel','buyer':'rp-buyer-panel','dashboard':'rp-dashboard-panel'};
@@ -1220,6 +1223,9 @@ function switchTab(tab){
   var fab=document.getElementById('main-fab');
   closeMoreMenu();
   _destroyAllCharts();
+  // 离开报表/总览这类深色驾驶舱页面时，把 Chart.js 默认配色还原成浅色，
+  // 否则客户详情、订单等页面的图表会被一起改黑。
+  if(typeof cpChartTheme==='function')cpChartTheme(false);
   document.getElementById('settings-screen').style.display='none';
   document.getElementById('my-screen').style.display='none';
   // Hide all views first
@@ -1856,13 +1862,54 @@ function cpStartClock(){
   function tick(){
     var t=new Date();
     var s=('0'+t.getHours()).slice(-2)+':'+('0'+t.getMinutes()).slice(-2)+':'+('0'+t.getSeconds()).slice(-2);
-    var a=document.getElementById('cp-vendor-time'),b=document.getElementById('cp-buyer-time');
-    if(a)a.textContent=s;
-    if(b)b.textContent=s;
+    // 所有带 data-cp-time 的驾驶舱抬头统一走秒（报表 7 个面板 + 总览 5 个面板）
+    var els=document.querySelectorAll('[data-cp-time]');
+    for(var i=0;i<els.length;i++)els[i].textContent=s;
   }
   tick();
   if(_cpClockTimer)return;
   _cpClockTimer=setInterval(tick,1000);
+}
+
+// 驾驶舱下的 Chart.js 全局配色：报表页 / 总览页打开时切成深色，离开时还原，
+// 避免客户详情、订单等浅色页面的图表被一起改黑。
+var _cpChartOrig=null;
+function cpChartTheme(on){
+  if(typeof Chart==='undefined'||!Chart.defaults)return;
+  var tt=Chart.defaults.plugins&&Chart.defaults.plugins.tooltip;
+  if(!_cpChartOrig){
+    _cpChartOrig={
+      color:Chart.defaults.color,
+      borderColor:Chart.defaults.borderColor,
+      tooltipBg:tt?tt.backgroundColor:undefined,
+      tooltipTitle:tt?tt.titleColor:undefined,
+      tooltipBody:tt?tt.bodyColor:undefined,
+      tooltipBorder:tt?tt.borderColor:undefined,
+      tooltipBorderWidth:tt?tt.borderWidth:undefined
+    };
+  }
+  var o=_cpChartOrig;
+  if(on){
+    Chart.defaults.color='#A9BCDD';
+    Chart.defaults.borderColor='rgba(88,166,255,.14)';
+    if(tt){
+      tt.backgroundColor='rgba(8,18,36,.94)';
+      tt.titleColor='#E6EEFF';
+      tt.bodyColor='#CFE6FF';
+      tt.borderColor='rgba(88,166,255,.30)';
+      tt.borderWidth=1;
+    }
+  }else{
+    Chart.defaults.color=o.color;
+    Chart.defaults.borderColor=o.borderColor;
+    if(tt){
+      tt.backgroundColor=o.tooltipBg;
+      tt.titleColor=o.tooltipTitle;
+      tt.bodyColor=o.tooltipBody;
+      tt.borderColor=o.tooltipBorder;
+      tt.borderWidth=o.tooltipBorderWidth;
+    }
+  }
 }
 
 var _vendorCache=null;

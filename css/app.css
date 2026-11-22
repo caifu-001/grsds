@@ -1806,15 +1806,17 @@ body:has(#login-screen:not(.hidden)){background:linear-gradient(135deg,#EEF2FF 0
 ::selection{background:#C7D2FE;color:#1E1B4B}
 
 /* ==================================================================
-   Data Cockpit · 报表分析驾驶舱
-   只作用于 #rp-vendor-panel / #rp-buyer-panel（.report-panel.cockpit），
-   给「集成商分析 / 甲方分析」套深色科技大屏；不改任何全局尺寸布局，
-   因此不会影响其它页面与 138 项 UI 断言。
+   Data Cockpit · 数据驾驶舱（报表中心 7 个面板 + 经营总览 5 个面板）
+   .cockpit 只挂在 .report-panel / .an-panel 上，负责深色科技大屏底；
+   只改颜色 / 阴影 / 边框 / 背景，不动 padding、字号、栅格列宽等布局属性，
+   因此不会影响 138 项 UI 断言与移动端溢出。
    ================================================================== */
-.report-panel.cockpit{
+.cockpit{
   --text:#E6EEFF;--text2:#A9BCDD;--text3:#7B90B4;
   --border:rgba(120,170,255,.16);--card:rgba(255,255,255,.045);--bg:rgba(255,255,255,.03);
-  --primary:#38BDF8;
+  --border-light:rgba(120,170,255,.12);--card-bg:rgba(255,255,255,.05);
+  --radius:10px;--radius-lg:14px;--shadow:0 8px 26px rgba(3,10,26,.30);
+  --primary:#38BDF8;--primary-hover:#22D3EE;
   position:relative;margin:12px 16px 20px;padding:16px 18px;border-radius:16px;
   background:
     radial-gradient(1100px 420px at 8% -12%,rgba(56,189,248,.20),transparent 62%),
@@ -1826,97 +1828,239 @@ body:has(#login-screen:not(.hidden)){background:linear-gradient(135deg,#EEF2FF 0
   box-shadow:0 20px 55px rgba(2,10,28,.42),inset 0 1px 0 rgba(255,255,255,.06);
   overflow:hidden;
 }
-.report-panel.cockpit::before{content:'';position:absolute;inset:0;pointer-events:none;z-index:0;
+.cockpit::before{content:'';position:absolute;inset:0;pointer-events:none;z-index:0;
   background-image:linear-gradient(rgba(88,166,255,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(88,166,255,.055) 1px,transparent 1px);
   background-size:38px 38px;
   -webkit-mask-image:radial-gradient(120% 90% at 50% 0%,#000 10%,transparent 78%);
   mask-image:radial-gradient(120% 90% at 50% 0%,#000 10%,transparent 78%);}
-.report-panel.cockpit::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;z-index:1;pointer-events:none;
+.cockpit::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;z-index:1;pointer-events:none;
   background:linear-gradient(90deg,transparent,rgba(56,189,248,.9),rgba(167,139,250,.9),transparent);
   background-size:200% 100%;
   box-shadow:0 0 18px rgba(56,189,248,.55);
   animation:cpScan 6s linear infinite}
 @keyframes cpScan{0%{background-position:-100% 0}100%{background-position:200% 0}}
-.report-panel.cockpit>*{position:relative;z-index:2}
+.cockpit>*{position:relative;z-index:2}
 
 /* 驾驶舱抬头 */
-.report-panel.cockpit .cp-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 14px}
-.report-panel.cockpit .cp-title{display:flex;align-items:center;gap:9px;font-size:16px;font-weight:700;letter-spacing:.02em;color:#F2F8FF}
-.report-panel.cockpit .cp-dot{width:8px;height:8px;border-radius:50%;background:#22D3EE;box-shadow:0 0 0 3px rgba(34,211,238,.18),0 0 14px #22D3EE;animation:cpPulse 1.8s ease-in-out infinite}
-.report-panel.cockpit .cp-en{font-size:10px;font-weight:600;letter-spacing:.18em;color:#5E7BA6;padding-left:2px}
-.report-panel.cockpit .cp-meta{display:flex;align-items:center;gap:7px;font-size:11px;color:#6E86AB;letter-spacing:.04em}
-.report-panel.cockpit .cp-meta b{color:#8FD8FF;font-variant-numeric:tabular-nums;font-weight:600}
-.report-panel.cockpit .cp-live{width:6px;height:6px;border-radius:50%;background:#34D399;box-shadow:0 0 10px #34D399;animation:cpPulse 1.4s ease-in-out infinite}
+.cockpit .cp-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 14px}
+.cockpit .cp-title{display:flex;align-items:center;gap:9px;font-size:16px;font-weight:700;letter-spacing:.02em;color:#F2F8FF}
+.cockpit .cp-dot{width:8px;height:8px;border-radius:50%;background:#22D3EE;box-shadow:0 0 0 3px rgba(34,211,238,.18),0 0 14px #22D3EE;animation:cpPulse 1.8s ease-in-out infinite}
+.cockpit .cp-en{font-size:10px;font-weight:600;letter-spacing:.18em;color:#5E7BA6;padding-left:2px}
+.cockpit .cp-meta{display:flex;align-items:center;gap:7px;font-size:11px;color:#6E86AB;letter-spacing:.04em}
+.cockpit .cp-meta b{color:#8FD8FF;font-variant-numeric:tabular-nums;font-weight:600}
+.cockpit .cp-live{width:6px;height:6px;border-radius:50%;background:#34D399;box-shadow:0 0 10px #34D399;animation:cpPulse 1.4s ease-in-out infinite}
 @keyframes cpPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.82)}}
 
 /* 工具条与搜索 */
-.report-panel.cockpit .report-toolbar{gap:9px}
-.report-panel.cockpit .vendor-q{background:rgba(8,18,36,.72);border:1px solid rgba(88,166,255,.24);color:#E6EEFF;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);transition:border-color .18s,box-shadow .18s}
-.report-panel.cockpit .vendor-q::placeholder{color:#5E7BA6}
-.report-panel.cockpit .vendor-q:focus{outline:none;border-color:#38BDF8;box-shadow:0 0 0 3px rgba(56,189,248,.14),0 0 20px rgba(56,189,248,.22)}
-.report-panel.cockpit .vendor-match{color:#7B90B4}
-.report-panel.cockpit .report-toolbar .btn-sm{background:linear-gradient(135deg,rgba(56,189,248,.20),rgba(167,139,250,.20));border:1px solid rgba(88,166,255,.30);color:#CFE6FF;transition:.18s}
-.report-panel.cockpit .report-toolbar .btn-sm:hover{border-color:#38BDF8;color:#fff;box-shadow:0 0 18px rgba(56,189,248,.30);transform:translateY(-1px)}
+.cockpit .report-toolbar{gap:9px}
+.cockpit .vendor-q{background:rgba(8,18,36,.72);border:1px solid rgba(88,166,255,.24);color:#E6EEFF;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);transition:border-color .18s,box-shadow .18s}
+.cockpit .vendor-q::placeholder{color:#5E7BA6}
+.cockpit .vendor-q:focus{outline:none;border-color:#38BDF8;box-shadow:0 0 0 3px rgba(56,189,248,.14),0 0 20px rgba(56,189,248,.22)}
+.cockpit .vendor-match{color:#7B90B4}
+.cockpit .report-toolbar .btn-sm{background:linear-gradient(135deg,rgba(56,189,248,.20),rgba(167,139,250,.20));border:1px solid rgba(88,166,255,.30);color:#CFE6FF;transition:.18s}
+.cockpit .report-toolbar .btn-sm:hover{border-color:#38BDF8;color:#fff;box-shadow:0 0 18px rgba(56,189,248,.30);transform:translateY(-1px)}
 
 /* 热门 / 候选标签 */
-.report-panel.cockpit .vendor-hot{background:rgba(56,189,248,.05);border:1px dashed rgba(88,166,255,.26);color:#8FA9CE}
-.report-panel.cockpit .vendor-hot b{color:#BBD2F2}
-.report-panel.cockpit .vendor-cands{color:#8FA9CE}
-.report-panel.cockpit .vendor-chip{background:rgba(255,255,255,.05);border:1px solid rgba(88,166,255,.22);color:#BBD2F2;transition:.16s}
-.report-panel.cockpit .vendor-chip:hover{border-color:#38BDF8;color:#fff;box-shadow:0 0 14px rgba(56,189,248,.28)}
+.cockpit .vendor-hot{background:rgba(56,189,248,.05);border:1px dashed rgba(88,166,255,.26);color:#8FA9CE}
+.cockpit .vendor-hot b{color:#BBD2F2}
+.cockpit .vendor-cands{color:#8FA9CE}
+.cockpit .vendor-chip{background:rgba(255,255,255,.05);border:1px solid rgba(88,166,255,.22);color:#BBD2F2;transition:.16s}
+.cockpit .vendor-chip:hover{border-color:#38BDF8;color:#fff;box-shadow:0 0 14px rgba(56,189,248,.28)}
 
 /* KPI 卡片 */
-.report-panel.cockpit .vendor-kpis{gap:12px;margin:14px 0 16px}
-.report-panel.cockpit .vendor-kpi{position:relative;overflow:hidden;border:1px solid rgba(88,166,255,.20);border-radius:12px;
+.cockpit .vendor-kpis{gap:12px;margin:14px 0 16px}
+.cockpit .vendor-kpi{position:relative;overflow:hidden;border:1px solid rgba(88,166,255,.20);border-radius:12px;
   background:linear-gradient(160deg,rgba(56,189,248,.11),rgba(167,139,250,.05) 60%,rgba(255,255,255,.02));
   box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 6px 20px rgba(3,10,26,.28);
   transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}
-.report-panel.cockpit .vendor-kpi:hover{transform:translateY(-2px);border-color:rgba(56,189,248,.45);
+.cockpit .vendor-kpi:hover{transform:translateY(-2px);border-color:rgba(56,189,248,.45);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 10px 28px rgba(3,10,26,.42),0 0 22px rgba(56,189,248,.18)}
-.report-panel.cockpit .vendor-kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#38BDF8,#A78BFA)}
-.report-panel.cockpit .vendor-kpi::after{content:'';position:absolute;right:-26px;top:-26px;width:86px;height:86px;border-radius:50%;background:radial-gradient(circle,rgba(56,189,248,.22),transparent 68%)}
-.report-panel.cockpit .vendor-kpi span{color:#8FA9CE;letter-spacing:.05em;display:flex;align-items:center;gap:5px}
-.report-panel.cockpit .vendor-kpi b{font-size:23px;line-height:1.25;font-variant-numeric:tabular-nums;
+.cockpit .vendor-kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#38BDF8,#A78BFA)}
+.cockpit .vendor-kpi::after{content:'';position:absolute;right:-26px;top:-26px;width:86px;height:86px;border-radius:50%;background:radial-gradient(circle,rgba(56,189,248,.22),transparent 68%)}
+.cockpit .vendor-kpi span{color:#8FA9CE;letter-spacing:.05em;display:flex;align-items:center;gap:5px}
+.cockpit .vendor-kpi b{font-size:23px;line-height:1.25;font-variant-numeric:tabular-nums;
   background:linear-gradient(180deg,#FFFFFF 10%,#8FD8FF 92%);
   -webkit-background-clip:text;background-clip:text;color:transparent;
   text-shadow:0 0 26px rgba(56,189,248,.35)}
 @supports not ((-webkit-background-clip:text) or (background-clip:text)){
-  .report-panel.cockpit .vendor-kpi b{color:#8FD8FF;background:none}
+  .cockpit .vendor-kpi b{color:#8FD8FF;background:none}
 }
 
 /* 章节卡 */
-.report-panel.cockpit .vendor-sec{background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015));border:1px solid rgba(88,166,255,.16);border-radius:12px;box-shadow:0 8px 26px rgba(3,10,26,.30)}
-.report-panel.cockpit .vendor-sec h4{color:#EAF2FF;letter-spacing:.03em;display:flex;align-items:center}
-.report-panel.cockpit .vendor-sec h4::before{content:'';display:inline-block;width:3px;height:12px;margin-right:8px;border-radius:2px;background:linear-gradient(180deg,#38BDF8,#A78BFA);box-shadow:0 0 10px rgba(56,189,248,.6)}
+.cockpit .vendor-sec{background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015));border:1px solid rgba(88,166,255,.16);border-radius:12px;box-shadow:0 8px 26px rgba(3,10,26,.30)}
+.cockpit .vendor-sec h4{color:#EAF2FF;letter-spacing:.03em;display:flex;align-items:center}
+.cockpit .vendor-sec h4::before{content:'';display:inline-block;width:3px;height:12px;margin-right:8px;border-radius:2px;background:linear-gradient(180deg,#38BDF8,#A78BFA);box-shadow:0 0 10px rgba(56,189,248,.6)}
 
 /* 数据表 */
-.report-panel.cockpit .report-table{background:transparent}
-.report-panel.cockpit .report-table th{color:#8FA9CE;letter-spacing:.06em;font-size:11px;font-weight:600;background:rgba(56,189,248,.07);border-bottom:1px solid rgba(88,166,255,.22);white-space:nowrap}
-.report-panel.cockpit .report-table td{border-bottom:1px solid rgba(88,166,255,.09);color:#D5E3FA}
-.report-panel.cockpit .report-table tbody tr{transition:background .14s}
-.report-panel.cockpit .report-table tbody tr:hover td{background:rgba(56,189,248,.07)}
-.report-panel.cockpit tr.buyer-top td{background:linear-gradient(90deg,rgba(34,211,238,.18),rgba(34,211,238,.03))!important;color:#EAFBFF;font-weight:600;box-shadow:inset 3px 0 0 #22D3EE}
-.report-panel.cockpit .buyer-note{color:#7B90B4}
-.report-panel.cockpit .empty-state{color:#7B90B4}
-.report-panel.cockpit .an-chart-wrap{padding:6px 2px 0}
+.cockpit .report-table{background:transparent}
+.cockpit .report-table th{color:#8FA9CE;letter-spacing:.06em;font-size:11px;font-weight:600;background:rgba(56,189,248,.07);border-bottom:1px solid rgba(88,166,255,.22);white-space:nowrap}
+.cockpit .report-table td{border-bottom:1px solid rgba(88,166,255,.09);color:#D5E3FA}
+.cockpit .report-table tbody tr{transition:background .14s}
+.cockpit .report-table tbody tr:hover td{background:rgba(56,189,248,.07)}
+.cockpit tr.buyer-top td{background:linear-gradient(90deg,rgba(34,211,238,.18),rgba(34,211,238,.03))!important;color:#EAFBFF;font-weight:600;box-shadow:inset 3px 0 0 #22D3EE}
+.cockpit .buyer-note{color:#7B90B4}
+.cockpit .empty-state{color:#7B90B4}
+.cockpit .an-chart-wrap{padding:6px 2px 0}
 
 /* 入场动画（只动 opacity/transform，不影响布局） */
 @keyframes cpFadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-.report-panel.cockpit .vendor-kpi{animation:cpFadeUp .42s cubic-bezier(.22,.8,.28,1) both}
-.report-panel.cockpit .vendor-kpi:nth-child(2){animation-delay:.05s}
-.report-panel.cockpit .vendor-kpi:nth-child(3){animation-delay:.1s}
-.report-panel.cockpit .vendor-kpi:nth-child(4){animation-delay:.15s}
-.report-panel.cockpit .vendor-sec{animation:cpFadeUp .46s cubic-bezier(.22,.8,.28,1) both}
-.report-panel.cockpit .vendor-sec:nth-child(2){animation-delay:.04s}
-.report-panel.cockpit .vendor-sec:nth-child(3){animation-delay:.08s}
-.report-panel.cockpit .vendor-sec:nth-child(4){animation-delay:.12s}
-.report-panel.cockpit .vendor-sec:nth-child(5){animation-delay:.16s}
+.cockpit .vendor-kpi{animation:cpFadeUp .42s cubic-bezier(.22,.8,.28,1) both}
+.cockpit .vendor-kpi:nth-child(2){animation-delay:.05s}
+.cockpit .vendor-kpi:nth-child(3){animation-delay:.1s}
+.cockpit .vendor-kpi:nth-child(4){animation-delay:.15s}
+.cockpit .vendor-sec{animation:cpFadeUp .46s cubic-bezier(.22,.8,.28,1) both}
+.cockpit .vendor-sec:nth-child(2){animation-delay:.04s}
+.cockpit .vendor-sec:nth-child(3){animation-delay:.08s}
+.cockpit .vendor-sec:nth-child(4){animation-delay:.12s}
+.cockpit .vendor-sec:nth-child(5){animation-delay:.16s}
 @media (prefers-reduced-motion:reduce){
-  .report-panel.cockpit .vendor-kpi,.report-panel.cockpit .vendor-sec{animation:none}
-  .report-panel.cockpit .cp-dot,.report-panel.cockpit .cp-live{animation:none}
+  .cockpit .vendor-kpi,.cockpit .vendor-sec{animation:none}
+  .cockpit .cp-dot,.cockpit .cp-live{animation:none}
 }
 @media(max-width:640px){
-  .report-panel.cockpit{margin:8px 8px 14px;padding:12px;border-radius:12px}
-  .report-panel.cockpit .cp-en{display:none}
-  .report-panel.cockpit .vendor-kpi b{font-size:20px}
+  .cockpit{margin:8px 8px 14px;padding:12px;border-radius:12px}
+  .cockpit .cp-en{display:none}
+  .cockpit .vendor-kpi b{font-size:20px}
 }
+
+/* ── 驾驶舱页面底：报表中心 / 经营分析整页转深色，卡片才有依托 ── */
+#reports-view,#analytics-view{
+  min-height:80vh;
+  background:
+    radial-gradient(900px 400px at 12% 0%,rgba(56,189,248,.10),transparent 60%),
+    radial-gradient(800px 360px at 92% 4%,rgba(167,139,250,.10),transparent 58%),
+    linear-gradient(180deg,#060C18 0%,#080F1F 42%,#060B16 100%);
+}
+/* 报表中心顶部四张汇总卡 */
+#reports-view .dash-card{
+  background:linear-gradient(160deg,rgba(56,189,248,.12),rgba(167,139,250,.05) 60%,rgba(255,255,255,.02));
+  border:1px solid rgba(88,166,255,.20);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 6px 20px rgba(3,10,26,.28);
+  transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease;
+  position:relative;overflow:hidden;
+}
+#reports-view .dash-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,#38BDF8,#A78BFA)}
+#reports-view .dash-card:hover{transform:translateY(-2px);border-color:rgba(56,189,248,.45);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 10px 28px rgba(3,10,26,.42),0 0 22px rgba(56,189,248,.18)}
+#reports-view .dash-card-value{
+  background:linear-gradient(180deg,#FFFFFF 10%,#8FD8FF 92%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  text-shadow:0 0 24px rgba(56,189,248,.30)}
+@supports not ((-webkit-background-clip:text) or (background-clip:text)){
+  #reports-view .dash-card-value{color:#8FD8FF;background:none}
+}
+#reports-view .dash-card-label{color:#8FA9CE;letter-spacing:.04em}
+/* 子页签条 */
+#reports-view .reports-tabs,#analytics-view .analytics-tabs{
+  background:rgba(8,18,36,.55);border-bottom:1px solid rgba(88,166,255,.16)}
+#reports-view .biz-subtab{color:#C3D4EC;background:rgba(255,255,255,.05)}
+#reports-view .biz-subtab:hover{color:#fff;background:rgba(56,189,248,.14)}
+#reports-view .biz-subtab.active{
+  background:linear-gradient(135deg,#38BDF8,#A78BFA);color:#04101F;
+  box-shadow:0 0 16px rgba(56,189,248,.35)}
+#analytics-view .analytics-tabs button{background:rgba(255,255,255,.05);color:#C3D4EC}
+#analytics-view .analytics-tabs button:hover{color:#fff;background:rgba(56,189,248,.14)}
+#analytics-view .analytics-tabs button.active{
+  background:linear-gradient(135deg,#38BDF8,#A78BFA);color:#04101F;
+  box-shadow:0 0 16px rgba(56,189,248,.35)}
+
+/* ── 报表面板内：图表卡 / 工具条 / 指标数字 ── */
+.cockpit .report-chart{
+  background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.015));
+  border:1px solid rgba(88,166,255,.16);border-radius:12px;
+  box-shadow:0 8px 26px rgba(3,10,26,.30)}
+.cockpit .report-chart>div:first-child{color:#DCEBFF;letter-spacing:.03em}
+.cockpit .report-chart>div:first-child::before{content:'';display:inline-block;width:3px;height:12px;
+  margin-right:8px;border-radius:2px;vertical-align:-1px;
+  background:linear-gradient(180deg,#38BDF8,#A78BFA);box-shadow:0 0 10px rgba(56,189,248,.6)}
+.cockpit .report-toolbar select,.cockpit .report-toolbar input:not([type=checkbox]){
+  background:rgba(8,18,36,.72);border:1px solid rgba(88,166,255,.24);color:#E6EEFF}
+.cockpit .report-toolbar select:focus,.cockpit .report-toolbar input:not([type=checkbox]):focus{
+  outline:none;border-color:#38BDF8;box-shadow:0 0 0 3px rgba(56,189,248,.14)}
+.cockpit .report-toolbar .btn-sm{
+  background:linear-gradient(135deg,rgba(56,189,248,.20),rgba(167,139,250,.20));
+  border:1px solid rgba(88,166,255,.30);color:#CFE6FF;transition:.18s}
+.cockpit .report-toolbar .btn-sm:hover{border-color:#38BDF8;color:#fff;
+  box-shadow:0 0 18px rgba(56,189,248,.30);transform:translateY(-1px)}
+.cockpit .report-metric{color:#8FD8FF!important;text-shadow:0 0 26px rgba(56,189,248,.45)}
+
+/* ── 总览页：KPI 卡 / 图表卡 / 表格卡 ── */
+.cockpit .an-kpi-row:empty{border-color:rgba(88,166,255,.16);background:rgba(255,255,255,.03);color:#7B90B4}
+.cockpit .an-kpi-card{
+  position:relative;overflow:hidden;
+  background:linear-gradient(160deg,rgba(56,189,248,.11),rgba(167,139,250,.05) 60%,rgba(255,255,255,.02));
+  border:1px solid rgba(88,166,255,.20);border-radius:12px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 6px 20px rgba(3,10,26,.28);
+  transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}
+.cockpit .an-kpi-card:hover{transform:translateY(-2px);border-color:rgba(56,189,248,.45);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 10px 28px rgba(3,10,26,.42),0 0 22px rgba(56,189,248,.18)}
+.cockpit .an-kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,#38BDF8,#A78BFA)}
+.cockpit .an-kpi-card::after{content:'';position:absolute;right:-26px;top:-26px;width:86px;height:86px;
+  border-radius:50%;background:radial-gradient(circle,rgba(56,189,248,.22),transparent 68%)}
+.cockpit .an-kpi-card .kpi-label{color:#8FA9CE;letter-spacing:.05em;position:relative;z-index:1}
+.cockpit .an-kpi-card .kpi-val{
+  position:relative;z-index:1;
+  font-variant-numeric:tabular-nums;
+  background:linear-gradient(180deg,#FFFFFF 10%,#8FD8FF 92%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  text-shadow:0 0 26px rgba(56,189,248,.35)}
+@supports not ((-webkit-background-clip:text) or (background-clip:text)){
+  .cockpit .an-kpi-card .kpi-val{color:#8FD8FF;background:none}
+}
+.cockpit .an-kpi-card .kpi-change.up{color:#4ADE80}
+.cockpit .an-kpi-card .kpi-change.down{color:#FCA5A5}
+.cockpit .an-chart-card,.cockpit .an-full-chart-card,.cockpit .an-table-card{
+  background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015));
+  border:1px solid rgba(88,166,255,.16);border-radius:12px;
+  box-shadow:0 8px 26px rgba(3,10,26,.30)}
+.cockpit .an-chart-card h4,.cockpit .an-full-chart-card h4,.cockpit .an-table-card h4{
+  color:#EAF2FF;letter-spacing:.03em}
+.cockpit .an-chart-card h4,.cockpit .an-full-chart-card h4{display:flex;align-items:center}
+.cockpit .an-chart-card h4::before,.cockpit .an-full-chart-card h4::before{
+  content:'';display:inline-block;width:3px;height:12px;margin-right:8px;border-radius:2px;flex:0 0 auto;
+  background:linear-gradient(180deg,#38BDF8,#A78BFA);box-shadow:0 0 10px rgba(56,189,248,.6)}
+.cockpit .an-table th{color:#8FA9CE;letter-spacing:.06em;font-weight:600;
+  background:rgba(56,189,248,.07);border-bottom:2px solid rgba(88,166,255,.22)}
+.cockpit .an-table td{border-bottom:1px solid rgba(88,166,255,.09);color:#D5E3FA}
+.cockpit .an-table tr:hover td{background:rgba(56,189,248,.07)}
+.cockpit .an-badge-healthy{background:rgba(16,185,129,.16);color:#4ADE80}
+.cockpit .an-badge-attention{background:rgba(245,158,11,.16);color:#FBBF24}
+.cockpit .an-badge-risk{background:rgba(239,68,68,.18);color:#FCA5A5}
+.cockpit .an-badge-lost{background:rgba(148,163,184,.16);color:#94A3B8}
+.cockpit .an-alert-row{background:rgba(245,158,11,.12);border-left:3px solid #F59E0B}
+.cockpit .an-danger-row{background:rgba(239,68,68,.13);border-left:3px solid #EF4444}
+.cockpit .an-filter-bar select,.cockpit .an-filter-bar input{
+  background:rgba(8,18,36,.72);border:1px solid rgba(88,166,255,.24);color:#E6EEFF}
+.cockpit .an-funnel-step{box-shadow:0 4px 18px rgba(3,10,26,.45),inset 0 1px 0 rgba(255,255,255,.18)}
+
+/* ── 总览页：年度复购商机卡片 ── */
+.cockpit .rn-item{background:rgba(255,255,255,.04);border:1px solid rgba(88,166,255,.10)}
+.cockpit .rn-item.rn-over{background:linear-gradient(90deg,rgba(239,68,68,.16),rgba(239,68,68,.04));
+  border-color:rgba(239,68,68,.28)}
+.cockpit .rn-title{color:#E6EEFF}
+.cockpit .rn-proj{color:#A9BCDD}
+.cockpit .rn-sub{color:#7B90B4}
+.cockpit .rn-badge-over{background:rgba(239,68,68,.20);color:#FCA5A5}
+.cockpit .rn-badge-due{background:rgba(245,158,11,.20);color:#FBBF24}
+.cockpit .rn-badge-future{background:rgba(148,163,184,.16);color:#A9BCDD}
+.cockpit .rn-total{color:#FBBF24;background:rgba(245,158,11,.14);border:1px solid rgba(245,158,11,.34)}
+.cockpit .rn-amt{color:#38BDF8}
+.cockpit .rn-amt:hover{background:rgba(56,189,248,.12)}
+.cockpit .rn-amt i{color:#8FA9CE;background:rgba(255,255,255,.08)}
+.cockpit .rn-amt-miss{color:#7B90B4;border-color:rgba(88,166,255,.24)}
+.cockpit .rn-btn{background:rgba(255,255,255,.06);border-color:rgba(88,166,255,.24);color:#CFE6FF}
+.cockpit .rn-btn:hover{border-color:#38BDF8;color:#8FD8FF;background:rgba(56,189,248,.10)}
+.cockpit .rn-btn-primary{background:linear-gradient(135deg,#38BDF8,#A78BFA);border-color:transparent;color:#04101F}
+.cockpit .rn-btn-primary:hover{background:linear-gradient(135deg,#22D3EE,#8B5CF6);color:#04101F}
+.cockpit .rn-btn-ghost{background:transparent;color:#7B90B4}
+.cockpit .rn-fold-btn{background:rgba(255,255,255,.06);border-color:rgba(88,166,255,.24);color:#CFE6FF}
+.cockpit .rn-fold-btn:hover{border-color:#38BDF8;color:#8FD8FF}
+.cockpit .rn-sort-select,.cockpit .rn-sort-dir{background:rgba(255,255,255,.06);border-color:rgba(88,166,255,.24);color:#CFE6FF}
+.cockpit .rn-sort-select option{background:#0C1730;color:#E6EEFF}
+.cockpit .rn-sort-dir{color:#8FD8FF}
+
+/* 驾驶舱内文字兜底：浅色变量被覆盖后，仍有硬编码深色文字的地方统一提亮 */
+.cockpit .tc,.cockpit .empty-state,.cockpit .vendor-result{color:#7B90B4}
+.cockpit a{color:#8FD8FF}
