@@ -1804,3 +1804,119 @@ body:has(#login-screen:not(.hidden)){background:linear-gradient(135deg,#EEF2FF 0
 ::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:999px}
 ::-webkit-scrollbar-thumb:hover{background:#94A3B8}
 ::selection{background:#C7D2FE;color:#1E1B4B}
+
+/* ==================================================================
+   Data Cockpit · 报表分析驾驶舱
+   只作用于 #rp-vendor-panel / #rp-buyer-panel（.report-panel.cockpit），
+   给「集成商分析 / 甲方分析」套深色科技大屏；不改任何全局尺寸布局，
+   因此不会影响其它页面与 138 项 UI 断言。
+   ================================================================== */
+.report-panel.cockpit{
+  --text:#E6EEFF;--text2:#A9BCDD;--text3:#7B90B4;
+  --border:rgba(120,170,255,.16);--card:rgba(255,255,255,.045);--bg:rgba(255,255,255,.03);
+  --primary:#38BDF8;
+  position:relative;margin:12px 16px 20px;padding:16px 18px;border-radius:16px;
+  background:
+    radial-gradient(1100px 420px at 8% -12%,rgba(56,189,248,.20),transparent 62%),
+    radial-gradient(900px 380px at 96% -6%,rgba(167,139,250,.18),transparent 60%),
+    radial-gradient(700px 320px at 50% 112%,rgba(34,211,238,.08),transparent 70%),
+    linear-gradient(160deg,#0A1020 0%,#0C1730 46%,#0A1426 100%);
+  color:var(--text);
+  border:1px solid rgba(90,160,255,.22);
+  box-shadow:0 20px 55px rgba(2,10,28,.42),inset 0 1px 0 rgba(255,255,255,.06);
+  overflow:hidden;
+}
+.report-panel.cockpit::before{content:'';position:absolute;inset:0;pointer-events:none;z-index:0;
+  background-image:linear-gradient(rgba(88,166,255,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(88,166,255,.055) 1px,transparent 1px);
+  background-size:38px 38px;
+  -webkit-mask-image:radial-gradient(120% 90% at 50% 0%,#000 10%,transparent 78%);
+  mask-image:radial-gradient(120% 90% at 50% 0%,#000 10%,transparent 78%);}
+.report-panel.cockpit::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;z-index:1;pointer-events:none;
+  background:linear-gradient(90deg,transparent,rgba(56,189,248,.9),rgba(167,139,250,.9),transparent);
+  background-size:200% 100%;
+  box-shadow:0 0 18px rgba(56,189,248,.55);
+  animation:cpScan 6s linear infinite}
+@keyframes cpScan{0%{background-position:-100% 0}100%{background-position:200% 0}}
+.report-panel.cockpit>*{position:relative;z-index:2}
+
+/* 驾驶舱抬头 */
+.report-panel.cockpit .cp-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 14px}
+.report-panel.cockpit .cp-title{display:flex;align-items:center;gap:9px;font-size:16px;font-weight:700;letter-spacing:.02em;color:#F2F8FF}
+.report-panel.cockpit .cp-dot{width:8px;height:8px;border-radius:50%;background:#22D3EE;box-shadow:0 0 0 3px rgba(34,211,238,.18),0 0 14px #22D3EE;animation:cpPulse 1.8s ease-in-out infinite}
+.report-panel.cockpit .cp-en{font-size:10px;font-weight:600;letter-spacing:.18em;color:#5E7BA6;padding-left:2px}
+.report-panel.cockpit .cp-meta{display:flex;align-items:center;gap:7px;font-size:11px;color:#6E86AB;letter-spacing:.04em}
+.report-panel.cockpit .cp-meta b{color:#8FD8FF;font-variant-numeric:tabular-nums;font-weight:600}
+.report-panel.cockpit .cp-live{width:6px;height:6px;border-radius:50%;background:#34D399;box-shadow:0 0 10px #34D399;animation:cpPulse 1.4s ease-in-out infinite}
+@keyframes cpPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.82)}}
+
+/* 工具条与搜索 */
+.report-panel.cockpit .report-toolbar{gap:9px}
+.report-panel.cockpit .vendor-q{background:rgba(8,18,36,.72);border:1px solid rgba(88,166,255,.24);color:#E6EEFF;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);transition:border-color .18s,box-shadow .18s}
+.report-panel.cockpit .vendor-q::placeholder{color:#5E7BA6}
+.report-panel.cockpit .vendor-q:focus{outline:none;border-color:#38BDF8;box-shadow:0 0 0 3px rgba(56,189,248,.14),0 0 20px rgba(56,189,248,.22)}
+.report-panel.cockpit .vendor-match{color:#7B90B4}
+.report-panel.cockpit .report-toolbar .btn-sm{background:linear-gradient(135deg,rgba(56,189,248,.20),rgba(167,139,250,.20));border:1px solid rgba(88,166,255,.30);color:#CFE6FF;transition:.18s}
+.report-panel.cockpit .report-toolbar .btn-sm:hover{border-color:#38BDF8;color:#fff;box-shadow:0 0 18px rgba(56,189,248,.30);transform:translateY(-1px)}
+
+/* 热门 / 候选标签 */
+.report-panel.cockpit .vendor-hot{background:rgba(56,189,248,.05);border:1px dashed rgba(88,166,255,.26);color:#8FA9CE}
+.report-panel.cockpit .vendor-hot b{color:#BBD2F2}
+.report-panel.cockpit .vendor-cands{color:#8FA9CE}
+.report-panel.cockpit .vendor-chip{background:rgba(255,255,255,.05);border:1px solid rgba(88,166,255,.22);color:#BBD2F2;transition:.16s}
+.report-panel.cockpit .vendor-chip:hover{border-color:#38BDF8;color:#fff;box-shadow:0 0 14px rgba(56,189,248,.28)}
+
+/* KPI 卡片 */
+.report-panel.cockpit .vendor-kpis{gap:12px;margin:14px 0 16px}
+.report-panel.cockpit .vendor-kpi{position:relative;overflow:hidden;border:1px solid rgba(88,166,255,.20);border-radius:12px;
+  background:linear-gradient(160deg,rgba(56,189,248,.11),rgba(167,139,250,.05) 60%,rgba(255,255,255,.02));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 6px 20px rgba(3,10,26,.28);
+  transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}
+.report-panel.cockpit .vendor-kpi:hover{transform:translateY(-2px);border-color:rgba(56,189,248,.45);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 10px 28px rgba(3,10,26,.42),0 0 22px rgba(56,189,248,.18)}
+.report-panel.cockpit .vendor-kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#38BDF8,#A78BFA)}
+.report-panel.cockpit .vendor-kpi::after{content:'';position:absolute;right:-26px;top:-26px;width:86px;height:86px;border-radius:50%;background:radial-gradient(circle,rgba(56,189,248,.22),transparent 68%)}
+.report-panel.cockpit .vendor-kpi span{color:#8FA9CE;letter-spacing:.05em;display:flex;align-items:center;gap:5px}
+.report-panel.cockpit .vendor-kpi b{font-size:23px;line-height:1.25;font-variant-numeric:tabular-nums;
+  background:linear-gradient(180deg,#FFFFFF 10%,#8FD8FF 92%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  text-shadow:0 0 26px rgba(56,189,248,.35)}
+@supports not ((-webkit-background-clip:text) or (background-clip:text)){
+  .report-panel.cockpit .vendor-kpi b{color:#8FD8FF;background:none}
+}
+
+/* 章节卡 */
+.report-panel.cockpit .vendor-sec{background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015));border:1px solid rgba(88,166,255,.16);border-radius:12px;box-shadow:0 8px 26px rgba(3,10,26,.30)}
+.report-panel.cockpit .vendor-sec h4{color:#EAF2FF;letter-spacing:.03em;display:flex;align-items:center}
+.report-panel.cockpit .vendor-sec h4::before{content:'';display:inline-block;width:3px;height:12px;margin-right:8px;border-radius:2px;background:linear-gradient(180deg,#38BDF8,#A78BFA);box-shadow:0 0 10px rgba(56,189,248,.6)}
+
+/* 数据表 */
+.report-panel.cockpit .report-table{background:transparent}
+.report-panel.cockpit .report-table th{color:#8FA9CE;letter-spacing:.06em;font-size:11px;font-weight:600;background:rgba(56,189,248,.07);border-bottom:1px solid rgba(88,166,255,.22);white-space:nowrap}
+.report-panel.cockpit .report-table td{border-bottom:1px solid rgba(88,166,255,.09);color:#D5E3FA}
+.report-panel.cockpit .report-table tbody tr{transition:background .14s}
+.report-panel.cockpit .report-table tbody tr:hover td{background:rgba(56,189,248,.07)}
+.report-panel.cockpit tr.buyer-top td{background:linear-gradient(90deg,rgba(34,211,238,.18),rgba(34,211,238,.03))!important;color:#EAFBFF;font-weight:600;box-shadow:inset 3px 0 0 #22D3EE}
+.report-panel.cockpit .buyer-note{color:#7B90B4}
+.report-panel.cockpit .empty-state{color:#7B90B4}
+.report-panel.cockpit .an-chart-wrap{padding:6px 2px 0}
+
+/* 入场动画（只动 opacity/transform，不影响布局） */
+@keyframes cpFadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.report-panel.cockpit .vendor-kpi{animation:cpFadeUp .42s cubic-bezier(.22,.8,.28,1) both}
+.report-panel.cockpit .vendor-kpi:nth-child(2){animation-delay:.05s}
+.report-panel.cockpit .vendor-kpi:nth-child(3){animation-delay:.1s}
+.report-panel.cockpit .vendor-kpi:nth-child(4){animation-delay:.15s}
+.report-panel.cockpit .vendor-sec{animation:cpFadeUp .46s cubic-bezier(.22,.8,.28,1) both}
+.report-panel.cockpit .vendor-sec:nth-child(2){animation-delay:.04s}
+.report-panel.cockpit .vendor-sec:nth-child(3){animation-delay:.08s}
+.report-panel.cockpit .vendor-sec:nth-child(4){animation-delay:.12s}
+.report-panel.cockpit .vendor-sec:nth-child(5){animation-delay:.16s}
+@media (prefers-reduced-motion:reduce){
+  .report-panel.cockpit .vendor-kpi,.report-panel.cockpit .vendor-sec{animation:none}
+  .report-panel.cockpit .cp-dot,.report-panel.cockpit .cp-live{animation:none}
+}
+@media(max-width:640px){
+  .report-panel.cockpit{margin:8px 8px 14px;padding:12px;border-radius:12px}
+  .report-panel.cockpit .cp-en{display:none}
+  .report-panel.cockpit .vendor-kpi b{font-size:20px}
+}

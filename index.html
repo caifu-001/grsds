@@ -9,7 +9,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👔</text></svg>">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<link rel="stylesheet" href="css/app.css?v=37dcc1de">
+<link rel="stylesheet" href="css/app.css?v=0fee0c04">
 
 <!-- 百度地图改为按需加载（见 js/app_v2.js 的 ensureBaiduMap），避免首屏同步阻塞 -->
 </head>
@@ -1011,8 +1011,12 @@
    </div>
   </div>
 
-  <!-- ===== 集成商分析面板 ===== -->
-  <div id="rp-vendor-panel" class="report-panel hidden">
+  <!-- ===== 集成商分析面板（数据驾驶舱） ===== -->
+  <div id="rp-vendor-panel" class="report-panel cockpit hidden">
+   <div class="cp-head">
+    <div class="cp-title"><i class="cp-dot"></i>集成商分析<span class="cp-en">VENDOR · COCKPIT</span></div>
+    <div class="cp-meta"><span class="cp-live"></span>数据快照 <b id="cp-vendor-time">--:--:--</b></div>
+   </div>
    <div class="report-toolbar">
     <input id="rp-vendor-q" list="rp-vendor-list" class="vendor-q" placeholder="输入集成商公司名称（可只输关键字，如：中电智安）" oninput="vendorSuggest()" onkeydown="if(event.key==='Enter')renderVendorAnalysis()">
     <datalist id="rp-vendor-list"></datalist>
@@ -1025,8 +1029,12 @@
    <div id="rp-vendor-result" class="vendor-result"><div class="empty-state">输入公司名称开始分析，或点下方热门集成商</div></div>
   </div>
 
-  <!-- ===== 甲方分析面板 ===== -->
-  <div id="rp-buyer-panel" class="report-panel hidden">
+  <!-- ===== 甲方分析面板（数据驾驶舱） ===== -->
+  <div id="rp-buyer-panel" class="report-panel cockpit hidden">
+   <div class="cp-head">
+    <div class="cp-title"><i class="cp-dot"></i>甲方分析<span class="cp-en">BUYER · COCKPIT</span></div>
+    <div class="cp-meta"><span class="cp-live"></span>数据快照 <b id="cp-buyer-time">--:--:--</b></div>
+   </div>
    <div class="report-toolbar">
     <input id="rp-buyer-q" list="rp-buyer-list" class="vendor-q" placeholder="输入甲方公司名称（可只输关键字，如：重庆大学）" oninput="buyerSuggest()" onkeydown="if(event.key==='Enter')renderBuyerAnalysis()">
     <datalist id="rp-buyer-list"></datalist>
@@ -2192,7 +2200,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 <script src="js/modules/04-client-list.js?v=67661223"></script>
 <script src="js/modules/05-client-detail.js?v=4f163f55"></script>
 <script src="js/modules/06-client-tools.js?v=5fdb1d0b"></script>
-<script src="js/modules/07-orders.js?v=cfbd47e4"></script>
+<script src="js/modules/07-orders.js?v=e7aa4f65"></script>
 <script src="js/modules/08-admin.js?v=d16f5cf8"></script>
 <script src="js/modules/09-sales.js?v=83d62ee5"></script>
 <script src="js/modules/10-charts.js?v=5122efef"></script>

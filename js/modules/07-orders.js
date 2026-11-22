@@ -1840,6 +1840,31 @@ function getClientOrderSummary(clientId){
 // 同一集成商 + 项目名 + 甲方 + 年份算一条（两处都记的项目不重复计数），
 // 金额取较大的那条；金额口径为「中标金额」，没有填金额的单独计数不当作 0 拉低。
 // ============================================================
+// ============================================================
+// 🎛 驾驶舱公共装饰：霓虹渐变 + 实时时钟（纯视觉，不参与数据口径）
+// ============================================================
+var _cpClockTimer=null;
+function cpGradient(cv,from,to){
+  try{
+    var h=cv.height>10?cv.height:((cv.parentNode&&cv.parentNode.clientHeight)||240);
+    var g=cv.getContext('2d').createLinearGradient(0,0,0,h);
+    g.addColorStop(0,from);g.addColorStop(1,to);
+    return g;
+  }catch(e){return from}
+}
+function cpStartClock(){
+  function tick(){
+    var t=new Date();
+    var s=('0'+t.getHours()).slice(-2)+':'+('0'+t.getMinutes()).slice(-2)+':'+('0'+t.getSeconds()).slice(-2);
+    var a=document.getElementById('cp-vendor-time'),b=document.getElementById('cp-buyer-time');
+    if(a)a.textContent=s;
+    if(b)b.textContent=s;
+  }
+  tick();
+  if(_cpClockTimer)return;
+  _cpClockTimer=setInterval(tick,1000);
+}
+
 var _vendorCache=null;
 var _vendorLoading=null;
 var _vendorLastRows=[];
@@ -1999,6 +2024,7 @@ async function vendorSuggest(){
 async function renderVendorPanel(){
   var hot=document.getElementById('rp-vendor-hot');
   if(!hot)return;
+  cpStartClock();
   await vendorEnsureData();
   var c=_vendorCache;
   if(!c||!c.names.length){hot.innerHTML='暂无集成商数据：先在客户项目里录入中标单位或采集中标公告';return}
@@ -2035,10 +2061,10 @@ async function renderVendorAnalysis(name){
   var custNames=Object.keys(customers).sort(function(a,b){return customers[b].amount-customers[a].amount});
   var yKeys=Object.keys(years).filter(function(y){return y!=='未知'}).sort();
   var html='<div class="vendor-kpis">'
-    +'<div class="vendor-kpi"><span>做过的项目</span><b>'+rows.length+'</b></div>'
-    +'<div class="vendor-kpi"><span>甲方客户</span><b>'+custNames.length+'</b></div>'
-    +'<div class="vendor-kpi"><span>中标金额合计</span><b>'+vendorMoney(sum)+'</b></div>'
-    +'<div class="vendor-kpi"><span>金额待补</span><b>'+miss+' 项</b></div>'
+    +'<div class="vendor-kpi"><span><i>🧩</i>做过的项目</span><b>'+rows.length+'</b></div>'
+    +'<div class="vendor-kpi"><span><i>🏛</i>甲方客户</span><b>'+custNames.length+'</b></div>'
+    +'<div class="vendor-kpi"><span><i>💰</i>中标金额合计</span><b>'+vendorMoney(sum)+'</b></div>'
+    +'<div class="vendor-kpi"><span><i>📝</i>金额待补</span><b>'+miss+' 项</b></div>'
     +'</div>';
   if(yKeys.length){
     html+='<div class="vendor-sec"><h4>📊 历年中标金额</h4><div class="an-chart-wrap" style="height:220px"><canvas id="rp-vendor-chart"></canvas></div></div>';
@@ -2080,10 +2106,15 @@ async function renderVendorAnalysis(name){
     if(ctx){
       _reportCharts.vendorYear=new Chart(ctx,{
         type:'bar',
-        data:{labels:yKeys,datasets:[{label:'中标金额',data:yKeys.map(function(y){return years[y]}),backgroundColor:'#4F6EF7',borderRadius:4}]},
+        data:{labels:yKeys,datasets:[{label:'中标金额',data:yKeys.map(function(y){return years[y]}),
+          backgroundColor:cpGradient(ctx,'rgba(34,211,238,.85)','rgba(34,211,238,.08)'),
+          borderColor:'#22D3EE',borderWidth:1,borderRadius:6,hoverBackgroundColor:'#67E8F9'}]},
         options:{responsive:true,maintainAspectRatio:false,
-          plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return '中标金额 '+vendorMoney(c.parsed.y)}}}},
-          scales:{y:{ticks:{callback:function(v){return v>=10000?(v/10000).toFixed(0)+'万':v}}}}}
+          plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(8,16,32,.94)',borderColor:'rgba(56,189,248,.35)',borderWidth:1,titleColor:'#E6EEFF',bodyColor:'#BBD2F2',padding:10,cornerRadius:8,callbacks:{label:function(c){return '中标金额 '+vendorMoney(c.parsed.y)}}}},
+          scales:{
+            x:{grid:{color:'rgba(120,170,255,.07)'},border:{color:'rgba(120,170,255,.16)'},ticks:{color:'#8FA9CE',font:{size:11}}},
+            y:{grid:{color:'rgba(120,170,255,.09)'},border:{display:false},ticks:{color:'#8FA9CE',font:{size:11},callback:function(v){return v>=10000?(v/10000).toFixed(0)+'万':v}}}
+          }}
       });
     }
   }
@@ -2245,6 +2276,7 @@ async function buyerSuggest(){
 async function renderBuyerPanel(){
   var hot=document.getElementById('rp-buyer-hot');
   if(!hot)return;
+  cpStartClock();
   await buyerEnsureData();
   var c=_buyerCache;
   if(!c||!c.names.length){hot.innerHTML='暂无甲方招标数据：先在客户项目里录入项目或采集中标公告';return}
@@ -2286,10 +2318,10 @@ async function renderBuyerAnalysis(name){
   var maxCount=partnerNames.length?partners[partnerNames[0]].count:0;
   var yKeys=Object.keys(years).filter(function(y){return y!=='未知'}).sort();
   var html='<div class="vendor-kpis">'
-    +'<div class="vendor-kpi"><span>招标项目</span><b>'+rows.length+'</b></div>'
-    +'<div class="vendor-kpi"><span>合作单位</span><b>'+partnerNames.length+'</b></div>'
-    +'<div class="vendor-kpi"><span>招标金额合计</span><b>'+vendorMoney(sum)+'</b></div>'
-    +'<div class="vendor-kpi"><span>金额待补</span><b>'+miss+' 项</b></div>'
+    +'<div class="vendor-kpi"><span><i>🎯</i>招标项目</span><b>'+rows.length+'</b></div>'
+    +'<div class="vendor-kpi"><span><i>🤝</i>合作单位</span><b>'+partnerNames.length+'</b></div>'
+    +'<div class="vendor-kpi"><span><i>💰</i>招标金额合计</span><b>'+vendorMoney(sum)+'</b></div>'
+    +'<div class="vendor-kpi"><span><i>📝</i>金额待补</span><b>'+miss+' 项</b></div>'
     +'</div>';
   if(yKeys.length){
     html+='<div class="vendor-sec"><h4>📈 近几年招标走势</h4><div class="an-chart-wrap" style="height:240px"><canvas id="rp-buyer-chart"></canvas></div></div>';
@@ -2338,16 +2370,27 @@ async function renderBuyerAnalysis(name){
       _reportCharts.buyerYear=new Chart(ctx,{
         type:'bar',
         data:{labels:yKeys,datasets:[
-          {label:'招标金额',data:yKeys.map(function(y){return years[y].amount}),backgroundColor:'#10B981',borderRadius:4,yAxisID:'y'},
-          {label:'项目数',data:yKeys.map(function(y){return years[y].count}),type:'line',borderColor:'#F59E0B',backgroundColor:'#F59E0B',yAxisID:'y1',tension:0.3}
+          {label:'招标金额',data:yKeys.map(function(y){return years[y].amount}),
+            backgroundColor:cpGradient(ctx,'rgba(34,211,238,.85)','rgba(34,211,238,.08)'),
+            borderColor:'#22D3EE',borderWidth:1,borderRadius:6,hoverBackgroundColor:'#67E8F9',yAxisID:'y',order:2},
+          {label:'项目数',data:yKeys.map(function(y){return years[y].count}),type:'line',
+            borderColor:'#A78BFA',backgroundColor:'rgba(167,139,250,.12)',borderWidth:2,
+            pointBackgroundColor:'#A78BFA',pointBorderColor:'#0B1220',pointBorderWidth:2,pointRadius:3,pointHoverRadius:5,
+            tension:.35,fill:false,yAxisID:'y1',order:1}
         ]},
         options:{responsive:true,maintainAspectRatio:false,
-          plugins:{legend:{display:true},tooltip:{callbacks:{label:function(c){
-            return c.datasetIndex===0?('招标金额 '+vendorMoney(c.parsed.y)):('项目数 '+c.parsed.y);
-          }}}},
+          interaction:{mode:'index',intersect:false},
+          plugins:{legend:{display:true,labels:{color:'#A9BCDD',usePointStyle:true,boxWidth:8,font:{size:11}}},
+            tooltip:{backgroundColor:'rgba(8,16,32,.94)',borderColor:'rgba(56,189,248,.35)',borderWidth:1,titleColor:'#E6EEFF',bodyColor:'#BBD2F2',padding:10,cornerRadius:8,
+              callbacks:{label:function(c){
+                return c.datasetIndex===0?('招标金额 '+vendorMoney(c.parsed.y)):('项目数 '+c.parsed.y);
+              }}}},
           scales:{
-            y:{position:'left',ticks:{callback:function(v){return v>=10000?(v/10000).toFixed(0)+'万':v}}},
-            y1:{position:'right',grid:{drawOnChartArea:false},ticks:{stepSize:1}}
+            x:{grid:{color:'rgba(120,170,255,.07)'},border:{color:'rgba(120,170,255,.16)'},ticks:{color:'#8FA9CE',font:{size:11}}},
+            y:{position:'left',grid:{color:'rgba(120,170,255,.09)'},border:{display:false},
+              ticks:{color:'#8FA9CE',font:{size:11},callback:function(v){return v>=10000?(v/10000).toFixed(0)+'万':v}}},
+            y1:{position:'right',grid:{drawOnChartArea:false},border:{display:false},
+              ticks:{color:'#A78BFA',stepSize:1,font:{size:11}}}
           }}
       });
     }
