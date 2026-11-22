@@ -194,6 +194,10 @@ function collectProjectEntries(){
       // 分包时预算取各包之和；各包都没填就沿用项目层原值（老数据不清零）
       var totalBudget=packed?(budgetAny?String(Math.round(budgetSum*100)/100):pbg):pbg;
       var pj={project_name:pn,bidding_date:pd,bidder_name:pb,bidder_phone:pbp,bidder_company:pbc,project_budget:totalBudget,bid_amount:totalAmount,client_owner:pco,notes:pnotes};
+      // AI 导入标记没有可见编辑入口，必须原样带回（与 recur_next 同一手法），
+      // 否则用户改一次项目就把 🤖 来源抹掉了
+      var aiSrc=String((e.querySelector('.pe-ai-source')||{}).value||'').trim();
+      if(aiSrc)pj.ai_source=aiSrc;
       // client_owner 仍是「姓名用、连接」的单串（列表卡片 / 搜索 / 旧代码都在用），
       // 多负责人与关联 id 另存 client_owners；联合中标的中标公司同理另存 bidder_companies
       if(pOwners.length)pj.client_owners=pOwners;

@@ -333,13 +333,16 @@ async function renderClient360Overview(c,orders){
       if(projectRenewalFlag(pr,projs))_pSum.push('♻️复购');
       var _pCfg=(typeof projectRecurOf==='function')?projectRecurOf(pr):null;
       if(_pCfg&&!_pCfg.off)_pSum.push('🔁');
+      var _pAi=aiProjOf(pr);
+      if(_pAi)_pSum.push('🤖AI');
       var _pTitle=(pr.project_name||'项目#'+(pj+1))
         +(pr.bidding_date?(' · '+pr.bidding_date):'')
-        +(_pAmt>0?(' · '+formatMoney(_pAmt)):'');
+        +(_pAmt>0?(' · '+formatMoney(_pAmt)):'')
+        +(_pAi?(' · AI导入·'+_pAi):'');
       html+='<div class="c360-fold'+( _pOpen?'':' collapsed')+'" data-kind="pj" data-fold="'+_pKey+'">';
       html+='<div class="c360-fold-head" onclick="c360FoldToggle(this)" title="'+h(_pTitle)+'">'
         +'<span class="c360-fold-caret">'+(_pOpen?'▾':'▸')+'</span>'
-        +'<span class="c360-fold-title">'+h(pr.project_name||'项目#'+(pj+1))+'</span>'
+        +'<span class="c360-fold-title">'+h(pr.project_name||'项目#'+(pj+1))+(_pAi?(' '+aiMarkHtml(_pAi)):'')+'</span>'
         +'<span class="c360-fold-sum">'+h(_pSum.join(' · '))+'</span>'
         +'</div>';
       html+='<div class="c360-fold-body">';
@@ -517,6 +520,8 @@ function renderClient360Contacts(c){
     for(var i=0;i<contacts.length;i++){
       var co=contacts[i];
       var dm=co.is_decision_maker?' ⭐':'',bd='';
+      var ctAi=aiCtOf(co);
+      var aiCt=ctAi?aiMarkHtml(ctAi):'';
       if(co.birthday){var bdDate=new Date(co.birthday);if(!isNaN(bdDate.getTime()))bd='<span style="font-size:11px;color:var(--warning)">🎂 '+bdDate.toLocaleDateString('zh-CN')+'</span>'}
       var rel=co.relationship_to?'<span style="font-size:11px;color:var(--text3)">关系: '+h(co.relationship_to)+'</span>':'';
       // 号码字段兼容两种历史写法（JSON 数组 / 「023-123 / 138…」纯串），
@@ -534,7 +539,7 @@ function renderClient360Contacts(c){
       html+='<div class="c360-contact-item c360-fold'+(_cOpen?'':' collapsed')+'" data-kind="ct" data-fold="'+_cKey+'">';
       html+='<div class="c360-fold-head" onclick="c360FoldToggle(this)">'
         +'<span class="c360-fold-caret">'+(_cOpen?'▾':'▸')+'</span>'
-        +'<span class="c360-fold-title c360-contact-name">'+h(co.name||'未命名')+dm+'</span>'
+        +'<span class="c360-fold-title c360-contact-name">'+h(co.name||'未命名')+dm+aiCt+'</span>'
         +'<span class="c360-fold-sum">'+h(_cSum.join(' · '))+'</span>'
         +'<button onclick="event.stopPropagation();transferFrom360(\''+co.id+'\')" style="font-size:11px;color:var(--primary);border:1px solid var(--primary);border-radius:12px;background:transparent;padding:2px 10px;cursor:pointer;flex-shrink:0">转移</button>'
         +'</div>';
@@ -941,6 +946,9 @@ async function leadAppendProject(clientRow,l,ownerName,ownerCid){
   if(!cid)return res;
   var pname=String(l.project_name||'').trim();
   if(!pname)return res;
+  // 这条项目是 AI 采集来的吗？来源站点写进项目 JSON，
+  // 客户表单「近期项目」和 360 项目都能据此打 🤖 AI导入 标记。
+  var aiSrc=aiSiteOf(l);
   // 核对基准要现读一次：内存里的 projects 可能是几分钟前的快照，
   // 别人刚在客户详情里加过项目，照快照判断就会把同一个标的再加一遍
   var raw=null;
@@ -1009,6 +1017,8 @@ async function leadAppendProject(clientRow,l,ownerName,ownerCid){
     }else if(l.source_url&&oldNotes.indexOf(String(l.source_url))<0){
       hit.notes=(oldNotes?oldNotes+'；':'')+'公告原文 '+l.source_url;changed=true;
     }
+    // AI 来源只补空：人工录入的项目不会被后来的采集线索改写
+    if(aiSrc&&!String(hit.ai_source||'').trim()){hit.ai_source=aiSrc;changed=true}
     if(!changed)return {added:false,filled:false,dup:true,sameNameOther:sameNameOther};
     res.filled=true;
   }else{
@@ -1021,6 +1031,7 @@ async function leadAppendProject(clientRow,l,ownerName,ownerCid){
       client_owner:ownerName||'',
       notes:notes.join('；')
     };
+    if(aiSrc)entry.ai_source=aiSrc;
     // 甲方负责人：cid 是真相，name 只是快照。刚建的联系人这时已经有 id 了
     if(ownerName)entry.client_owners=[ownerCid?{name:ownerName,cid:ownerCid}:{name:ownerName}];
     // 中标公司多值 / 分包明细：旧链路读 bidder_company 单串，新链路读这两个数组
@@ -1287,7 +1298,7 @@ async function leadToClientProfileRun(l){
   var ownerCid='';
   var enteredDate=leadEnteredDate(l);
   if(mobList.length||telList.length||l.contact_name){
-    var ec=await sb.from('contacts').select('id,name,phone,landline,entered_date').eq('client_id',out.clientId).eq('company_id',currentCompanyId);
+    var ec=await sb.from('contacts').select('id,name,phone,landline,entered_date,notes').eq('client_id',out.clientId).eq('company_id',currentCompanyId);
     var rows=ec.data||[],dupRow=null;
     var nameKey=norm(String(l.contact_name||''));
     if(nameKey){
@@ -1327,6 +1338,9 @@ async function leadToClientProfileRun(l){
       if(enteredDate&&!String(dupRow.entered_date||'').trim())ctPatch.entered_date=enteredDate;
       // 档案里这条只有号码没名字（以前只按号码认人时会这样），公告给了名字就补上
       if(!String(dupRow.name||'').trim()&&String(l.contact_name||'').trim())ctPatch.name=String(l.contact_name).trim();
+      // AI 标记只补空：销售手写的备注一个字都不覆盖
+      var dupSite=aiSiteOf(l);
+      if(dupSite&&!String(dupRow.notes||'').trim())ctPatch.notes='AI导入:'+dupSite;
       out.phoneAdded=addM.length+addT.length;
       if(Object.keys(ctPatch).length){
         var uw=await safeWriteContacts('update',ctPatch,dupRow.id);
@@ -1339,7 +1353,7 @@ async function leadToClientProfileRun(l){
         }
       }
     }else{
-      var cr=await sb.from('contacts').insert({
+      var ctIns={
         client_id:out.clientId,
         name:l.contact_name||'',
         dept:'',position:'',room:'',
@@ -1349,7 +1363,11 @@ async function leadToClientProfileRun(l){
         entered_date:enteredDate,
         company_id:currentCompanyId,
         user_id:currentUser?currentUser.id:null
-      }).select('id');
+      };
+      // AI 导入标记写在 notes（联系人表单不展示也不保存 notes，销售改资料不会抹掉）
+      var insSite=aiSiteOf(l);
+      if(insSite)ctIns.notes='AI导入:'+insSite;
+      var cr=await sb.from('contacts').insert(ctIns).select('id');
       if(cr.error){
         // 没权限/校验失败不挡住建档，只是项目里挂不上负责人 id
       }else{
@@ -1520,7 +1538,8 @@ async function doApproveAll(){
 }
 
 /** 采集站点 → 卡片徽标上的短名。全称「招标公告 · 重庆市公共资源交易网」会把徽标挤满一行 */
-var LEAD_SITE_LABEL={'cqggzy.com':'交易网','gec123.com':'行采家','ccgp.gov.cn':'政采网','ccgp-chongqing.gov.cn':'重庆政采','xj.ccgp-chongqing.gov.cn':'竞采中心'};
+// 与 02 的 AI_SITE_LABEL 同一张表：线索、客户、项目、联系人四处共用站点短名
+var LEAD_SITE_LABEL=AI_SITE_LABEL;
 
 /**
  * 客户属性（客户表单最上面那排「客户属性 *」多选）。

@@ -109,6 +109,29 @@ function tColor(label){
 var AI_SOURCE_SITES=['交易网','行采家','政采网','重庆政采','竞采中心','招标采集'];
 function isAiSource(s){return AI_SOURCE_SITES.indexOf(String(s||'').trim())>=0}
 
+// source_site（域名）→ 站点短名。13 的 LEAD_SITE_LABEL 也指向这张表，
+// 线索 / 客户 / 项目 / 联系人四处必须用同一套名字，别各写各的。
+var AI_SITE_LABEL={'cqggzy.com':'交易网','gec123.com':'行采家','ccgp.gov.cn':'政采网','ccgp-chongqing.gov.cn':'重庆政采','xj.ccgp-chongqing.gov.cn':'竞采中心'};
+function aiSiteOf(l){
+  l=l||{};
+  return AI_SITE_LABEL[String(l.source_site||'')]||((l.auto_fetched||l.source_url)?'招标采集':'');
+}
+// 项目 JSON 里的 AI 来源（近期项目 / 360 项目共用）
+function aiProjOf(p){return String((p&&p.ai_source)||'').trim()}
+// 联系人没有 source 列，AI 标记写在 notes 里（联系人表单不显示也不保存 notes，
+// 用户改姓名电话不会抹掉它）；存量 1512 位联系人 notes 全空，不会误伤人工备注。
+function aiCtOf(co){
+  var m=String((co&&co.notes)||'').match(/^AI导入[:：](.+)$/);
+  return m?String(m[1]).trim():'';
+}
+function aiMarkHtml(src){
+  src=String(src||'').trim();
+  if(!src)return '';
+  var tip='AI 自动采集导入'+(src?(' · '+src):'');
+  var txt='🤖 AI导入'+(src&&src!=='招标采集'?('·'+src):'');
+  return '<span class="ai-import-mark" title="'+escHtml(tip)+'">'+escHtml(txt)+'</span>';
+}
+
 // === Auth ===
 var loginFailCount=0,loginLockUntil=null;
 function switchMode(){

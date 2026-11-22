@@ -806,6 +806,7 @@ function refCt(){
   var defOpen=formContacts.length<=2;
   for(var i=0;i<formContacts.length;i++){
     var co=formContacts[i],phones=co.phones||[],landlines=co.landlines||[];
+    var _aiCt=aiCtOf(co),_aiMark=_aiCt?aiMarkHtml(_aiCt):'';
     var _open=(co._open===undefined)?defOpen:!!co._open;
     var _sp=ctSumParts(co);
     if(!phones.length)phones=[''];
@@ -826,12 +827,12 @@ function refCt(){
       '<button class="mv-btn" onclick="openMoveModal('+i+')">转移</button>'+
       '<div class="ct-sum" onclick="ctToggle(this)" title="'+h((_sp.name||'')+' '+(_sp.meta?('· '+_sp.meta+' '):'')+(_sp.phone||''))+'">\
         <span class="ct-caret">'+(_open?'▾':'▸')+'</span>\
-        <span class="ct-name">'+h(_sp.name)+'</span>\
+        <span class="ct-name">'+h(_sp.name)+'</span>'+_aiMark+'\
         <span class="ct-meta">'+h(_sp.meta)+'</span>\
         <span class="ct-ph">'+h(_sp.phone)+'</span>\
       </div>\
       <div class="ct-body">\
-      <div class="contact-header">🧑 联系人 #'+(i+1)+'</div>\
+      <div class="contact-header">🧑 联系人 #'+(i+1)+_aiMark+'</div>\
       <div class="form-row">\
         <div class="form-group"><label>姓名</label><input value="'+h(co.name||'')+'" oninput="upCt('+i+',\'name\',this.value)" placeholder="联系人姓名"></div>\
         <div class="form-group"><label>部门</label><input value="'+h(co.dept||'')+'" oninput="upCt('+i+',\'dept\',this.value)" placeholder="所属部门"></div>\
@@ -1222,6 +1223,9 @@ function addProjectEntry(prefill,toTop){
       '<span class="pe-sum-meta"></span>'+
       '<button type="button" class="pe-remove" onclick="event.stopPropagation();removeProjectEntry(this)">×</button>'+
     '</div>'+
+    // AI 导入来源：表单里没有可见编辑入口，但保存时必须原样带回，
+    // 否则销售改一次项目备注就把 🤖 标记抹掉了（与 recur_next 同一手法）
+    '<input type="hidden" class="pe-ai-source" value="'+h(prefill.ai_source||'')+'">'+
     '<div class="pe-body">'+
     '<div class="form-row">'+
       '<div class="form-group"><label>项目名称</label><input class="pe-project" placeholder="项目名称" value="'+h(prefill.project_name||'')+'" oninput="peRecurNameHint(this);peRenewalSync(this)"></div>'+
@@ -1363,6 +1367,8 @@ function peSyncSum(entry){
   var tags='';
   var rc=entry.querySelector('.pe-recur');if(rc&&rc.checked)tags+='🔁';
   var rw=entry.querySelector('.pe-renewal');if(rw&&rw.checked)tags+='♻️';
+  var aiV=String((entry.querySelector('.pe-ai-source')||{}).value||'').trim();
+  if(aiV)tags+='🤖AI';
   var meta=[];
   if(dt)meta.push(dt);
   if(amt>0)meta.push('¥'+peSumMoney(amt));
