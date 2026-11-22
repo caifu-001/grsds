@@ -2468,3 +2468,17 @@ body.dk .login-wrap{padding:40px 18px}
   padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card);
   font-size:13px;color:var(--text2);line-height:1.5}
 .my-invite-card .btn-sm{flex:0 0 auto;white-space:nowrap}
+
+/* ── 订单金额「从客户项目带入」：来源提示条 + 快捷链接 ── */
+.of-amount-pull{font-size:10px;font-weight:600;color:var(--primary);margin-left:8px;
+  padding:2px 8px;border-radius:999px;background:var(--primary-light);
+  text-decoration:none;border:1px solid transparent;cursor:pointer;white-space:nowrap;
+  transition:background var(--transition),color var(--transition)}
+.of-amount-pull:hover{background:var(--primary);color:#fff}
+.of-amount-src{font-size:11px;line-height:1.6;color:var(--text2);margin-top:6px;padding:6px 9px;
+  border-radius:8px;background:var(--primary-light);border:1px solid var(--border-light)}
+.of-amount-src b{color:var(--primary);font-weight:700}
+body.dk .of-amount-pull{background:rgba(56,189,248,.14);color:#7DD3FC;border-color:rgba(88,166,255,.30)}
+body.dk .of-amount-pull:hover{background:rgba(56,189,248,.30);color:#E0F2FE}
+body.dk .of-amount-src{background:rgba(56,189,248,.10);border-color:rgba(88,166,255,.26);color:#9FB6D6}
+body.dk .of-amount-src b{color:#7DD3FC}

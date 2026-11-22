@@ -1365,6 +1365,7 @@ async function openOrderForm(id){
   var cs=document.getElementById('of-client-selected');cs.style.display='none';cs.textContent='';
   document.getElementById('of-project').value='';
   document.getElementById('of-amount').value='';
+  _ordAmtSrc=null;renderOrderAmountSrc(null);
   document.getElementById('of-start-date').value='';
   document.getElementById('of-expected-date').value='';
   document.getElementById('of-actual-date').value='';
@@ -1397,7 +1398,9 @@ async function openOrderForm(id){
       syncOrderWonFields();
       // Decrypt amount
       decryptAmount(o.amount_enc||'').then(function(v){
-        document.getElementById('of-amount').value=v||'';
+        var box=document.getElementById('of-amount');
+        box.value=v||'';
+        if(!String(box.value||'').trim())orderAutoFillAmount(false);   // 老单金额是空的也按项目中标价补
       });
       // Set client name
       var cl=allClients.find(function(x){return x.id===o.client_id});
@@ -1461,6 +1464,152 @@ function orderUiResult(){
   if(d&&String(d.value||'').trim())return 'won';
   if(orderIsWon(orderStage))return 'won';
   return 'open';
+}
+
+// ==========================================================================
+// 金额自动带入：从「关联客户的项目」里取中标金额
+//   触发：选客户 / 项目名失焦 / 阶段落到赢单 / 点「赢单」/ 保存兜底 / 手动点链接
+//   规则：只认中标金额（分包合计优先），**不拿项目预算充数**（预算≠成交额）；
+//        已有金额一律不覆盖，除非显式 force（用户点「从客户项目带入」）
+// ==========================================================================
+var _ordAmtSrc=null;   // 本次带入的来源 {proj,amount,how}，供提示条渲染
+
+// 项目名归一化：去空白与常见标点、全角括号转半角，避免「（」与「(」被判成两个项目
+function ordNameKey(s){
+  return String(s==null?'':s)
+    .replace(/[\s\u3000]/g,'')
+    .replace(/（/g,'(').replace(/）/g,')')
+    .replace(/[·・、，,。.．;；:：'"“”‘’\-—_/\\|]/g,'')
+    .toLowerCase();
+}
+
+// 再宽一层：连括号也去掉。只用来兜「客户项目里带（…）、订单里没写括号」这种复制粘贴差异
+function ordNameKeyLoose(s){
+  return ordNameKey(s).replace(/[()]/g,'');
+}
+
+// 单个项目的中标金额：有分包就合计分包中标额，否则取顶层 bid_amount
+function ordProjBidAmount(p){
+  p=p||{};
+  var sum=0,any=false;
+  try{
+    if(typeof projectHasPackages==='function'&&typeof projectPackagesOf==='function'&&projectHasPackages(p)){
+      var packs=projectPackagesOf(p)||[];
+      for(var i=0;i<packs.length;i++){
+        var v=parseFloat(packs[i]&&packs[i].bid_amount);
+        if(v>0){sum+=v;any=true}
+      }
+    }
+  }catch(e){}
+  if(!any){
+    var t=parseFloat(p.bid_amount);
+    if(t>0){sum=t;any=true}
+  }
+  return any?sum:0;
+}
+
+// 客户身上的项目列表（兼容 JSON 串 / 数组 / 早期平铺字段）
+function orderClientProjects(clientId){
+  if(!clientId)return [];
+  var c=null,list=allClients||[];
+  for(var i=0;i<list.length;i++){if(list[i]&&list[i].id===clientId){c=list[i];break}}
+  if(!c)return [];
+  var raw=c.projects;
+  if(typeof raw==='string'){
+    try{raw=JSON.parse(raw)}catch(e){raw=[]}
+  }
+  if(!Array.isArray(raw)){
+    raw=c.project?[{project_name:c.project,bidding_date:c.bidding_date,bid_amount:c.bid_amount,bidder_company:c.bidder_company}]:[];
+  }
+  var out=[];
+  for(var j=0;j<raw.length;j++)if(raw[j]&&typeof raw[j]==='object')out.push(raw[j]);
+  return out;
+}
+
+// 按项目名在该客户的项目里找中标金额：全等 → 双向包含 → 项目名为空且只有一个候选
+function orderMatchProjectAmount(clientId,projectName){
+  var list=orderClientProjects(clientId),cands=[];
+  for(var i=0;i<list.length;i++){
+    var amt=ordProjBidAmount(list[i]);
+    if(amt>0)cands.push({proj:list[i],amount:amt});
+  }
+  if(!cands.length)return null;
+  var key=ordNameKey(projectName);
+  if(key){
+    for(var a=0;a<cands.length;a++){
+      if(ordNameKey(cands[a].proj.project_name)===key)return {proj:cands[a].proj,amount:cands[a].amount,how:'exact'};
+    }
+    // 双向包含要够长，否则「等保测评」这种泛词会把不同年份的项目串起来
+    if(key.length>=6){
+      var best=null;
+      for(var b=0;b<cands.length;b++){
+        var pk=ordNameKey(cands[b].proj.project_name);
+        if(pk.length>=6&&(pk.indexOf(key)>=0||key.indexOf(pk)>=0)){
+          if(!best||cands[b].amount>best.amount)best={proj:cands[b].proj,amount:cands[b].amount,how:'contain'};
+        }
+      }
+      if(best)return best;
+    }
+    // 只差括号（客户项目带「（…）」、订单里没写）：唯一候选就认，多候选不猜
+    if(cands.length===1&&ordNameKeyLoose(cands[0].proj.project_name)===ordNameKeyLoose(projectName)&&ordNameKeyLoose(projectName)){
+      return {proj:cands[0].proj,amount:cands[0].amount,how:'loose'};
+    }
+    return null;   // 项目名对不上就是不带，宁可让用户手填
+  }
+  if(cands.length===1&&!key)return {proj:cands[0].proj,amount:cands[0].amount,how:'only'};
+  return null;
+}
+
+function ordMoney(v){
+  var n=Number(v);
+  if(!isFinite(n))return String(v);
+  return n.toLocaleString('zh-CN',{maximumFractionDigits:2});
+}
+
+// 金额下方的来源提示条
+function renderOrderAmountSrc(src){
+  var box=document.getElementById('of-amount-src');
+  if(!box)return;
+  if(!src){box.classList.add('hidden');box.innerHTML='';return}
+  var p=src.proj||{};
+  var d=p.bidding_date||p.bid_date||'';
+  var tone=src.how==='exact'?'':(src.how==='contain'?'（项目名近似匹配，请核对）':(src.how==='loose'?'（项目名只差括号，请核对）':'（该客户仅这一个带金额的项目）'));
+  box.classList.remove('hidden');
+  box.innerHTML='💡 已从客户项目「'+escHtml(p.project_name||'未命名项目')+'」带入中标金额 <b>¥'+ordMoney(src.amount)+'</b>'
+    +(d?'（招标 '+escHtml(String(d).slice(0,10))+'）':'')+tone+'，可直接修改';
+}
+
+/**
+ * 带入金额。
+ * @param {boolean} force  true=覆盖已填金额；false=只补空
+ * @returns {object|null}  带入的来源，未带入返回 null
+ */
+function orderAutoFillAmount(force){
+  var el=document.getElementById('of-amount');
+  if(!el)return null;
+  var cur=String(el.value||'').trim();
+  if(cur&&!(parseFloat(cur)===0)&&!force)return null;       // 手填过就不动
+  var pjEl=document.getElementById('of-project');
+  var m=orderMatchProjectAmount(orderClientId,pjEl?pjEl.value:'');
+  if(!m){
+    if(force)showToast(orderClientId?'该客户的项目里没有可用的中标金额':'请先选择关联客户');
+    return null;
+  }
+  el.value=String(Math.round(m.amount*100)/100);
+  _ordAmtSrc=m;
+  renderOrderAmountSrc(m);
+  try{vfClear&&vfClear(el)}catch(e){}
+  return m;
+}
+
+// 赢单瞬间的带入 + 口语化提示（用户点「赢单」时最容易漏填金额）
+function orderAutoFillOnWon(){
+  var before=String((document.getElementById('of-amount')||{}).value||'').trim();
+  var m=orderAutoFillAmount(false);
+  if(m&&!before){
+    showToast('已从客户项目带入中标金额 ¥'+ordMoney(m.amount)+'，保存前请核对');
+  }
+  return m;
 }
 
 // 赢单日期 / 归属人 的显示（说明文字统一交给结果区，这里只留字段缺失告警）
@@ -1543,7 +1692,11 @@ function markOrderWon(){
     }
     buildStageGrid();
     syncOrderWonFields();
-    showToast(wasClosed?'已撤销丢单并标记赢单，保存后计入业绩':'已标记赢单，保存后计入业绩');
+    // 标记赢单时金额还空着：按客户项目的中标金额补上（拿不到就保持原样，保存时会拦住）
+    var _filled=orderAutoFillOnWon();
+    var _wonMsg=wasClosed?'已撤销丢单并标记赢单，保存后计入业绩':'已标记赢单，保存后计入业绩';
+    if(_filled)_wonMsg+='（金额已从客户项目带入）';
+    showToast(_wonMsg);
   };
   if(wasClosed){
     confirmDialog('这单之前标记为丢单，要改成赢单并计入业绩吗？').then(function(ok){if(ok)apply()});
@@ -1585,6 +1738,7 @@ function selOrderStage(stage){
   if(orderIsWon(stage)){
     var d=document.getElementById('of-won-date');
     if(d&&!String(d.value||'').trim())d.value=_todayStr();
+    orderAutoFillAmount(false);   // 落到赢单阶段，金额空着就按项目中标价补上
   }
   renderOrderResult();
   syncOrderWonFields();
@@ -1608,6 +1762,8 @@ function pickOrderClient(id,name){
   document.getElementById('of-client-search').value='';
   document.getElementById('of-client-list').classList.add('hidden');
   var cs=document.getElementById('of-client-selected');cs.style.display='block';cs.textContent='已选择: '+name;
+  // 选中客户即可试着补金额（只补空，手填过的不动）
+  orderAutoFillAmount(false);
 }
 
 // === Save Order ===
@@ -1618,6 +1774,8 @@ async function saveOrder(){
   var numEl=document.getElementById('of-number');
   var number=numEl.value.trim();if(!number){vfMark(numEl,'请填写订单编号');vfScrollToError();return}
   var amtEl=document.getElementById('of-amount');
+  // 兜底：金额还空着但客户项目里有中标金额，直接补上，别让必填校验把用户卡住
+  if(!String(amtEl.value||'').trim())orderAutoFillAmount(false);
   var amountStr=amtEl.value.trim();
   if(!amountStr||isNaN(parseFloat(amountStr))||parseFloat(amountStr)<0){vfMark(amtEl,'请填写有效金额（不小于 0）');vfScrollToError();return}
   var amount=parseFloat(amountStr);
