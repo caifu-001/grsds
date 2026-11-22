@@ -231,17 +231,18 @@ function _destroyAllReportCharts(){ for(var k in _reportCharts)_destroyReportCha
 function switchReportsTab(sub){
   // 销毁当前活跃tab的所有图表实例
   _destroyAllReportCharts();
-  var panels={'sales':'rp-sales-panel','clients':'rp-clients-panel','collections':'rp-collections-panel','orders':'rp-orders-panel','dashboard':'rp-dashboard-panel'};
+  var panels={'sales':'rp-sales-panel','clients':'rp-clients-panel','collections':'rp-collections-panel','orders':'rp-orders-panel','vendor':'rp-vendor-panel','dashboard':'rp-dashboard-panel'};
   var tabs=document.querySelectorAll('#reports-tabs-bar .biz-subtab');
   for(var i=0;i<tabs.length;i++)tabs[i].classList.remove('active');
   for(var k in panels){var p=document.getElementById(panels[k]);if(p)p.classList.add('hidden');}
   var active=document.getElementById(panels[sub]);if(active)active.classList.remove('hidden');
-  var idx={'sales':0,'clients':1,'collections':2,'orders':3,'dashboard':4};
+  var idx={'sales':0,'clients':1,'collections':2,'orders':3,'vendor':4,'dashboard':5};
   if(tabs[idx[sub]])tabs[idx[sub]].classList.add('active');
   if(sub==='sales')renderReportSales();
   else if(sub==='clients')renderReportClients();
   else if(sub==='collections')renderReportCollections();
   else if(sub==='orders')renderReportOrders();
+  else if(sub==='vendor')renderVendorPanel();
   else if(sub==='dashboard'){renderCustomDashboard();}
 }
 
@@ -1828,4 +1829,279 @@ function getClientOrderSummary(clientId){
   var r={count:count,total:total};
   _clientOrderCache[clientId]=r;
   return r;
+}
+
+// ============================================================
+// 🏢 集成商分析：按集成商公司名聚合「做过的项目 / 历年中标金额 / 甲方客户」
+// 数据源两处合并：
+//   1) clients.projects 里的 bidder_company / bidder_name / bid_amount / bidding_date
+//   2) lead_pool 里的 win_bidder / win_amount / win_date / buyer_norm
+// 同一集成商 + 项目名 + 甲方 + 年份算一条（两处都记的项目不重复计数），
+// 金额取较大的那条；金额口径为「中标金额」，没有填金额的单独计数不当作 0 拉低。
+// ============================================================
+var _vendorCache=null;
+var _vendorLoading=null;
+var _vendorLastRows=[];
+var _vendorLastCompany='';
+
+function vendorNorm(s){
+  return String(s==null?'':s).replace(/[\s\u3000（）()\[\]【】"']/g,'').toLowerCase();
+}
+function vendorNames(v){
+  if(v==null||v==='')return [];
+  if(Array.isArray(v))return v.map(function(x){return String(x||'').trim()}).filter(Boolean);
+  var s=String(v).trim();
+  if(s.charAt(0)==='['){
+    try{var a=JSON.parse(s);if(Array.isArray(a))return vendorNames(a)}catch(e){}
+  }
+  return s.split(/[、,，;；|\/]+/).map(function(x){return x.trim()}).filter(Boolean);
+}
+function vendorNum(v){
+  if(v==null||v==='')return 0;
+  if(typeof v==='number')return v>0?v:0;
+  var s=String(v).replace(/[,，¥￥\s]/g,'');
+  var m=s.match(/^([0-9.]+)(万|亿)?$/i);
+  if(!m)return 0;
+  var n=parseFloat(m[1]);
+  if(!(n>0))return 0;
+  return m[2]==='万'?n*10000:(m[2]==='亿'?n*100000000:n);
+}
+function vendorMoney(v){
+  if(!(v>0))return '—';
+  if(v>=100000000)return '¥'+(v/100000000).toFixed(2)+'亿';
+  if(v>=10000)return '¥'+(v/10000).toFixed(1)+'万';
+  return '¥'+v.toFixed(0);
+}
+function vendorDateOf(p){
+  var d=String(p&&(p.win_date||p.bidding_date||p.date||p.publish_date)||'').slice(0,10);
+  return /^\d{4}-\d{2}-\d{2}/.test(d)?d:'';
+}
+function vendorRowsBuild(clients,leads){
+  var map={};
+  function add(vendor,project,buyer,date,amount,source,clientId){
+    if(!vendor)return;
+    var key=vendorNorm(vendor)+'|'+vendorNorm(project)+'|'+vendorNorm(buyer)+'|'+String(date||'').slice(0,4);
+    var row=map[key];
+    if(!row){
+      row={vendor:vendor,project:String(project||'').trim()||'未命名项目',
+        buyer:String(buyer||'').trim(),date:date||'',year:String(date||'').slice(0,4)||'未知',
+        amount:0,source:source||'',clientId:clientId||'',hits:0};
+      map[key]=row;
+    }
+    row.hits++;
+    var amt=vendorNum(amount);
+    if(amt>row.amount)row.amount=amt;
+    if(!row.date&&date){row.date=date;row.year=date.slice(0,4)}
+    if(source&&!row.source)row.source=source;
+  }
+  (clients||[]).forEach(function(c){
+    var ps=[];
+    try{ps=JSON.parse(c.projects||'[]');if(!Array.isArray(ps))ps=[]}catch(e){ps=[]}
+    ps.forEach(function(p){
+      p=p||{};
+      var firms=vendorNames(p.bidder_company);
+      if(!firms.length)firms=vendorNames(p.bidder_name);
+      var src=p.ai_source?('AI导入:'+p.ai_source):'客户项目';
+      firms.forEach(function(f){add(f,p.project_name,c.name,vendorDateOf(p),p.bid_amount,src,c.id)});
+    });
+  });
+  (leads||[]).forEach(function(l){
+    var firms=vendorNames(l.win_bidder);
+    if(!firms.length)return;
+    firms.forEach(function(f){add(f,l.project_name,l.buyer_norm||l.name,vendorDateOf(l),l.win_amount,'中标线索','')});
+  });
+  var rows=[];
+  for(var k in map)rows.push(map[k]);
+  rows.sort(function(a,b){return a.date<b.date?1:(a.date>b.date?-1:0)});
+  return rows;
+}
+async function vendorLeadsAll(){
+  try{
+    var r=await callAdmin('select','lead_pool',{query:'*',filters:[
+      {col:'company_id',op:'eq',val:currentCompanyId},{col:'',op:'limit',val:'50000'}]});
+    if(r&&Array.isArray(r.data)&&r.data.length)return r.data;
+  }catch(e){}
+  var out=[],off=0;
+  try{
+    for(;;){
+      var q=await sb.from('lead_pool').select('*').eq('company_id',currentCompanyId).range(off,off+999);
+      if(q.error||!q.data||!q.data.length)break;
+      out=out.concat(q.data);
+      if(q.data.length<1000)break;
+      off+=1000;
+    }
+  }catch(e){}
+  return out;
+}
+async function vendorEnsureData(force){
+  if(_vendorCache&&!force)return _vendorCache;
+  if(_vendorLoading)return _vendorLoading;
+  _vendorLoading=(async function(){
+    if(!allClients||!allClients.length){try{await loadClients()}catch(e){}}
+    var leads=await vendorLeadsAll();
+    var rows=vendorRowsBuild(allClients||[],leads);
+    var byName={},counts={};
+    rows.forEach(function(r){
+      var k=vendorNorm(r.vendor);
+      if(!byName[k])byName[k]=r.vendor;
+      counts[k]=(counts[k]||0)+1;
+    });
+    var names=Object.keys(byName).map(function(k){return byName[k]});
+    names.sort(function(a,b){return (counts[vendorNorm(b)]||0)-(counts[vendorNorm(a)]||0)});
+    _vendorCache={rows:rows,byName:byName,names:names,counts:counts};
+    return _vendorCache;
+  })();
+  try{return await _vendorLoading}finally{_vendorLoading=null}
+}
+function vendorCacheNames(){return _vendorCache?_vendorCache.names:[]}
+function vendorMatch(q){
+  var needle=vendorNorm(q);
+  if(!needle)return [];
+  var exact=[],partial=[];
+  vendorCacheNames().forEach(function(name){
+    var k=vendorNorm(name);
+    if(k===needle)exact.push(name);
+    else if(k.indexOf(needle)>=0)partial.push(name);
+  });
+  return exact.concat(partial.sort(function(a,b){return a.length-b.length}));
+}
+function vendorPick(name){
+  var inp=document.getElementById('rp-vendor-q');
+  if(inp)inp.value=name;
+  renderVendorAnalysis(name);
+}
+async function vendorSuggest(){
+  var inp=document.getElementById('rp-vendor-q');
+  if(!inp)return;
+  var q=inp.value.trim();
+  var dl=document.getElementById('rp-vendor-list');
+  var hint=document.getElementById('rp-vendor-match');
+  var cands=document.getElementById('rp-vendor-cands');
+  if(!q){
+    if(dl)dl.innerHTML='';
+    if(hint)hint.textContent='';
+    if(cands){cands.innerHTML='';cands.classList.add('hidden')}
+    return;
+  }
+  await vendorEnsureData();
+  var ms=vendorMatch(q).slice(0,30);
+  if(dl)dl.innerHTML=ms.map(function(n){return '<option value="'+h(n)+'"></option>'}).join('');
+  if(hint)hint.textContent=ms.length?('匹配 '+ms.length+' 家'):'没有匹配的公司';
+  if(cands){
+    if(ms.length>1&&vendorNorm(ms[0])!==vendorNorm(q)){
+      cands.classList.remove('hidden');
+      cands.innerHTML='<span style="font-size:12px;color:var(--text3)">候选：</span>'+
+        ms.slice(0,12).map(function(n){return '<span class="vendor-chip" data-name="'+h(n)+'" onclick="vendorPick(this.dataset.name)">'+h(n)+'</span>'}).join('');
+    }else{cands.innerHTML='';cands.classList.add('hidden')}
+  }
+}
+async function renderVendorPanel(){
+  var hot=document.getElementById('rp-vendor-hot');
+  if(!hot)return;
+  await vendorEnsureData();
+  var c=_vendorCache;
+  if(!c||!c.names.length){hot.innerHTML='暂无集成商数据：先在客户项目里录入中标单位或采集中标公告';return}
+  hot.innerHTML='<b>热门集成商：</b> '+c.names.slice(0,12).map(function(n){
+    return '<span class="vendor-chip" data-name="'+h(n)+'" onclick="vendorPick(this.dataset.name)">'+h(n)+'（'+c.counts[vendorNorm(n)]+'）</span>';
+  }).join('');
+}
+async function renderVendorAnalysis(name){
+  var box=document.getElementById('rp-vendor-result');
+  if(!box)return;
+  var inp=document.getElementById('rp-vendor-q');
+  var q=String(name==null?(inp?inp.value:''):name).trim();
+  if(!q){box.innerHTML='<div class="empty-state">请先输入集成商公司名称</div>';return}
+  await vendorEnsureData();
+  var ms=vendorMatch(q);
+  if(!ms.length){box.innerHTML='<div class="empty-state">没找到「'+h(q)+'」的集成商记录，可试试关键词或核对项目里的中标单位名称。</div>';return}
+  var chosen=ms[0];
+  if(ms.length>1&&vendorNorm(chosen)!==vendorNorm(q)){
+    box.innerHTML='<div class="empty-state">匹配到 '+ms.length+' 家，请点上方的候选公司查看。</div>';
+    return;
+  }
+  var rows=_vendorCache.rows.filter(function(r){return vendorNorm(r.vendor)===vendorNorm(chosen)});
+  _vendorLastRows=rows;_vendorLastCompany=chosen;
+  var sum=0,miss=0,years={},customers={};
+  rows.forEach(function(r){
+    if(r.amount>0){sum+=r.amount}else{miss++}
+    years[r.year]=(years[r.year]||0)+r.amount;
+    var b=r.buyer||'（未填甲方）';
+    if(!customers[b])customers[b]={count:0,amount:0,last:''};
+    customers[b].count++;
+    customers[b].amount+=r.amount;
+    if(r.date>customers[b].last)customers[b].last=r.date;
+  });
+  var custNames=Object.keys(customers).sort(function(a,b){return customers[b].amount-customers[a].amount});
+  var yKeys=Object.keys(years).filter(function(y){return y!=='未知'}).sort();
+  var html='<div class="vendor-kpis">'
+    +'<div class="vendor-kpi"><span>做过的项目</span><b>'+rows.length+'</b></div>'
+    +'<div class="vendor-kpi"><span>甲方客户</span><b>'+custNames.length+'</b></div>'
+    +'<div class="vendor-kpi"><span>中标金额合计</span><b>'+vendorMoney(sum)+'</b></div>'
+    +'<div class="vendor-kpi"><span>金额待补</span><b>'+miss+' 项</b></div>'
+    +'</div>';
+  if(yKeys.length){
+    html+='<div class="vendor-sec"><h4>📊 历年中标金额</h4><div class="an-chart-wrap" style="height:220px"><canvas id="rp-vendor-chart"></canvas></div></div>';
+  }
+  html+='<div class="vendor-sec"><h4>📋 做过的项目（'+rows.length+'）</h4><div style="overflow-x:auto"><table class="report-table"><thead><tr><th>中标日期</th><th>项目</th><th>甲方客户</th><th>中标金额</th><th>来源</th></tr></thead><tbody>';
+  rows.forEach(function(r){
+    html+='<tr><td>'+h(r.date||'—')+'</td><td>'+h(r.project)+'</td><td>'+h(r.buyer||'—')+'</td><td>'+vendorMoney(r.amount)+'</td><td>'+h(r.source||'—')+'</td></tr>';
+  });
+  html+='</tbody></table></div></div>';
+  html+='<div class="vendor-sec"><h4>🏛 他的客户（'+custNames.length+'）</h4><div style="overflow-x:auto"><table class="report-table"><thead><tr><th>甲方客户</th><th>项目数</th><th>累计金额</th><th>最近合作</th></tr></thead><tbody>';
+  custNames.forEach(function(b){
+    var x=customers[b];
+    html+='<tr><td>'+h(b)+'</td><td>'+x.count+'</td><td>'+vendorMoney(x.amount)+'</td><td>'+h(x.last||'—')+'</td></tr>';
+  });
+  html+='</tbody></table></div></div>';
+  // 集成商自己的客户档案下若已有联系人，一并列出来（手机号从 CRM 读，不猜）
+  var firm=null;
+  (allClients||[]).forEach(function(c){
+    if(vendorNorm(c.name)===vendorNorm(chosen)&&/集成商|供应商|科技|信息技术|网络/.test(String(c.type||'')))firm=c;
+  });
+  if(!firm)(allClients||[]).forEach(function(c){if(vendorNorm(c.name)===vendorNorm(chosen))firm=c});
+  if(firm){
+    var cs=(allContacts||[]).filter(function(c){return c.client_id===firm.id&&!c.deleted_at});
+    html+='<div class="vendor-sec"><h4>👤 该集成商档案下的联系人（'+cs.length+'）</h4>';
+    if(cs.length){
+      html+='<div style="overflow-x:auto"><table class="report-table"><thead><tr><th>姓名</th><th>职位</th><th>电话</th><th>备注</th></tr></thead><tbody>';
+      cs.forEach(function(c){
+        var phones=[];try{phones=JSON.parse(c.phone||'[]')}catch(e){}
+        html+='<tr><td>'+h(c.name)+'</td><td>'+h(c.position||'—')+'</td><td>'+h((Array.isArray(phones)?phones:[]).join(' / ')||'—')+'</td><td>'+h(c.notes||'—')+'</td></tr>';
+      });
+      html+='</tbody></table></div>';
+    }else html+='<div class="empty-state">该集成商客户档案下暂无联系人</div>';
+    html+='</div>';
+  }
+  box.innerHTML=html;
+  if(yKeys.length){
+    _destroyReportChart('vendorYear');
+    var ctx=document.getElementById('rp-vendor-chart');
+    if(ctx){
+      _reportCharts.vendorYear=new Chart(ctx,{
+        type:'bar',
+        data:{labels:yKeys,datasets:[{label:'中标金额',data:yKeys.map(function(y){return years[y]}),backgroundColor:'#4F6EF7',borderRadius:4}]},
+        options:{responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return '中标金额 '+vendorMoney(c.parsed.y)}}}},
+          scales:{y:{ticks:{callback:function(v){return v>=10000?(v/10000).toFixed(0)+'万':v}}}}}
+      });
+    }
+  }
+}
+function exportVendorCSV(){
+  if(!_vendorLastRows.length){showToast('请先查询一家集成商');return}
+  var csv=['年份,项目名称,甲方客户,中标日期,金额(元),数据来源'].join('\n');
+  _vendorLastRows.forEach(function(r){
+    csv+=[r.year,r.project,r.buyer,r.date,r.amount,r.source].map(function(v){
+      return '"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+    }).join(',')+'\n';
+  });
+  try{
+    var blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='集成商_'+_vendorLastCompany+'.csv';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(function(){URL.revokeObjectURL(a.href)},1000);
+    showToast('已导出 '+_vendorLastRows.length+' 条');
+  }catch(e){showToast('导出失败：'+e.message)}
 }

@@ -1017,6 +1017,21 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
 .report-table{width:100%;border-collapse:collapse;font-size:13px}
 .report-table th{text-align:left;padding:8px 10px;border-bottom:2px solid var(--border);color:var(--text2);font-weight:600}
 .report-table td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text)}
+/* 集成商分析：搜索 + 候选 + KPI + 明细 */
+.vendor-q{flex:1;min-width:220px;padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:13px}
+.vendor-match{font-size:12px;color:var(--text3)}
+.vendor-cands{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.vendor-chip{padding:5px 10px;border:1px solid var(--border);border-radius:14px;background:var(--card);color:var(--text2);font-size:12px;cursor:pointer}
+.vendor-chip:hover{border-color:var(--primary);color:var(--primary)}
+.vendor-hot{padding:10px 12px;margin-bottom:12px;border:1px dashed var(--border);border-radius:10px;background:var(--bg);font-size:12px;color:var(--text3)}
+.vendor-hot b{color:var(--text2);font-weight:600}
+.vendor-kpis{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.vendor-kpi{flex:1;min-width:140px;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--bg)}
+.vendor-kpi b{display:block;font-size:20px;color:var(--primary);margin-top:2px}
+.vendor-kpi span{font-size:11px;color:var(--text3)}
+.vendor-sec{margin-top:14px;padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.vendor-sec h4{margin:0 0 8px;font-size:13px;color:var(--text)}
+.vendor-sec .report-table{min-width:520px}
 @media(max-width:640px){.chart-bars{gap:2px}.chart-bar-col{min-width:36px}.chart-bar{width:80%}}
 
 /* Reports BI - 新增样式 */
