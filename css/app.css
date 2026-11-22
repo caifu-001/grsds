@@ -1627,3 +1627,154 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
   .empty-icon{width:88px;height:88px;font-size:38px;margin-bottom:14px}
 }
 
+
+/* ══════════════════════════════════════════════════════════════
+   Design System · Atlas（全局视觉升级 2026-11-22）
+   参考 Linear / Attio / HubSpot 的现代浅色专业风：
+   更沉稳的靛蓝主色、冷灰背景、分层柔和阴影、清晰字重层级。
+   铁律：只覆盖颜色 / 阴影 / 边框 / 字重 / 过渡，
+   不改 width/height/padding/margin/gap/flex/grid —— 保证布局断言全绿。
+   ══════════════════════════════════════════════════════════════ */
+:root{
+  /* 主色：从偏亮的紫调换成专业靛蓝，长按不刺眼 */
+  --primary:#4338CA;--primary-hover:#3730A3;--primary-light:#EEF2FF;--primary-glow:rgba(67,56,202,.14);
+  --accent:#0D9488;--accent2:#0F766E;
+  /* 背景更冷更净，卡片纯白，层次靠阴影而非描边 */
+  --bg:#F6F7FB;--surface:#F8FAFC;--card:#FFFFFF;
+  --border:#E5E9F2;--border-light:#F0F3F9;--border2:#CBD5E1;
+  --text:#0F172A;--text2:#475569;--text3:#94A3B8;--muted:#64748B;--text-secondary:#475569;
+  /* 阴影带一点靛蓝色相，叠层更自然 */
+  --shadow-sm:0 1px 2px rgba(15,23,42,.04),0 1px 1px rgba(15,23,42,.02);
+  --shadow:0 1px 2px rgba(15,23,42,.04),0 4px 14px rgba(15,23,42,.05);
+  --shadow-md:0 2px 6px rgba(15,23,42,.05),0 10px 28px rgba(15,23,42,.07);
+  --shadow-lg:0 8px 28px rgba(15,23,42,.09),0 2px 8px rgba(15,23,42,.05);
+  --shadow-xl:0 20px 56px rgba(15,23,42,.14),0 6px 16px rgba(15,23,42,.07);
+}
+
+/* ── 顶栏：深靛蓝多色渐变 + 柔光，替代亮紫，专业感更强 ── */
+.topbar{
+  background:linear-gradient(115deg,#312E81 0%,#4338CA 42%,#4F46E5 72%,#6366F1 100%);
+  box-shadow:0 1px 0 rgba(255,255,255,.08) inset,0 4px 20px rgba(49,46,129,.22);
+}
+.topbar::after{
+  content:'';position:absolute;inset:0;pointer-events:none;opacity:.5;
+  background:radial-gradient(120% 180% at 88% -40%,rgba(255,255,255,.18),transparent 55%);
+}
+.topbar-tab{background:rgba(255,255,255,.13);color:rgba(255,255,255,.72)}
+.topbar-tab:hover{background:rgba(255,255,255,.22);color:#fff}
+.topbar-tab.active{background:#fff;color:#3730A3;box-shadow:0 2px 8px rgba(15,23,42,.14)}
+.topbar-btn:hover{background:rgba(255,255,255,.16)}
+#topbar-title{text-shadow:0 1px 2px rgba(15,23,42,.12)}
+
+/* ── 客户 / 订单卡片：纯白 + 分层阴影，悬停抬升更克制 ── */
+.client-card,.order-card{
+  border-color:var(--border);
+  background:linear-gradient(180deg,#fff 0%,#fff 72%,#FCFCFE 100%);
+  box-shadow:0 1px 2px rgba(15,23,42,.03),0 3px 10px rgba(15,23,42,.045);
+}
+.client-card::before{background:linear-gradient(180deg,#6366F1,#4338CA);opacity:.42;width:3px}
+.client-card:hover,.order-card:hover{
+  transform:translateY(-2px);
+  border-color:#C7D2FE;
+  box-shadow:0 2px 6px rgba(15,23,42,.05),0 12px 28px rgba(67,56,202,.10);
+}
+.client-card:hover::before{opacity:1}
+.order-card::before{background:linear-gradient(180deg,#0D9488,#4338CA)}
+.card-name,.order-card .oc-client{color:#0F172A;font-weight:700}
+.card-project{color:#4338CA}
+.order-card .oc-amount{color:#3730A3}
+
+/* ── 统计卡：数字用渐变色，标签更沉稳 ── */
+.stat-card,.order-stat{
+  border-color:var(--border);
+  background:linear-gradient(160deg,#fff 0%,#FAFBFF 100%);
+  box-shadow:0 1px 2px rgba(15,23,42,.03),0 4px 12px rgba(15,23,42,.045);
+}
+.stat-card:hover{box-shadow:0 2px 6px rgba(15,23,42,.05),0 12px 26px rgba(67,56,202,.10)}
+.stat-card .stat-num,.order-stat .os-num,.c360-stat-num,.dash-card-value{
+  background:linear-gradient(135deg,#4338CA 0%,#4F46E5 55%,#0D9488 140%);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:#4338CA;
+}
+.stat-card .stat-label,.order-stat .os-label{color:#64748B;letter-spacing:.4px}
+.dash-card,.dash-section-body{border:1px solid var(--border);box-shadow:var(--shadow)}
+
+/* ── 主按钮：靛蓝渐变的确定感 ── */
+.btn-primary,.btn-save,.btn-confirm,.btn-sm-primary,.btn-approve{
+  background:linear-gradient(135deg,#4F46E5,#4338CA);color:#fff;
+  box-shadow:0 1px 2px rgba(67,56,202,.22),0 4px 12px rgba(67,56,202,.18);
+}
+.btn-primary:hover,.btn-save:hover,.btn-confirm:hover,.btn-sm-primary:hover{
+  background:linear-gradient(135deg,#4338CA,#3730A3);
+  box-shadow:0 2px 4px rgba(67,56,202,.26),0 6px 18px rgba(67,56,202,.24);
+  transform:translateY(-1px);
+}
+.btn-cancel{background:#F1F5F9;color:#475569}
+.btn-cancel:hover{background:#E2E8F0}
+.btn-ghost{border-color:#C7D2FE}
+
+/* ── 表单：聚焦时光环更明显，输入更干净 ── */
+.form-group input,.form-group select,.form-group textarea{border-color:#DFE5EF;background:#FCFDFE}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{
+  border-color:#818CF8;background:#fff;box-shadow:0 0 0 3px rgba(99,102,241,.13);
+}
+.form-group label{color:#475569}
+.toolbar select,.toolbar .search-wrap input,.add-custom-row input{
+  border-color:#DFE5EF;box-shadow:0 1px 2px rgba(15,23,42,.02);
+}
+.toolbar select:focus,.toolbar .search-wrap input:focus{border-color:#818CF8;box-shadow:0 0 0 3px rgba(99,102,241,.13)}
+
+/* ── 弹窗 / 360：遮罩更柔，卡片内分层更清晰 ── */
+.modal,.modal-sheet,.client-360-sheet{
+  box-shadow:0 24px 64px rgba(15,23,42,.18),0 8px 20px rgba(15,23,42,.10);
+}
+.confirm-overlay,.client-360-overlay{background:rgba(15,23,42,.52)}
+.c360-card{
+  background:linear-gradient(160deg,#F8FAFF,#F5F7FC);
+  border-color:#E5E9F2;box-shadow:0 1px 2px rgba(15,23,42,.02);
+}
+.c360-contact-item{background:#F8FAFF;border-color:#E7EBF4}
+.c360-fold-head:hover{background:rgba(67,56,202,.035)}
+.c360-info-label{color:#64748B}
+
+/* ── 徽标：低饱和浅底 + 深字，比实心色更耐看 ── */
+.grade-badge.A{background:linear-gradient(135deg,#FBBF24,#F97316)}
+.grade-badge.B{background:linear-gradient(135deg,#6366F1,#4338CA)}
+.grade-badge.C{background:linear-gradient(135deg,#14B8A6,#0D9488)}
+.lifecycle-badge.qualified{background:#EEF2FF;color:#4338CA}
+.lifecycle-badge.deal{background:#ECFDF5;color:#047857}
+.lifecycle-badge.repurchase{background:#F5F3FF;color:#6D28D9}
+.stage-badge{font-weight:700}
+.stage-negotiating{background:#FFFBEB;color:#B45309}
+.stage-signed{background:#EFF6FF;color:#1D4ED8}
+.stage-executing{background:#ECFDF5;color:#047857}
+.stage-completed{background:#F5F3FF;color:#6D28D9}
+.stage-cancelled{background:#FEF2F2;color:#B91C1C}
+
+/* ── 悬浮按钮 / 还原旧硬编码紫色 ── */
+.fab{background:linear-gradient(135deg,#6366F1,#4338CA);box-shadow:0 8px 26px rgba(67,56,202,.38)}
+.fab:hover{box-shadow:0 10px 32px rgba(67,56,202,.48)}
+#btn-approve-all,.btn-lead-success{background:linear-gradient(135deg,#0D9488,#0F766E);box-shadow:0 2px 8px rgba(13,148,136,.2)}
+
+/* ── 表格：表头浅底 + 细分隔线 ── */
+.stock-table th,.check-table th,.user-table th,.report-table th,.perm-matrix th{
+  background:#F8FAFC;color:#475569;font-weight:700;
+}
+.stock-table tbody tr:hover td,.user-table tbody tr:hover td,.report-table tbody tr:hover td{background:#FAFBFF}
+
+/* ── 登录页：白卡片浮在渐变底上，第一眼就有品质感 ── */
+body:has(#login-screen:not(.hidden)){background:linear-gradient(135deg,#EEF2FF 0%,#F6F7FB 45%,#ECFEFF 100%)}
+.login-wrap h1{
+  background:linear-gradient(135deg,#312E81,#4338CA 55%,#0D9488);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+}
+.login-wrap input{border-color:#DFE5EF;background:#fff;box-shadow:0 1px 2px rgba(15,23,42,.02)}
+.login-wrap input:focus{border-color:#818CF8;box-shadow:0 0 0 3px rgba(99,102,241,.13)}
+.login-wrap .btn-primary{background:linear-gradient(135deg,#4F46E5,#4338CA);color:#fff;box-shadow:0 4px 14px rgba(67,56,202,.24)}
+.login-wrap .btn-primary:hover{background:linear-gradient(135deg,#4338CA,#3730A3);transform:translateY(-1px)}
+.login-wrap .btn-ghost{background:#fff;color:#4338CA;border-color:#C7D2FE}
+.captcha-row canvas{box-shadow:0 1px 3px rgba(15,23,42,.08)}
+
+/* ── 滚动条 / 选中文本：细节质感 ── */
+::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:999px}
+::-webkit-scrollbar-thumb:hover{background:#94A3B8}
+::selection{background:#C7D2FE;color:#1E1B4B}
