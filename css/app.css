@@ -1032,6 +1032,9 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
 .vendor-sec{margin-top:14px;padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
 .vendor-sec h4{margin:0 0 8px;font-size:13px;color:var(--text)}
 .vendor-sec .report-table{min-width:520px}
+.vendor-sec tr.buyer-top td{background:rgba(16,185,129,.08);font-weight:600}
+.buyer-note{font-size:11px;color:var(--text3);margin-top:6px}
+@media(max-width:640px){.vendor-q{min-width:120px}}
 @media(max-width:640px){.chart-bars{gap:2px}.chart-bar-col{min-width:36px}.chart-bar{width:80%}}
 
 /* Reports BI - 新增样式 */

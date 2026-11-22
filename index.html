@@ -9,7 +9,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👔</text></svg>">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<link rel="stylesheet" href="css/app.css?v=d13ede5a">
+<link rel="stylesheet" href="css/app.css?v=37dcc1de">
 
 <!-- 百度地图改为按需加载（见 js/app_v2.js 的 ensureBaiduMap），避免首屏同步阻塞 -->
 </head>
@@ -927,6 +927,7 @@
    <button class="biz-subtab" onclick="switchReportsTab('collections')">💳 回款分析</button>
    <button class="biz-subtab" onclick="switchReportsTab('orders')">📦 订单统计</button>
    <button class="biz-subtab" onclick="switchReportsTab('vendor')">🏢 集成商分析</button>
+   <button class="biz-subtab" onclick="switchReportsTab('buyer')">🏛 甲方分析</button>
    <button class="biz-subtab" onclick="switchReportsTab('dashboard')">⚙️ 自定义仪表盘</button>
   </div>
 
@@ -1022,6 +1023,20 @@
    <div id="rp-vendor-cands" class="vendor-cands hidden"></div>
    <div id="rp-vendor-hot" class="vendor-hot"></div>
    <div id="rp-vendor-result" class="vendor-result"><div class="empty-state">输入公司名称开始分析，或点下方热门集成商</div></div>
+  </div>
+
+  <!-- ===== 甲方分析面板 ===== -->
+  <div id="rp-buyer-panel" class="report-panel hidden">
+   <div class="report-toolbar">
+    <input id="rp-buyer-q" list="rp-buyer-list" class="vendor-q" placeholder="输入甲方公司名称（可只输关键字，如：重庆大学）" oninput="buyerSuggest()" onkeydown="if(event.key==='Enter')renderBuyerAnalysis()">
+    <datalist id="rp-buyer-list"></datalist>
+    <button class="btn-sm" onclick="renderBuyerAnalysis()">🔍 查询</button>
+    <button class="btn-sm" onclick="exportBuyerCSV()">📥 导出CSV</button>
+    <span id="rp-buyer-match" class="vendor-match"></span>
+   </div>
+   <div id="rp-buyer-cands" class="vendor-cands hidden"></div>
+   <div id="rp-buyer-hot" class="vendor-hot"></div>
+   <div id="rp-buyer-result" class="vendor-result"><div class="empty-state">输入甲方名称开始分析，或点下方热门甲方</div></div>
   </div>
 
   <!-- ===== 自定义仪表盘面板 ===== -->
@@ -2177,7 +2192,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 <script src="js/modules/04-client-list.js?v=67661223"></script>
 <script src="js/modules/05-client-detail.js?v=4f163f55"></script>
 <script src="js/modules/06-client-tools.js?v=5fdb1d0b"></script>
-<script src="js/modules/07-orders.js?v=e5e1adce"></script>
+<script src="js/modules/07-orders.js?v=cfbd47e4"></script>
 <script src="js/modules/08-admin.js?v=d16f5cf8"></script>
 <script src="js/modules/09-sales.js?v=83d62ee5"></script>
 <script src="js/modules/10-charts.js?v=5122efef"></script>
