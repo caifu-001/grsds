@@ -103,6 +103,11 @@ function tColor(label){
   var c=customTypes.find(function(ct){return ct.label===label});
   return c?c.color:'#999';
 }
+// AI 采集来源短名（与 13 · LEAD_SITE_LABEL 的 value 一一对应）。
+// 采集线索转成客户后，clients.source 存的就是这些短名，卡片与详情据此标注
+// 「AI 采集」，跟销售手工录入的「自主开发 / 客户介绍」区分开。
+var AI_SOURCE_SITES=['交易网','行采家','政采网','重庆政采','竞采中心','招标采集'];
+function isAiSource(s){return AI_SOURCE_SITES.indexOf(String(s||'').trim())>=0}
 
 // === Auth ===
 var loginFailCount=0,loginLockUntil=null;

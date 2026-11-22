@@ -411,8 +411,10 @@ async function renderClient360Overview(c,orders){
   if(typeof renewal360CardHtml==='function')html+=renewal360CardHtml(c);
   // ── 基本信息
   html+='<div class="c360-card"><div class="c360-card-title">📋 基本信息</div>';
+  var _srcRow=(typeof isAiSource==='function'&&isAiSource(c.source))
+    ?('🤖 '+h(c.source)+'（自动采集）'):(c.source||'-');
   var rows=[
-    ['行业',c.industry||'-'],['规模',c.scale||'-'],['来源',c.source||'-'],
+    ['行业',c.industry||'-'],['规模',c.scale||'-'],['来源',_srcRow],
     ['信用等级',c.credit_rating||'-'],['客户等级',c.grade?c.grade+'级':'-'],
     ['生命周期',stageMap[c.lifecycle_stage||'prospect']||'-'],
     ['地址',c.address||'-'],['备注',c.notes||'-']
@@ -1198,6 +1200,12 @@ async function leadToClientProfileRun(l){
       var ind=leadIndustryOf(l);
       if(ind)patch.industry=ind;
     }
+    // 来源标注：采集线索转过来的客户要跟线索卡片显示同一套来源站点，只补空，
+    // 不覆盖销售手工填过的来源（自主开发 / 客户介绍等）
+    if(!String(target.source||'').trim()){
+      var _sl=LEAD_SITE_LABEL[l.source_site]||((l.auto_fetched||l.source_url)?'招标采集':'');
+      if(_sl)patch.source=_sl;
+    }
     if(Object.keys(patch).length){
       patch.updated_at=new Date().toISOString();
       await safeWriteById('clients','update',patch,target.id);
@@ -1211,13 +1219,17 @@ async function leadToClientProfileRun(l){
     // 客户属性用同一套标签（甲方 + 按单位名称推的细分属性），客户表单里打开就是勾好的
     var typeJson=JSON.stringify(leadTypeLabels(l));
     var ctype=leadIndustryOf(l);
+    // 来源标注：跟线索卡片同一套站点短名（交易网/行采家/重庆政采/竞采中心），
+    // 让销售在客户卡片/详情上就能看出这家是 AI 采集来的、来自哪个站。
+    // 非采集线索（手工录入、Excel 导入）保留它们自己填的 source。
+    var srcLabel=LEAD_SITE_LABEL[l.source_site]||((l.auto_fetched||l.source_url)?'招标采集':'')||l.source||'';
     var payload={
       name:nm,
       type:typeJson,
       address:l.contact_addr||'',
       notes:leadProfileNotes(l),
       industry:ctype,
-      source:'网络推广',
+      source:srcLabel,
       projects:'[]',
       lifecycle_stage:'prospect',
       user_id:currentUser?currentUser.id:null,

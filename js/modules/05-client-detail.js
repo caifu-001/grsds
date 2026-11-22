@@ -271,7 +271,7 @@ var _BULK_ATTRS=[
   {key:'grade',label:'客户分级',opts:[['A','A 级'],['B','B 级'],['C','C 级']]},
   {key:'industry',label:'行业',opts:['信息技术','制造业','建筑业','金融','教育','医疗','政府','能源','零售','物流','房地产','其他']},
   {key:'scale',label:'规模',opts:['小微企业','中小企业','中型企业','大型企业','集团企业']},
-  {key:'source',label:'来源',opts:['自主开发','客户介绍','展会','网络推广','电话营销','合作伙伴','线索转化','其他']},
+  {key:'source',label:'来源',opts:['自主开发','客户介绍','展会','网络推广','电话营销','合作伙伴','线索转化','招标采集','交易网','行采家','重庆政采','竞采中心','其他']},
   {key:'credit_rating',label:'信用等级',opts:['AAA','AA','A','BBB','BB','B','C']}
 ];
 function bulkEditClientAttrs(preselect){
@@ -698,10 +698,13 @@ function renderList(){
       }
       var gradeBadge='';if(c.grade)gradeBadge='<span class="grade-badge '+h(c.grade)+'">'+h(c.grade)+'级</span>';
       var _sel=!!clientSel[c.id];
+      // AI 采集来源标注：跟线索卡片同一套站点短名，销售一眼看出这家是自动抓来的
+      var _srcBadge=(typeof isAiSource==='function'&&isAiSource(c.source))
+        ?'<span class="card-source-badge" title="由招标公告自动采集录入">🤖 '+h(c.source)+'</span>':'';
       html+='<div class="client-card'+(clientBulkMode?' bulk-mode':'')+(_sel?' selected':'')+'" onclick="'+(clientBulkMode?'clientToggleSel(\''+c.id+'\')':'openClient360(\''+c.id+'\')')+'">'+
         (clientBulkMode?'<div class="card-check'+(_sel?' on':'')+'">✓</div>':'')+
         (badges?'<div class="card-types">'+badges+'</div>':'')+
-        '<div class="card-name">'+h(c.name)+(gradeBadge?' '+gradeBadge:'')+'</div>'+
+        '<div class="card-name">'+h(c.name)+(_srcBadge?' '+_srcBadge:'')+(gradeBadge?' '+gradeBadge:'')+'</div>'+
         (c.address?'<div class="card-addr">📍 '+h(c.address)+'</div>':'')+
         (function(){
       // 年度复购到点 → 卡片上直接标出来，销售翻列表时一眼看到该打给谁

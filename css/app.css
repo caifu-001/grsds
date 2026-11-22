@@ -1188,6 +1188,8 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
 .card-name-row .lead-status-badge{flex:0 0 auto}
 .card-fetch{font-size:11px;color:var(--text3);display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-top:6px}
 .card-fetch a,.card-fetch span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* AI 采集来源标注：客户卡片上跟线索卡片同一套站点短名，浅蓝底小徽标 */
+.card-source-badge{display:inline-block;font-size:10px;font-weight:600;line-height:1.4;padding:2px 7px;border-radius:var(--radius-full);background:#E0F2FE;color:#0369A1;white-space:nowrap;vertical-align:middle;margin-left:4px}
 /* 中标行：结果公告回填进来的「谁中了、多少钱」。
    绿色实底太抢眼，用浅绿药丸 + 深绿字，和来源那行小字区分开就行 */
 .card-win{display:inline-flex;align-items:center;max-width:100%;font-size:11px;line-height:18px;
