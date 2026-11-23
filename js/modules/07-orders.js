@@ -1231,14 +1231,15 @@ function switchTab(tab){
   // Hide all views first
     var anv=document.getElementById('analytics-view');
   var lv=document.getElementById('leads-view');
-  var allViews=[cv,ov,rv,av,sv,iv];if(spv)allViews.push(spv);if(pv)allViews.push(pv);if(lv)allViews.push(lv);var colv2=document.getElementById('collab-view');if(colv2)allViews.push(colv2);var sv2=document.getElementById('service-view');if(sv2)allViews.push(sv2);if(purchv)allViews.push(purchv);var pjv=document.getElementById('projects-view');if(pjv)allViews.push(pjv);if(anv)allViews.push(anv);
+  var tdv=document.getElementById('tender-view');
+  var allViews=[cv,ov,rv,av,sv,iv];if(tdv)allViews.push(tdv);if(spv)allViews.push(spv);if(pv)allViews.push(pv);if(lv)allViews.push(lv);var colv2=document.getElementById('collab-view');if(colv2)allViews.push(colv2);var sv2=document.getElementById('service-view');if(sv2)allViews.push(sv2);if(purchv)allViews.push(purchv);var pjv=document.getElementById('projects-view');if(pjv)allViews.push(pjv);if(anv)allViews.push(anv);
   var fwv=document.getElementById('fieldwork-view');if(fwv)allViews.push(fwv);
   for(var i=0;i<allViews.length;i++)if(allViews[i]){allViews[i].classList.add('hidden');allViews[i].style.display='';allViews[i].style.visibility='';}
   // Admin sub-panels outside admin-view must also hide
   var ag=document.getElementById('admin-grants');if(ag)ag.classList.add('hidden');
   // Deactivate all tabs
   var tr=document.getElementById('tab-reports');var tan=document.getElementById('tab-analytics');
-  var allTabs=[tc,to,document.getElementById('tab-service'),document.getElementById('tab-collab'),document.getElementById('tab-projects'),tr,ta,ti];if(tan)allTabs.push(tan);var tfw=document.getElementById('tab-fieldwork');if(tfw)allTabs.push(tfw);for(var j=0;j<allTabs.length;j++)if(allTabs[j])allTabs[j].classList.remove('active');
+  var allTabs=[tc,to,document.getElementById('tab-service'),document.getElementById('tab-collab'),document.getElementById('tab-projects'),tr,ta,ti];var tt=document.getElementById('tab-tenders');if(tt)allTabs.push(tt);if(tan)allTabs.push(tan);var tfw=document.getElementById('tab-fieldwork');if(tfw)allTabs.push(tfw);for(var j=0;j<allTabs.length;j++)if(allTabs[j])allTabs[j].classList.remove('active');
   fab.classList.add('hidden');
 
       if(tab==='clients'){
@@ -1247,6 +1248,12 @@ function switchTab(tab){
     document.getElementById('topbar-title').textContent='客户管理';
     // cache:true → 有会话内缓存就秒开（先渲染再静默校正），没有再全量拉
     loadClients({cache:true});
+  }else if(tab==='tenders'){
+    tdv.classList.remove('hidden');
+    var tt0=document.getElementById('tab-tenders');if(tt0)tt0.classList.add('active');
+    document.getElementById('topbar-title').textContent='项目标讯';
+    fab.classList.add('hidden');
+    if(typeof openTenders==='function')openTenders();
   }else if(tab==='orders'){
     ov.classList.remove('hidden');to.classList.add('active');
     fab.classList.remove('hidden');fab.textContent='+';fab.onclick=function(){openOrderForm()};

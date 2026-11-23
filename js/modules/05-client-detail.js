@@ -897,28 +897,9 @@ function renderList(){
   var q=(document.getElementById('search-input').value||'').trim().toLowerCase();
   var list=allClients;
   if(q) list=list.filter(function(c){
+    // 项目名 / 中标单位 / 中标人 / 甲方负责人改到「项目标讯」页搜索，
+    // 客户页只保留客户自身信息（名称、地址、备注、属性、联系人），不再解析 projects。
     var arr=[c.name,c.address,c.notes];
-    if(c.project)arr.push(c.project); // legacy
-    var projs2=[];
-    try{projs2=JSON.parse(c.projects||'[]');if(!Array.isArray(projs2))projs2=[];}catch(e){projs2=[]}
-    for(var pi=0;pi<projs2.length;pi++){
-      arr.push(projs2[pi].project_name||'');
-      arr.push(projs2[pi].bidder_name||'');
-      // 多位中标人：姓名和电话都纳入搜索（联合体时按某家公司的对接人也能找到客户）
-      if(Array.isArray(projs2[pi].bidder_contacts)){
-        for(var _bi=0;_bi<projs2[pi].bidder_contacts.length;_bi++){
-          var _bp=projs2[pi].bidder_contacts[_bi]||{};
-          arr.push(_bp.name||'');
-          arr.push(_bp.phone||'');
-        }
-      }
-      arr.push(projs2[pi].bidder_company||'');
-      // 联合中标存的是数组，某个公司名未必出现在单串里（历史数据缺单串时也要能搜到）
-      if(Array.isArray(projs2[pi].bidder_companies))arr=arr.concat(projs2[pi].bidder_companies.filter(Boolean).map(String));
-      arr.push(projs2[pi].client_owner||'');
-      var _ownList=projectOwnersOf(projs2[pi]);
-      for(var _oi=0;_oi<_ownList.length;_oi++)arr.push(_ownList[_oi].name);
-    }
     var types=parseTypes(c.type);
     arr=arr.concat(types);
     var contacts=contactsOf(c.id);
@@ -1002,81 +983,6 @@ function renderList(){
         (badges?'<div class="card-types">'+badges+'</div>':'')+
         '<div class="card-name">'+h(c.name)+(_srcBadge?' '+_srcBadge:'')+(gradeBadge?' '+gradeBadge:'')+'</div>'+
         (c.address?'<div class="card-addr">📍 '+h(c.address)+'</div>':'')+
-        (function(){
-      // 年度复购到点 → 卡片上直接标出来，销售翻列表时一眼看到该打给谁
-      if(typeof clientRenewalOpps!=='function')return '';
-      var _rl=clientRenewalOpps(c);
-      if(!_rl.length)return '';
-      var _o=_rl[0];
-      // 这个客户到点该续做的钱有多少，一起标出来 —— 翻列表时「哪家最值得先打」
-      // 靠的就是金额 × 紧急度，只有天数是不够的
-      var _sum=0;
-      for(var _ri=0;_ri<_rl.length;_ri++)_sum+=(parseFloat(_rl[_ri].amount)||0);
-      var _amtTxt=(_sum>0&&typeof rnMoney==='function')?(' ¥'+rnMoney(_sum)):'';
-      var _when=_o.state==='overdue'?('逾期 '+Math.abs(_o.days)+' 天'):(_o.days===0?'今天到期':('还有 '+_o.days+' 天'));
-      var _tip='🔁 待复购'+_amtTxt+' · '+_when;
-      var _title='';
-      for(var _ri2=0;_ri2<_rl.length;_ri2++){
-        _title+=(_ri2?'\n':'')+_rl[_ri2].name+' → 应于 '+_rl[_ri2].due+' 续做'
-          +(_rl[_ri2].amount>0?('（¥'+rnMoney(_rl[_ri2].amount)+'）'):'');
-      }
-      return '<div class="card-renewal'+(_o.state==='overdue'?' over':'')+'" title="'+h(_title)+'">'+h(_tip+' · '+_o.name)+(_rl.length>1?'<span class="card-renewal-more">+' +(_rl.length-1)+'</span>':'')+'</div>';
-    })()+
-        (function(){
-      var projs=[];
-      try{projs=JSON.parse(c.projects||'[]');if(!Array.isArray(projs))projs=[];}catch(e){projs=[]}
-      if(projs.length===0&&c.project)projs=[{project_name:c.project,bidding_date:c.bidding_date||''}];
-      if(projs.length===0)return '';
-      var tags='',_tagN=0;
-      for(var pi=0;pi<projs.length;pi++){
-        var p=projs[pi],pname=p.project_name||'';
-        // 中标人可能多位（联合体每家一位）：气泡里只放前两位，完整名单交给 tooltip
-        var bdNames=projectBidderPersonsOf(p).map(function(o){return o.name}).filter(Boolean);
-        var bd=bdNames.join('、');
-        var bdShort=bdNames.length>2?bdNames.slice(0,2).join('、')+' 等'+bdNames.length+'人':bd;
-        var ownList=projectOwnersOf(p);
-        var coNames=ownList.map(function(o){return o.name}).filter(Boolean);
-        var co=coNames.join('、');
-        // 联合中标：中标公司可能多家；分包：一个项目有多个标包，各包各自一套
-        var bidList=projectBiddersOf(p);
-        var packsAll=projectPackagesOf(p);
-        // 只有真的分了 2 个以上包才在气泡上标「分N包」，单包（哪怕带包名）仍按普通项目显示
-        var packed=packsAll.length>1,packs=packed?packsAll:[];
-        if(!pname&&!bd&&!co&&!bidList.length&&!packs.length)continue; // 全空时跳过，避免渲染出只有图标的空白气泡
-        var _tip=[];
-        if(packed){
-          for(var _pk=0;_pk<packs.length;_pk++){
-            var _pp=packs[_pk],_ppn=String(_pp.name||'').trim()||('包'+(_pk+1));
-            var _ppCo=_pp.bidders.map(function(o){return o.name}).filter(Boolean).join('、');
-            var _ppPs=_pp.persons.map(function(o){return o.name}).filter(Boolean).join('、');
-            var _ppAmt=String(_pp.bid_amount||'').trim();
-            var _ppBud=String(_pp.project_budget||'').trim();
-            _tip.push(h(_ppn+':'+(_ppCo||'-')+(_ppPs?' · '+_ppPs:'')+(_ppBud?' · 预算 '+formatMoney(_ppBud):'')+(_ppAmt?' · 金额 '+formatMoney(_ppAmt):'')));
-          }
-        }else{
-          if(bd)_tip.push('中标人:'+h(bidderLabel(p)||bd));
-          if(bidList.length)_tip.push('中标公司:'+h(bidList.join('、'))+(bidList.length>1?'（联合体 '+bidList.length+' 家）':''));
-        }
-        // 分包时顶层预算是各包之和，标成「合计」，避免与包内预算混看
-        if(p.project_budget)_tip.push((packed?'预算合计:':'预算:')+h(formatMoney(p.project_budget)));
-        if(co){
-          // 负责人可能多个：tooltip 里逐个带上职务，气泡里只放得下前两个
-          var _ac=allContacts||[];
-          var _ownTxt=ownList.map(function(o){
-            var pos='';
-            if(o.cid){for(var _ai=0;_ai<_ac.length;_ai++){if(String(_ac[_ai].id)===String(o.cid)){pos=String(_ac[_ai].position||'').trim();break}}}
-            return o.name+(pos?'（'+pos+'）':'');
-          }).filter(Boolean).join('、');
-          _tip.push('甲方负责人:'+h(_ownTxt));
-        }
-        var coShort=coNames.length>2?coNames.slice(0,2).join('、')+' 等'+coNames.length+'人':co;
-        // 联合中标标记紧跟项目名：气泡末尾会被省略号截断，放前面才一定看得见
-        tags+='<span class="card-project-tag" title="'+_tip.join(' / ')+'">📋 '+h(pname||'未命名项目')+(packed?' · 分'+packs.length+'包':(bidList.length>1?' · 联合'+bidList.length+'家':''))+(bd?' · '+h(bdShort):'')+(co?' · 👤'+h(coShort):'')+'</span>';
-        _tagN++;
-      }
-      if(!_tagN)return '';
-      return '<div class="card-projects">'+tags+'</div>';
-    })()+
         (contactHtml?'<div class="card-contact">'+contactHtml+'</div>':'');
       var osum=getClientOrderSummary(c.id);
       if(osum.count>0)html+='<div class="card-contact" style="justify-content:space-between"><span style="font-size:11px;color:var(--text3)">📦 '+osum.count+'个订单</span><span style="font-size:12px;color:var(--primary);font-weight:600">'+formatMoney(osum.total)+'</span></div>';

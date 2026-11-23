@@ -2559,3 +2559,41 @@ body.dk .confirm-box.bulk-box .bulk-body{box-shadow:inset 0 -14px 16px -14px rgb
 .bulk-extra.hidden{display:none}
 body.dk .bulk-more-btn{border-color:rgba(120,170,255,.24);color:#A9BCDD}
 body.dk .bulk-more-btn:hover{border-color:#38BDF8;color:#8FD8FF}
+
+/* ===== 项目标讯：按项目维度展示 clients.projects（20-tender-news.js）=====
+   客户卡片上的项目气泡/复购提醒已移除，项目信息统一在这里查。 */
+.tender-list{display:flex;flex-direction:column;gap:10px;padding:0 16px 18px}
+.tn-loading{text-align:center;padding:60px 16px;color:var(--text3);font-size:13px}
+.tn-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:13px 16px;box-shadow:var(--shadow);transition:transform var(--transition),box-shadow var(--transition),border-color var(--transition)}
+.tn-card:hover{transform:translateY(-1px);border-color:var(--primary);box-shadow:var(--shadow-lg)}
+.tn-head{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.tn-date{flex:0 0 auto;font-size:11px;font-weight:700;color:var(--text2);background:var(--surface);border:1px solid var(--border-light);border-radius:var(--radius-full);padding:3px 9px;font-variant-numeric:tabular-nums}
+.tn-title{flex:1 1 280px;min-width:0;font-size:15px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tn-src{flex:0 0 auto;font-size:11px;font-weight:600;color:var(--primary);background:var(--primary-light);border-radius:var(--radius-full);padding:3px 8px}
+.tn-amount{flex:0 0 auto;font-size:13px;font-weight:800;color:var(--primary);white-space:nowrap}
+.tn-meta{display:flex;flex-wrap:wrap;align-items:center;gap:5px 8px;margin-top:8px}
+.tn-client{font-size:12px;font-weight:700;color:var(--primary);cursor:pointer}
+.tn-client:hover{text-decoration:underline}
+.tn-pill{font-size:11px;color:var(--text2);background:var(--surface);border-radius:var(--radius-full);padding:2px 8px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tn-pack{color:var(--warning)}
+.tn-note{margin-top:7px;font-size:11px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:768px){
+ .tender-toolbar{flex-wrap:wrap}
+ .tender-toolbar .search-wrap{flex:1 1 100%!important}
+ .tender-toolbar select{flex:1 1 28%!important;min-width:0;width:auto}
+ .tn-title{flex:1 1 100%}
+}
+body.dk .tn-card{background:rgba(255,255,255,.045);border-color:rgba(120,170,255,.16)}
+body.dk .tn-card:hover{border-color:rgba(56,189,248,.5);box-shadow:0 8px 26px rgba(0,0,0,.34)}
+body.dk .tn-date,body.dk .tn-pill{background:rgba(255,255,255,.05);border-color:rgba(120,170,255,.10);color:#A9BCDD}
+body.dk .tn-title{color:#E6EEFF}
+body.dk .tn-client,body.dk .tn-amount{color:#38BDF8}
+body.dk .tn-src{background:rgba(56,189,248,.13);color:#8FD8FF}
+body.dk .tn-pack{color:#FBBF24}
+.tn-brief{font-size:11px;color:var(--text2);background:var(--surface);border-radius:var(--radius-full);padding:2px 8px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:help}
+body.dk .tn-brief{background:rgba(255,255,255,.05);color:#A9BCDD}
+@media(max-width:768px){
+ #tender-stats{flex-wrap:wrap}
+ #tender-stats .stat-card{flex:1 1 calc(50% - 6px);max-width:none;min-width:0}
+ #tender-stats .stat-num{font-size:21px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+}
