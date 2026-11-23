@@ -2693,3 +2693,8 @@ body.dk .tn-brief{background:rgba(255,255,255,.05);color:#A9BCDD}
 .ins-mcell.cold b{color:var(--text3)}
 .ins-mcell span{display:block;font-size:11px;color:var(--text3);margin-top:5px}
 @media(max-width:520px){.ins-nav{gap:5px}.ins-nav-chip{font-size:10px;padding:4px 8px}.ins-matrix{grid-template-columns:1fr}}
+/* 数据分析 15-18：销售目标输入 */
+.ins-goal{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.ins-goal input{flex:1 1 240px;min-width:0;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:var(--radius);padding:8px 11px;color:var(--text);font-size:12px}
+.ins-goal input::placeholder{color:var(--text3)}
+.ins-goal-hint{font-size:11px;color:var(--text3);flex:1 1 100%}
