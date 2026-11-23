@@ -1402,11 +1402,89 @@ async function loadProjects(){
     var {data,error}=await sb.from('projects').select('*').eq('company_id',currentCompanyId).order('created_at',{ascending:false});
     if(error){list.innerHTML='<div style="text-align:center;padding:40px;color:#e74c3c">加载失败: '+h(error.message)+'。请确认 projects 表是否已在 Supabase 中创建（执行 project_management.sql）</div>';return}
     allProjects=data||[];
+    // 转订单按钮需要客户档案与订单状态；两者都有会话缓存，不会明显拖慢列表
+    if((!allClients||!allClients.length)&&typeof loadClients==='function'){
+      try{await loadClients({cache:true})}catch(e){}
+    }
+    if(typeof ensureOrdersLoaded==='function'){
+      try{await ensureOrdersLoaded()}catch(e){}
+    }
     renderProjects();
   } catch(e) {
     list.innerHTML='<div style="text-align:center;padding:40px;color:#e74c3c">加载异常: '+h(e.message)+'</div>';
     console.error(e);
   }
+}
+
+// ── 项目签约转订单 ──
+// 项目管理里的项目本身没有 client_id（只用 company_name 关联客户），
+// 因此先按名称找客户档案；找不到时仍打开订单表单，让用户手动选客户。
+function projectClientForOrder(p){
+  if(!p)return null;
+  var list=allClients||[],i;
+  if(p.client_id){
+    for(i=0;i<list.length;i++)if(String(list[i].id)===String(p.client_id))return list[i];
+  }
+  var name=String(p.company_name||'').trim();
+  if(!name)return null;
+  for(i=0;i<list.length;i++)if(String(list[i].name||'').trim()===name)return list[i];
+  var cands=[];
+  for(i=0;i<list.length;i++){
+    var n=String(list[i].name||'').trim();
+    if(n&&(n.indexOf(name)>=0||name.indexOf(n)>=0))cands.push(list[i]);
+  }
+  return cands.length===1?cands[0]:null;
+}
+
+function projectFindOrder(p){
+  if(!p||!Array.isArray(allOrders))return null;
+  var tag='项目ID:'+p.id,i;
+  for(i=0;i<allOrders.length;i++){
+    var o=allOrders[i];
+    if(!o)continue;
+    if(String(o.notes||'').indexOf(tag)>=0)return o;
+  }
+  // 早期没有来源标记：同一客户 + 同名项目也认作已转过
+  var cl=projectClientForOrder(p),name=String(p.name||'').trim();
+  if(!cl||!name)return null;
+  for(i=0;i<allOrders.length;i++){
+    var o2=allOrders[i];
+    if(!o2||String(o2.client_id)!==String(cl.id))continue;
+    if(String(o2.project_name||'').trim()===name)return o2;
+  }
+  return null;
+}
+
+async function projectToOrder(pid){
+  var p=null,list=allProjects||[],i;
+  for(i=0;i<list.length;i++)if(String(list[i].id)===String(pid)){p=list[i];break}
+  if(!p)return;
+  if(!allClients||!allClients.length){
+    try{await loadClients({cache:true})}catch(e){}
+  }
+  if(typeof ensureOrdersLoaded==='function')await ensureOrdersLoaded();
+  var exist=projectFindOrder(p);
+  if(exist){
+    var openIt=await confirmDialog('项目「'+p.name+'」已经转成订单了，要打开原订单吗？');
+    if(openIt){switchTab('orders');openOrderForm(exist.id)}
+    return;
+  }
+  var amt=0,how='exact',amtLabel='合同金额';
+  var ca=parseFloat(p.contract_amount),ba=parseFloat(p.bid_amount),bg=parseFloat(p.budget);
+  if(ca>0)amt=ca;
+  else if(ba>0)amt=ba;
+  else if(bg>0){amt=bg;how='contain';amtLabel='预算'}
+  var amtTip=amt>0?'，带入'+amtLabel+' ¥'+formatMoney(amt)+'（保存前请核对）':'，项目金额为空，保存前请补填';
+  var yes=await confirmDialog('确认项目「'+p.name+'」已签约成功？将生成一笔赢单订单'+amtTip+'。');
+  if(!yes)return;
+  var cl=projectClientForOrder(p);
+  await orderOpenFromSignedProject({
+    clientId:cl?cl.id:'', clientName:cl?cl.name:(p.company_name||''),
+    projectName:p.name, amount:amt, amountHow:how,
+    amountProj:{project_name:p.name,bidding_date:p.start_date},
+    date:p.start_date||'', bidders:[],
+    notePrefix:'【项目ID:'+p.id+'】由项目管理'
+  });
 }
 
 function renderProjects(){
@@ -1428,8 +1506,10 @@ function renderProjects(){
     var wfDone=0,wfTotal=46;
     try{var wf=JSON.parse(p.workflow||'{}');for(var k in wf){if(wf[k]&&wf[k].done)wfDone++}}catch(e){}
     var wfPct=wfTotal>0?Math.round(wfDone/wfTotal*100):0;
+    var linkedOrder=projectFindOrder(p);
     s+='<div class="project-card" onclick="renderProjectDetail(\''+p.id+'\')">';
-    s+='<div class="project-card-header"><span class="project-card-name">'+h(p.name)+'</span><span class="project-card-status status-'+p.status+'">'+(statusMap[p.status]||p.status)+'</span><span style="font-size:11px;color:var(--text2);margin-left:4px">'+(stateMap[cs]||cs)+'</span></div>';
+    s+='<div class="project-card-header"><span class="project-card-name">'+h(p.name)+'</span><span class="project-card-status status-'+p.status+'">'+(statusMap[p.status]||p.status)+'</span><span style="font-size:11px;color:var(--text2);margin-left:4px">'+(stateMap[cs]||cs)+'</span>'
+      +'<button type="button" class="pj-to-order'+(linkedOrder?' done':'')+'" onclick="event.stopPropagation();projectToOrder(\''+jsStr(p.id)+'\')" title="'+(linkedOrder?'打开已生成的订单':'签约成功后生成订单')+'">'+(linkedOrder?'✓ 已转订单':'✅ 签约转订单')+'</button></div>';
     s+='<div class="project-card-meta"><span>&#127970; '+h(cn)+'</span><span>&#128176; '+(p.budget?formatMoney(p.budget):'-')+'</span>';
     if(p.start_date)s+='<span>&#128197; '+p.start_date+'</span>';
     if(p.end_date)s+='<span>&rarr; '+p.end_date+'</span>';

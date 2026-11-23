@@ -4,16 +4,31 @@
 // 客户卡片只保留客户自身信息；项目名 / 招标日期 / 中标单位 / 中标人 / 金额
 // 统一在这里查。依赖 05 的项目助手、07 的金额助手、01 的搜索与分页助手。
 // ==========================================================================
-var _tenderRows=[],_tenderFiltered=[],_tenderPage=1;
+var _tenderRows=[],_tenderFiltered=[],_tenderPage=1,_tenderClientSnapshot=[];
 var TENDER_PAGE_SIZE=20;
 var _debouncedRenderTender=null;
 
 function tenderText(v){return String(v==null?'':v).trim()}
 function tenderNum(v){var n=parseFloat(String(v||'').replace(/[,，\s]/g,''));return isNaN(n)?0:n}
 
+// 中标人 tooltip 用「打开标讯那一刻」的客户快照解析关联公司：
+// 异步加载订单期间 allClients 可能被别的请求换掉，不能用实时全局值。
+function tenderBidderLabel(p,clients){
+  var persons=(typeof projectBidderPersonsOf==='function')?projectBidderPersonsOf(p||{}):[],arr=[];
+  for(var i=0;i<persons.length;i++){
+    var nm=tenderText(persons[i]&&persons[i].name),co='';
+    if(!nm)continue;
+    for(var j=0;j<(clients||[]).length;j++){
+      if(String(clients[j].id)===String(persons[i].client_id)){co=tenderText(clients[j].name);break}
+    }
+    arr.push(co?nm+' · '+co:nm);
+  }
+  return arr.join('、');
+}
+
 // 一条项目一行：同一个客户的多条 projects 会拆成多行，各自带甲方客户引用
-function tenderRowsBuild(){
-  var out=[],clients=allClients||[];
+function tenderRowsBuild(clientList){
+  var out=[],clients=clientList||allClients||[];
   for(var i=0;i<clients.length;i++){
     var c=clients[i];
     if(!c||c.deleted_at)continue;
@@ -130,7 +145,7 @@ function tenderProjectTag(p){
       tip.push(h(ppn+':'+(ppCo||'-')+(ppPs?' · '+ppPs:'')+(ppBud?' · 预算 '+formatMoney(ppBud):'')+(ppAmt?' · 金额 '+formatMoney(ppAmt):'')));
     }
   }else{
-    if(bd)tip.push('中标人:'+h((typeof bidderLabel==='function'?bidderLabel(p):'')||bd));
+    if(bd)tip.push('中标人:'+h(tenderBidderLabel(p,_tenderClientSnapshot.length?_tenderClientSnapshot:allClients)||bd));
     if(bidList.length)tip.push('中标公司:'+h(bidList.join('、'))+(bidList.length>1?'（联合体 '+bidList.length+' 家）':''));
   }
   if(p.project_budget)tip.push((packed?'预算合计:':'预算:')+h(formatMoney(p.project_budget)));
@@ -151,6 +166,49 @@ function tenderProjectTag(p){
 }
 
 function tenderOpenClient(id){if(id&&typeof openClient360==='function')openClient360(id)}
+
+// ── 签约转订单 ──
+// 项目名归一化：只用于判断「这个项目是不是已经转成订单了」，不参与展示
+function tenderOrderKey(s){
+  return tenderText(s).toLowerCase().replace(/[\s()（）\[\]【】·、,，.。:：\-—_/\\]/g,'');
+}
+function tenderFindOrder(r){
+  if(!r||!r.client||!r.client.id||!Array.isArray(allOrders))return null;
+  var key=tenderOrderKey(r.name),list=allOrders||[];
+  for(var i=0;i<list.length;i++){
+    var o=list[i];
+    if(!o||String(o.client_id)!==String(r.client.id))continue;
+    if(key&&tenderOrderKey(o.project_name)===key)return o;
+  }
+  return null;
+}
+
+// 从标讯行打开新建订单表单，客户/项目/中标金额/签约阶段/赢单日期一次性带入。
+// 已经转过的只提示打开原单，避免同一项目重复下单把业绩算重。
+async function tenderToOrder(idx){
+  var r=_tenderFiltered[parseInt(idx,10)];
+  if(!r)return;
+  if(typeof ensureOrdersLoaded==='function')await ensureOrdersLoaded();
+  var exist=tenderFindOrder(r);
+  if(exist){
+    var openIt=await confirmDialog('项目「'+r.name+'」已经转成订单了，要打开原订单吗？');
+    if(openIt){switchTab('orders');openOrderForm(exist.id)}
+    return;
+  }
+  if(!r.client||!r.client.id){
+    showToast('该项目未关联客户，请先在项目里补好客户再转订单');
+    return;
+  }
+  var amtTip=r.amount>0?'，带入中标金额 ¥'+(typeof ordMoney==='function'?ordMoney(r.amount):r.amount):'，项目暂无中标金额，保存前请补填';
+  var yes=await confirmDialog('确认「'+r.name+'」已签约成功？将生成一笔赢单订单'+amtTip+'。');
+  if(!yes)return;
+  var bidders=r.bidders&&r.bidders.length?r.bidders:(tenderText(r.project&&r.project.bidder_company)?[tenderText(r.project.bidder_company)]:[]);
+  await orderOpenFromSignedProject({
+    clientId:r.client.id, clientName:r.client.name, projectName:r.name,
+    amount:r.amount, amountProj:r.project, amountHow:'exact',
+    date:r.date, bidders:bidders, notePrefix:'由项目标讯'
+  });
+}
 
 function renderTenderList(){
   var box=document.getElementById('tender-list');
@@ -176,6 +234,9 @@ function renderTenderList(){
     var src=(r.source&&typeof isAiSource==='function'&&isAiSource(r.source))
       ?'<span class="tn-src">🤖 '+h(r.source)+'</span>':'';
     var amt=r.amount>0?'<span class="tn-amount">💰 '+(typeof formatMoney==='function'?formatMoney(r.amount):r.amount)+'</span>':'';
+    var linked=tenderFindOrder(r);
+    var rowIdx=(_tenderPage-1)*size+i;
+    var act='<button type="button" class="tn-to-order'+(linked?' done':'')+'" onclick="tenderToOrder('+rowIdx+')" title="'+(linked?'打开已生成的订单':'签约成功后生成订单')+'">'+(linked?'✓ 已转订单':'✅ 签约转订单')+'</button>';
     var meta='<span class="tn-client" onclick="tenderOpenClient(\''+h(c.id||'')+'\')" title="打开客户档案">🏢 '+h(c.name||'未命名客户')+'</span>';
     if(r.bidders.length)meta+='<span class="tn-pill" title="中标单位">中标：'+h(r.bidders.join('、'))+'</span>';
     else if(tenderText(p.bidder_company))meta+='<span class="tn-pill" title="中标单位">中标：'+h(tenderText(p.bidder_company))+'</span>';
@@ -193,7 +254,7 @@ function renderTenderList(){
     if(brief)meta+='<span class="tn-brief" title="'+brief.tip+'">'+brief.text+'</span>';
     html+='<div class="tn-card">'+
       '<div class="tn-head"><span class="tn-date">'+h(r.date||'日期未填')+'</span>'+
-        '<span class="tn-title" title="'+h(r.name)+'">'+h(r.name)+'</span>'+src+amt+'</div>'+
+        '<span class="tn-title" title="'+h(r.name)+'">'+h(r.name)+'</span>'+src+amt+act+'</div>'+
       '<div class="tn-meta">'+meta+'</div>'+
       (tenderText(p.notes)?'<div class="tn-note">'+h(tenderText(p.notes))+'</div>':'')+
     '</div>';
@@ -216,7 +277,12 @@ async function openTenders(){
   try{
     if(!allClients||!allClients.length)await loadClients({cache:true});
   }catch(e){console.error('[tenders] loadClients failed:',e)}
-  _tenderRows=tenderRowsBuild();
+  // 先固定客户快照：订单加载是异步的，期间别的 loadClients 可能把 allClients 换掉
+  var clientsSnapshot=allClients||[];
+  _tenderClientSnapshot=clientsSnapshot;
+  // 订单用于标「已转订单」，走统一加载器（已加载过就不会重复请求）
+  try{if(typeof ensureOrdersLoaded==='function')await ensureOrdersLoaded()}catch(e){console.error('[tenders] loadOrders failed:',e)}
+  _tenderRows=tenderRowsBuild(clientsSnapshot);
   tenderFillSelects();
   _tenderPage=1;
   renderTenderList();

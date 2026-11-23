@@ -1628,6 +1628,58 @@ function orderAutoFillOnWon(){
   return m;
 }
 
+// ── 项目签约转订单 ──
+// 标讯页 / 项目管理页共用：打开新建订单表单并带入客户、项目、金额、
+// 签约阶段与赢单日期。确认框与「是否已转过」由调用方判断，这里只负责录入。
+// opt: {clientId,clientName,projectName,amount,amountProj,amountHow,date,bidders,notePrefix}
+async function orderOpenFromSignedProject(opt){
+  opt=opt||{};
+  switchTab('orders');
+  await openOrderForm();
+  // openOrderForm 里配置中心/自动编号是异步的，等一个 tick 再覆盖阶段，避免被默认值冲掉
+  await new Promise(function(res){setTimeout(res,0)});
+  var hasClient=!!opt.clientId;
+  if(hasClient){
+    orderClientId=opt.clientId;
+    orderClientName=String(opt.clientName||'');
+    var cs=document.getElementById('of-client-selected');
+    if(cs){cs.style.display='block';cs.textContent='已选择: '+orderClientName}
+    var search=document.getElementById('of-client-search');if(search)search.value='';
+  }else{
+    var search2=document.getElementById('of-client-search');
+    if(search2)search2.value=String(opt.clientName||'');
+    showToast('没匹配到客户档案，请在订单表单里选一下关联客户');
+  }
+  var pj=document.getElementById('of-project');
+  if(pj)pj.value=String(opt.projectName||'');
+  var amtEl=document.getElementById('of-amount');
+  var amt=Number(opt.amount)||0;
+  if(amtEl){
+    if(amt>0){
+      amtEl.value=String(Math.round(amt*100)/100);
+      _ordAmtSrc={proj:opt.amountProj||{project_name:opt.projectName},amount:amt,how:opt.amountHow||'exact'};
+      renderOrderAmountSrc(_ordAmtSrc);
+    }else orderAutoFillAmount(false);
+  }
+  // 签约成功 = 落到签约阶段 + 赢单日期（业绩按赢单日期归月）
+  var stages=(typeof orderWonStageList==='function')?orderWonStageList():ORDER_STAGES.slice();
+  var signed='';
+  for(var si=0;si<stages.length;si++)if(/签约|签订|中标|成交/.test(stages[si])){signed=stages[si];break}
+  orderStage=signed||stages[stages.length-1]||'已签约';
+  buildStageGrid();
+  var wd=document.getElementById('of-won-date');
+  if(wd&&!wd.value)wd.value=_todayStr();
+  var note=[];
+  note.push(String(opt.notePrefix||'')+'「'+String(opt.projectName||'')+'」签约转入');
+  if(opt.date)note.push('项目日期 '+String(opt.date).slice(0,10));
+  if(opt.bidders&&opt.bidders.length)note.push('中标单位 '+opt.bidders.join('、'));
+  var notesEl=document.getElementById('of-notes');if(notesEl)notesEl.value=note.join(' · ');
+  renderOrderResult();
+  syncOrderWonFields();
+  if(hasClient)showToast('项目资料已带入，核对后点保存即生成订单');
+  return hasClient;
+}
+
 // 赢单日期 / 归属人 的显示（说明文字统一交给结果区，这里只留字段缺失告警）
 function syncOrderWonFields(){
   var row=document.getElementById('of-won-row');

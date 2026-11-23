@@ -9,7 +9,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👔</text></svg>">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<link rel="stylesheet" href="css/app.css?v=714c1cd8">
+<link rel="stylesheet" href="css/app.css?v=d9e3174a">
 
 <!-- 百度地图改为按需加载（见 js/app_v2.js 的 ensureBaiduMap），避免首屏同步阻塞 -->
 </head>
@@ -1648,6 +1648,7 @@
    <button id="wb-hamburger" class="btn-sm" onclick="toggleWbSidebar()" style="display:none;flex-shrink:0;align-items:center;justify-content:center;width:32px;height:32px;padding:0;font-size:18px">☰</button>
    <button class="btn-sm" onclick="closeProjectWorkbench()" style="flex-shrink:0">← 返回列表</button>
    <h3 style="font-size:15px;font-weight:700;margin:0;flex:1;min-width:120px" id="wb-project-name">-</h3>
+   <button type="button" class="btn-sm btn-sm-primary" onclick="projectToOrder(curProjectId)" title="项目签约成功后生成订单">✅ 签约转订单</button>
    <span style="font-size:11px;color:var(--text2);flex-shrink:0" id="wb-step-label">当前步骤：-</span>
    <div style="width:80px;height:4px;background:var(--border);border-radius:2px;flex-shrink:0">
     <div id="wb-progress-bar" style="height:100%;background:var(--primary);border-radius:2px;transition:width .3s;width:0%"></div>
@@ -2264,7 +2265,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 <script src="js/modules/04-client-list.js?v=db714abb"></script>
 <script src="js/modules/05-client-detail.js?v=2753a4e1"></script>
 <script src="js/modules/06-client-tools.js?v=5fdb1d0b"></script>
-<script src="js/modules/07-orders.js?v=d56c546f"></script>
+<script src="js/modules/07-orders.js?v=bb8917a2"></script>
 <script src="js/modules/08-admin.js?v=d16f5cf8"></script>
 <script src="js/modules/09-sales.js?v=83d62ee5"></script>
 <script src="js/modules/10-charts.js?v=5122efef"></script>
@@ -2273,11 +2274,11 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 <script src="js/modules/13-crm360.js?v=98d8313c"></script>
 <script src="js/modules/14-hr-config.js?v=08066fa1"></script>
 <script src="js/modules/15-workflow.js?v=094dba1e"></script>
-<script src="js/modules/16-projects.js?v=9faeaceb"></script>
+<script src="js/modules/16-projects.js?v=fe936566"></script>
 <script src="js/modules/17-workbench.js?v=8cb8df46"></script>
 <script src="js/modules/18-templates.js?v=efe0ac1f"></script>
 <script src="js/modules/19-renewal.js?v=12b4cbe1"></script>
-<script src="js/modules/20-tender-news.js?v=910f3cf3"></script>
+<script src="js/modules/20-tender-news.js?v=84cd865f"></script>
 <script src="js/modules/21-insights.js?v=cbaab648"></script>
 
 
