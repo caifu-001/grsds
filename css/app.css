@@ -2680,3 +2680,16 @@ body.dk .tn-brief{background:rgba(255,255,255,.05);color:#A9BCDD}
 .ins-fval small{font-size:10px;font-weight:400;color:var(--text3)}
 .ins-fnote{font-size:10.5px;color:var(--text3);padding-left:66px;margin:-2px 0 6px}
 @media(max-width:520px){.ins-fval{width:112px;flex-basis:112px;font-size:11px}.ins-fnote{padding-left:0}}
+/* 数据分析 14 模块导航 + 价值矩阵 */
+.ins-nav{display:flex;flex-wrap:wrap;gap:6px;margin:-6px 0 16px;padding:0 2px}
+.ins-nav-chip{font-size:11px;font-weight:600;color:var(--text2);background:var(--card);border:1px solid var(--border);border-radius:var(--radius-full);padding:5px 11px;cursor:pointer;transition:color .15s,border-color .15s,background .15s}
+.ins-nav-chip:hover{color:var(--primary);border-color:var(--primary);background:var(--primary-light)}
+.ins-matrix{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.ins-mcell{min-height:86px;border:1px solid var(--border);border-radius:var(--radius);padding:13px 15px;background:rgba(255,255,255,.03)}
+.ins-mcell.hot{border-color:rgba(52,211,153,.5);background:rgba(52,211,153,.09)}
+.ins-mcell.cold{border-color:rgba(100,116,139,.5);background:rgba(100,116,139,.08)}
+.ins-mcell b{display:block;font-size:24px;font-weight:800;line-height:1.2;font-variant-numeric:tabular-nums;color:var(--text)}
+.ins-mcell.hot b{color:var(--success,#34D399)}
+.ins-mcell.cold b{color:var(--text3)}
+.ins-mcell span{display:block;font-size:11px;color:var(--text3);margin-top:5px}
+@media(max-width:520px){.ins-nav{gap:5px}.ins-nav-chip{font-size:10px;padding:4px 8px}.ins-matrix{grid-template-columns:1fr}}

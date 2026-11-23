@@ -1,7 +1,8 @@
 ﻿// ==========================================================================
 // grsds · 21-insights.js — 数据分析（系统内实时分析页）
-// 按纷享销客「五层循环增长」+ Salesforce 收入情报口径，实时计算并展示：
-//   核心结论 / 五层增长漏斗 / 销售漏斗 / 客户分层 / 数据质量 / 标讯市场 / 大厂对标
+// 按纷享销客「五层循环增长」+ Salesforce 收入情报口径，14 个模块实时计算并展示：
+//   01 核心结论 / 02 五层增长 / 03 销售漏斗 / 04 客户分层 / 05 数据质量 / 06 标讯市场 / 07 大厂对标
+//   08 客户增长与来源 / 09 客户价值矩阵 / 10 复购与健康度 / 11 销售深度 / 12 线索运营 / 13 标讯竞争 / 14 数据资产健康
 // 数据源：客户与联系人复用 04 的会话缓存；订单用 07 的 allOrders（金额已解密进 _amount）；
 //         线索池单独分批读取并缓存。图表全部为前端生成的 SVG，不依赖 Chart.js。
 // ==========================================================================
@@ -49,7 +50,7 @@ function insComma(n) { return (n == null ? 0 : n).toLocaleString('zh-CN'); }
 
 // 线索池只读必要字段，分批拉（PostgREST 单次上限 1000 行）
 async function insightsFetchLeads() {
-  var cols = 'id,status,review_status,assigned_to,converted_client_id,auto_fetched,last_follow_up,created_at,source,source_site,win_bidder,win_amount,project_name';
+  var cols = 'id,status,review_status,assigned_to,converted_client_id,auto_fetched,last_follow_up,created_at,source,source_site,win_bidder,win_amount,project_name,contact_phone,contact_mobile,budget,publish_date,source_url,assigned_sales,industry,notes,tags';
   var out = [], off = 0, size = 1000;
   for (;;) {
     var r = await sb.from('lead_pool').select(cols).eq('company_id', currentCompanyId).order('id').range(off, off + size - 1);
@@ -218,9 +219,14 @@ function insightsCompute(leads) {
     else seg['沉睡客户']++;
     vals.push(v);
   }
+  var yearMap = {};
+  for (var yi = 0; yi < tenders.length; yi++) {
+    var yy = String(tenders[yi].bidding_date || '').slice(0, 4);
+    if (/^\d{4}$/.test(yy)) yearMap[yy] = (yearMap[yy] || 0) + 1;
+  }
   out.tender = {
     total: tenders.length, withAmount: withAmt, amountSum: amtSum,
-    year: insMonth(tenders, 'bidding_date').map(function (x) { return [x[0].slice(0, 4), x[1]]; }),
+    year: Object.keys(yearMap).sort().map(function (k) { return [k, yearMap[k]]; }),
     topBidders: Object.keys(bidders).map(function (k) { return [k, bidders[k]]; }).sort(function (a, b) { return b[1] - a[1]; }).slice(0, 10),
     topBuyers: Object.keys(buyers).map(function (k) { return [k, buyers[k]]; }).sort(function (a, b) { return b[1] - a[1]; }).slice(0, 10)
   };
@@ -228,6 +234,153 @@ function insightsCompute(leads) {
     dist: Object.keys(seg).map(function (k) { return [k, seg[k]]; }),
     top: vals.sort(function (a, b) { return b.n - a.n || b.amount - a.amount; }).slice(0, 10)
   };
+
+  // ── 08 客户增长与来源 ──
+  out.growth = {
+    createdYear: insTally(clients, function (c) { return String(c.created_at || '').slice(0, 4) || '(空)'; })
+      .sort(function (a, b) { return String(a[0]).localeCompare(String(b[0])); }),
+    createdMonth: insMonth(clients, 'created_at', 18),
+    source: insTally(clients, function (c) { return c.source; }).slice(0, 10),
+    lifecycle: insTally(clients, function (c) { return c.lifecycle_stage; }).slice(0, 10),
+    grade: insTally(clients, function (c) { return c.grade; }).slice(0, 10)
+  };
+
+  // ── 09 客户价值矩阵（项目频次 × 中标金额）──
+  var matrix = { '高值高频': 0, '高值低频': 0, '低值高频': 0, '低值低频': 0 };
+  var amtSorted = vals.map(function (v) { return v.amount; }).filter(function (a) { return a > 0; }).sort(function (a, b) { return a - b; });
+  var amtHi = amtSorted.length ? amtSorted[Math.floor(amtSorted.length * 0.7)] : 0; // 前 30% 算高值
+  if (amtHi <= 0) amtHi = 1;
+  for (var mi = 0; mi < vals.length; mi++) {
+    var mv = vals[mi];
+    if (!mv.n) continue; // 无项目的客户不进入价值矩阵
+    var hiVal = mv.amount >= amtHi, hiFreq = mv.n >= 3;
+    matrix[hiVal ? (hiFreq ? '高值高频' : '高值低频') : (hiFreq ? '低值高频' : '低值低频')]++;
+  }
+  out.valueMatrix = {
+    cells: Object.keys(matrix).map(function (k) { return [k, matrix[k]]; }),
+    amtHi: amtHi,
+    top: vals.slice().sort(function (a, b) { return b.amount - a.amount; }).slice(0, 10)
+  };
+
+  // ── 10 复购与健康度 ──
+  var gaps = {}, dueThisYear = 0, overdue = 0, sleeping = 0;
+  var thisYear = new Date().getFullYear();
+  for (var hk in yearsByClient) {
+    var ys = yearsByClient[hk].slice().sort();
+    if (ys.length < 2) continue;
+    for (var hi = 1; hi < ys.length; hi++) {
+      var gap = Number(ys[hi]) - Number(ys[hi - 1]);
+      if (gap > 0 && gap <= 10) gaps[gap] = (gaps[gap] || 0) + 1;
+    }
+  }
+  var gapEntries = Object.keys(gaps).map(function (k) { return [k + ' 年', gaps[k], Number(k)]; })
+    .sort(function (a, b) { return b[1] - a[1] || a[2] - b[2]; });
+  var modeGap = gapEntries.length ? gapEntries[0][2] : 1;
+  var activeCount = 0;
+  for (var hk2 in byClient) {
+    var hv = byClient[hk2];
+    if (!hv.n) continue;
+    activeCount++;
+    if (!hv.lastYear) continue;
+    var nextY = Number(hv.lastYear) + modeGap;
+    if (nextY < thisYear) overdue++;
+    else if (nextY === thisYear) dueThisYear++;
+    if (Number(hv.lastYear) <= thisYear - 2) sleeping++;
+  }
+  out.health = {
+    gaps: gapEntries.map(function (x) { return [x[0], x[1]]; }),
+    modeGap: modeGap, dueThisYear: dueThisYear, overdue: overdue,
+    sleeping: sleeping, activeCount: activeCount, thisYear: thisYear
+  };
+
+  // ── 11 销售深度 ──
+  var bands = [[0, 1e4, '1 万以下'], [1e4, 5e4, '1–5 万'], [5e4, 1e5, '5–10 万'], [1e5, 5e5, '10–50 万'], [5e5, Infinity, '50 万以上']];
+  var amountBands = bands.map(function (b) {
+    var arr = orders.filter(function (o) { var a = o._amount || 0; return a >= b[0] && a < b[1]; });
+    return [b[2], arr.length, insSum(arr.map(function (o) { return o._amount || 0; }))];
+  });
+  var openAges = openOrders.map(function (o) {
+    var d = (Date.now() - new Date(o.created_at)) / DAY;
+    return isFinite(d) && d >= 0 ? Math.round(d) : 0;
+  }).sort(function (a, b) { return a - b; });
+  out.salesDeep = {
+    amountBands: amountBands,
+    wonMonth: insMonth(won, 'won_date'),
+    winWithReason: won.filter(function (o) { return o.notes; }).length,
+    lostWithReason: lost.filter(function (o) { return o.notes; }).length,
+    medianOpenAge: openAges.length ? openAges[Math.floor(openAges.length / 2)] : 0,
+    maxOpenAge: openAges.length ? openAges[openAges.length - 1] : 0
+  };
+
+  // ── 12 线索运营 ──
+  var assigned = L.filter(function (l) { return l.assigned_to; }).length;
+  var aiLeads = L.filter(function (l) { return l.auto_fetched; }).length;
+  var aiConv = converted.filter(function (l) { return l.auto_fetched; }).length;
+  out.leadOps = {
+    site: insTally(L, function (l) { return l.source_site || l.source; }).slice(0, 10),
+    review: insTally(L, function (l) { return l.review_status; }).slice(0, 8),
+    status: insTally(L, function (l) { return l.status; }).slice(0, 8),
+    assigned: assigned, assignRate: insPct(assigned, L.length),
+    aiLeads: aiLeads, aiConv: aiConv,
+    aiConvRate: insPct(aiConv, aiLeads),
+    manualConvRate: insPct(converted.length - aiConv, Math.max(1, L.length - aiLeads)),
+    createdMonth: insMonth(L, 'created_at', 18),
+    convBySource: insTally(converted, function (l) { return l.source_site || l.source; }).slice(0, 10)
+  };
+
+  // ── 13 标讯竞争 ──
+  var PROV = ['北京', '天津', '上海', '重庆', '河北', '山西', '辽宁', '吉林', '黑龙江', '江苏', '浙江', '安徽', '福建', '江西', '山东', '河南', '湖北', '湖南', '广东', '广西', '海南', '四川', '贵州', '云南', '陕西', '甘肃', '青海', '宁夏', '新疆', '西藏', '内蒙古', '香港', '澳门', '台湾'];
+  var regionMap = {};
+  for (var rg = 0; rg < clients.length; rg++) {
+    var addr = String(clients[rg].address || ''), reg = '(未知)';
+    for (var rgi = 0; rgi < PROV.length; rgi++) if (addr.indexOf(PROV[rgi]) >= 0) { reg = PROV[rgi]; break; }
+    regionMap[reg] = (regionMap[reg] || 0) + 1;
+  }
+  var bidEntries = Object.keys(bidders).map(function (k) { return [k, bidders[k]]; }).sort(function (a, b) { return b[1] - a[1]; });
+  var bidTotal = insSum(bidEntries.map(function (x) { return x[1]; }));
+  var bidBands = [[0, 10, '10 万以下'], [10, 50, '10–50 万'], [50, 100, '50–100 万'], [100, 500, '100–500 万'], [500, Infinity, '500 万以上']];
+  var tenderAmtBands = bidBands.map(function (b) {
+    var n = 0;
+    for (var tb = 0; tb < tenders.length; tb++) {
+      var am = insNum(tenders[tb].bid_amount) / 1e4;
+      if (am >= b[0] && am < b[1]) n++;
+    }
+    return [b[2], n];
+  });
+  out.competition = {
+    region: Object.keys(regionMap).map(function (k) { return [k, regionMap[k]]; }).sort(function (a, b) { return b[1] - a[1]; }).slice(0, 10),
+    bidderCR5: insPct(insSum(bidEntries.slice(0, 5).map(function (x) { return x[1]; })), bidTotal),
+    bidderCount: bidEntries.length,
+    amountBands: tenderAmtBands,
+    withBudget: tenders.filter(function (p) { return insNum(p.project_budget) > 0; }).length,
+    withBidAmount: withAmt
+  };
+
+  // ── 14 数据资产健康 ──
+  var nameMap = {};
+  for (var nm = 0; nm < clients.length; nm++) {
+    var nk = String(clients[nm].name || '').trim().toLowerCase();
+    if (!nk) continue;
+    (nameMap[nk] = nameMap[nk] || []).push(clients[nm].id);
+  }
+  var dupGroups = 0, dupRows = 0;
+  for (var dk in nameMap) if (nameMap[dk].length > 1) { dupGroups++; dupRows += nameMap[dk].length; }
+  var staleAt = Date.now() - 90 * DAY;
+  var orderClientSet = {};
+  for (var oc = 0; oc < orders.length; oc++) if (orders[oc].client_id) orderClientSet[orders[oc].client_id] = 1;
+  var activatable = 0;
+  for (var ak in byClient) if (byClient[ak].n > 0 && !orderClientSet[ak]) activatable++;
+  out.assets = {
+    dupGroups: dupGroups, dupRows: dupRows,
+    stale: clients.filter(function (c) { var t = new Date(c.updated_at || c.created_at).getTime(); return isFinite(t) && t < staleAt; }).length,
+    noPhone: clients.filter(function (c) { return !c.phone; }).length,
+    noContact: clients.filter(function (c) { return !c.contact; }).length,
+    noProject: clients.filter(function (c) { return !byClient[c.id] || !byClient[c.id].n; }).length,
+    activatable: activatable,
+    contactsCount: contacts.length,
+    contactWithPosition: contacts.filter(function (c) { return c.position; }).length
+  };
+
   return out;
 }
 
@@ -261,7 +414,7 @@ function insLine(series, opt) {
   for (var g = 0; g <= 4; g++) {
     var gy = pad.t + ih * g / 4;
     s += '<line x1="' + pad.l + '" y1="' + gy + '" x2="' + (W - pad.r) + '" y2="' + gy + '" stroke="rgba(255,255,255,.07)"/>';
-    s += '<text x="3" y="' + (gy + 4) + '" class="ins-ax">' + insComma(Math.round(max * (4 - g) / 4)) + '</text>';
+    s += '<text x="3" y="' + (gy + 4) + '" class="ins-ax">' + (opt.fmt ? opt.fmt(Math.round(max * (4 - g) / 4)) : insComma(Math.round(max * (4 - g) / 4))) + '</text>';
   }
   if (series.length > 1) {
     var d = '';
@@ -270,7 +423,7 @@ function insLine(series, opt) {
     s += '<path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="2.4" stroke-linejoin="round"/>';
   }
   for (var k2 = 0; k2 < xs.length; k2++) {
-    s += '<circle cx="' + xs[k2].toFixed(1) + '" cy="' + ys[k2].toFixed(1) + '" r="2.8" fill="' + col + '"><title>' + insEsc(series[k2][0]) + ': ' + insComma(series[k2][1]) + '</title></circle>';
+    s += '<circle cx="' + xs[k2].toFixed(1) + '" cy="' + ys[k2].toFixed(1) + '" r="2.8" fill="' + col + '"><title>' + insEsc(series[k2][0]) + ': ' + (opt.fmt ? opt.fmt(series[k2][1]) : insComma(series[k2][1])) + '</title></circle>';
   }
   var step = Math.max(1, Math.ceil(series.length / 9));
   for (var k3 = 0; k3 < series.length; k3++) {
@@ -331,6 +484,27 @@ function insKpi(label, value, cap, cls) {
   return '<div class="ins-card ins-kpi"><h3>' + insEsc(label) + '</h3><div class="num ' + (cls || '') + '">' + value + '</div><div class="cap">' + insEsc(cap || '') + '</div></div>';
 }
 
+// 章节导航：14 个模块一键跳转，长页面不用一路滚
+var INS_NAV = ['核心结论', '五层增长', '销售漏斗', '客户分层', '数据质量', '标讯市场', '大厂对标', '客户增长', '价值矩阵', '复购健康', '销售深度', '线索运营', '竞争分析', '数据资产'];
+function insGo(id) { var e = document.getElementById(id); if (e) e.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+function insNav() {
+  var s = '<div class="ins-nav">';
+  for (var i = 0; i < INS_NAV.length; i++) {
+    s += '<button class="ins-nav-chip" onclick="insGo(\'ins-sec-' + (i + 1) + '\')">' + (i + 1) + ' · ' + INS_NAV[i] + '</button>';
+  }
+  return s + '</div>';
+}
+function insMatrix(cells, amtHi) {
+  var order = [['高值高频', '高频 × 高值', 'hot'], ['高值低频', '低频 × 高值', ''], ['低值高频', '高频 × 低值', ''], ['低值低频', '低频 × 低值', 'cold']];
+  var m = {};
+  for (var i = 0; i < cells.length; i++) m[cells[i][0]] = cells[i][1];
+  var s = '<div class="ins-matrix">';
+  for (var j = 0; j < order.length; j++) {
+    s += '<div class="ins-mcell ' + order[j][2] + '"><b>' + insComma(m[order[j][0]] || 0) + '</b><span>' + order[j][1] + '</span></div>';
+  }
+  return s + '</div><div class="ins-note">高值 = 项目中标金额 ≥ ¥' + insMoney(amtHi) + '（前 30% 分位）；高频 = 项目数 ≥ 3。四象限合计＝有项目的客户数。</div>';
+}
+
 var INS_GAPS = [
   ['活动捕获（跟进记录自动留痕）', '0 条跟进记录', '加「跟进记录」字段并强制必填', 'P0'],
   ['客户联系人与可触达信息', '电话/联系人 0%', '从线索表回填客户电话，设必填校验', 'P0'],
@@ -351,9 +525,10 @@ function insightsRender(d) {
 
   s += '<div class="ins-head"><div class="ins-title"><i class="cp-dot"></i>数据分析 <span class="ins-en">INSIGHTS · LIVE</span></div>';
   s += '<div class="ins-tools"><span>数据快照 ' + insEsc(new Date(d.at).toLocaleString('zh-CN', { hour12: false })) + '</span><button class="btn btn-sm" onclick="insightsRefresh()">刷新数据</button></div></div>';
+  s += insNav();
 
   // 01 核心结论
-  s += '<div class="ins-sec"><h3>01 · 核心结论</h3><div class="ins-lead">采集能力很强，但销售过程几乎没有留下痕迹。</div><div class="ins-grid ins-g3">';
+  s += '<div class="ins-sec" id="ins-sec-1"><h3>01 · 核心结论</h3><div class="ins-lead">采集能力很强，但销售过程几乎没有留下痕迹。</div><div class="ins-grid ins-g3">';
   s += insKpi('线索跟进覆盖率', insPct(F.followUpCoverage, 1) + '%', insComma(d.scale.leads) + ' 条线索，' + F.layers[2].value + ' 条有跟进记录', 'c-red');
   s += insKpi('线索 → 订单', F.clientToOrder + '%', insComma(F.leadToClient) + ' 个客户转出，仅 ' + F.clientToOrderN + ' 个有订单', 'c-red');
   s += insKpi('赢单率', S.winRate + '%', S.won + ' 赢 / ' + S.lost + ' 输', 'c-amb');
@@ -368,11 +543,11 @@ function insightsRender(d) {
   s += '</div></div>';
 
   // 02 五层增长
-  s += '<div class="ins-sec"><h3>02 · 五层循环增长诊断</h3><div class="ins-lead">参照纷享销客「被看见 → 被识别 → 被跟进 → 被成交 → 被循环」定位链路断点。宽度按平方根缩放，真实数字以文字为准。</div>';
+  s += '<div class="ins-sec" id="ins-sec-2"><h3>02 · 五层循环增长诊断</h3><div class="ins-lead">参照纷享销客「被看见 → 被识别 → 被跟进 → 被成交 → 被循环」定位链路断点。宽度按平方根缩放，真实数字以文字为准。</div>';
   s += '<div class="ins-card">' + insFunnel(F.layers) + '<div class="ins-note">断点定位：<b class="c-red">被跟进 = ' + F.layers[2].value + '</b> 导致后两层失去过程依据。</div></div></div>';
 
   // 03 销售漏斗
-  s += '<div class="ins-sec"><h3>03 · 销售漏斗与业绩</h3><div class="ins-lead">口径对齐 Salesforce：赢单率 = Won/(Won+Lost)，销售周期 = 关闭日−创建日。</div><div class="ins-grid ins-g4">';
+  s += '<div class="ins-sec" id="ins-sec-3"><h3>03 · 销售漏斗与业绩</h3><div class="ins-lead">口径对齐 Salesforce：赢单率 = Won/(Won+Lost)，销售周期 = 关闭日−创建日。</div><div class="ins-grid ins-g4">';
   s += insKpi('已赢单', '¥' + insMoney(S.wonAmount), S.won + ' 单 · 均单 ¥' + insMoney(S.avgDeal), 'c-grn');
   s += insKpi('平均销售周期', S.avgCycle == null ? '—' : S.avgCycle + ' 天', '基于 ' + S.won + ' 个赢单样本', 'c-pri');
   s += insKpi('在谈管道', '¥' + insMoney(S.openAmount), S.open + ' 单', 'c-pri');
@@ -383,7 +558,7 @@ function insightsRender(d) {
   s += '</div><div class="ins-card" style="margin-top:12px"><h4>订单创建趋势</h4>' + insLine(S.createdMonth, { color: '#A78BFA' }) + '</div></div>';
 
   // 04 客户分层
-  s += '<div class="ins-sec"><h3>04 · 客户价值分层</h3><div class="ins-lead">订单样本不足做标准 RFM，改用「项目数 + 最近招标年 + 中标金额」代理分层。</div>';
+  s += '<div class="ins-sec" id="ins-sec-4"><h3>04 · 客户价值分层</h3><div class="ins-lead">订单样本不足做标准 RFM，改用「项目数 + 最近招标年 + 中标金额」代理分层。</div>';
   s += '<div class="ins-card">' + insSegBar(d.segment.dist) + '</div><div class="ins-grid ins-g2" style="margin-top:12px">';
   s += '<div class="ins-card"><h4>客户类型</h4>' + insBars(insTally((allClients || []).filter(function (c) { return !c.deleted_at; }), function (c) {
     var a = insParse(c.type); return a.length ? a[0] : '(空)';
@@ -394,13 +569,13 @@ function insightsRender(d) {
   })) + '</div></div>';
 
   // 05 数据质量
-  s += '<div class="ins-sec"><h3>05 · 数据质量诊断</h3><div class="ins-lead">字段完整度决定分析上限。红 &lt;10%，黄 10–60%，绿 ≥60%。</div><div class="ins-grid ins-g2">';
+  s += '<div class="ins-sec" id="ins-sec-5"><h3>05 · 数据质量诊断</h3><div class="ins-lead">字段完整度决定分析上限。红 &lt;10%，黄 10–60%，绿 ≥60%。</div><div class="ins-grid ins-g2">';
   s += '<div class="ins-card"><h4>客户表</h4>' + insCompleteRows(d.quality.clients) + '</div>';
   s += '<div class="ins-card"><h4>线索表</h4>' + insCompleteRows(d.quality.leads) + '</div></div>';
   s += '<div class="ins-warn"><b>口径限制</b><ul><li>标讯金额混合预算与中标价、单位不一，仅作市场规模参考。</li><li>赢单率分母含无原因的关闭单，真实业务赢单率可能不同。</li><li>客户分层反映商机活跃度，不是已成交价值。</li></ul></div></div>';
 
   // 06 标讯市场
-  s += '<div class="ins-sec"><h3>06 · 标讯市场分析</h3><div class="ins-lead">' + insComma(T.total) + ' 条项目，' + insComma(T.withAmount) + ' 条有金额。</div>';
+  s += '<div class="ins-sec" id="ins-sec-6"><h3>06 · 标讯市场分析</h3><div class="ins-lead">' + insComma(T.total) + ' 条项目，' + insComma(T.withAmount) + ' 条有金额。</div>';
   s += '<div class="ins-card"><h4>招标年份分布</h4>' + insLine(T.year, { color: '#34D399' }) + '</div><div class="ins-grid ins-g2" style="margin-top:12px">';
   s += '<div class="ins-card"><h4>Top 甲方</h4>' + insBars(T.topBuyers, { color: '#38BDF8' }) + '</div>';
   s += '<div class="ins-card"><h4>Top 中标集成商</h4>' + insBars(T.topBidders, { color: '#A78BFA' }) + '</div></div></div>';
@@ -410,8 +585,87 @@ function insightsRender(d) {
     var cls = g[3] === 'P0' ? 'p0' : g[3] === 'P1' ? 'p1' : 'p2';
     return [insEsc(g[0]), insEsc(g[1]), insEsc(g[2]), '<span class="ins-tag ' + cls + '">' + g[3] + '</span>'];
   });
-  s += '<div class="ins-sec"><h3>07 · 对标大厂 CRM：差距与建议</h3><div class="ins-lead">参照 Salesforce / 纷享销客 / HubSpot 的分析能力，结合当前数据现状给出优先级。</div>';
+  s += '<div class="ins-sec" id="ins-sec-7"><h3>07 · 对标大厂 CRM：差距与建议</h3><div class="ins-lead">参照 Salesforce / 纷享销客 / HubSpot 的分析能力，结合当前数据现状给出优先级。</div>';
   s += insTable(['大厂标准能力', '当前现状', '建议动作', '优先级'], gapRows) + '</div>';
+
+  var G = d.growth, V = d.valueMatrix, HE = d.health, SD = d.salesDeep, LO = d.leadOps, CO = d.competition, AS = d.assets;
+
+  // 08 客户增长与来源
+  s += '<div class="ins-sec" id="ins-sec-8"><h3>08 · 客户增长与来源结构</h3><div class="ins-lead">识别客户积累节奏与来源集中度：一次性导入还是持续增长，决定后续运营策略。</div><div class="ins-grid ins-g4">';
+  s += insKpi('客户总数', insComma(d.scale.clients), '联系人 ' + insComma(d.scale.contacts) + ' 人', 'c-pri');
+  var peakYear = G.createdYear.slice().sort(function (a, b) { return b[1] - a[1]; })[0];
+  s += insKpi('建库高峰年', insEsc(peakYear ? peakYear[0] : '—'), peakYear ? peakYear[1] + ' 家客户在该年创建' : '无数据', 'c-amb');
+  s += insKpi('第一大来源', insEsc(G.source.length ? G.source[0][0] : '—'), G.source.length ? insPct(G.source[0][1], d.scale.clients) + '% 的客户来自此渠道' : '', 'c-amb');
+  s += insKpi('无来源标注', insComma(G.source.filter(function (x) { return x[0] === '(空)'; })[0] ? G.source.filter(function (x) { return x[0] === '(空)'; })[0][1] : 0), '来源缺失无法做渠道 ROI', 'c-red');
+  s += '</div><div class="ins-grid ins-g2" style="margin-top:12px">';
+  s += '<div class="ins-card"><h4>客户创建趋势（近 18 个月）</h4>' + insLine(G.createdMonth, { color: '#38BDF8' }) + '</div>';
+  s += '<div class="ins-card"><h4>客户来源分布</h4>' + insBars(G.source, { color: '#60A5FA' }) + '</div></div>';
+  s += '<div class="ins-grid ins-g2" style="margin-top:12px">';
+  s += '<div class="ins-card"><h4>生命周期阶段</h4>' + insBars(G.lifecycle, { color: '#34D399' }) + '</div>';
+  s += '<div class="ins-card"><h4>客户分级</h4>' + insBars(G.grade, { color: '#A78BFA' }) + '</div></div></div>';
+
+  // 09 客户价值矩阵
+  s += '<div class="ins-sec" id="ins-sec-9"><h3>09 · 客户价值矩阵（频次 × 金额）</h3><div class="ins-lead">把项目频次和中标金额交叉，找出「高频高值」的重点客户与「低频高值」的一次性大单。</div>';
+  s += '<div class="ins-card">' + insMatrix(V.cells, V.amtHi) + '</div>';
+  s += '<div class="ins-card" style="margin-top:12px"><h4>中标金额 Top 10 客户</h4>' + insTable(['甲方客户', '项目数', '跨年数', '中标金额', '最近招标年'], V.top.map(function (v) {
+    return [insEsc(v.name), insComma(v.n), insComma(v.years.length), '¥' + insMoney(v.amount), insEsc(v.lastYear)];
+  })) + '</div></div>';
+
+  // 10 复购与健康度
+  s += '<div class="ins-sec" id="ins-sec-10"><h3>10 · 复购周期与客户健康度</h3><div class="ins-lead">用历史招标间隔推算下次到期时间，提前布局续做；识别长期无项目的沉睡客户。</div><div class="ins-grid ins-g4">';
+  s += insKpi('最常见复购周期', HE.modeGap + ' 年', '基于跨年招标客户的年份间隔', 'c-pri');
+  s += insKpi('今年应复购', insComma(HE.dueThisYear) + ' 家', '按「最近招标年 + ' + HE.modeGap + ' 年」推算', 'c-amb');
+  s += insKpi('已逾期未复购', insComma(HE.overdue) + ' 家', '超过推算到期年仍无新项目', 'c-red');
+  s += insKpi('沉睡客户', insComma(HE.sleeping) + ' 家', '最近项目在 ' + (HE.thisYear - 2) + ' 年及以前', 'c-red');
+  s += '</div><div class="ins-card" style="margin-top:12px"><h4>复购间隔分布</h4>' + insBars(HE.gaps, { color: '#A78BFA' }) + '<div class="ins-note">活跃客户 ' + insComma(HE.activeCount) + ' 家；间隔为相邻两个招标年份之差，1 年表示连年招标。</div></div></div>';
+
+  // 11 销售深度
+  s += '<div class="ins-sec" id="ins-sec-11"><h3>11 · 销售深度与订单结构</h3><div class="ins-lead">订单金额分布、赢单节奏与在谈订单停留时长，判断管道质量和推进效率。</div><div class="ins-grid ins-g4">';
+  s += insKpi('金额中位数·在谈', SD.medianOpenAge + ' 天', '在谈订单创建至今的中位停留', 'c-amb');
+  s += insKpi('最长在谈', SD.maxOpenAge + ' 天', '需优先清理的陈旧管道', 'c-red');
+  s += insKpi('赢单有复盘', SD.winWithReason + '/' + S.won, '赢单原因记录数', 'c-pri');
+  s += insKpi('输单有复盘', SD.lostWithReason + '/' + S.lost, '输单原因记录数', 'c-red');
+  s += '</div><div class="ins-grid ins-g2" style="margin-top:12px">';
+  s += '<div class="ins-card"><h4>订单金额分档（笔数）</h4>' + insBars(SD.amountBands.map(function (x) { return [x[0], x[1]]; }), { color: '#38BDF8' }) + '</div>';
+  s += '<div class="ins-card"><h4>赢单金额趋势</h4>' + insLine(SD.wonMonth, { color: '#34D399', fmt: function (v) { return '¥' + insMoney(v); } }) + '</div></div>';
+  s += '<div class="ins-card" style="margin-top:12px"><h4>各档位金额合计</h4>' + insTable(['金额档位', '订单数', '金额合计'], SD.amountBands.map(function (x) {
+    return [insEsc(x[0]), insComma(x[1]), '¥' + insMoney(x[2])];
+  })) + '</div></div>';
+
+  // 12 线索运营
+  s += '<div class="ins-sec" id="ins-sec-12"><h3>12 · 线索来源与运营效率</h3><div class="ins-lead">对比 AI 采集与人工线索的转化效率，检查分配与跟进是否到位。</div><div class="ins-grid ins-g4">';
+  s += insKpi('线索分配率', LO.assignRate + '%', LO.assigned + '/' + insComma(d.scale.leads) + ' 条有负责人', LO.assignRate < 10 ? 'c-red' : 'c-pri');
+  s += insKpi('AI 线索占比', insPct(LO.aiLeads, d.scale.leads) + '%', insComma(LO.aiLeads) + ' 条自动采集', 'c-pri');
+  s += insKpi('AI 线索转化率', LO.aiConvRate + '%', insComma(LO.aiConv) + ' 条 AI 线索已转客户', 'c-amb');
+  s += insKpi('人工线索转化率', LO.manualConvRate + '%', '对比 AI 采集的转化质量', 'c-grn');
+  s += '</div><div class="ins-grid ins-g2" style="margin-top:12px">';
+  s += '<div class="ins-card"><h4>线索来源站点</h4>' + insBars(LO.site, { color: '#38BDF8' }) + '</div>';
+  s += '<div class="ins-card"><h4>各来源转客户数</h4>' + insBars(LO.convBySource, { color: '#34D399' }) + '</div></div>';
+  s += '<div class="ins-grid ins-g2" style="margin-top:12px">';
+  s += '<div class="ins-card"><h4>审核状态</h4>' + insBars(LO.review, { color: '#60A5FA' }) + '</div>';
+  s += '<div class="ins-card"><h4>线索创建趋势（近 18 个月）</h4>' + insLine(LO.createdMonth, { color: '#A78BFA' }) + '</div></div></div>';
+
+  // 13 标讯竞争
+  s += '<div class="ins-sec" id="ins-sec-13"><h3>13 · 标讯市场竞争格局</h3><div class="ins-lead">中标单位集中度、区域分布与金额结构，判断市场竞争强度和重点区域。</div><div class="ins-grid ins-g4">';
+  s += insKpi('中标单位数', insComma(CO.bidderCount) + ' 家', '出现在项目中标名单中的单位', 'c-pri');
+  s += insKpi('Top5 集中度', CO.bidderCR5 + '%', '前 5 家中标单位的项目占比', 'c-amb');
+  s += insKpi('有预算标注', insComma(CO.withBudget) + ' 条', insPct(CO.withBudget, T.total) + '% 的项目有预算', 'c-pri');
+  s += insKpi('有中标价', insComma(CO.withBidAmount) + ' 条', insPct(CO.withBidAmount, T.total) + '% 的项目有中标金额', 'c-grn');
+  s += '</div><div class="ins-grid ins-g2" style="margin-top:12px">';
+  s += '<div class="ins-card"><h4>客户区域分布（按地址）</h4>' + insBars(CO.region, { color: '#38BDF8' }) + '</div>';
+  s += '<div class="ins-card"><h4>项目中标金额分档（万）</h4>' + insBars(CO.amountBands, { color: '#A78BFA' }) + '</div></div></div>';
+
+  // 14 数据资产健康
+  s += '<div class="ins-sec" id="ins-sec-14"><h3>14 · 数据资产健康与可激活存量</h3><div class="ins-lead">数据重复、陈旧与可触达性，直接决定上面 13 个模块的分析可信度。</div><div class="ins-grid ins-g4">';
+  s += insKpi('疑似重名客户', insComma(AS.dupGroups) + ' 组', '涉及 ' + insComma(AS.dupRows) + ' 条客户记录', AS.dupGroups > 0 ? 'c-red' : 'c-grn');
+  s += insKpi('90 天未更新', insComma(AS.stale) + ' 家', '长期无动态的客户档案', 'c-amb');
+  s += insKpi('可激活存量', insComma(AS.activatable) + ' 家', '有标讯项目但还没有订单', 'c-pri');
+  s += insKpi('无项目客户', insComma(AS.noProject) + ' 家', '占客户总数 ' + insPct(AS.noProject, d.scale.clients) + '%', 'c-amb');
+  s += '</div><div class="ins-card" style="margin-top:12px"><h4>可触达性</h4>' + insTable(['指标', '数值', '占比'], [
+    ['客户有电话', insComma(d.scale.clients - AS.noPhone), insPct(d.scale.clients - AS.noPhone, d.scale.clients) + '%'],
+    ['客户有联系人', insComma(d.scale.clients - AS.noContact), insPct(d.scale.clients - AS.noContact, d.scale.clients) + '%'],
+    ['联系人有职位', insComma(AS.contactWithPosition), insPct(AS.contactWithPosition, AS.contactsCount) + '%']
+  ]) + '</div><div class="ins-warn"><b>行动建议</b><ul><li>优先合并 ' + insComma(AS.dupGroups) + ' 组重名客户，避免报价与跟进记录分裂。</li><li>从线索表回填客户电话/联系人：线索手机号完整度 ' + d.quality.leads['手机号'] + '%，而客户表为 0%。</li><li>' + insComma(AS.activatable) + ' 家有标讯无订单，是最直接的商机池，建议按复购到期年排序跟进。</li></ul></div></div>';
 
   box.innerHTML = s;
 }
