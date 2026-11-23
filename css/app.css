@@ -2597,3 +2597,86 @@ body.dk .tn-brief{background:rgba(255,255,255,.05);color:#A9BCDD}
  #tender-stats .stat-card{flex:1 1 calc(50% - 6px);max-width:none;min-width:0}
  #tender-stats .stat-num{font-size:21px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 }
+
+/* ===== 数据分析（21-insights.js）=====
+   实时指标看板：五层增长 / 销售漏斗 / 客户分层 / 数据质量 / 标讯市场 / 大厂对标。
+   沿用驾驶舱深色变量；只加颜色与卡片，不动全局尺寸布局。 */
+#insights-view{padding:16px;overflow:auto}
+#ins-body{max-width:1180px;margin:0 auto}
+.ins-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px;padding:16px 20px;border:1px solid var(--border);border-radius:var(--radius-lg);background:linear-gradient(135deg,rgba(56,189,248,.10),rgba(167,139,250,.07) 60%,rgba(255,255,255,.02));box-shadow:var(--shadow)}
+.ins-title{display:flex;align-items:center;gap:9px;font-size:17px;font-weight:800;color:var(--text)}
+.ins-en{font-size:10px;letter-spacing:.16em;color:var(--text3);font-weight:600}
+.ins-tools{display:flex;align-items:center;gap:12px;font-size:11px;color:var(--text3)}
+.ins-sec{margin-bottom:22px}
+.ins-sec>h3{font-size:14px;font-weight:800;color:var(--text);margin-bottom:4px;padding-left:10px;border-left:3px solid var(--primary)}
+.ins-lead{font-size:11px;color:var(--text3);margin:6px 0 12px 10px}
+.ins-grid{display:grid;gap:12px}
+.ins-g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.ins-g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.ins-g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.ins-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;box-shadow:var(--shadow)}
+.ins-card h3,.ins-card h4{font-size:12px;color:var(--text2);font-weight:700;margin-bottom:9px}
+.ins-kpi .num{font-size:24px;font-weight:800;letter-spacing:-.5px;font-variant-numeric:tabular-nums;line-height:1.2}
+.ins-kpi .cap{font-size:10px;color:var(--text3);margin-top:5px}
+.ins-kpi .c-red,.ins-find.red b,.c-red{color:var(--danger,#F87171)}
+.ins-kpi .c-amb,.ins-find.amb b,.c-amb{color:var(--warning,#FBBF24)}
+.ins-kpi .c-grn,.ins-find.grn b,.c-grn{color:var(--success,#34D399)}
+.ins-kpi .c-pri,.c-pri{color:var(--primary)}
+.ins-find{border-left:3px solid var(--primary);padding:10px 13px;background:var(--card);border-radius:0 10px 10px 0}
+.ins-find b{font-size:12px;color:var(--primary)}
+.ins-find p{font-size:11px;color:var(--text2);margin-top:4px;line-height:1.55}
+.ins-find.red{border-color:var(--danger,#F87171)}
+.ins-find.amb{border-color:var(--warning,#FBBF24)}
+.ins-find.grn{border-color:var(--success,#34D399)}
+.ins-loading{text-align:center;padding:60px 16px;color:var(--text3);font-size:13px}
+.ins-svg{width:100%;height:auto;display:block;overflow:visible}
+.ins-svg .ins-bl{fill:var(--text2);font-size:11px}
+.ins-svg .ins-bv{fill:var(--text);font-size:10.5px;font-weight:700;font-variant-numeric:tabular-nums}
+.ins-svg .ins-ax{fill:var(--text3);font-size:10px}
+.ins-svg .ins-fl{fill:#FFFFFF;font-size:13px;font-weight:800;paint-order:stroke;stroke:rgba(0,0,0,.45);stroke-width:2.5px}
+.ins-svg .ins-fn{fill:#A9BCDD;font-size:10.5px;font-weight:600}
+.ins-note{font-size:11px;color:var(--text3);margin-top:9px}
+.ins-segbar{display:flex;height:12px;border-radius:99px;overflow:hidden;gap:2px;margin:6px 0 10px}
+.ins-segbar>div{transition:width .3s}
+.ins-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--text2)}
+.ins-legend i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.ins-crow{display:flex;align-items:center;gap:9px;margin:7px 0;font-size:11px}
+.ins-cl{width:76px;flex:0 0 76px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ins-track{flex:1;height:7px;background:rgba(255,255,255,.06);border-radius:99px;overflow:hidden}
+.ins-fill{height:100%;border-radius:99px}
+.ins-fill.good{background:var(--success,#34D399)}
+.ins-fill.warn{background:var(--warning,#FBBF24)}
+.ins-fill.bad{background:var(--danger,#F87171)}
+.ins-cv{width:40px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+.ins-cv.good{color:var(--success,#34D399)}
+.ins-cv.warn{color:var(--warning,#FBBF24)}
+.ins-cv.bad{color:var(--danger,#F87171)}
+.ins-tw{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);background:var(--card)}
+.ins-tw table{width:100%;border-collapse:collapse;font-size:11px;min-width:520px}
+.ins-tw th{text-align:left;color:var(--text3);font-weight:700;font-size:10px;padding:9px 11px;background:rgba(255,255,255,.035);border-bottom:1px solid var(--border);white-space:nowrap}
+.ins-tw td{padding:9px 11px;border-bottom:1px solid rgba(255,255,255,.035);color:var(--text2);font-variant-numeric:tabular-nums}
+.ins-tw tr:last-child td{border-bottom:0}
+.ins-tw td.tl{color:var(--text);font-weight:600}
+.ins-tag{display:inline-block;font-size:10px;font-weight:700;border-radius:6px;padding:2px 7px}
+.ins-tag.p0{color:var(--danger,#F87171);background:rgba(248,113,113,.12)}
+.ins-tag.p1{color:var(--warning,#FBBF24);background:rgba(251,191,36,.12)}
+.ins-tag.p2{color:var(--primary);background:rgba(56,189,248,.12)}
+.ins-warn{background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.22);border-radius:var(--radius);padding:12px 15px;margin-top:12px}
+.ins-warn b{font-size:12px;color:var(--danger,#F87171)}
+.ins-warn ul{margin:6px 0 0 18px;font-size:11px;color:var(--text2)}
+.ins-warn li{padding:2px 0}
+@media(max-width:900px){.ins-g4{grid-template-columns:repeat(2,minmax(0,1fr))}.ins-g3{grid-template-columns:repeat(2,minmax(0,1fr))}.ins-g2{grid-template-columns:1fr}}
+@media(max-width:520px){.ins-g3,.ins-g4{grid-template-columns:1fr}#insights-view{padding:10px}.ins-head{padding:12px}}
+/* 分析页独立深色底：body 背景为 transparent，长页滚动会露出白底；
+   其它视图靠 ::before 光效层遮住，这里直接给视图自身铺深色渐变。 */
+#insights-view{background:linear-gradient(180deg,rgba(10,18,32,.6),rgba(5,10,20,.92) 30%,#050A14)}
+/* 五层增长漏斗：横向条形，避免文字重叠 */
+.ins-funnel{display:flex;flex-direction:column;gap:2px}
+.ins-frow{display:flex;align-items:center;gap:10px;font-size:12px}
+.ins-fname{width:56px;flex:0 0 56px;font-weight:800}
+.ins-ftrack{flex:1;height:16px;background:rgba(255,255,255,.05);border-radius:5px;overflow:hidden}
+.ins-ffill{height:100%;border-radius:5px;transition:width .4s;min-width:2px}
+.ins-fval{width:150px;flex:0 0 150px;text-align:right;font-weight:800;font-variant-numeric:tabular-nums}
+.ins-fval small{font-size:10px;font-weight:400;color:var(--text3)}
+.ins-fnote{font-size:10.5px;color:var(--text3);padding-left:66px;margin:-2px 0 6px}
+@media(max-width:520px){.ins-fval{width:112px;flex-basis:112px;font-size:11px}.ins-fnote{padding-left:0}}

@@ -18,5 +18,6 @@
   "js/modules/17-workbench.js",
   "js/modules/18-templates.js",
   "js/modules/19-renewal.js",
-  "js/modules/20-tender-news.js"
+  "js/modules/20-tender-news.js",
+  "js/modules/21-insights.js"
 ]

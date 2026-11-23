@@ -9,7 +9,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👔</text></svg>">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<link rel="stylesheet" href="css/app.css?v=15bcc7c0">
+<link rel="stylesheet" href="css/app.css?v=a726679a">
 
 <!-- 百度地图改为按需加载（见 js/app_v2.js 的 ensureBaiduMap），避免首屏同步阻塞 -->
 </head>
@@ -95,6 +95,7 @@
    <button class="topbar-tab active" id="tab-analytics" onclick="switchTab('analytics')">总览</button>
    <button class="topbar-tab" id="tab-clients" onclick="switchTab('clients')">客户</button>
    <button class="topbar-tab" id="tab-tenders" onclick="switchTab('tenders')">项目标讯</button>
+   <button class="topbar-tab" id="tab-insights" onclick="switchTab('insights')">数据分析</button>
    <button class="topbar-tab" id="tab-orders" onclick="switchTab('orders')">订单</button>
    <button class="topbar-tab" id="tab-collab" onclick="switchTab('collab')">协同</button>
    <button class="topbar-tab" id="tab-reports" onclick="switchTab('reports')">报表</button>
@@ -177,6 +178,10 @@
   <div class="tender-list" id="tender-list"></div>
   <div id="tender-pager" class="pager hidden"></div>
   <div class="empty hidden" id="tender-empty"><div class="empty-icon">📭</div>没有符合条件的项目标讯</div>
+ </div>
+ <!-- ===== 数据分析：实时指标看板（21-insights.js） ===== -->
+ <div id="insights-view" class="hidden">
+  <div id="ins-body"><div class="ins-loading">正在汇总分析数据…</div></div>
  </div>
  <div id="order-view" class="hidden">
   <div class="biz-tabs" id="biz-tabs">
@@ -2259,7 +2264,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 <script src="js/modules/04-client-list.js?v=db714abb"></script>
 <script src="js/modules/05-client-detail.js?v=2753a4e1"></script>
 <script src="js/modules/06-client-tools.js?v=5fdb1d0b"></script>
-<script src="js/modules/07-orders.js?v=5d9d4df6"></script>
+<script src="js/modules/07-orders.js?v=d56c546f"></script>
 <script src="js/modules/08-admin.js?v=d16f5cf8"></script>
 <script src="js/modules/09-sales.js?v=83d62ee5"></script>
 <script src="js/modules/10-charts.js?v=5122efef"></script>
@@ -2273,6 +2278,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 <script src="js/modules/18-templates.js?v=efe0ac1f"></script>
 <script src="js/modules/19-renewal.js?v=12b4cbe1"></script>
 <script src="js/modules/20-tender-news.js?v=910f3cf3"></script>
+<script src="js/modules/21-insights.js?v=6920cdf8"></script>
 
 
 <!-- ===== END service-view ===== -->
