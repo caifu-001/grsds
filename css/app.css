@@ -1222,6 +1222,9 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
 /* AI 导入标记：近期项目 / 联系人只要来自采集就挂一枚，与客户卡片来源徽标同色系。
    flex-shrink:0 防止在 360 折叠标题里被长项目名挤没 */
 .ai-import-mark{display:inline-block;flex-shrink:0;font-size:10px;font-weight:600;line-height:1.4;padding:1px 6px;margin-left:5px;border-radius:var(--radius-full);background:#E0F2FE;color:#0369A1;white-space:nowrap;vertical-align:middle}
+/* 一套人马多块牌子：联系人「兼职多个单位」标记，紫色系跟 AI 蓝色徽标区分 */
+.multi-unit-mark{display:inline-block;flex-shrink:0;font-size:10px;font-weight:600;line-height:1.4;padding:1px 6px;margin-left:5px;border-radius:var(--radius-full);background:rgba(139,92,246,.16);color:#A78BFA;white-space:nowrap;vertical-align:middle}
+.c360-contact-mu{font-size:10.5px;line-height:1.5;color:var(--text3);margin-top:5px;padding:5px 8px;border-left:2px solid #8B5CF6;background:rgba(139,92,246,.07);border-radius:0 5px 5px 0;word-break:break-all}
 /* 中标行：结果公告回填进来的「谁中了、多少钱」。
    绿色实底太抢眼，用浅绿药丸 + 深绿字，和来源那行小字区分开就行 */
 .card-win{display:inline-flex;align-items:center;max-width:100%;font-size:11px;line-height:18px;

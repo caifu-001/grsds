@@ -522,6 +522,7 @@ function renderClient360Contacts(c){
       var dm=co.is_decision_maker?' ⭐':'',bd='';
       var ctAi=aiCtOf(co);
       var aiCt=ctAi?aiMarkHtml(ctAi):'';
+      var muCt=multiUnitMarkHtml(co);
       if(co.birthday){var bdDate=new Date(co.birthday);if(!isNaN(bdDate.getTime()))bd='<span style="font-size:11px;color:var(--warning)">🎂 '+bdDate.toLocaleDateString('zh-CN')+'</span>'}
       var rel=co.relationship_to?'<span style="font-size:11px;color:var(--text3)">关系: '+h(co.relationship_to)+'</span>':'';
       // 号码字段兼容两种历史写法（JSON 数组 / 「023-123 / 138…」纯串），
@@ -539,7 +540,7 @@ function renderClient360Contacts(c){
       html+='<div class="c360-contact-item c360-fold'+(_cOpen?'':' collapsed')+'" data-kind="ct" data-fold="'+_cKey+'">';
       html+='<div class="c360-fold-head" onclick="c360FoldToggle(this)">'
         +'<span class="c360-fold-caret">'+(_cOpen?'▾':'▸')+'</span>'
-        +'<span class="c360-fold-title c360-contact-name">'+h(co.name||'未命名')+dm+aiCt+'</span>'
+        +'<span class="c360-fold-title c360-contact-name">'+h(co.name||'未命名')+dm+aiCt+muCt+'</span>'
         +'<span class="c360-fold-sum">'+h(_cSum.join(' · '))+'</span>'
         +'<button onclick="event.stopPropagation();transferFrom360(\''+co.id+'\')" style="font-size:11px;color:var(--primary);border:1px solid var(--primary);border-radius:12px;background:transparent;padding:2px 10px;cursor:pointer;flex-shrink:0">转移</button>'
         +'</div>';
@@ -551,6 +552,8 @@ function renderClient360Contacts(c){
       if(lls.length)html+='<span>🖥 '+h(lls.join(' / '))+'</span>';
       if(ems.length)html+='<span>📧 '+h(ems.join(' / '))+'</span>';
       var ed=co.entered_date?'<span style="font-size:11px;color:var(--text3)">📝 录入时间: '+h(String(co.entered_date).slice(0,10))+'</span>':'';
+      var muTxt=multiUnitOf(co);
+      if(muTxt)html+='<div class="c360-contact-mu">'+h(muTxt)+'</div>';
       html+='</div><div class="c360-contact-badges">'+bd+rel+ed+'</div></div></div>';
     }
     html+='</div>';
@@ -1299,6 +1302,11 @@ async function leadToClientProfileRun(l){
   // 新联系人跟老联系人共用总机号，被并进别人的档案里，名字永远丢。
   var phAll=leadPhonesOf(l);
   var mobList=phAll.mobiles, telList=phAll.telnums;
+  // 人工确认过「一套人马多块牌子」的线索，转成客户时给联系人也打「兼职多个单位」备注，
+  // 只追加不覆盖销售备注；_aliasNote 只在审核/转客户确认时写入，不会误伤普通线索。
+  var muNote=l&&l._aliasNote
+    ? (MULTI_UNIT_TAG+'：'+String(l._aliasNote).replace(/^⚠一套班子两块牌子[：:]\s*/,'').trim()+'，疑似兼职多个单位，未自动合并')
+    : '';
   var ownerCid='';
   var enteredDate=leadEnteredDate(l);
   if(mobList.length||telList.length||l.contact_name){
@@ -1345,6 +1353,10 @@ async function leadToClientProfileRun(l){
       // AI 标记只补空：销售手写的备注一个字都不覆盖
       var dupSite=aiSiteOf(l);
       if(dupSite&&!String(dupRow.notes||'').trim())ctPatch.notes='AI导入:'+dupSite;
+      if(muNote&&!multiUnitOf(dupRow)){
+        var _base=ctPatch.notes||String(dupRow.notes||'');
+        ctPatch.notes=String(_base||'')+(String(_base||'').trim()?'；':'')+muNote;
+      }
       out.phoneAdded=addM.length+addT.length;
       if(Object.keys(ctPatch).length){
         var uw=await safeWriteContacts('update',ctPatch,dupRow.id);
@@ -1371,6 +1383,7 @@ async function leadToClientProfileRun(l){
       // AI 导入标记写在 notes（联系人表单不展示也不保存 notes，销售改资料不会抹掉）
       var insSite=aiSiteOf(l);
       if(insSite)ctIns.notes='AI导入:'+insSite;
+      if(muNote)ctIns.notes=String(ctIns.notes||'')+(ctIns.notes?'；':'')+muNote;
       var cr=await sb.from('contacts').insert(ctIns).select('id');
       if(cr.error){
         // 没权限/校验失败不挡住建档，只是项目里挂不上负责人 id

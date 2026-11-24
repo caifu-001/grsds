@@ -131,6 +131,20 @@ function aiMarkHtml(src){
   var txt='🤖 AI导入'+(src&&src!=='招标采集'?('·'+src):'');
   return '<span class="ai-import-mark" title="'+escHtml(tip)+'">'+escHtml(txt)+'</span>';
 }
+// 「一套人马多块牌子」联系人在采集时被打了「兼职多个单位」备注（写在 notes，表单不展示不覆盖）。
+// 这里按固定标记解析成小徽标，让销售在客户详情 / 360 里一眼看到；与 AI 标记互不干扰。
+var MULTI_UNIT_TAG='🔗兼职多个单位';
+function multiUnitOf(co){
+  var s=String((co&&co.notes)||''),i=s.indexOf(MULTI_UNIT_TAG);
+  if(i<0)return '';
+  var t=s.slice(i).split(/[；;\n]/)[0].trim();
+  return t||MULTI_UNIT_TAG;
+}
+function multiUnitMarkHtml(co){
+  var t=multiUnitOf(co);
+  if(!t)return '';
+  return '<span class="multi-unit-mark" title="'+escHtml(t)+'">🔗 兼职多单位</span>';
+}
 
 // === Auth ===
 var loginFailCount=0,loginLockUntil=null;
