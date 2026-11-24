@@ -47,6 +47,14 @@ function insMoney(v) {
   return Math.round(v).toLocaleString('zh-CN');
 }
 function insComma(n) { return (n == null ? 0 : n).toLocaleString('zh-CN'); }
+function insPhones(v) {
+  var nums = [];
+  if (Array.isArray(v)) nums = v;
+  else { try { var j = JSON.parse(v || '[]'); nums = Array.isArray(j) ? j : [j]; } catch (e) { nums = String(v || '').split(/[,，\/\s]+/); } }
+  var out = [];
+  for (var i = 0; i < nums.length; i++) String(nums[i] || '').replace(/1[3-9]\d{9}/g, function (m) { if (out.indexOf(m) < 0) out.push(m); return m; });
+  return out;
+}
 
 // 线索池只读必要字段，分批拉（PostgREST 单次上限 1000 行）
 async function insightsFetchLeads() {
@@ -380,6 +388,46 @@ function insightsCompute(leads) {
     contactsCount: contacts.length,
     contactWithPosition: contacts.filter(function (c) { return c.position; }).length
   };
+
+  // 联系人归属冲突：同一手机号挂多家客户 = 跳槽 / 客户别名 / 公告填错，统一只提示不自动改
+  var clientById = {};
+  clients.forEach(function (c) { clientById[String(c.id)] = c; });
+  var mobileMap = {};
+  contacts.forEach(function (c) {
+    var ms = insPhones(c.phone);
+    for (var mi = 0; mi < ms.length; mi++) {
+      (mobileMap[ms[mi]] = mobileMap[ms[mi]] || []).push(c);
+    }
+  });
+  var conflictRows = [];
+  for (var mob in mobileMap) {
+    var es = mobileMap[mob];
+    if (es.length < 2) continue;
+    var cids = {}, names = {};
+    es.forEach(function (e) {
+      cids[String(e.client_id)] = 1;
+      var nn = String(e.name || '').trim();
+      if (nn && !/^(甲方联系人|集成商联系人|联系人|未知)$/.test(nn)) names[nn] = 1;
+    });
+    var crossClient = Object.keys(cids).length > 1;
+    var differentName = Object.keys(names).length > 1;
+    if (!crossClient && !differentName) continue;
+    var place = {};
+    es.forEach(function (e) {
+      var cn = clientById[String(e.client_id)];
+      var label = (cn && cn.name) ? cn.name : '(未知客户)';
+      var key = label + ' / ' + (e.name || '未命名') + (e.entered_date ? ' / ' + String(e.entered_date).slice(0, 10) : '');
+      place[key] = 1;
+    });
+    conflictRows.push({
+      mobile: mob, kind: crossClient ? '跨公司同号' : '同客户同号不同名',
+      level: (crossClient && differentName) ? '高' : '中',
+      detail: Object.keys(place).slice(0, 4).join('；'),
+      action: crossClient ? '先核对是否同一单位别名或跳槽；确属跳槽保留两边，不合并手机号' : '核对后只保留真名，旧占位名补空即可'
+    });
+  }
+  conflictRows.sort(function (a, b) { return (b.level === '高' ? 1 : 0) - (a.level === '高' ? 1 : 0); });
+  out.assets.contactConflicts = { count: conflictRows.length, rows: conflictRows.slice(0, 20) };
 
   // ── 15 线索智能评分（Lead Scoring，0-100）──
   // 五维：预算 30 / 来源质量 20 / 联系方式 20 / 时效 15 / 项目明确度 15
@@ -791,7 +839,24 @@ function insightsRender(d) {
     ['客户有电话', insComma(d.scale.clients - AS.noPhone), insPct(d.scale.clients - AS.noPhone, d.scale.clients) + '%'],
     ['客户有联系人', insComma(d.scale.clients - AS.noContact), insPct(d.scale.clients - AS.noContact, d.scale.clients) + '%'],
     ['联系人有职位', insComma(AS.contactWithPosition), insPct(AS.contactWithPosition, AS.contactsCount) + '%']
-  ]) + '</div><div class="ins-warn"><b>行动建议</b><ul><li>优先合并 ' + insComma(AS.dupGroups) + ' 组重名客户，避免报价与跟进记录分裂。</li><li>从线索表回填客户电话/联系人：线索手机号完整度 ' + d.quality.leads['手机号'] + '%，而客户表为 0%。</li><li>' + insComma(AS.activatable) + ' 家有标讯无订单，是最直接的商机池，建议按复购到期年排序跟进。</li></ul></div></div>';
+  ]) + '</div>';
+  var CF = AS.contactConflicts || { count: 0, rows: [] };
+  s += '<div class="ins-card" style="margin-top:12px"><h4>联系人归属冲突 · ' + insComma(CF.count) + ' 条</h4>';
+  if (CF.count && CF.rows.length) {
+    var cfRows = [];
+    for (var cf = 0; cf < CF.rows.length; cf++) {
+      var cr = CF.rows[cf];
+      cfRows.push([
+        insEsc(cr.mobile), insEsc(cr.detail), insEsc(cr.kind), insEsc(cr.level), insEsc(cr.action)
+      ]);
+    }
+    s += insTable(['手机号', '已有档案 / 联系人 / 日期', '判定', '严重度', '建议'], cfRows);
+    if (CF.count > CF.rows.length) s += '<div class="ins-note">仅展示前 ' + CF.rows.length + ' 条，其余见采集冲突报告。</div>';
+    s += '<div class="ins-note">采集时若命中跨公司同号，会在新联系人备注打「⚠冲突待确认」标记并输出 Markdown 报告；系统不会自动改归属或合并手机号。</div>';
+  } else {
+    s += '<div class="ins-note">暂无跨公司同号或同号不同名的联系人冲突。</div>';
+  }
+  s += '</div><div class="ins-warn"><b>行动建议</b><ul><li>优先合并 ' + insComma(AS.dupGroups) + ' 组重名客户，避免报价与跟进记录分裂。</li><li>从线索表回填客户电话/联系人：线索手机号完整度 ' + d.quality.leads['手机号'] + '%，而客户表为 0%。</li><li>' + insComma(AS.activatable) + ' 家有标讯无订单，是最直接的商机池，建议按复购到期年排序跟进。</li></ul></div></div>';
 
   var LS = d.leadScore, HS = d.healthScore, FC = d.forecast, SOP = d.sop;
 
