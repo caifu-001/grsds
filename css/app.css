@@ -1205,6 +1205,9 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
 .pending-card:last-child{margin-bottom:0}
 /* 「为什么抓进来」——采集日志摘要，单行省略，title 看全 */
 .pending-why{font-size:11px;color:var(--text3);margin-top:2px;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.alias-why{color:var(--warning);font-weight:600;white-space:normal;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.alias-merge-btn{border:1px solid var(--warning);background:rgba(245,158,11,.1);color:var(--warning);border-radius:var(--radius-full);font-size:10px;font-weight:700;padding:1px 7px;cursor:pointer}
+.alias-merge-btn:hover{background:rgba(245,158,11,.22)}
 /* 线索卡片复用客户卡片样式后补的两处：标题行（名称 + 状态徽标）、采集元信息行 */
 .lead-as-client{display:flex;flex-direction:column}
 /* 招标项目名普遍三十字往上：气泡给两行，否则末尾的预算金额会被整段截掉 */

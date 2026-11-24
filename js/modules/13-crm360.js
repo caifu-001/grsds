@@ -766,6 +766,7 @@ function leadProfileNotes(l){
   if(l.region)bits.push('地区：'+l.region);
   if(l.source_url)bits.push('原文：'+l.source_url);
   if(l.auto_fetched)bits.push('来源：招标公告自动采集');
+  if(l._aliasNote)bits.push(l._aliasNote);
   return bits.join('\n');
 }
 
@@ -1205,6 +1206,9 @@ async function leadToClientProfileRun(l){
     // 已有客户只补空着的字段，绝不覆盖人工填过的内容
     var patch={};
     if(l.contact_addr&&!String(target.address||'').trim())patch.address=l.contact_addr;
+    // 人工确认的「一套班子两块牌子」并进现有客户，要在客户备注留痕（只追加，不覆盖）
+    if(l._aliasNote&&String(target.notes||'').indexOf(l._aliasNote)<0)
+      patch.notes=String(target.notes||'')+'\n'+l._aliasNote;
     // 客户属性同理：人工标过「集成商 / 供应商」的，不能被招标采集改成「甲方」
     if(!parseTypes(target.type).length)patch.type=JSON.stringify(leadTypeLabels(l));
     if(!String(target.industry||'').trim()){
@@ -1449,11 +1453,23 @@ function leadApprovingUI(on){
   b.style.cursor=on?'not-allowed':'';
 }
 
-/** 同意一条：直接落成客户档案（客户列表里马上能看到），线索标记已转化 */
-async function approveLead(id){
+/** 同意一条：直接落成客户档案（客户列表里马上能看到），线索标记已转化
+ *  mergeClientId：从「疑似一块牌子」提示里点「并入」时传入，跳过二次确认并直接并到该客户 */
+async function approveLead(id,mergeClientId){
   if(LEAD_APPROVING){showToast('正在处理，稍等一下…');return}
   var l=(pendingLeads||[]).filter(function(x){return String(x.id)===String(id)})[0];
   if(!l){showToast('这条线索已不在待审核里，刷新看看');return}
+  if(mergeClientId){
+    l.client_id=mergeClientId;
+    l._aliasNote='⚠一套班子两块牌子：线索「'+String(l.name||'')+'」经人工确认并入本客户';
+  }else{
+    var aliasHits=leadAliasFind(l);
+    if(aliasHits.length){
+      var yesAlias=await uiConfirm(leadAliasWarnText(aliasHits),{okText:'仍新建客户',cancelText:'返回处理',danger:true});
+      if(!yesAlias)return;
+      l._aliasNote='⚠一套班子两块牌子：与「'+String(aliasHits[0].client.name||'')+'」疑似同一实体（'+aliasHits[0].reasons.join('/')+'），已确认独立建档';
+    }
+  }
   LEAD_APPROVING=true;
   leadApprovingUI(true);
   try{
@@ -1497,10 +1513,16 @@ async function approveAllPending(){
   LEAD_APPROVING=true;
   leadApprovingUI(true);
   try{
-    var yes=await uiConfirm('剩下的 '+n+' 条会全部通过审核，并直接创建成客户档案。'
+  var aliasList=[];
+  for(var ai=0;ai<(pendingLeads||[]).length;ai++){
+    var ah=leadAliasFind(pendingLeads[ai]);
+    if(ah.length)aliasList.push(String(pendingLeads[ai].name||'')+' ≈ '+String(ah[0].client.name||''));
+  }
+  var yes=await uiConfirm('剩下的 '+n+' 条会全部通过审核，并直接创建成客户档案。'
       +'客户库里已有同名的不会重复建档：同一个标的（招标编号或项目名相同）只把空着的预算/日期/负责人补全，新标的才新增；'
       +'联系人是同一个人（同名或同号）只补他没存过的号码，已有的电话不会再写一遍。'
-      +'机器抓的难免有同名不同单位、代理机构混进采购人的情况，建议先逐条看过。',
+      +(aliasList.length?('\n\n⚠ 其中 '+aliasList.length+' 条疑似「一套班子两块牌子」，建议返回逐条确认：\n'+aliasList.slice(0,5).join('\n')):'')
+      +'\n\n机器抓的难免有同名不同单位、代理机构混进采购人的情况，建议先逐条看过。',
       {okText:'全部通过',cancelText:'再看看',danger:false});
     if(yes)await doApproveAll();
   }finally{
@@ -1781,6 +1803,121 @@ function leadFetchedMetaHtml(l,extra){
   return bd?'<div class="card-fetch">'+bd+'</div>':'';
 }
 
+// ===== 一套班子两块牌子：同一实体换了个写法 / 挂牌 =====
+// 只做提示，不自动合并：名字像、电话同、地址同都只是线索，最终由人确认。
+var ALIAS_PREFIX_RE=/^(重庆市|重庆|中华人民共和国|中国|四川省|四川|贵州省|贵州|云南省|云南|湖北省|湖北|湖南省|湖南|陕西省|陕西)/;
+var ALIAS_SUFFIX_RE=/(有限责任公司|股份有限公司|有限公司)$/;
+var _leadAliasIdx={sig:'',byBg:{},clients:{},byPhone:{},byAddr:{}};
+function aliasNormName(s){
+  var t=String(s==null?'':s).replace(/[\s\u3000（）()【】\[\]《》·、,，.。:：\-—]/g,'');
+  t=t.replace(ALIAS_SUFFIX_RE,'');
+  return t.replace(ALIAS_PREFIX_RE,'');
+}
+function aliasBigrams(s){
+  var t=aliasNormName(s),out=[];
+  for(var i=0;i+1<t.length;i++)out.push(t.slice(i,i+2));
+  return out;
+}
+function aliasSim(a,b){
+  var A=aliasBigrams(a),B=aliasBigrams(b);
+  if(!A.length||!B.length)return 0;
+  var seen={};
+  for(var j=0;j<B.length;j++)seen[B[j]]=1;
+  var common=0;
+  for(var i=0;i<A.length;i++)if(seen[A[i]]){common++;seen[A[i]]=0}
+  return common/Math.min(A.length,B.length);
+}
+function aliasNormAddr(s){
+  return String(s==null?'':s).replace(/[\s\u3000]/g,'').replace(/重庆市|重庆/g,'').replace(ALIAS_SUFFIX_RE,'');
+}
+function aliasContactPhones(c){
+  var raw=String(c&&c.phone||'')+' '+String(c&&c.landline||'')+' '+String(c&&c.phone2||'');
+  var out=[];
+  raw.replace(/1[3-9]\d{9}|0\d{2,3}-?\d{7,8}/g,function(m){var k=leadNumKey(m);if(k&&out.indexOf(k)<0)out.push(k);return m});
+  return out;
+}
+function leadAliasIndex(){
+  var cs=allClients||[];
+  var sig=cs.length+'/'+(cs.length?String(cs[0].id)+String(cs[0].updated_at||''):'');
+  if(sig===_leadAliasIdx.sig)return _leadAliasIdx;
+  var idx={sig:sig,byBg:{},clients:{},byPhone:{},byAddr:{}};
+  for(var i=0;i<cs.length;i++){
+    var c=cs[i];if(!c||c.deleted_at)continue;
+    var id=String(c.id);idx.clients[id]=c;
+    var bgs=aliasBigrams(c.name);
+    for(var b=0;b<bgs.length;b++)(idx.byBg[bgs[b]]=idx.byBg[bgs[b]]||[]).push(id);
+    var ad=aliasNormAddr(c.address||c.addr||'');
+    if(ad.length>=6)(idx.byAddr[ad]=idx.byAddr[ad]||[]).push(id);
+  }
+  var cts=allContacts||[];
+  for(var k=0;k<cts.length;k++){
+    var ct=cts[k];if(!ct||ct.deleted_at||!ct.client_id)continue;
+    var ps=aliasContactPhones(ct);
+    for(var p=0;p<ps.length;p++)(idx.byPhone[ps[p]]=idx.byPhone[ps[p]]||[]).push(String(ct.client_id));
+  }
+  _leadAliasIdx=idx;
+  return idx;
+}
+/** 找出线索可能对应的「另一块牌子」，按可信度排序 */
+function leadAliasFind(l){
+  l=l||{};
+  var nm=String(l.name||'').trim();
+  if(!nm)return [];
+  var idx=leadAliasIndex(),counts={},out={};
+  var bgs=aliasBigrams(nm);
+  for(var b=0;b<bgs.length;b++){
+    var ids=idx.byBg[bgs[b]]||[];
+    for(var j=0;j<ids.length;j++)counts[ids[j]]=(counts[ids[j]]||0)+1;
+  }
+  var ph=leadPhonesOf(l),keys=[];
+  ph.mobiles.concat(ph.telnums).forEach(function(v){var k=leadNumKey(v);if(k&&keys.indexOf(k)<0)keys.push(k)});
+  var addr=aliasNormAddr(l.contact_addr||l.address||'');
+  for(var id in counts){
+    var c=idx.clients[id];if(!c)continue;
+    var sim=aliasSim(nm,c.name);
+    if(sim<0.5||counts[id]<3)continue;
+    if(aliasNormName(nm)===aliasNormName(c.name))continue;
+    var reasons=['名称相似 '+Math.round(sim*100)+'%'];
+    var hitPhone=keys.some(function(k){return (idx.byPhone[k]||[]).indexOf(id)>=0});
+    var hitAddr=addr.length>=6&&(idx.byAddr[addr]||[]).indexOf(id)>=0;
+    if(hitPhone)reasons.push('同手机号');
+    if(hitAddr)reasons.push('同地址');
+    out[id]={client:c,score:sim+(hitPhone?0.3:0)+(hitAddr?0.2:0),reasons:reasons};
+  }
+  // 名称完全不像、但电话/地址对上了：这才是真正的「一套班子两块牌子」
+  for(var q=0;q<keys.length;q++){
+    var ids2=idx.byPhone[keys[q]]||[];
+    for(var z=0;z<ids2.length;z++){
+      var id2=ids2[z],c2=idx.clients[id2];
+      if(!c2||out[id2]||aliasNormName(nm)===aliasNormName(c2.name))continue;
+      out[id2]={client:c2,score:1,reasons:['同一联系人手机号']};
+    }
+  }
+  if(addr.length>=6){
+    var ids3=idx.byAddr[addr]||[];
+    for(var y=0;y<ids3.length;y++){
+      var id3=ids3[y],c3=idx.clients[id3];
+      if(!c3||out[id3]||aliasNormName(nm)===aliasNormName(c3.name))continue;
+      out[id3]={client:c3,score:0.8,reasons:['同一地址']};
+    }
+  }
+  var arr=[];for(var k2 in out)arr.push(out[k2]);
+  arr.sort(function(a,b){return b.score-a.score});
+  return arr.slice(0,5);
+}
+/** 审核/转客户前的确认文案（两类入口共用） */
+function leadAliasWarnText(hits){
+  var lines=hits.slice(0,3).map(function(x){return '· '+x.client.name+'（'+x.reasons.join(' / ')+'）'});
+  return '⚠️ 疑似「一套班子两块牌子」：\n'+lines.join('\n')
+    +'\n\n这条线索的单位名和上面客户不一样，但可能是同一实体的另一块牌子。'
+    +'\n【仍新建客户】= 确认两块牌子都要独立建档；【返回】= 先编辑线索或并入已有客户。';
+}
+function leadAliasMergeBtn(l,hit,mode){
+  var fn=mode==='pending'?'approveLead':'convertLeadToClient';
+  var nm=String(hit.client.name||'');if(nm.length>14)nm=nm.slice(0,14)+'…';
+  return '<button class="alias-merge-btn" onclick="event.stopPropagation();'+fn+'(\''+h(l.id)+'\',\''+h(hit.client.id)+'\')">并入「'+h(nm)+'」</button>';
+}
+
 /** 名称像招标代理 / 工程管理 / 造价咨询公司 —— 这类不是客户，历史数据里还有残留 */
 var LEAD_AGENCY_RE=/(招标代理|招标有限|采购代理|工程管理|项目管理|工程咨询|造价咨询|建设咨询|招标咨询|工程监理|代理有限)/;
 function leadSuspectAgency(l){
@@ -1821,6 +1958,14 @@ function leadClientCardHtml(l,opts){
   // 历史数据里混进来的代理公司：审核时得让人一眼看见，否则通过就成了「代理客户」。
   // 这是唯一还单独占一行的附注——它是「别通过」的红灯，不能缩成小字
   if(leadSuspectAgency(l))html+='<div class="pending-why" style="color:var(--danger);font-weight:600">⚠️ 疑似招标代理公司，不是甲方，建议忽略</div>';
+  var aliasHits=leadAliasFind(l);
+  if(aliasHits.length){
+    var a0=aliasHits[0],an=String(a0.client.name||'');if(an.length>18)an=an.slice(0,18)+'…';
+    html+='<div class="pending-why alias-why" title="'+h(a0.client.name+'：'+a0.reasons.join(' / '))+'">'
+      +'⚠️ 疑似同一套班子两块牌子：'+h(an)+'（'+h(a0.reasons.join('/'))+'）'
+      +(aliasHits.length>1?' 等 '+aliasHits.length+' 家':'')
+      +leadAliasMergeBtn(l,a0,opts.mode||'pool')+'</div>';
+  }
   if(opts.actions)html+='<div class="lead-actions" onclick="event.stopPropagation()">'+opts.actions+'</div>';
   html+='</div>';
   return html;
@@ -2231,7 +2376,7 @@ async function doAssignLead(){
   await loadPoolLeads();await loadLeads();showToast('已分配');
 }
 
-async function convertLeadToClient(id){
+async function convertLeadToClient(id,mergeClientId){
   if(LEAD_APPROVING){showToast('正在处理，稍等一下…');return}
   // 公海里的「转为客户」：和审核通过走同一条建客户逻辑（同名不重复建档、只补联系人）
   var l=(poolLeads||[]).concat(allLeads||[]).filter(function(x){return String(x.id)===String(id)})[0];
@@ -2239,6 +2384,17 @@ async function convertLeadToClient(id){
     var {data:rows,error:le}=await sb.from('lead_pool').select('*').eq('id',id).limit(1);
     if(le||!rows||!rows.length){showToast('线索未找到: '+(le?le.message:'数据为空'));return}
     l=rows[0];
+  }
+  if(mergeClientId){
+    l.client_id=mergeClientId;
+    l._aliasNote='⚠一套班子两块牌子：线索「'+String(l.name||'')+'」经人工确认并入本客户';
+  }else{
+    var aliasHits=leadAliasFind(l);
+    if(aliasHits.length){
+      var yesAlias=await uiConfirm(leadAliasWarnText(aliasHits),{okText:'仍新建客户',cancelText:'返回处理',danger:true});
+      if(!yesAlias)return;
+      l._aliasNote='⚠一套班子两块牌子：与「'+String(aliasHits[0].client.name||'')+'」疑似同一实体（'+aliasHits[0].reasons.join('/')+'），已确认独立建档';
+    }
   }
   LEAD_APPROVING=true;
   leadApprovingUI(true);
