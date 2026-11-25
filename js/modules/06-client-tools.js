@@ -302,7 +302,7 @@ async function saveClient(){
       if(!Array.isArray(eps))eps=eps?[String(eps)]:[];
       for(var k=0;k<eps.length;k++){
         var ep=(eps[k]||'').trim();
-        if(ep&&phonesToCheck.indexOf(ep)>=0){showToast('手机号 '+ep+' 已被其他联系人使用；若同一人兼职多个单位，请勾选该联系人下方的「兼职多个单位」再保存');return}
+        if(ep&&phonesToCheck.indexOf(ep)>=0){showToast('手机号 '+ep+' 已被其他联系人使用；若同一人兼职多个单位，请展开该联系人勾选「兼职多个单位」后重试');return}
       }
     }
   }
@@ -322,7 +322,7 @@ async function saveClient(){
       if(!Array.isArray(els))els=els?[String(els)]:[];
       for(var k=0;k<els.length;k++){
         var el=(els[k]||'').trim();
-        if(el&&landlinesToCheck.indexOf(el)>=0){showToast('座机 '+el+' 已被其他公司使用；若同一人兼职多个单位，请勾选该联系人下方的「兼职多个单位」再保存');return}
+        if(el&&landlinesToCheck.indexOf(el)>=0){showToast('座机 '+el+' 已被其他公司使用；若同一人兼职多个单位，请展开该联系人勾选「兼职多个单位」后重试');return}
       }
     }
   }
