@@ -286,8 +286,11 @@ async function saveClient(){
   if(dup.length>0){showToast('客户名称「'+name+'」已存在');return}
 
   // Phone uniqueness check
+  // 例外：勾了「兼职多个单位」的联系人，本身就是「同一人挂多家单位」，
+  // 号码必须允许跨单位复用，否则这类客户永远保存不了。
   var phonesToCheck=[];
   for(var i=0;i<formContacts.length;i++){
+    if(ctMultiOn(formContacts[i]))continue;
     var phs=formContacts[i].phones||[''];
     for(var p=0;p<phs.length;p++){var ph=phs[p].trim();if(ph)phonesToCheck.push(ph)}
   }
@@ -299,7 +302,7 @@ async function saveClient(){
       if(!Array.isArray(eps))eps=eps?[String(eps)]:[];
       for(var k=0;k<eps.length;k++){
         var ep=(eps[k]||'').trim();
-        if(ep&&phonesToCheck.indexOf(ep)>=0){showToast('手机号 '+ep+' 已被其他联系人使用');return}
+        if(ep&&phonesToCheck.indexOf(ep)>=0){showToast('手机号 '+ep+' 已被其他联系人使用；若同一人兼职多个单位，请勾选该联系人下方的「兼职多个单位」再保存');return}
       }
     }
   }
@@ -307,6 +310,7 @@ async function saveClient(){
   // Landline uniqueness check: one landline → one company, but can be shared by contacts within same company
   var landlinesToCheck=[];
   for(var i=0;i<formContacts.length;i++){
+    if(ctMultiOn(formContacts[i]))continue;
     var lls=formContacts[i].landlines||[''];
     for(var l=0;l<lls.length;l++){var ll=lls[l].trim();if(ll)landlinesToCheck.push(ll)}
   }
@@ -318,7 +322,7 @@ async function saveClient(){
       if(!Array.isArray(els))els=els?[String(els)]:[];
       for(var k=0;k<els.length;k++){
         var el=(els[k]||'').trim();
-        if(el&&landlinesToCheck.indexOf(el)>=0){showToast('座机 '+el+' 已被其他公司使用');return}
+        if(el&&landlinesToCheck.indexOf(el)>=0){showToast('座机 '+el+' 已被其他公司使用；若同一人兼职多个单位，请勾选该联系人下方的「兼职多个单位」再保存');return}
       }
     }
   }
@@ -425,6 +429,10 @@ async function saveClient(){
     };
     if(co._new)cd.user_id=currentUser.id;
     if(landlines.length>0)cd.landline=JSON.stringify(landlines);
+    // 兼职多个单位：勾选/取消都同步进备注，只动这一个分段，
+    // AI 前缀（aiCtOf 要 ^AI导入）与「· 公告:url」幂等标记必须原样保留
+    var _muNotes=ctNotesWithMulti(co.notes,ctMultiOn(co));
+    if(_muNotes!==String(co.notes==null?'':co.notes))cd.notes=_muNotes;
     dbg('save cd',i,cd);
     if(co._new){
       cd.company_id=currentCompanyId;

@@ -137,13 +137,44 @@ var MULTI_UNIT_TAG='🔗兼职多个单位';
 function multiUnitOf(co){
   var s=String((co&&co.notes)||''),i=s.indexOf(MULTI_UNIT_TAG);
   if(i<0)return '';
-  var t=s.slice(i).split(/[；;\n]/)[0].trim();
+  // 备注里可能还有「· 公告:url」这类幂等标记，别让它跟进 tooltip
+  var t=s.slice(i).split(/[；;\n]/)[0].split(' · 公告')[0].trim();
   return t||MULTI_UNIT_TAG;
 }
+/** 一条联系人是否被标记为「兼职多个单位」。
+ *  表单里用 multi_unit（0/1）表示本次编辑的勾选状态，未定义时回落到 notes 里的标记。 */
+function ctMultiOn(co){
+  if(!co)return false;
+  if(co.multi_unit!==undefined&&co.multi_unit!==null)
+    return !!(co.multi_unit===true||co.multi_unit===1||co.multi_unit==='1');
+  return !!multiUnitOf(co);
+}
+/** 人工勾选「兼职」时写进备注的文案（与采集端自动生成的区分开） */
+function ctManualMultiNote(){
+  return MULTI_UNIT_TAG+'：人工标记为兼职多个单位，该联系人号码可与其他单位共用，请人工确认';
+}
+/**
+ * 把「兼职多个单位」标记按勾选状态同步进备注：
+ *  - on  = true  → 已有标记就保留，没有就追加（不覆盖 AI 前缀等其它内容）
+ *  - on  = false → 只摘掉这一个分段，其余（AI 前缀 / 公告:url / 冲突提示）原样保留
+ * 幂等：重复调用结果一致。
+ */
+function ctNotesWithMulti(notes,on){
+  var s=String(notes==null?'':notes);
+  // 标记段落在「；」或「 · 公告」或结尾处结束，避免把公告幂等标记一起吃掉
+  var re=new RegExp(MULTI_UNIT_TAG+'[^；;\\n]*?(?=[；;]|\\s·\\s|$)','g');
+  s=s.replace(re,'');
+  // 收拾摘除后残留的分隔符
+  s=s.replace(/^[；;·\s]+/,'').replace(/[；;]\s*·/g,' ·').replace(/；{2,}/g,'；').replace(/[；;]\s*$/,'').replace(/\s+$/,'');
+  if(!on)return s;
+  return s?(s+'；'+ctManualMultiNote()):ctManualMultiNote();
+}
 function multiUnitMarkHtml(co){
+  // 表单里刚取消勾选：笔记还没落库，但徽标要立刻消失
+  if(co&&(co.multi_unit===false||co.multi_unit===0||co.multi_unit==='0'))return '';
   var t=multiUnitOf(co);
-  if(!t)return '';
-  return '<span class="multi-unit-mark" title="'+escHtml(t)+'">🔗 兼职多单位</span>';
+  if(!t&&!ctMultiOn(co))return '';
+  return '<span class="multi-unit-mark" title="'+escHtml(t||MULTI_UNIT_TAG)+'">🔗 兼职多单位</span>';
 }
 
 // === Auth ===

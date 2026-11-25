@@ -1010,6 +1010,7 @@ function refCt(){
     var co=formContacts[i],phones=co.phones||[],landlines=co.landlines||[];
     var _aiCt=aiCtOf(co),_aiMark=_aiCt?aiMarkHtml(_aiCt):'';
     var _muMark=multiUnitMarkHtml(co);
+    var _muOn=ctMultiOn(co);
     var _open=(co._open===undefined)?defOpen:!!co._open;
     var _sp=ctSumParts(co);
     if(!phones.length)phones=[''];
@@ -1050,6 +1051,7 @@ function refCt(){
       </div>\
       <div class="form-group"><label>手机</label>'+ph+'</div>\
       <div class="form-group"><label>座机</label>'+ll+'</div>\
+      <div class="form-group ct-mu-box"><label class="ct-mu-label"><input type="checkbox" '+(_muOn?'checked ':'')+'onchange="toggleCtMulti('+i+',this.checked)"> 兼职多个单位<span class="ct-mu-tip">勾选后允许该号码与其他单位共用，保存时不再拦截同号；备注会记「🔗兼职多个单位」</span></label></div>\
       <div class="form-group"><label>邮箱</label>'+em+'</div>\
     </div>'+
     '</div>';
@@ -1123,7 +1125,7 @@ function ctUpdateAllBtn(){
   btn.textContent=anyClosed?'⇕ 展开全部':'⇕ 收起全部';
 }
 // global helpers for onclick
-var addContact=function(){formContacts.push({id:'t'+Date.now()+Math.random().toString(36).slice(2,6),name:'',dept:'',position:'',phones:[''],landlines:[''],emails:[''],room:'',entered_date:todayLocalStr(),_new:true,_open:true});refCt();scrollToLastContact()};
+var addContact=function(){formContacts.push({id:'t'+Date.now()+Math.random().toString(36).slice(2,6),name:'',dept:'',position:'',phones:[''],landlines:[''],emails:[''],room:'',entered_date:todayLocalStr(),multi_unit:0,_new:true,_open:true});refCt();scrollToLastContact()};
 // 新增联系人后滚到该条并聚焦姓名，省去用户手动滑到列表最下方
 function scrollToLastContact(){
   try{
@@ -1161,6 +1163,13 @@ var upCt=function(i,f,v){
   if(f==='name'){peOwnerNameSync(formContacts[i]);ctSyncSumName(i)}
 };
 var upCtPh=function(i,p,v){if(formContacts[i]&&formContacts[i].phones)formContacts[i].phones[p]=(v||'').replace(/\s+/g,'')};
+// 兼职多个单位：勾选后 saveClient 的号码查重会跳过这条联系人，并把标记同步进 notes。
+// 状态挂在 formContacts 上（refCt 会整块重建 DOM，存 DOM 会丢）。
+var toggleCtMulti=function(i,on){
+  if(!formContacts[i])return;
+  formContacts[i].multi_unit=on?1:0;
+  refCt();
+};
 var addPh=function(i){if(!formContacts[i].phones)formContacts[i].phones=[];formContacts[i].phones.push('');refCt()};
 var rmPh=function(i,p){formContacts[i].phones.splice(p,1);if(!formContacts[i].phones.length)formContacts[i].phones=[''];refCt()};
 var addLl=function(i){if(!formContacts[i].landlines)formContacts[i].landlines=[];formContacts[i].landlines.push('');refCt()};
@@ -1311,6 +1320,9 @@ async function openForm(id){
         try{emails=JSON.parse(co.email||'[]');if(!Array.isArray(emails))emails=co.email?[co.email]:['']}
         catch(e){emails=co.email?[co.email]:['']}
         if(!emails.length)emails=[''];
+        // 兼职多个单位：回显时以 notes 里的标记为准（采集端自动打的标也认），
+        // 之后用户在表单里的勾选/取消就以 multi_unit 为唯一状态
+        co.multi_unit=multiUnitOf(co)?1:0;
         co.phones=phones;co.landlines=landlines;co.emails=emails;formContacts.push(co);
       }
     }

@@ -1224,6 +1224,14 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box
 .ai-import-mark{display:inline-block;flex-shrink:0;font-size:10px;font-weight:600;line-height:1.4;padding:1px 6px;margin-left:5px;border-radius:var(--radius-full);background:#E0F2FE;color:#0369A1;white-space:nowrap;vertical-align:middle}
 /* 一套人马多块牌子：联系人「兼职多个单位」标记，紫色系跟 AI 蓝色徽标区分 */
 .multi-unit-mark{display:inline-block;flex-shrink:0;font-size:10px;font-weight:600;line-height:1.4;padding:1px 6px;margin-left:5px;border-radius:var(--radius-full);background:rgba(139,92,246,.16);color:#A78BFA;white-space:nowrap;vertical-align:middle}
+/* 联系人表单里的「兼职多个单位」勾选：号码跨单位共用时靠它放行保存 */
+.ct-mu-box{margin-top:2px}
+.ct-mu-label{display:flex;align-items:flex-start;gap:6px;cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text2);line-height:1.5;
+  padding:7px 10px;border:1px dashed rgba(139,92,246,.45);border-radius:8px;background:rgba(139,92,246,.06)}
+.ct-mu-label:hover{background:rgba(139,92,246,.12)}
+.ct-mu-label input[type="checkbox"]{width:14px;height:14px;margin:2px 0 0;flex-shrink:0;accent-color:#8B5CF6;cursor:pointer}
+.ct-mu-label:has(input:checked){border-style:solid;border-color:#8B5CF6;background:rgba(139,92,246,.14);color:#A78BFA}
+.ct-mu-tip{display:block;font-weight:400;font-size:11px;color:var(--text3);margin-top:2px}
 .c360-contact-mu{font-size:10.5px;line-height:1.5;color:var(--text3);margin-top:5px;padding:5px 8px;border-left:2px solid #8B5CF6;background:rgba(139,92,246,.07);border-radius:0 5px 5px 0;word-break:break-all}
 /* 中标行：结果公告回填进来的「谁中了、多少钱」。
    绿色实底太抢眼，用浅绿药丸 + 深绿字，和来源那行小字区分开就行 */
