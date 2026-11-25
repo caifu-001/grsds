@@ -1816,11 +1816,13 @@ function leadFetchedMetaHtml(l,extra){
   return bd?'<div class="card-fetch">'+bd+'</div>':'';
 }
 
-// ===== 一套班子两块牌子：同一实体换了个写法 / 挂牌 =====
-// 只做提示，不自动合并：名字像、电话同、地址同都只是线索，最终由人确认。
+// ===== 一套班子两块牌子 =====
+// 用户口径（2026-11-25 收紧）：**只有两个单位的联系人电话一样**才疑似同牌。
+// 名称相似 / 同地址曾造成大量误报（如「大足区教育技术资源发展和财务管理中心」被当成
+// 「重庆人力资源发展有限公司」），已彻底移除出触发条件，只做提示不自动合并。
 var ALIAS_PREFIX_RE=/^(重庆市|重庆|中华人民共和国|中国|四川省|四川|贵州省|贵州|云南省|云南|湖北省|湖北|湖南省|湖南|陕西省|陕西)/;
 var ALIAS_SUFFIX_RE=/(有限责任公司|股份有限公司|有限公司)$/;
-var _leadAliasIdx={sig:'',byBg:{},clients:{},byPhone:{},byAddr:{}};
+var _leadAliasIdx={sig:'',clients:{},byPhone:{}};
 function aliasNormName(s){
   var t=String(s==null?'':s).replace(/[\s\u3000（）()【】\[\]《》·、,，.。:：\-—]/g,'');
   t=t.replace(ALIAS_SUFFIX_RE,'');
@@ -1843,75 +1845,57 @@ function aliasSim(a,b){
 function aliasNormAddr(s){
   return String(s==null?'':s).replace(/[\s\u3000]/g,'').replace(/重庆市|重庆/g,'').replace(ALIAS_SUFFIX_RE,'');
 }
+/** 联系人手机/座机 → 带 m:/t: 前缀的归一键；与工具端 contact-conflict.js 同口径 */
 function aliasContactPhones(c){
   var raw=String(c&&c.phone||'')+' '+String(c&&c.landline||'')+' '+String(c&&c.phone2||'');
   var out=[];
-  raw.replace(/1[3-9]\d{9}|0\d{2,3}-?\d{7,8}/g,function(m){var k=leadNumKey(m);if(k&&out.indexOf(k)<0)out.push(k);return m});
+  raw.replace(/1[3-9]\d{9}|0\d{2,3}-?\d{7,8}|\d{7,8}/g,function(m){
+    var d=m.replace(/\D/g,'');
+    if(/^20\d{6}$/.test(d))return m;
+    var k=leadNumKey(m);
+    if(k){var key=(/^1[3-9]\d{9}$/.test(d)?'m:':'t:')+k;if(out.indexOf(key)<0)out.push(key)}
+    return m;
+  });
   return out;
 }
 function leadAliasIndex(){
-  var cs=allClients||[];
-  var sig=cs.length+'/'+(cs.length?String(cs[0].id)+String(cs[0].updated_at||''):'');
+  var cs=allClients||[],cts=allContacts||[];
+  var sig=cs.length+'/'+cts.length+'/'+(cs.length?String(cs[0].id)+String(cs[0].updated_at||''):'')
+    +(cts.length?String(cts[0].id)+String(cts[0].updated_at||''):'');
   if(sig===_leadAliasIdx.sig)return _leadAliasIdx;
-  var idx={sig:sig,byBg:{},clients:{},byPhone:{},byAddr:{}};
+  var idx={sig:sig,clients:{},byPhone:{}};
   for(var i=0;i<cs.length;i++){
     var c=cs[i];if(!c||c.deleted_at)continue;
-    var id=String(c.id);idx.clients[id]=c;
-    var bgs=aliasBigrams(c.name);
-    for(var b=0;b<bgs.length;b++)(idx.byBg[bgs[b]]=idx.byBg[bgs[b]]||[]).push(id);
-    var ad=aliasNormAddr(c.address||c.addr||'');
-    if(ad.length>=6)(idx.byAddr[ad]=idx.byAddr[ad]||[]).push(id);
+    idx.clients[String(c.id)]=c;
   }
-  var cts=allContacts||[];
   for(var k=0;k<cts.length;k++){
     var ct=cts[k];if(!ct||ct.deleted_at||!ct.client_id)continue;
     var ps=aliasContactPhones(ct);
-    for(var p=0;p<ps.length;p++)(idx.byPhone[ps[p]]=idx.byPhone[ps[p]]||[]).push(String(ct.client_id));
+    for(var p=0;p<ps.length;p++){
+      var arr=idx.byPhone[ps[p]]=idx.byPhone[ps[p]]||[];
+      if(arr.indexOf(String(ct.client_id))<0)arr.push(String(ct.client_id));
+    }
   }
   _leadAliasIdx=idx;
   return idx;
 }
-/** 找出线索可能对应的「另一块牌子」，按可信度排序 */
+/** 找出线索可能对应的「另一块牌子」：必须命中同一联系人电话，名称相似不再触发 */
 function leadAliasFind(l){
   l=l||{};
   var nm=String(l.name||'').trim();
   if(!nm)return [];
-  var idx=leadAliasIndex(),counts={},out={};
-  var bgs=aliasBigrams(nm);
-  for(var b=0;b<bgs.length;b++){
-    var ids=idx.byBg[bgs[b]]||[];
-    for(var j=0;j<ids.length;j++)counts[ids[j]]=(counts[ids[j]]||0)+1;
-  }
+  var idx=leadAliasIndex(),out={};
+  var self=aliasNormName(nm);
   var ph=leadPhonesOf(l),keys=[];
-  ph.mobiles.concat(ph.telnums).forEach(function(v){var k=leadNumKey(v);if(k&&keys.indexOf(k)<0)keys.push(k)});
-  var addr=aliasNormAddr(l.contact_addr||l.address||'');
-  for(var id in counts){
-    var c=idx.clients[id];if(!c)continue;
-    var sim=aliasSim(nm,c.name);
-    if(sim<0.5||counts[id]<3)continue;
-    if(aliasNormName(nm)===aliasNormName(c.name))continue;
-    var reasons=['名称相似 '+Math.round(sim*100)+'%'];
-    var hitPhone=keys.some(function(k){return (idx.byPhone[k]||[]).indexOf(id)>=0});
-    var hitAddr=addr.length>=6&&(idx.byAddr[addr]||[]).indexOf(id)>=0;
-    if(hitPhone)reasons.push('同手机号');
-    if(hitAddr)reasons.push('同地址');
-    out[id]={client:c,score:sim+(hitPhone?0.3:0)+(hitAddr?0.2:0),reasons:reasons};
-  }
-  // 名称完全不像、但电话/地址对上了：这才是真正的「一套班子两块牌子」
+  ph.mobiles.forEach(function(v){var k=leadNumKey(v);if(k&&keys.indexOf('m:'+k)<0)keys.push('m:'+k)});
+  ph.telnums.forEach(function(v){var k=leadNumKey(v);if(k&&keys.indexOf('t:'+k)<0)keys.push('t:'+k)});
   for(var q=0;q<keys.length;q++){
     var ids2=idx.byPhone[keys[q]]||[];
     for(var z=0;z<ids2.length;z++){
       var id2=ids2[z],c2=idx.clients[id2];
-      if(!c2||out[id2]||aliasNormName(nm)===aliasNormName(c2.name))continue;
-      out[id2]={client:c2,score:1,reasons:['同一联系人手机号']};
-    }
-  }
-  if(addr.length>=6){
-    var ids3=idx.byAddr[addr]||[];
-    for(var y=0;y<ids3.length;y++){
-      var id3=ids3[y],c3=idx.clients[id3];
-      if(!c3||out[id3]||aliasNormName(nm)===aliasNormName(c3.name))continue;
-      out[id3]={client:c3,score:0.8,reasons:['同一地址']};
+      if(!c2||out[id2]||(self&&self===aliasNormName(c2.name)))continue;
+      var why=keys[q].indexOf('m:')===0?'同一联系人手机号':'同一联系人座机';
+      out[id2]={client:c2,score:1,reasons:[why]};
     }
   }
   var arr=[];for(var k2 in out)arr.push(out[k2]);
