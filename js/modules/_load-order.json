@@ -19,5 +19,6 @@
   "js/modules/18-templates.js",
   "js/modules/19-renewal.js",
   "js/modules/20-tender-news.js",
-  "js/modules/21-insights.js"
+  "js/modules/21-insights.js",
+  "js/modules/22-client-map.js"
 ]

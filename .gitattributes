@@ -1,0 +1,3 @@
+# 第三方压缩库与地图数据：原样入库，别做换行/编码转换
+js/vendor/*.js -text
+data/geo/*.json -text
