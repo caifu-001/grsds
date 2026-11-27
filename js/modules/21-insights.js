@@ -337,11 +337,11 @@ function insightsCompute(leads) {
   };
 
   // ── 13 标讯竞争 ──
-  var PROV = ['北京', '天津', '上海', '重庆', '河北', '山西', '辽宁', '吉林', '黑龙江', '江苏', '浙江', '安徽', '福建', '江西', '山东', '河南', '湖北', '湖南', '广东', '广西', '海南', '四川', '贵州', '云南', '陕西', '甘肃', '青海', '宁夏', '新疆', '西藏', '内蒙古', '香港', '澳门', '台湾'];
+  // 区域分布用统一的 provOfClient（手工 province > 地址 > 名称 > 重庆区县），
+  // 早先只按地址匹配省份名，地址为空的重庆客户全落到「未知」
   var regionMap = {};
   for (var rg = 0; rg < clients.length; rg++) {
-    var addr = String(clients[rg].address || ''), reg = '(未知)';
-    for (var rgi = 0; rgi < PROV.length; rgi++) if (addr.indexOf(PROV[rgi]) >= 0) { reg = PROV[rgi]; break; }
+    var reg = provOfClient(clients[rg]) || '(未知)';
     regionMap[reg] = (regionMap[reg] || 0) + 1;
   }
   var bidEntries = Object.keys(bidders).map(function (k) { return [k, bidders[k]]; }).sort(function (a, b) { return b[1] - a[1]; });
@@ -826,7 +826,7 @@ function insightsRender(d) {
   s += insKpi('有预算标注', insComma(CO.withBudget) + ' 条', insPct(CO.withBudget, T.total) + '% 的项目有预算', 'c-pri');
   s += insKpi('有中标价', insComma(CO.withBidAmount) + ' 条', insPct(CO.withBidAmount, T.total) + '% 的项目有中标金额', 'c-grn');
   s += '</div><div class="ins-grid ins-g2" style="margin-top:12px">';
-  s += '<div class="ins-card"><h4>客户区域分布（按地址）</h4>' + insBars(CO.region, { color: '#38BDF8' }) + '</div>';
+  s += '<div class="ins-card"><h4>客户区域分布（按归属省份）</h4>' + insBars(CO.region, { color: '#38BDF8' }) + '</div>';
   s += '<div class="ins-card"><h4>项目中标金额分档（万）</h4>' + insBars(CO.amountBands, { color: '#A78BFA' }) + '</div></div></div>';
 
   // 14 数据资产健康

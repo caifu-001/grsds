@@ -616,8 +616,12 @@ function applyClientRows(raw,contacts,opts){
     if(!allClients[_di])continue;
     if(allClients[_di].deleted_at!==undefined)_softDeleteReady=true;
     if(allClients[_di].custom_data!==undefined)_customDataReady=true;
+    // province 列是后加的（sql/add_client_province.sql）：存在才显示表单里的归属地区，
+    // 不存在就只靠地址/名称实时解析，保存时不发这个字段，避免整条写库失败
+    if(allClients[_di].province!==undefined)_provinceColReady=true;
     if(_softDeleteReady&&_customDataReady)break;
   }
+  if(typeof syncProvinceField==='function')syncProvinceField();
   if(_softDeleteReady){
     var _alive=[],_trash=[];
     for(var _dj=0;_dj<allClients.length;_dj++){var _c=allClients[_dj];if(_c&&_c.deleted_at)_trash.push(_c);else _alive.push(_c)}

@@ -309,6 +309,72 @@ function buildFilterSelect(){
   var want=(currentFilter&&currentFilter!=='all'&&types.indexOf(currentFilter)>=0)?currentFilter:'all';
   sel.value=want;
   if(currentFilter!==want)currentFilter=want;
+  buildProvinceSelect();   // 客户数据变了，地区下拉的计数也要跟着刷新
+}
+/**
+ * 地区筛选下拉：重庆排第一（大本营），其余按客户数排序，最后是「外地客户 / 未识别」。
+ * 计数用 provOfClient 实时解析（province 列没执行 SQL 时也能按地址/名称归类）。
+ */
+function buildProvinceSelect(){
+  var sel=document.getElementById('province-select');
+  if(!sel)return;
+  var cnt={},total=0,unknown=0,other=0;
+  for(var i=0;i<allClients.length;i++){
+    var c=allClients[i];if(!c||c.deleted_at)continue;
+    total++;
+    var p=provOfClient(c);
+    if(!p){unknown++;continue}
+    cnt[p]=(cnt[p]||0)+1;
+    if(p!=='重庆')other++;
+  }
+  var keys=Object.keys(cnt).filter(function(k){return k!=='重庆'});
+  keys.sort(function(a,b){return (cnt[b]-cnt[a])||a.localeCompare(b,'zh')});
+  var html='<option value="all">全部地区（'+total+'）</option>';
+  html+='<option value="重庆">重庆（'+(cnt['重庆']||0)+'）</option>';
+  if(keys.length){
+    html+='<option value="__other__">外地客户（'+other+'）</option>';
+    for(var k=0;k<keys.length;k++){
+      var pn=keys[k];
+      html+='<option value="'+escHtml(pn)+'">'+escHtml(pn)+'（'+cnt[pn]+'）</option>';
+    }
+  }
+  if(unknown)html+='<option value="__unknown__">未识别地区（'+unknown+'）</option>';
+  sel.innerHTML=html;
+  var want=currentProvince||'all';
+  var okv=(want==='all')||(want==='__other__')||(want==='__unknown__')||(cnt[want]>0);
+  if(!okv)want='all';
+  sel.value=want;
+  currentProvince=want;
+}
+function onProvinceChange(){
+  var sel=document.getElementById('province-select');
+  currentProvince=sel?sel.value:'all';
+  clientPage=1;
+  renderList();
+}
+/** 地区筛选命中判断：'__other__' 只要非重庆且有归属，'__unknown__' 只要判断不出 */
+function clientProvinceHit(c){
+  var p=provOfClient(c);
+  if(currentProvince==='all')return true;
+  if(currentProvince==='__other__')return !!p&&p!=='重庆';
+  if(currentProvince==='__unknown__')return !p;
+  return p===currentProvince;
+}
+/**
+ * 客户表单里的「归属地区」：
+ *  - 只填选项一次（34 个省级行政区），避免手写死
+ *  - province 列没建之前整块隐藏 —— 选了也存不进去，不如只靠自动识别
+ */
+function syncProvinceField(){
+  var box=document.getElementById('f-prov-field');
+  var sel=document.getElementById('f-province');
+  if(!box||!sel)return;
+  if(sel.options.length<=1){
+    var html='<option value="">自动识别（按地址/名称）</option>';
+    for(var i=0;i<CN_PROVINCES.length;i++)html+='<option value="'+escHtml(CN_PROVINCES[i])+'">'+escHtml(CN_PROVINCES[i])+'</option>';
+    sel.innerHTML=html;
+  }
+  box.style.display=_provinceColReady?'':'none';
 }
 function onFilterChange(){
   currentFilter=document.getElementById('filter-select').value;

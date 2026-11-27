@@ -386,6 +386,15 @@ async function saveClient(){
   };
   // 未执行 custom_fields_values.sql 时不发送该字段，避免整条保存失败
   if(!_customDataReady)delete client.custom_data;
+  // 归属地区：province 列是后加的，没建列绝不发送；用户选了以选择为准，
+  // 留空（自动识别）就按地址/名称解析，解析不出不发送——别把手工填的值覆盖成空
+  if(_provinceColReady){
+    var _pvSel=document.getElementById('f-province');
+    var _pv=provNorm(_pvSel&&_pvSel.value)||provOfClient({address:client.address,name:client.name});
+    if(_pv)client.province=_pv;
+  }else{
+    delete client.province;
+  }
 
   var clientId=editId;
   if(!editId){

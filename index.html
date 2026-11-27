@@ -9,7 +9,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👔</text></svg>">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<link rel="stylesheet" href="css/app.css?v=3e7c29f4">
+<link rel="stylesheet" href="css/app.css?v=6afd049c">
 
 <!-- 百度地图改为按需加载（见 js/app_v2.js 的 ensureBaiduMap），避免首屏同步阻塞 -->
 </head>
@@ -154,6 +154,7 @@
  <div id="client-view" class="hidden">
   <div class="toolbar">
    <select id="filter-select" onchange="onFilterChange()"><option value="all">全部类型</option></select>
+   <select id="province-select" onchange="onProvinceChange()" title="按客户归属地区筛选"><option value="all">全部地区</option></select>
    <div class="search-wrap"><input id="search-input" placeholder="搜索客户..." oninput="clientSearchInput()"></div>
    <button class="bulk-toggle-btn" id="client-bulk-classify" onclick="bulkOpenClassify()" title="批量归类：按当前筛选结果或名称关键词批量改客户属性">🏷<span class="bulk-btn-txt"> 归类</span></button>
    <button class="bulk-toggle-btn" id="client-bulk-toggle" onclick="toggleBulkMode()" title="多选模式">☑ 多选</button>
@@ -736,6 +737,7 @@
   <div class="company-info-section" style="margin-top:12px">
     <div class="ci-title">基本信息</div>
     <div class="ci-grid">
+      <div class="ci-field" id="f-prov-field" style="display:none"><label class="ci-label">归属地区<span style="color:var(--text3);font-weight:400"> (省/市)</span></label><select class="ci-input" id="f-province" style="padding:5px 8px"><option value="">自动识别</option></select></div>
       <div class="ci-field"><label class="ci-label">行业</label><select class="ci-input" id="f-industry" style="padding:5px 8px"><option value="">请选择</option><option value="信息技术">信息技术</option><option value="制造业">制造业</option><option value="建筑业">建筑业</option><option value="金融">金融</option><option value="教育">教育</option><option value="医疗">医疗</option><option value="政府">政府</option><option value="能源">能源</option><option value="零售">零售</option><option value="物流">物流</option><option value="房地产">房地产</option><option value="其他">其他</option></select></div>
       <div class="ci-field"><label class="ci-label">规模</label><select class="ci-input" id="f-scale" style="padding:5px 8px"><option value="">请选择</option><option value="小微企业">小微企业</option><option value="中小企业">中小企业</option><option value="中型企业">中型企业</option><option value="大型企业">大型企业</option><option value="集团企业">集团企业</option></select></div>
       <div class="ci-field"><label class="ci-label">来源</label><select class="ci-input" id="f-source" style="padding:5px 8px"><option value="">请选择</option><option value="自主开发">自主开发</option><option value="客户介绍">客户介绍</option><option value="展会">展会</option><option value="网络推广">网络推广</option><option value="电话营销">电话营销</option><option value="合作伙伴">合作伙伴</option><option value="线索转化">线索转化</option><option value="招标采集">招标采集</option><option value="交易网">🤖 交易网</option><option value="行采家">🤖 行采家</option><option value="重庆政采">🤖 重庆政采</option><option value="竞采中心">🤖 竞采中心</option><option value="其他">其他</option></select></div>
@@ -2259,13 +2261,13 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 </script>
 <!-- grsds · 模块化加载（传统脚本，按序执行、共享同一全局作用域，onclick 内联调用照常可用） -->
 <!-- 由原 js/app_v2.js 机械拆分而来，共 18 个模块，顺序不可调整 -->
-<script src="js/modules/01-core.js?v=fa50a5da"></script>
+<script src="js/modules/01-core.js?v=9b351c0c"></script>
 <script src="js/modules/02-auth.js?v=5c455b02"></script>
-<script src="js/modules/03-settings.js?v=8f73bb51"></script>
-<script src="js/modules/04-client-list.js?v=db714abb"></script>
-<script src="js/modules/05-client-detail.js?v=349356f3"></script>
-<script src="js/modules/06-client-tools.js?v=45adcbcb"></script>
-<script src="js/modules/07-orders.js?v=bb8917a2"></script>
+<script src="js/modules/03-settings.js?v=409fb192"></script>
+<script src="js/modules/04-client-list.js?v=e263dae3"></script>
+<script src="js/modules/05-client-detail.js?v=cdbcc426"></script>
+<script src="js/modules/06-client-tools.js?v=cccbf8b6"></script>
+<script src="js/modules/07-orders.js?v=ce277923"></script>
 <script src="js/modules/08-admin.js?v=d16f5cf8"></script>
 <script src="js/modules/09-sales.js?v=83d62ee5"></script>
 <script src="js/modules/10-charts.js?v=5122efef"></script>
@@ -2279,7 +2281,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 <script src="js/modules/18-templates.js?v=efe0ac1f"></script>
 <script src="js/modules/19-renewal.js?v=12b4cbe1"></script>
 <script src="js/modules/20-tender-news.js?v=84cd865f"></script>
-<script src="js/modules/21-insights.js?v=1e189634"></script>
+<script src="js/modules/21-insights.js?v=db55f1e6"></script>
 
 
 <!-- ===== END service-view ===== -->

@@ -281,8 +281,20 @@ var _BULK_ATTRS=[
   {key:'industry',label:'行业',opts:['信息技术','制造业','建筑业','金融','教育','医疗','政府','能源','零售','物流','房地产','其他']},
   {key:'scale',label:'规模',opts:['小微企业','中小企业','中型企业','大型企业','集团企业']},
   {key:'source',label:'来源',opts:['自主开发','客户介绍','展会','网络推广','电话营销','合作伙伴','线索转化','招标采集','交易网','行采家','重庆政采','竞采中心','其他']},
-  {key:'credit_rating',label:'信用等级',opts:['AAA','AA','A','BBB','BB','B','C']}
+  {key:'credit_rating',label:'信用等级',opts:['AAA','AA','A','BBB','BB','B','C']},
+  // 归属地区：要给一批客户统一改到某个省（拓展外地市场时按省批量归档）
+  {key:'province',label:'归属地区',opts:CN_PROVINCES}
 ];
+/** 批量属性列表：province 列没建之前不出现（选了也写不进库） */
+function bulkAttrs(){
+  var out=[];
+  for(var i=0;i<_BULK_ATTRS.length;i++){
+    var f=_BULK_ATTRS[i];
+    if(f.key==='province'&&!_provinceColReady)continue;
+    out.push(f);
+  }
+  return out;
+}
 
 /** 按单位名称猜属性：直接复用的是线索入库那套关键词规则（13 才定义，运行时才取） */
 function bulkGuessTypes(c){
@@ -374,8 +386,9 @@ function bulkScopePool(){
 function bulkComputeRows(){
   var pool=bulkScopePool();
   var scalarPicked=false;
-  for(var a=0;a<_BULK_ATTRS.length;a++){
-    var cb=document.getElementById('bc-'+_BULK_ATTRS[a].key);
+  var _battrs=bulkAttrs();
+  for(var a=0;a<_battrs.length;a++){
+    var cb=document.getElementById('bc-'+_battrs[a].key);
     if(cb&&cb.checked){scalarPicked=true;break}
   }
   var wantType=!!(_bulkTypes.length&&document.getElementById('bc-type')&&document.getElementById('bc-type').checked);
@@ -523,8 +536,9 @@ function bulkEditClientAttrs(opts){
     +'<label><input type="radio" name="bulkTypeMode" value="replace" disabled onchange="bulkRefreshPreview(true)"> 覆盖（替换为所选）</label>'
     +'<label><input type="radio" name="bulkTypeMode" value="remove" disabled onchange="bulkRefreshPreview(true)"> 移除（删掉所选）</label>'
     +'</div></div></div>';
-  for(var a=0;a<_BULK_ATTRS.length;a++){
-    var f=_BULK_ATTRS[a],oh='<option value="">（清空）</option>';
+  var _battrs2=bulkAttrs();
+  for(var a=0;a<_battrs2.length;a++){
+    var f=_battrs2[a],oh='<option value="">（清空）</option>';
     for(var o=0;o<f.opts.length;o++){
       var it=f.opts[o],v=Array.isArray(it)?it[0]:it,t=Array.isArray(it)?it[1]:it;
       oh+='<option value="'+escHtml(v)+'">'+escHtml(t)+'</option>';
@@ -693,8 +707,9 @@ function bulkApplyAttrs(){
     typeCfg={mode:mode,vals:_bulkTypes.slice()};
     desc.push('客户类型'+(_MODE_TXT[mode]||'（追加）')+' → '+_bulkTypes.join('、'));
   }
-  for(var a=0;a<_BULK_ATTRS.length;a++){
-    var f=_BULK_ATTRS[a],cb=document.getElementById('bc-'+f.key);
+  var _battrs3=bulkAttrs();
+  for(var a=0;a<_battrs3.length;a++){
+    var f=_battrs3[a],cb=document.getElementById('bc-'+f.key);
     if(cb&&cb.checked){
       var sel=document.getElementById('bv-'+f.key);
       var v=sel?sel.value:'';
@@ -721,13 +736,13 @@ async function bulkExportClients(){
   var clients=allClients.filter(function(c){return clientSel[c.id]});
   try{
     var wb=XLSX.utils.book_new();
-    var crows=[["名称","属性","等级","生命周期","招标日期","地址","备注"]];
+    var crows=[["名称","归属地区","属性","等级","生命周期","招标日期","地址","备注"]];
     for(var i=0;i<clients.length;i++){
       var c=clients[i];
-      crows.push([c.name||'',parseTypes(c.type).join('、'),c.grade||'',c.lifecycle_stage||'',c.bidding_date||'',c.address||'',c.notes||'']);
+      crows.push([c.name||'',provOfClient(c)||'',parseTypes(c.type).join('、'),c.grade||'',c.lifecycle_stage||'',c.bidding_date||'',c.address||'',c.notes||'']);
     }
     var cs=XLSX.utils.aoa_to_sheet(crows);
-    cs['!cols']=[{wch:30},{wch:22},{wch:8},{wch:12},{wch:12},{wch:30},{wch:30}];
+    cs['!cols']=[{wch:30},{wch:10},{wch:22},{wch:8},{wch:12},{wch:12},{wch:30},{wch:30}];
     XLSX.utils.book_append_sheet(wb,cs,'客户');
     var prows=[["客户名称","姓名","部门","职务","电话","邮箱"]];
     for(var j=0;j<clients.length;j++){
@@ -899,7 +914,7 @@ function renderList(){
   if(q) list=list.filter(function(c){
     // 项目名 / 中标单位 / 中标人 / 甲方负责人改到「项目标讯」页搜索，
     // 客户页只保留客户自身信息（名称、地址、备注、属性、联系人），不再解析 projects。
-    var arr=[c.name,c.address,c.notes];
+    var arr=[c.name,c.address,c.notes,provOfClient(c)];
     var types=parseTypes(c.type);
     arr=arr.concat(types);
     var contacts=contactsOf(c.id);
@@ -915,6 +930,8 @@ function renderList(){
     var types=parseTypes(c.type);
     return types.indexOf(currentFilter)>=0;
   });
+  // 地区筛选：放在类型之后，与搜索、类型是「与」关系；批量归类的「当前筛选结果」也跟着收敛
+  if(currentProvince&&currentProvince!=='all') list=list.filter(clientProvinceHit);
   // 名称完全匹配的排最前：搜「重庆市公安局」不该被「重庆市公安局XX分局」顶掉
   if(q) list=sortBySearchRank(list,q);
 
@@ -932,7 +949,7 @@ function renderList(){
   // Stats
   var statsBar=document.getElementById('stats-bar');
   var totalContacts=allContacts.length;
-  var hasFilter=(currentFilter!=='all')||q;
+  var hasFilter=(currentFilter!=='all')||q||(currentProvince&&currentProvince!=='all');
   statsBar.innerHTML=
     '<div class="stat-card"><div class="stat-num">'+visible.length+'</div><div class="stat-label">'+((clientBulkMode&&clientSelOnly)?'已选客户':(hasFilter?'筛选结果':'客户总数'))+'</div></div>'+(
     hasFilter?'<div class="stat-card"><div class="stat-num">'+allClients.length+'</div><div class="stat-label">全部客户</div></div>':'')+
@@ -978,10 +995,11 @@ function renderList(){
       // AI 采集来源标注：跟线索卡片同一套站点短名，销售一眼看出这家是自动抓来的
       var _srcBadge=(typeof isAiSource==='function'&&isAiSource(c.source))
         ?'<span class="card-source-badge" title="由招标公告自动采集录入">🤖 '+h(c.source)+'</span>':'';
+      var _provBadge=provBadgeHtml(c);   // 重庆不显示（默认大本营），外地客户标出省份
       html+='<div class="client-card'+(clientBulkMode?' bulk-mode':'')+(_sel?' selected':'')+'" onclick="'+(clientBulkMode?'clientToggleSel(\''+c.id+'\')':'openClient360(\''+c.id+'\')')+'">'+
         (clientBulkMode?'<div class="card-check'+(_sel?' on':'')+'">✓</div>':'')+
         (badges?'<div class="card-types">'+badges+'</div>':'')+
-        '<div class="card-name">'+h(c.name)+(_srcBadge?' '+_srcBadge:'')+(gradeBadge?' '+gradeBadge:'')+'</div>'+
+        '<div class="card-name">'+h(c.name)+(_provBadge?' '+_provBadge:'')+(_srcBadge?' '+_srcBadge:'')+(gradeBadge?' '+gradeBadge:'')+'</div>'+
         (c.address?'<div class="card-addr">📍 '+h(c.address)+'</div>':'')+
         (contactHtml?'<div class="card-contact">'+contactHtml+'</div>':'');
       var osum=getClientOrderSummary(c.id);
@@ -1280,6 +1298,10 @@ async function openForm(id){
       var fCredit=document.getElementById('f-credit-rating');if(fCredit)fCredit.value=c.credit_rating||'';
       var fGrade=document.getElementById('f-grade');if(fGrade)fGrade.value=c.grade||'';updateGradeSelect(c.grade||'');
       var fLifecycle=document.getElementById('f-lifecycle-stage');if(fLifecycle)fLifecycle.value=c.lifecycle_stage||'prospect';
+      // 归属地区：优先库里存的值；没存过就把实时解析的结果回显出来，方便用户确认/修正
+      syncProvinceField();
+      var fProv=document.getElementById('f-province');
+      if(fProv)fProv.value=provNorm(c.province)||provOfClient(c)||'';
       // Load tags
       try{clientTags=JSON.parse(c.tags||'[]');if(!Array.isArray(clientTags))clientTags=[]}catch(e){clientTags=[]}
       renderClientTags();
@@ -1336,6 +1358,8 @@ async function openForm(id){
     var fCredit=document.getElementById('f-credit-rating');if(fCredit)fCredit.value='';
     var fGrade=document.getElementById('f-grade');if(fGrade)fGrade.value='';updateGradeSelect('');
     var fLifecycle=document.getElementById('f-lifecycle-stage');if(fLifecycle)fLifecycle.value='prospect';
+    syncProvinceField();
+    var fProv=document.getElementById('f-province');if(fProv)fProv.value='';   // 新建留空 = 按地址/名称自动识别
   }
   // 联系人重建成折叠前后的最终态：回显时一律按「总条数」重新判定（_open 只代表用户在
   // 本次表单里点过的意图，不该被上一次打开/其它链路残留下来）。
