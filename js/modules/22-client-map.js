@@ -75,7 +75,9 @@ function geoFeatureArea(f){
  */
 function geoMatchFeature(text, features){
   if(!text||!features||!features.length)return null;
-  var t=String(text),best=null,bestLen=0;
+  // 先抹掉路名/机构名再匹配：「中山南路」不该算中山市、「广州中医药大学」不是地址；
+  // 抹除规则由 01-core · geoStripNoise 提供（与省份判定同一套，别另写一份）
+  var t=geoStripNoise(text),best=null,bestLen=0;
   for(var i=0;i<features.length;i++){
     var f=features[i];
     var nm=f&&f.properties&&f.properties.name;
@@ -101,14 +103,24 @@ function mapAggProv(pool, features){
   }
   return {counts:counts,unknown:unknown,byProv:true};
 }
-/** 地市/区县聚合：按 feature 名称匹配地址+名称 */
+/** 地市/区县聚合：按 feature 名称匹配地址+名称；只写到街道的再按街道表反查区县 */
 function mapAggRegion(pool, features){
-  var counts={},unknown=[];
-  for(var i=0;i<features.length;i++)counts[features[i].properties.name]=0;
+  var counts={},unknown=[],has={};
+  for(var i=0;i<features.length;i++){
+    var n0=features[i].properties.name;
+    counts[n0]=0;has[n0]=true;
+  }
   for(var j=0;j<pool.length;j++){
-    var f=geoMatchFeature(geoTextOf(pool[j]),features);
-    if(f)counts[f.properties.name]++;
-    else unknown.push(pool[j]);
+    var c=pool[j],txt=geoTextOf(c);
+    var f=geoMatchFeature(txt,features);
+    var hit=f?f.properties.name:'';
+    if(!hit){
+      // 「高唐街道广东西路168号」这种没写区县的，用街道/镇/乡反推（重名的不猜）
+      var dn=geoStreetOf(txt);
+      if(dn&&has[dn])hit=dn;
+    }
+    if(hit)counts[hit]++;
+    else unknown.push(c);
   }
   return {counts:counts,unknown:unknown,byProv:false};
 }
@@ -140,6 +152,39 @@ function mapLoadGeo(adcode){
       return g;
     });
   });
+}
+/* ── 街道级兜底（仅重庆）：地址只写到街道时也能精确到区县 ───────────────── */
+
+var _mapStreets=null,_mapStreetPromise=null;
+/** 重庆「街道/镇/乡 → 区县」对照表（data/geo/cq-streets.json，由 build-cq-streets.js 生成） */
+function mapLoadStreets(){
+  if(_mapStreets)return Promise.resolve(_mapStreets);
+  if(_mapStreetPromise)return _mapStreetPromise;
+  _mapStreetPromise=mapFetchJSON(MAP_GEO_LOCAL+'cq-streets.json').then(function(j){
+    _mapStreets=(j&&typeof j==='object')?j:{};
+    return _mapStreets;
+  }).catch(function(){
+    _mapStreets={};   // 失败就当没有，不阻断地图
+    return _mapStreets;
+  });
+  return _mapStreetPromise;
+}
+/**
+ * 从「XX街道 / XX镇 / XX乡」反查区县。
+ * 街道名取后缀前 2~4 个字（「巫山县高唐街道」要能取到「高唐」而不是「县高唐」）；
+ * 表里没收录的重名街道一律返回 ''，绝不猜。
+ */
+function geoStreetOf(text){
+  if(!_mapStreets)return '';
+  var t=String(text||''),re=/(街道|镇|乡)/g,m;
+  while((m=re.exec(t))){
+    var end=m.index,sfx=m[1];
+    for(var len=4;len>=2;len--){
+      var nm=t.slice(end-len,end)+sfx;
+      if(nm.length>sfx.length&&_mapStreets[nm])return _mapStreets[nm];
+    }
+  }
+  return '';
 }
 function mapLoadScript(src){
   return new Promise(function(res,rej){
@@ -312,6 +357,7 @@ async function mapDrill(name){
   mapLoading('正在加载「'+name+'」的下级地图…');
   try{
     var geo=await mapLoadGeo(adcode);
+    if(adcode===500000)await mapLoadStreets();   // 重庆：补街道 → 区县
     if(seq!==_mapSeq||!_mapState)return;
     // 有些省份的 _full 会带上自己这一级，去掉自引用，否则地图只有一块
     var sub=geo.features.filter(function(x){return x.properties&&x.properties.name&&x.properties.adcode!==adcode});

@@ -221,6 +221,49 @@ var CN_PROV_RE=[
 // 重庆 38 个区县 + 直管区：地址只有区县名时也能归属重庆
 var CQ_DISTRICT_RE=/(万州|涪陵|渝中|大渡口|江北区|沙坪坝|九龙坡|南岸|北碚|綦江|大足|渝北|巴南|黔江|长寿|江津|合川|永川|南川|璧山|铜梁|潼南|荣昌|开州|梁平|武隆|城口|丰都|垫江|忠县|云阳|奉节|巫山|巫溪|石柱|秀山|酉阳|彭水|两江新区|万盛|高新区)/;
 
+/* ── 地址防误判（2026-11-27：用户报「巫山县人民医院被归到广东」）─────────────
+   旧逻辑直接在整段文字里找省名，地址里的「路名 / 机构名」会被当成行政区：
+     「巫山县高唐街道广东西路168号」→ 命中「广东」→ 判成广东（实际重庆巫山）
+     「重庆市璧山区中山南路133号」→ 命中「中山」→ 判成广东中山
+     「重庆市万州区上海医院」      → 命中「上海」
+   现在三档判定，从强到弱：
+     ① 原文里有「重庆市 / 广东省 / 广西壮族自治区」这种行政后缀 → 直接采信
+     ② 文本以省简称开头且不是路名（「重庆大学」「重庆道华科技」算，「上海南路」不算）
+     ③ 抹掉路名/机构名之后再认省名
+   GEO_NOISE_RE 只收「地址设施」词（路/街/道/广场/大厦/小区…），**不收 公司/集团/大学/医院**
+   —— 收了会把「重庆长寿开发投资（集团）有限公司」整段吃掉；名称里的地名本来就该参与判定，
+   机构名误伤交给 geoRoadAt 的位置判断（「上海医院」只在没有其他线索时才会误判，概率极低）。
+   GEO_NOISE_RE 的前缀不能含「省市区县镇乡州盟旗」，否则「巫山县高唐街」会把「巫山县」一起吃掉
+────────────────────────────────────────────────────────────────────────── */
+var GEO_NOISE_RE=/[^\s省市区县镇乡州盟旗0-9A-Za-z]{2,6}?(?:大道|大街|中路|东路|西路|南路|北路|支路|正街|路|街|道|巷|广场|大厦|花园|小区|公寓|酒店|宾馆|酒楼|公园|市场|大楼|立交|隧道|车站|收费站|码头|机场)/g;
+var GEO_ADMIN_FULL_RE=/(重庆|北京|天津|上海)市|(河北|山西|辽宁|吉林|黑龙江|江苏|浙江|安徽|福建|江西|山东|河南|湖北|湖南|广东|广西|海南|四川|贵州|云南|西藏|陕西|甘肃|青海|宁夏|新疆|台湾)(?:省|壮族自治区|回族自治区|维吾尔自治区|自治区|特别行政区)|(香港|澳门)特别行政区/;
+/** 抹掉地址里的路名与机构名，只留省/市/区县这类行政信息 */
+function geoStripNoise(txt){
+  return String(txt==null?'':txt).replace(GEO_NOISE_RE,' ').replace(/[\s　]+/g,' ').trim();
+}
+/** pos 处的地名后面紧跟「路 / 街 / 大道 / 中山四路…」→ 是路名，不是行政区 */
+function geoRoadAt(t,pos,len){
+  var tail=String(t).slice(pos+len,pos+len+4);
+  if(/^[东南西北中]?(?:路|街|巷)/.test(tail))return true;                       // 上海南路 / 北京路 / 广东西路
+  if(/^[东南西北中]?(?:大街|大道)/.test(tail))return true;                        // 中山大道
+  if(/^[一二三四五六七八九十百0-9]{1,2}(?:路|街|巷)/.test(tail))return true;      // 中山四路 / 人民三街
+  if(/^(?:支路|正街)/.test(tail))return true;                                    // 人民支路
+  return false;
+}
+/**
+ * 原文里逐个找省名 / 地市名，跳过被当成路名的位置。
+ * 这是「（重庆）有限公司」「中国移动重庆分公司」这类无地址客户的主要判据。
+ */
+function provScanNoRoad(t){
+  for(var i=0;i<CN_PROV_RE.length;i++){
+    var re=new RegExp(CN_PROV_RE[i][1].source,'g'),m,guard=0;
+    while((m=re.exec(t))&&guard++<80){
+      if(!geoRoadAt(t,m.index,m[0].length))return CN_PROV_RE[i][0];
+      if(re.lastIndex===m.index)re.lastIndex++;
+    }
+  }
+  return '';
+}
 /** 省份名归一：'重庆市' / '重庆省' / '广西壮族自治区' → 简称；识别不了返回 '' */
 function provNorm(v){
   var t=String(v==null?'':v).replace(/[\s　]+/g,'');
@@ -228,11 +271,25 @@ function provNorm(v){
   for(var i=0;i<CN_PROV_RE.length;i++)if(CN_PROV_RE[i][1].test(t))return CN_PROV_RE[i][0];
   return '';
 }
-/** 从一段文字里识别省份，识别不了返回 '' */
+/** 从一段文字（地址 / 客户名）里识别省份，识别不了返回 '' */
 function provOfText(txt){
   var t=String(txt==null?'':txt);
   if(!t)return '';
-  for(var i=0;i<CN_PROV_RE.length;i++)if(CN_PROV_RE[i][1].test(t))return CN_PROV_RE[i][0];
+  // ① 行政后缀最可信：机构名（重庆大学、广州中医药大学…）不会把它抹掉
+  var m=t.match(GEO_ADMIN_FULL_RE);
+  if(m)return m[1]||m[2]||m[3];
+  // ② 以省简称开头，且紧跟的不是路名
+  var head=t.replace(/[\s　]+/g,'');
+  for(var i=0;i<CN_PROVINCES.length;i++){
+    var nm=CN_PROVINCES[i];
+    if(head.indexOf(nm)===0&&!geoRoadAt(head,0,nm.length))return nm;
+  }
+  // ③ 原文逐省扫描，路名位置跳过（「（重庆）有限公司」→ 重庆，「广东西路」→ 不是广东）
+  var hit=provScanNoRoad(t);
+  if(hit)return hit;
+  // ④ 抹掉路名 / 机构名之后再认（兜底）
+  var s=geoStripNoise(t);
+  for(var j=0;j<CN_PROV_RE.length;j++)if(CN_PROV_RE[j][1].test(s))return CN_PROV_RE[j][0];
   return '';
 }
 /** 客户归属省份：手工 province > 地址 > 名称 > 重庆区县名；都判断不了返回 ''（未知） */
