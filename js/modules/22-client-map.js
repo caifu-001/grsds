@@ -136,16 +136,41 @@ function mapFetchJSON(url){
     return JSON.parse(String(txt).replace(/^\uFEFF/,''));
   });
 }
-/** 取某级地图数据：全国/重庆走本地，其余省份按需远程拉（内存缓存） */
+/* 本地地图清单（data/geo/_index.json）：{adcode: 下级数量}。
+   只有收录进来的 adcode 才允许下钻 —— 阿里 DataV 对浏览器直连返回 403，
+   所以全部地图都已本地化（34 省 + 328 地市），清单是唯一可信来源。 */
+var _mapIndex=null,_mapIndexPromise=null;
+function mapLoadIndex(){
+  if(_mapIndex)return Promise.resolve(_mapIndex);
+  if(_mapIndexPromise)return _mapIndexPromise;
+  _mapIndexPromise=mapFetchJSON(MAP_GEO_LOCAL+'_index.json').then(function(j){
+    _mapIndex=(j&&typeof j==='object')?j:{};
+    return _mapIndex;
+  }).catch(function(){
+    _mapIndex=null;   // 拿不到清单就当没有，下钻交给 childrenNum 判断
+    return _mapIndex;
+  });
+  return _mapIndexPromise;
+}
+/** 这个地区有没有本地下级地图；depth>=2（区县）一律当叶子，不再往乡镇钻 */
+function mapHasChild(adcode,depth){
+  if(depth>=2)return false;
+  if(!_mapIndex)return true;   // 清单不可用 → 让 childrenNum 决定，失败会自动降级成名单
+  return Number(_mapIndex[String(adcode)])>0;
+}
+
+/** 取某级地图数据：一律走本地 data/geo（离线可用），本地缺才远程兜底 */
 function mapLoadGeo(adcode){
   adcode=Number(adcode)||100000;
   if(_mapGeoMem[adcode])return Promise.resolve(_mapGeoMem[adcode]);
-  var local='';
-  if(adcode===100000)local=MAP_GEO_LOCAL+'china.json';
-  else if(adcode===500000)local=MAP_GEO_LOCAL+'500000_full.json';
-  var tryLocal=local?mapFetchJSON(local).catch(function(){return null}):Promise.resolve(null);
-  return tryLocal.then(function(geo){
-    if(geo&&geo.features&&geo.features.length){_mapGeoMem[adcode]=geo;return geo}
+  var local=(adcode===100000)?MAP_GEO_LOCAL+'china.json':MAP_GEO_LOCAL+adcode+'_full.json';
+  return mapFetchJSON(local).then(function(geo){
+    if(!geo||!geo.features||!geo.features.length)throw new Error('NO_LOCAL');
+    _mapGeoMem[adcode]=geo;
+    return geo;
+  }).catch(function(err){
+    // 本地 404 = 这个地区本来就没有下级（省直辖县级市、兵团市等），别再去撞远程 403
+    if(err&&/HTTP 404/.test(String(err.message)))throw new Error('NO_LOCAL');
     return mapFetchJSON(MAP_GEO_REMOTE+adcode+'_full.json').then(function(g){
       if(!g||!g.features||!g.features.length)throw new Error('地图数据为空');
       _mapGeoMem[adcode]=g;
@@ -304,7 +329,8 @@ async function mapReset(scope){
   _mapState={scope:scope,pool:pool,stack:[],listFeature:null,listPool:null,chart:null,loading:true};
   mapRenderCrumb();mapRenderSide();
   try{
-    var geo=await mapLoadGeo(100000);
+    var both=await Promise.all([mapLoadGeo(100000),mapLoadIndex()]);
+    var geo=both[0];
     if(seq!==_mapSeq||!_mapState)return;
     _mapState.stack.push({adcode:100000,geo:geo,pool:pool,agg:mapAggProv(pool,geo.features),depth:0,title:'全国'});
     await mapRender(seq);
@@ -344,7 +370,8 @@ async function mapDrill(name){
   }else{
     pool=node.pool.filter(function(c){return geoMatchFeature(geoTextOf(c),[f])});
   }
-  var hasChild=Number(f.properties.childrenNum)>0;
+  // 清单在 mapReset 里已加载好，这里同步判断即可（叶子路径不能变异步）
+  var hasChild=mapHasChild(adcode,node.depth)&&Number(f.properties.childrenNum)>0;
   if(!hasChild){
     // 已是叶子（区县 / 不设区的地市）：右侧栏列客户名单，地图保持
     _mapState.listFeature=name;
@@ -368,10 +395,12 @@ async function mapDrill(name){
   }catch(e){
     if(seq!==_mapSeq||!_mapState)return;
     mapLoading('');
-    var msg=(e&&e.message==='NO_SUB')
-      ?'「'+name+'」没有更细的地图数据，只能看当前这一级'
-      :'「'+name+'」的地图加载失败（' + ((e&&e.message)||e) + '），请检查网络后重试';
-    showToast(msg,'warning');
+    // 拿不到下级地图（本地没收录 / 网络异常）不弹红色报错：直接按叶子处理，右栏列名单
+    _mapState.listFeature=name;
+    _mapState.listPool=pool;
+    mapRenderSide();
+    mapRenderCrumb(name);
+    showToast('「'+name+'」没有更细的地图数据，已在右侧列出该地区客户','info');
   }
 }
 
@@ -541,14 +570,21 @@ async function mapRender(seq){
   var counts=node.agg.counts,data=[],childMap={},areaMap={},maxV=0;
   for(var fi=0;fi<node.geo.features.length;fi++){
     var f0=node.geo.features[fi],fp=f0.properties;
-    if(fp&&fp.name){childMap[fp.name]=Number(fp.childrenNum)||0;areaMap[fp.name]=geoFeatureArea(f0)}
+    if(fp&&fp.name){
+      // 能不能下钻以本地清单为准（省直辖县级市、兵团市 childrenNum>0 但没有下级地图）
+      childMap[fp.name]=(mapHasChild(fp.adcode,node.depth)&&Number(fp.childrenNum)>0)?1:0;
+      areaMap[fp.name]=geoFeatureArea(f0);
+    }
   }
+  // 板块少的层级（长沙 9 个区、广州 11 个区）面积普遍偏小，阈值放宽；
+  // 重庆 38 个区县才用 0.09，免得主城区标签糊成一片
+  var areaMin=(node.geo.features.length<=20)?0.018:0.09;
   for(var nm in counts){
     if(!Object.prototype.hasOwnProperty.call(counts,nm))continue;
     var v=counts[nm];
     if(v>maxV)maxV=v;
     // 渝中区这种面积太小的块塞不下「渝中 87」，隐藏文字、靠 hover + 右侧排行
-    var canLabel=v>0&&(node.depth===0||(areaMap[nm]||0)>=0.09);
+    var canLabel=v>0&&(node.depth===0||(areaMap[nm]||0)>=areaMin);
     data.push({name:nm,value:v,childrenNum:childMap[nm]||0,label:{show:canLabel}});
   }
   // 大值优先：叠加 labelLayout.hideOverlap 时，主城区那种挤在一起的小区县
