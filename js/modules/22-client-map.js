@@ -136,14 +136,14 @@ function mapFetchJSON(url){
     return JSON.parse(String(txt).replace(/^\uFEFF/,''));
   });
 }
-/* 本地地图清单（data/geo/_index.json）：{adcode: 下级数量}。
+/* 本地地图清单（data/geo/geo-index.json：{adcode: 下级数量}。
    只有收录进来的 adcode 才允许下钻 —— 阿里 DataV 对浏览器直连返回 403，
    所以全部地图都已本地化（34 省 + 328 地市），清单是唯一可信来源。 */
 var _mapIndex=null,_mapIndexPromise=null;
 function mapLoadIndex(){
   if(_mapIndex)return Promise.resolve(_mapIndex);
   if(_mapIndexPromise)return _mapIndexPromise;
-  _mapIndexPromise=mapFetchJSON(MAP_GEO_LOCAL+'_index.json').then(function(j){
+  _mapIndexPromise=mapFetchJSON(MAP_GEO_LOCAL+'geo-index.json').then(function(j){
     _mapIndex=(j&&typeof j==='object')?j:{};
     return _mapIndex;
   }).catch(function(){
