@@ -90,10 +90,45 @@ as $$
   select public.is_platform_super();
 $$;
 
-grant execute on function public.super_admin_email()             to authenticated, anon;
-grant execute on function public.is_platform_super_user(uuid)   to authenticated, anon;
-grant execute on function public.is_platform_super()            to authenticated, anon;
+-- 库里还存在一个 is_super_admin(uid uuid) 的重载（admin_enhance_v2 留下的），
+-- 它只看 role 字符串。旧策略里写的是 is_super_admin(auth.uid())，
+-- 不一起改掉的话，被临时改成 super_admin 的账号在那些策略上仍然通行。
+create or replace function public.is_super_admin(uid uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select public.is_platform_super_user(uid);
+$$;
+
+grant execute on function public.super_admin_email()             to authenticated;
+grant execute on function public.is_platform_super_user(uuid)   to authenticated;
+grant execute on function public.is_platform_super()            to authenticated;
+-- is_super_admin 保持 anon 可执行：全库几十条老策略没写 to authenticated，
+-- 匿名访问时 PG 要校验函数执行权，收回会直接报 permission denied for function。
 grant execute on function public.is_super_admin()               to authenticated, anon;
+grant execute on function public.is_super_admin(uuid)           to authenticated, anon;
+
+-- 当前登录者已加入的公司 id 列表（SECURITY DEFINER，绕过 RLS）。
+-- 为什么必须用函数：profiles 的策略如果直接写 `company_id in (select ... from
+-- company_memberships)`，而 company_memberships 自己的策略又 `select ... from profiles`，
+-- PostgreSQL 会判为策略递归，直接抛 42P17 infinite recursion detected in policy。
+create or replace function public.my_company_ids()
+returns integer[]
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(array_agg(cm.company_id), '{}'::integer[])
+    from public.company_memberships cm
+   where cm.user_id = auth.uid()
+     and cm.status = 'active';
+$$;
+
+grant execute on function public.my_company_ids() to authenticated, anon;
 
 -- 策略放在函数之后：创建策略时 PostgreSQL 会解析函数是否存在
 drop policy if exists platform_config_read on public.platform_config;
@@ -133,6 +168,8 @@ declare
   v_caller       uuid := auth.uid();
   v_is_super     boolean;
   v_is_admin_of  boolean;
+  v_req_company  integer;      -- 前端请求写入的 company_id（UPDATE 时先存下来）
+  v_req_active_company integer; -- 前端请求写入的 active_company_id
 begin
   -- service_role / 后台任务（代理层已做归属校验）直接放行
   if v_caller is null then
@@ -176,6 +213,11 @@ begin
   end if;
 
   -- ── UPDATE ──
+  -- 前端请求的归属先存下来：下面会先把 new 上的值还原成 old，
+  -- 再决定是否放行（搬家场景要用原始请求值判断）。
+  v_req_company := new.company_id;
+  v_req_active_company := new.active_company_id;
+
   -- 调用者是否是「目标用户所属公司的管理员」
   v_is_admin_of := exists (
     select 1 from public.company_memberships cm
@@ -192,24 +234,31 @@ begin
     raise exception '不能授予平台超级管理员权限';
   end if;
 
-  if old.user_id = v_caller and not v_is_admin_of then
-    -- 本人：权限类字段一律还原（前端只允许改姓名/电话/岗位/头像等）
+  -- 本人改自己：先于管理员分支判断。
+  -- 之前写成 `old.user_id = v_caller and not v_is_admin_of`，公司管理员改自己时
+  -- v_is_admin_of 为真 → 漏进下面的管理员分支 → active_company_id 被还原成旧值，
+  -- 结果管理员点「切换公司」永远切不过去。顺序必须是「先本人、再管理员」。
+  if old.user_id = v_caller then
+    -- 权限类字段一律还原（前端只允许改姓名/电话/岗位/头像等）
     new.role              := old.role;
     new.role_id           := old.role_id;
-    new.company_id        := old.company_id;
     new.status            := old.status;
     new.department_id     := old.department_id;
+
     -- active_company_id 可以自己切，但必须是自己已加入的公司（否则代理会按它注入归属域）
-    if new.active_company_id is distinct from old.active_company_id then
-      if new.active_company_id is not null and not exists (
-        select 1 from public.company_memberships cm
-         where cm.user_id = old.user_id
-           and cm.company_id = new.active_company_id
-           and cm.status = 'active'
-      ) then
-        new.active_company_id := old.active_company_id;
-      end if;
+    if new.active_company_id is distinct from old.active_company_id
+       and (new.active_company_id is null or not exists (
+              select 1 from public.company_memberships cm
+               where cm.user_id = old.user_id
+                 and cm.company_id = new.active_company_id
+                 and cm.status = 'active')) then
+      new.active_company_id := old.active_company_id;
     end if;
+
+    -- company_id 是历史兼容字段，但一大票老表（orders/clients/inventory…）的 RLS
+    -- 仍是 `company_id = (select company_id from profiles …)`。它不跟 active 走的话，
+    -- 切换公司后数据域不会变（A/B 两家来回串），所以这里强制同步。
+    new.company_id := coalesce(new.active_company_id, old.company_id);
     return new;
   end if;
 
@@ -217,9 +266,40 @@ begin
     raise exception '无权修改其他成员的档案';
   end if;
 
-  -- 公司管理员：可改本公司成员的角色/部门/状态，但不能跨公司搬人、不能造超管
+  -- 公司管理员：可改本公司成员的角色/部门/状态，但不能跨公司搬人、不能造超管。
   new.company_id        := old.company_id;
   new.active_company_id := old.active_company_id;
+
+  -- 唯一例外：把成员从本公司「摘出去」（remove_member）。人被删了成员关系却还留着
+  -- 原 company_id 的话，老表的 RLS 照样放行 —— 必须允许一起搬家。
+  -- 用事务级开关 grsds.tenant_move 显式放行：只有 remove_member 内部会置位，
+  -- 普通 UPDATE 永远进不来（否则管理员可以随手把兼职的人推到另一家公司去）。
+  -- 即便开关被置位，仍要求：调用者是对方当前公司的管理员 + 新归属是对方
+  -- 仍有效加入的公司或 null，绝不允许塞进第三方公司。
+  if coalesce(current_setting('grsds.tenant_move', true), '') = '1'
+     and (v_req_company is distinct from old.company_id
+          or v_req_active_company is distinct from old.active_company_id)
+     and exists (
+       select 1 from public.company_memberships cm
+        where cm.user_id = v_caller
+          and cm.role = 'admin'
+          and cm.status = 'active'
+          and cm.company_id in (old.active_company_id, old.company_id)
+     )
+     and (v_req_company is null or exists (
+            select 1 from public.company_memberships cm3
+             where cm3.user_id = old.user_id
+               and cm3.company_id = v_req_company
+               and cm3.status = 'active'))
+     and (v_req_active_company is null or exists (
+            select 1 from public.company_memberships cm4
+             where cm4.user_id = old.user_id
+               and cm4.company_id = v_req_active_company
+               and cm4.status = 'active'))
+  then
+    new.company_id        := v_req_company;
+    new.active_company_id := v_req_active_company;
+  end if;
   return new;
 end;
 $$;
@@ -248,10 +328,7 @@ create policy profiles_select_self on public.profiles
   using (
     user_id = auth.uid()
     or public.is_super_admin()
-    or company_id in (
-      select cm.company_id from public.company_memberships cm
-       where cm.user_id = auth.uid() and cm.status = 'active'
-    )
+    or company_id = any (public.my_company_ids())
   );
 
 -- 插入：只能建自己（新同事建档一律走 admin-proxy 的 service_role）
@@ -505,6 +582,11 @@ end;
 $$;
 
 -- 6.2 列成员：仅本公司管理员 / 平台超管；结果里剔除平台超管
+-- 先 drop 再建：历史上有 9 列（无 invited_by_email）和 10 列两个版本共存过，
+-- RETURNS TABLE 的列一旦和库里现存版本不一致，CREATE OR REPLACE 会报 42P13
+-- （cannot change return type of existing function）。drop 掉最稳，后面统一授权。
+drop function if exists public.list_company_members(integer);
+
 create or replace function public.list_company_members(p_company_id integer)
 returns table(
   user_id uuid,
@@ -569,6 +651,8 @@ language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  v_next integer;   -- 被移除者剩下的第一个有效公司（没有则 null）
 begin
   if auth.uid() is null then
     null;
@@ -593,23 +677,49 @@ begin
     raise exception '不能移除平台超级管理员';
   end if;
 
-  delete from public.company_memberships
-   where user_id = p_user_id and company_id = p_company_id;
+  select cm2.company_id into v_next
+    from public.company_memberships cm2
+   where cm2.user_id = p_user_id
+     and cm2.status = 'active'
+     and cm2.company_id <> p_company_id
+   order by cm2.joined_at
+   limit 1;
+
+  -- 顺序很关键：必须先改 profiles、再删成员关系。
+  -- guard_profile_privileges 是凭「目标用户仍属于调用者管理的公司」来认管理员身份的，
+  -- 先删关系的话它认不出来，会抛「无权修改其他成员的档案」，整个 RPC 回滚。
+  -- company_id 一起搬：老表的 RLS 还按它划范围，只改 active_company_id 等于没摘干净。
+  -- grsds.tenant_move 是给守卫触发器看的临时开关（事务级，出了本函数就失效）。
+  perform set_config('grsds.tenant_move', '1', true);
 
   update public.profiles
-     set active_company_id = (
-       select cm2.company_id from public.company_memberships cm2
-        where cm2.user_id = p_user_id and cm2.status = 'active'
-        order by cm2.joined_at limit 1
-     )
-   where user_id = p_user_id and active_company_id = p_company_id;
+     set company_id        = case when company_id        = p_company_id then v_next else company_id        end,
+         active_company_id = case when active_company_id = p_company_id then v_next else active_company_id end
+   where user_id = p_user_id
+     and (company_id = p_company_id or active_company_id = p_company_id);
+
+  perform set_config('grsds.tenant_move', '', true);
+
+  delete from public.company_memberships
+   where user_id = p_user_id and company_id = p_company_id;
 
   return 'ok';
 end;
 $$;
 
 -- 6.4 邀请成员：平台超管豁免；不能把平台超管邀请进别家公司
-create or replace function public.invite_member(p_company_id integer, p_email text, p_role text default 'member')
+--     签名必须与库里已有的版本完全一致：invite_member(integer, text, text, text)
+--     （p_role TEXT DEFAULT 'member', p_message TEXT DEFAULT NULL）。
+--     若只按 3 个参数重建，PostgreSQL 会当成新重载留下两个同名函数，
+--     PostgREST 调用时报「函数不唯一」。
+drop function if exists public.invite_member(integer, text, text);
+
+create or replace function public.invite_member(
+  p_company_id integer,
+  p_email text,
+  p_role text default 'member',
+  p_message text default null
+)
 returns bigint
 language plpgsql
 security definer
@@ -619,6 +729,9 @@ declare
   v_ok boolean;
   v_id bigint;
   v_email text := lower(btrim(coalesce(p_email, '')));
+  v_company_name text;
+  v_inviter_name text;
+  v_target uuid;
 begin
   select (
     public.is_platform_super()
@@ -665,9 +778,26 @@ begin
     raise exception '该用户已是公司成员';
   end if;
 
-  insert into public.invitations (from_company_id, to_email, role, invited_by, status)
-  values (p_company_id, v_email, coalesce(nullif(p_role, ''), 'member'), auth.uid(), 'pending')
+  insert into public.invitations (from_company_id, to_email, role, invited_by, status, message)
+  values (p_company_id, v_email, coalesce(nullif(p_role, ''), 'member'), auth.uid(), 'pending', p_message)
   returning id into v_id;
+
+  -- 已注册的邮箱顺手发一条站内通知（未注册的等注册后自己看到邀请列表）
+  select u.id into v_target from auth.users u where lower(coalesce(u.email, '')) = v_email limit 1;
+  if v_target is not null then
+    select name into v_company_name from public.companies where id = p_company_id;
+    select coalesce(nullif(btrim(display_name), ''), email)
+      into v_inviter_name from public.profiles where user_id = auth.uid();
+    insert into public.notifications (user_id, company_id, title, body, type, link, is_read)
+    values (
+      v_target, p_company_id, '📨 入职邀请',
+      case when p_message is not null and p_message <> ''
+        then coalesce(v_inviter_name, '管理员') || ' 邀请你加入「' || coalesce(v_company_name, '公司') || '」: ' || p_message
+        else coalesce(v_inviter_name, '管理员') || ' 邀请你加入「' || coalesce(v_company_name, '公司') || '」'
+      end,
+      'info', 'invitations', false
+    );
+  end if;
 
   return v_id;
 end;
@@ -687,11 +817,15 @@ $$;
 -- PostgREST 面对两个候选会直接报「函数不唯一」。
 drop function if exists public.batch_grant_resources(uuid, integer, text, integer[]);
 
+-- 注意：库里旧版本已经是 (uuid,integer,text,text,uuid)，且 p_resource_ids 带
+-- DEFAULT ''。PostgreSQL 的 CREATE OR REPLACE 不允许「移除已有参数的默认值」
+-- （报 42P13: cannot remove parameter defaults from existing function），
+-- 所以这里必须把 p_resource_ids 的默认值原样保留。
 create or replace function public.batch_grant_resources(
   p_user_id uuid,
   p_company_id integer,
   p_resource_type text,
-  p_resource_ids text,
+  p_resource_ids text default '',
   p_granted_by uuid default null
 )
 returns integer
@@ -758,6 +892,10 @@ begin
   return v_count;
 end;
 $$;
+
+-- 同样先 drop：admin_enhance_v2 时期可能留下 TABLE(resource_id integer) 的版本，
+-- 返回列类型不同，CREATE OR REPLACE 会直接 42P13。
+drop function if exists public.get_member_grants(uuid, integer, text);
 
 create or replace function public.get_member_grants(
   p_user_id uuid,
@@ -846,6 +984,31 @@ update public.operation_logs l
  where l.user_id = p.user_id
    and l.actor_role is null;
 
+-- 所有写入路径统一打标：write_op_log 之外，还有 trg_audit_operation 这个
+-- AFTER 触发器在往 operation_logs 里写（clients/contacts/orders…每张表都挂了），
+-- 它不带 actor_role。不补这一层，超管改客户产生的审计日志 actor_role 是 null，
+-- 同公司的人照样能看到。
+create or replace function public.fill_oplog_actor_role()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.actor_role is null then
+    select p.role into new.actor_role
+      from public.profiles p
+     where p.user_id = coalesce(new.user_id, auth.uid());
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_fill_oplog_actor_role on public.operation_logs;
+create trigger trg_fill_oplog_actor_role
+  before insert on public.operation_logs
+  for each row execute function public.fill_oplog_actor_role();
+
 alter table public.operation_logs enable row level security;
 
 drop policy if exists operation_logs_select on public.operation_logs;
@@ -855,12 +1018,27 @@ create policy operation_logs_select on public.operation_logs
     public.is_super_admin()
     or (
       coalesce(actor_role, '') <> 'super_admin'
-      and company_id in (
-        select cm.company_id from public.company_memberships cm
-         where cm.user_id = auth.uid() and cm.status = 'active'
-      )
+      and company_id = any (public.my_company_ids()::bigint[])
     )
   );
+
+-- 老脚本（admin_enhance_v2 / update_rls_active_company / run_me_now）在
+-- operation_logs 上留下过 FOR ALL 的宽松策略，RLS 是「或」关系，不清掉它们
+-- 新建的 select 策略就是摆设 —— 超管的日志照样能被同公司的人读到。
+do $$
+declare
+  r record;
+begin
+  for r in
+    select policyname
+      from pg_policies
+     where schemaname = 'public'
+       and tablename  = 'operation_logs'
+       and policyname <> 'operation_logs_select'
+  loop
+    execute format('drop policy %I on public.operation_logs', r.policyname);
+  end loop;
+end $$;
 
 -- ---------------------------------------------------------------------------
 -- 9. 授权：新增/重建的函数显式授给 authenticated
@@ -871,7 +1049,7 @@ grant execute on function public.reject_tenant_company(integer)           to aut
 grant execute on function public.list_company_members(integer)            to authenticated;
 grant execute on function public.set_active_company(integer)              to authenticated;
 grant execute on function public.remove_member(integer, uuid)             to authenticated;
-grant execute on function public.invite_member(integer, text, text)       to authenticated;
+grant execute on function public.invite_member(integer, text, text, text)  to authenticated;
 grant execute on function public.batch_grant_resources(uuid, integer, text, text, uuid) to authenticated;
 grant execute on function public.get_member_grants(uuid, integer, text)   to authenticated;
 
