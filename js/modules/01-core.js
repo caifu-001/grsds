@@ -7,32 +7,72 @@
 
 // === 安全管理 API 代理 (P0-2 修复) ===
 // 所有需 service_role 的操作统一走 Supabase Edge Function
-// session 有效性保障：supabase-js@2 的 getSession() 读的是内存里的 session，
-// 页面长时间后台、或浏览器阻止第三方存储（控制台会提示 Tracking Prevention
-// blocked access to storage）时自动刷新可能没落地，拿到过期 / null 的 session
-// 直接调代理就会 401 Unauthorized: invalid or expired token。
-// 因此：发请求前先确认 session 有效，401 时强制刷新并重试一次。
+// session 保障（第 5 轮）：supabase-js@2 的 getSession() 读的是内存里的 session。
+// 浏览器阻止第三方存储（Tracking Prevention blocked access to storage）时，
+// 刷新拿到的新 token 可能没写回 localStorage；页面重载后读回已被轮换作废的旧
+// refresh_token → GoTrue 返回 400 "Refresh token is not valid"，自动刷新救不回来。
+// 因此这里：
+//  1) 发请求前只读 session，绝不主动刷新（并发刷新 + token 轮换正是 400 的元凶）；
+//  2) 只在 401 时刷新，且全局单飞 —— N 个并发请求共用一次 refresh；
+//  3) 刷新被 GoTrue 明确拒绝时熔断、清掉本地坏 session、提示重新登录。
+var _adminRefreshFlight=null;      // refreshSession 单飞 Promise
+var _adminAuthDead=false;          // refresh token 已判无效，必须重新登录
+var _adminDeadToken='';            // 判死时的 token，用于识别「已重新登录」
+var _adminAuthDeadNotified=false;  // 提示只弹一次，避免刷屏
+function resetAdminAuthGuard(){_adminAuthDead=false;_adminDeadToken='';_adminAuthDeadNotified=false;_adminRefreshFlight=null}
 async function validAdminSession(){
-  try{
-    var r=await sb.auth.getSession();
-    var s=r&&r.data&&r.data.session;
-    if(!s||!s.access_token)return null;                          // 交给下面的 401 分支处理
-    var exp=Number(s.expires_at||0);
-    if(exp>0){
-      if(exp<1e12)exp=exp*1000;                                  // 秒 → 毫秒
-      if(exp-Date.now()<60000){
-        var f=await refreshAdminSession();
-        return f||s;                                              // 刷新失败也先用旧 token，别误杀
-      }
-    }
-    return s;
-  }catch(e){return null}
+  // 只读内存，不触发网络请求；是否过期交给 401 分支统一处理。
+  try{var r=await sb.auth.getSession();return (r&&r.data&&r.data.session)||null}catch(e){return null}
 }
-async function refreshAdminSession(){
-  try{var r=await sb.auth.refreshSession();return (r&&r.data&&r.data.session)||null}catch(e){return null}
+function _adminClearDeadSession(){
+  // 只清 supabase-js@2 持久化的 session 键，避免页面重载后继续读回已作废的 refresh token
+  try{for(var i=localStorage.length-1;i>=0;i--){var k=localStorage.key(i);if(k&&k.indexOf('auth-token')>=0)localStorage.removeItem(k)}}catch(e){}
+}
+function _adminNotifyReLogin(){
+  if(_adminAuthDeadNotified)return;
+  _adminAuthDeadNotified=true;
+  var msg='登录状态已失效，请重新登录后再操作';
+  try{if(typeof showToast==='function')showToast(msg,'error')}catch(e){}
+  console.warn('[callAdmin] '+msg+'（refresh token 已被吊销或轮换作废，自动刷新无法恢复）');
+}
+function _adminMarkDead(token){
+  _adminAuthDead=true;_adminDeadToken=token||'';_adminClearDeadSession();_adminNotifyReLogin();
+}
+async function refreshAdminSession(deadToken){
+  if(_adminRefreshFlight)return _adminRefreshFlight;      // 单飞：并发 401 只发一次刷新
+  _adminRefreshFlight=(async function(){
+    try{
+      var r=await sb.auth.refreshSession();
+      if(r&&r.error){
+        var m=String(r.error.message||r.error.msg||'');
+        var st=Number(r.error.status||r.error.code||0);
+        if(st===400||/refresh token|invalid_grant|already used|not valid|not found/i.test(m)){
+          _adminMarkDead(deadToken);return null;
+        }
+        return null;
+      }
+      var s=r&&r.data&&r.data.session;
+      if(s&&s.access_token){_adminAuthDead=false;return s}
+      return null;
+    }catch(e){
+      var em=String((e&&(e.message||e.msg))||'');
+      if((e&&Number(e.status)===400)||/refresh token|invalid_grant|already used|not valid|not found/i.test(em))_adminMarkDead(deadToken);
+      return null;
+    }
+  })();
+  var done=function(){_adminRefreshFlight=null};
+  _adminRefreshFlight.then(done,done);
+  return _adminRefreshFlight;
 }
 async function callAdmin(op,table,opts){
   opts=opts||{};
+  if(_adminAuthDead){
+    // 同页重新登录（doLogout 不 reload）后自动解除熔断：token 变了就是新会话
+    var cur=await validAdminSession();
+    var ct=(cur&&cur.access_token)||'';
+    if(ct&&ct!==_adminDeadToken)resetAdminAuthGuard();
+    else return{data:null,error:{message:'登录状态已失效，请重新登录后再操作',authExpired:true}};
+  }
   try{
     var bodyObj={op:op,table:table,method:opts.method||'GET',payload:opts.payload||null,query:opts.query||'*',filters:opts.filters||null};
     // 透传额外参数（如 auth 操作的 userId/password）
@@ -47,13 +87,20 @@ async function callAdmin(op,table,opts){
     var post=function(t){return fetch(SUPAFUNC_BASE,{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,Authorization:'Bearer '+t},body:body})};
     var r=await post(token);
     if(r.status===401){
-      var s2=await refreshAdminSession();                       // 请求途中刚好过期：刷新后重试一次
-      if(s2&&s2.access_token)r=await post(s2.access_token);
+      await refreshAdminSession(token);                  // 单飞：并发只刷一次
+      if(_adminAuthDead)return{data:null,error:{message:'登录状态已失效，请重新登录后再操作',authExpired:true}};
+      // 重新读内存里的 session，不用 refresh 的返回值（并发时可能被覆盖）
+      var g=await validAdminSession();
+      var t2=(g&&g.access_token)||'';
+      if(t2&&t2!==token)r=await post(t2);               // 只有拿到新 token 才重试一次
     }
     if(!r.ok){
       var txt=await r.text();
       console.error('callAdmin failed:',r.status,txt);
-      if(r.status===401)return{data:null,error:{message:'登录状态已失效，请重新登录后再操作（代理仍返回 401）'}};
+      if(r.status===401){
+        _adminNotifyReLogin();
+        return{data:null,error:{message:'登录状态已失效，请重新登录后再操作（代理仍返回 401）',authExpired:true}};
+      }
       return{data:null,error:{message:'Admin API error: HTTP ' + r.status + ' - ' + (txt||'empty response')}};
     }
     return await r.json();

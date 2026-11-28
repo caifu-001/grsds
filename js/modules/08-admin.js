@@ -961,11 +961,14 @@ async function saveNewUser(){
   if(roleVal&&roleVal.startsWith('r_')){roleId=parseInt(roleVal.slice(2));role='custom'}
   if(!email){showToast('请输入邮箱');return}
   if(!password||password.length<6){showToast('密码至少6位');return}
-  // Step 1: 刷新并备份管理员完整 session（access_token + refresh_token）
+  // Step 1: 备份管理员完整 session（access_token + refresh_token）。
+  // 不再主动 refreshSession()：它会与页面其它 callAdmin 的刷新并发，GoTrue 开启
+  // refresh token 轮换时旧 token 会被作废（400 Refresh token is not valid）。
+  // 需要刷新统一走 01-core · refreshAdminSession() 的全局单飞。
   var adminSession=null;
-  try{try{await sb.auth.refreshSession()}catch(e){}var s=(await sb.auth.getSession()).data.session;
+  try{var s=(await sb.auth.getSession()).data.session;
     if(s&&s.access_token&&s.refresh_token)adminSession={access_token:s.access_token,refresh_token:s.refresh_token}}catch(e){}
-  // Step 2: Backup admin localStorage (now contains refreshed tokens from step 1)
+  // Step 2: Backup admin localStorage（与 Step 1 的内存备份互为兜底）
   var authKey=null,authVal=null;
   for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k&&k.indexOf('auth-token')>=0){authKey=k;authVal=localStorage.getItem(k);break}}
   // Step 3: SignUp (auto-switches sb client session to new user)

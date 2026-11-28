@@ -335,12 +335,65 @@ access_token 默认 1 小时；页面长时间后台、以及控制台一直出�
 (async()=>{const s=(await sb.auth.getSession()).data.session;console.log(s?{hasToken:!!s.access_token,expires_at:new Date(s.expires_at*1000).toISOString(),expired:Date.now()>s.expires_at*1000}:'session=null，需要重新登录')})()
 ```
 
+### 超管重置密码仍 401：refresh token 已被判无效（第五轮，2026-11-28 13:20）
+
+**这次和第四轮不是同一个问题。** 第四轮是 access_token 过期；这一轮日志里出现
+`POST /auth/v1/token?grant_type=refresh_token 400 (Bad Request)` —— **连 refresh token
+都被 GoTrue 拒绝了**，自动刷新这条路已经走不通。
+
+线上实测硬证据：
+
+| 检查 | 结果 |
+|---|---|
+| 超管 `last_sign_in_at` | `2026-10-12T14:21:56Z`（一个多月没用密码重新登录，一直靠 refresh 续期） |
+| GoTrue 对无效 refresh token | `400 {"error_code":"validation_failed","msg":"Refresh token is not valid"}` |
+| 前端版本 | `01-core.js?v=8c7f2669` / `08-admin.js?v=d0fd8139`，第四轮代码已生效 |
+| 401 数量 | 同一时刻 4~5 个并发（初始化时 `companies` / `profiles` 等一起发） |
+| 连锁反应 | `08-admin.js:110 / :344` 的 `callAdmin` fallback 直连同样拿不到数据，页面显示空 |
+
+**refresh token 为什么会死**：Supabase 默认开启 Refresh Token Rotation，每次刷新会
+作废旧 token。第四轮的 `validAdminSession()` 在「剩 60 秒到期」时会为**每个**并发
+`callAdmin` 各调一次 `refreshSession()`，加上 `saveNewUser()` Step 1 还有一次独立刷新；
+N 个请求拿同一个 refresh token 并发去换，只有一个能成功，其余全部 400。更糟的是
+刷新拿到的新 token 在 `Tracking Prevention blocked access to storage` 下可能没写回
+localStorage —— 页面重载后读回已被作废的旧 token，就永久失效了。
+
+**唯一立即可行的恢复 = 用密码重新登录**（拿一份全新 session）。刷新页面、重部署代理、
+再刷几次 token 都救不回一个已被吊销的 refresh token。控制台执行：
+
+```js
+(async()=>{try{await sb.auth.signOut()}catch(e){}Object.keys(localStorage).filter(k=>k.indexOf('auth-token')>=0).forEach(k=>localStorage.removeItem(k));location.reload()})()
+```
+
+执行后回到登录页用 `767142066@qq.com` 重新登录即可。
+
+**代码侧修法（防止再次把 token 搞死）**：
+
+- `01-core.js` 去掉「提前 60 秒主动刷新」—— 它是并发刷新的源头；改为**只在 401 时刷新**，
+  常规续期交给 supabase-js 自带的 `autoRefreshToken`。
+- `refreshAdminSession()` 加**全局单飞**：N 个并发 401 共用同一个 Promise，只发一次
+  `refresh_token` 请求；重试时重新 `getSession()` 取内存里的新 token（不信任并发下的返回值）。
+- GoTrue 明确回 400 / `Refresh token is not valid` 时**熔断**：清掉 localStorage 里的坏
+  session（避免重载后又读回旧 token）、`showToast` 提示重新登录一次、后续 `callAdmin`
+  直接返回 `{error:{authExpired:true}}`，不再刷一屏 401。同页重新登录（token 变化）
+  会自动解除熔断 —— 因为 `doLogout()` / `onLoginSuccess()` 都不 reload 页面。
+- `08-admin.js saveNewUser()` Step 1 去掉独立的 `refreshSession()`，只备份当前 session。
+
+**验证**：`verify-calladmin.mjs` 重写为 12 条断言、**12/12**，其中 ⑤ 专门验证「并发 4 个
+401 只发 1 次刷新」、⑥⑦⑧ 验证判死 → 熔断 → 重新登录自动恢复；`check-ui` /
+`smoke-batchB` / `lint-contracts` / `lint-hoisting` / 安全门禁 **70/70**、代理沙箱
+**20/20** 全绿。
+
+**环境层建议**：`Tracking Prevention blocked access to storage` 说明浏览器在阻止会话
+持久化。长期不重新登录（本次超过一个月）+ 存储被阻止 + 多标签页同时开，是这类 401
+复发的土壤。建议改用 Chrome、把 `caifu-001.github.io` 加入跟踪防护白名单、避免同时
+开多个标签页，并**定期重新登录一次**。
+
 ### 还剩什么
 
-- **前端改动需 push + GitHub Pages 生效（1~3 分钟）+ Ctrl+F5 强刷**才会生效；
-  `index.html` 的 `?v=` 已按 md5 刷新，别用旧缓存。
 - **第三轮的 admin-proxy 仍要重新部署**（那两处：auth_* 表名校验、helpers 作用域）。
   401 发生在身份校验阶段，看不出代理版本，所以这次报错**不能**证明代理已部署；
   部署后用「不存在 uid」探针确认（见上一节），再试重置密码。
+- 用密码重新登录一次（第五轮的一键命令），再重试重置密码。
 - 第四节 7 条人工验证清单。重点：用 1281 的公司管理员登录，确认看不到超管、
   看不到超管日志、**能编辑自己公司资料**、审核按钮不可用。
