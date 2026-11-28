@@ -10,8 +10,8 @@ sb.auth.getSession().then(async function(res){
     // Fire-and-forget: update last_login_at on session restore
     sb.from('profiles').update({last_login_at:new Date().toISOString()}).eq('user_id',currentUser.id).then(function(){}).catch(function(){});
     // Load profile for company/role
-    var {data:profile}=await sb.from('profiles').select('role,company_id,active_company_id').eq('user_id',currentUser.id).single();
-    if(profile){currentUserRole=profile.role||'user';isSuperAdmin=profile.role==='super_admin';currentCompanyId=profile.active_company_id||profile.company_id;currentCompanyRole=currentUserRole;currentCompanyName='';}
+    var {data:profile}=await sb.from('profiles').select('role,company_id,active_company_id,email').eq('user_id',currentUser.id).single();
+    if(profile){currentUserRole=profile.role||'user';isSuperAdmin=isPlatformSuperProfile(profile);currentCompanyId=profile.active_company_id||profile.company_id;currentCompanyRole=currentUserRole;currentCompanyName='';}
     if(!currentCompanyId){document.getElementById('login-screen').classList.remove('hidden');return}
     // Load multi-company memberships
     try{var {data:mems}=await sb.rpc('get_my_memberships');if(mems&&mems.length){allMyCompanies=mems;var cur=mems.find(function(m){return m.company_id==currentCompanyId});if(cur){currentCompanyRole=cur.role||currentUserRole;currentCompanyName=cur.company_name||'';currentUserRole=currentCompanyRole;}}}catch(e){console.error('get_my_memberships failed:',e)}
@@ -92,21 +92,13 @@ async function checkPendingCompany(){
   var {data}=await sb.from('companies').select('id,name,status').eq('created_by',user.id).order('created_at',{ascending:false}).limit(1);
   if(!data||data.length===0){showCompanyRegScreen();return}
   if(data[0].status==='approved'){
+    // 审核通过后，管理员身份由 approve_tenant_company() 在服务端建立
+    // （profiles.role / company_memberships 都已写好），前端只负责刷新，
+    // 不再自己 upsert role=admin —— 自助提权通道已关闭
     currentCompanyId=data[0].id;
-    await sb.from('profiles').upsert({user_id:user.id,email:user.email,company_id:currentCompanyId,role:'admin',active_company_id:currentCompanyId},{onConflict:'user_id'});
-    await sb.from('company_memberships').upsert({user_id:user.id,company_id:currentCompanyId,role:'admin',status:'active',joined_at:new Date().toISOString()},{onConflict:'user_id,company_id'});
     if(window._pendPoll)clearInterval(window._pendPoll);
-    await loadCustomTypes();
- buildFilterSelect();
- buildTypeGrid();
- buildStageGrid();
- await loadClients();
- await loadCompanies();
-    document.getElementById('pending-screen').classList.add('hidden');
-    document.getElementById('main-screen').classList.remove('hidden');
-    if(isSuperAdmin||currentUserRole==='admin')document.getElementById('tab-admin').classList.remove('hidden');
-  if(isSuperAdmin){document.getElementById('admin-tab-companies-manage').classList.remove('hidden');document.getElementById('admin-tab-companies').classList.remove('hidden');}
-    switchTab('analytics');
+    window._pendPoll=null;
+    location.reload();
   }else if(data[0].status==='rejected'){
     showCompanyRegScreen();
   }
@@ -120,12 +112,22 @@ async function loadAdminCompanies(){
 function renderAdminCompanies(){
   var el=document.getElementById('admin-companies-manage-list');
   if(!allAdminCompanies.length){el.innerHTML='<div class="empty-state">暂无公司，点击"+ 新建公司"创建</div>';return}
-  var h='';
-  for(var i=0;i<allAdminCompanies.length;i++){
-    var co=allAdminCompanies[i];
+  // 这张表混着「租户公司」（5 家）和「客户公司档案」（4500+ 条）。
+  // 全量渲染会把浏览器卡死，也没人能在 4500 行里找到东西：
+  // 租户公司全部显示在前，客户档案只补前 200 条，其余靠搜索。
+  var tenants=[],others=[];
+  for(var t=0;t<allAdminCompanies.length;t++){
+    if(allAdminCompanies[t].is_tenant)tenants.push(allAdminCompanies[t]);else others.push(allAdminCompanies[t]);
+  }
+  var list=tenants.concat(others.slice(0,200));
+  var h='<div style="font-size:12px;color:var(--text3);margin-bottom:8px">租户公司 '+tenants.length+' 家 · 客户公司档案 '+others.length+' 条'+(others.length>200?'（仅显示前 200 条，请用搜索）':'')+'</div>';
+  for(var i=0;i<list.length;i++){
+    var co=list[i];
     var badge=co.status==='pending'?'badge-pending':'badge-approved';
     var label=co.status==='pending'?'待审核':co.status==='approved'?'已通过':'已拒绝';
+    if(co.status==='rejected')badge='badge-rejected';
     var metaParts=[];
+    if(co.is_tenant)metaParts.push('<span class="company-badge badge-approved">租户</span>');
     if(co.tax_id)metaParts.push('税号: '+escHtml(co.tax_id));
     if(co.legal_person)metaParts.push('法人: '+escHtml(co.legal_person));
     if(co.reg_capital)metaParts.push('注册资金: '+escHtml(co.reg_capital));
@@ -172,10 +174,10 @@ async function saveCompany(){
   try{
     if(_companyFormId){
       var r=await callAdmin('update','companies',{payload:payload,filters:[{col:'id',op:'eq',val:_companyFormId}],query:'*'});
-      if(r&&r.error){var t=await r.text();showToast('更新失败: '+t,'error');return}
+      if(r&&r.error){showToast('更新失败: '+r.error.message,'error');return}
     }else{
       var r=await callAdmin('insert','companies',{payload:payload});
-      if(r&&r.error){var t=await r.text();showToast('创建失败: '+t,'error');return}
+      if(r&&r.error){showToast('创建失败: '+r.error.message,'error');return}
     }
     closeCompanyFormModal();
     await loadAdminCompanies();renderAdminCompanies();
@@ -187,7 +189,7 @@ async function deleteCompany(id,name){
   if(!await uiConfirm('确定删除公司「'+name+'」？此操作不可恢复！'))return;
   try{
     var r=await callAdmin('delete','companies',{filters:[{col:'id',op:'eq',val:id}]});
-    if(r&&r.error){var t=await r.text();showToast('删除失败: '+t,'error');return}
+    if(r&&r.error){showToast('删除失败: '+r.error.message,'error');return}
     await loadAdminCompanies();renderAdminCompanies();
     showToast('公司已删除');
   }catch(e){showToast('删除失败: '+e.message,'error');}
@@ -203,15 +205,22 @@ async function submitCompanyReg(){
   var _ses=(await sb.auth.getSession()).data.session;
   var user=_ses&&_ses.user;
   if(!user){er.textContent='请先登录';er.style.display='block';return}
-  var {error}=await sb.from('companies').insert({name:name,tax_id:tax,status:'pending',created_by:user.id});
-  if(error){
-    if(error.message.indexOf('unique')>=0||error.message.indexOf('duplicate')>=0){
-      er.textContent='该公司名称或税号已被注册';
-    }else{
-      er.textContent=error.message;
+  // 走 RPC：服务端强制 status='pending' + is_tenant=true，并把申请人记为 owner。
+  // 直连 insert 在加固 SQL 未执行时会缺 is_tenant 标记，导致审核列表看不到这条。
+  var rpc=await sb.rpc('register_tenant_company',{p_name:name,p_tax_id:tax});
+  if(rpc.error){
+    var msg=rpc.error.message||'';
+    if(msg.indexOf('已被注册')>=0){er.textContent='该公司名称已被注册';er.style.display='block';return}
+    if(msg.indexOf('does not exist')>=0||msg.indexOf('Could not find the function')>=0){
+      // 加固 SQL 还没执行：回退直连（触发器上线后照样强制 pending）
+      var {error}=await sb.from('companies').insert({name:name,tax_id:tax,status:'pending',created_by:user.id});
+      if(error){
+        er.textContent=(error.message.indexOf('unique')>=0||error.message.indexOf('duplicate')>=0)?'该公司名称或税号已被注册':error.message;
+        er.style.display='block';return;
+      }
+      showPendingScreen(name);return;
     }
-    er.style.display='block';
-    return;
+    er.textContent=msg||'提交失败';er.style.display='block';return;
   }
   showPendingScreen(name);
 }
@@ -229,13 +238,31 @@ async function logout(){
 
 async function loadPendingCompanies(){
   if(!isSuperAdmin)return;
-  var {data}=await sb.rpc('list_all_companies');
-  if(!data){return}
-  allCompanies=data;
-  var q=(document.getElementById('admin-user-search')?document.getElementById('admin-user-search').value:'').toLowerCase();
+  var rows=null;
+  // 只看「租户公司」，且待审核排最前。
+  // 老实现直接用 list_all_companies()，会把 4500+ 条客户公司档案一起拉回来，
+  // 审核列表里根本分不清哪条是真的入驻申请。
+  var r1=await sb.from('companies')
+    .select('id,name,tax_id,status,created_at,created_by,is_tenant')
+    .eq('is_tenant',true)
+    .order('created_at',{ascending:false})
+    .limit(200);
+  if(!r1.error&&r1.data){
+    rows=r1.data;
+  }else{
+    // 加固 SQL 还没执行（没有 is_tenant 列）时的回退
+    var {data}=await sb.rpc('list_all_companies');
+    rows=(data||[]).filter(function(c){return c.status==='pending'||c.status==='rejected';});
+  }
+  rows=(rows||[]).slice().sort(function(a,b){
+    var pa=a.status==='pending'?0:1,pb=b.status==='pending'?0:1;
+    if(pa!==pb)return pa-pb;
+    return String(b.created_at||'').localeCompare(String(a.created_at||''));
+  });
+  allCompanies=rows;
   var html='';
-  for(var i=0;i<data.length;i++){
-    html+=renderCompanyRow(data[i]);
+  for(var i=0;i<rows.length;i++){
+    html+=renderCompanyRow(rows[i]);
   }
   var el=document.getElementById('admin-company-list');if(el)el.innerHTML=html||'<div class="empty-state">暂无公司</div>';
 }
@@ -252,21 +279,41 @@ function renderCompanyRow(c){
 }
 
 async function approveCompany(id){
-  var _ses=(await sb.auth.getSession()).data.session;
-  var {error}=await sb.from('companies').update({status:'approved',approved_by:_ses&&_ses.user?_ses.user.id:null,approved_at:new Date().toISOString()}).eq('id',id);
-  if(error){showToast('操作失败: '+error.message,'error');return}
-  // Set the creator as admin
-  var {data:comp}=await sb.from('companies').select('created_by').eq('id',id).single();
-  if(comp){
-    await sb.from('profiles').upsert({user_id:comp.created_by,company_id:id,role:'admin',active_company_id:id},{onConflict:'user_id'});
-    await sb.from('company_memberships').upsert({user_id:comp.created_by,company_id:id,role:'admin',status:'active',joined_at:new Date().toISOString()},{onConflict:'user_id,company_id'});
+  // 审核结论只能由服务端签发：RPC 内部校验「当前登录者是否平台超管」，
+  // 并在通过的同时把申请人写成该公司管理员 —— 前端不再自己 upsert 角色。
+  var r=await sb.rpc('approve_tenant_company',{p_company_id:id});
+  var msg=(r.error&&r.error.message)||'';
+  if(r.error&&(msg.indexOf('does not exist')>=0||msg.indexOf('Could not find the function')>=0)){
+    // 加固 SQL 还没执行：回退到直连（此时仍由超管 JWT 权限兜底）
+    var ses=(await sb.auth.getSession()).data.session;
+    var up=await sb.from('companies').update({status:'approved',approved_by:ses&&ses.user?ses.user.id:null,approved_at:new Date().toISOString()}).eq('id',id);
+    if(up.error){showToast('操作失败: '+up.error.message,'error');return}
+    var {data:comp}=await sb.from('companies').select('created_by').eq('id',id).single();
+    if(comp&&comp.created_by){
+      await sb.from('profiles').update({role:'admin',status:'active',company_id:id,active_company_id:id}).eq('user_id',comp.created_by);
+      var memChk=await sb.from('company_memberships').select('id').eq('user_id',comp.created_by).eq('company_id',id).limit(1);
+      if(memChk.data&&memChk.data.length){await sb.from('company_memberships').update({role:'admin',status:'active'}).eq('id',memChk.data[0].id)}
+      else{await sb.from('company_memberships').insert({user_id:comp.created_by,company_id:id,role:'admin',status:'active',joined_at:new Date().toISOString()})}
+    }
+    showToast('已通过审核');
+    loadPendingCompanies();return;
   }
+  if(r.error){showToast('操作失败: '+msg,'error');return}
+  showToast(r.data==='already'?'该公司已是通过状态':'已通过审核');
   loadPendingCompanies();
 }
 
 async function rejectCompany(id){
   if(!await uiConfirm('确定拒绝该公司的注册申请吗?'))return;
-  await sb.from('companies').update({status:'rejected'}).eq('id',id);
+  var r=await sb.rpc('reject_tenant_company',{p_company_id:id});
+  var msg=(r.error&&r.error.message)||'';
+  if(r.error&&(msg.indexOf('does not exist')>=0||msg.indexOf('Could not find the function')>=0)){
+    var d=await sb.from('companies').update({status:'rejected'}).eq('id',id);
+    if(d.error){showToast('操作失败: '+d.error.message,'error');return}
+    showToast('已拒绝');loadPendingCompanies();return;
+  }
+  if(r.error){showToast('操作失败: '+msg,'error');return}
+  showToast('已拒绝');
   loadPendingCompanies();
 }
 
@@ -449,9 +496,10 @@ async function saveRole(id){
 
 async function deleteRole(id){
   if(!await uiConfirm('确定删除此角色？'))return;
-  // Unset role_id for users assigned to this role
-  await sb.from('profiles').update({role_id:null,role:'user'}).eq('role_id',id);
-  var {error}=await sb.from('roles').delete().eq('id',id);
+  // 解除该角色下成员的绑定：改的是别人，必须走代理（带上公司范围，防止越界）
+  var ur=await callAdmin('update','profiles',{payload:{role_id:null,role:'user'},filters:[{col:'role_id',op:'eq',val:id},{col:'company_id',op:'eq',val:currentCompanyId}],query:'user_id'});
+  if(!ur||ur.error){showToast('解除角色绑定失败: '+((ur&&ur.error&&ur.error.message)||'网络错误'),'error');return}
+  var {error}=await sb.from('roles').delete().eq('id',id).eq('company_id',currentCompanyId);
   if(error){showToast('删除失败: '+error.message);return}
   showToast('角色已删除');
   await loadAdminData(true);
@@ -655,9 +703,15 @@ var allRoles=[];
 
 
 async function setUserRole(userId,role){
-  var {error}=await sb.from('profiles').upsert({user_id:userId,role:role},{onConflict:'user_id'});
-  if(error){showToast('操作失败: '+error.message,'error');return}
-  for(var i=0;i<adminUserList.length;i++){if(adminUserList[i].user_id===userId){adminUserList[i].role=role;break;}}
+  // 不再直连 upsert：profiles 的 UPDATE 策略只允许改自己，
+  // 改别人必须走代理（代理校验「目标是否在本公司」+ 禁止授予 super_admin）。
+  if(String(role||'')==='super_admin'){showToast('平台超管只能由平台方指定','error');return}
+  var tgt=null;for(var i=0;i<adminUserList.length;i++){if(adminUserList[i].user_id===userId){tgt=adminUserList[i];break;}}
+  if(!isSuperAdmin&&tgt&&tgt.company_id!==currentCompanyId){showToast('权限不足');return}
+  var r=await callAdmin('update','profiles',{payload:{role:role},filters:[{col:'user_id',op:'eq',val:userId}],query:'user_id,role'});
+  if(!r||r.error){showToast('操作失败: '+((r&&r.error&&r.error.message)||'未知错误'),'error');return}
+  if(!r.data||r.data.length===0){showToast('没有改动：超出你的管理范围','error');return}
+  for(var j=0;j<adminUserList.length;j++){if(adminUserList[j].user_id===userId){adminUserList[j].role=role;break;}}
   if(typeof renderAdminEmployees==="function")renderAdminEmployees();
 }
 
@@ -730,6 +784,24 @@ async function saveUserEdit(userId){
     error=res.error;
   }
   if(error){showToast('更新失败: '+error.message);return}
+  // 超管把人调去别的公司时，成员关系必须跟着走：
+  // 权限判定（allowed / 数据归属注入）读的是 company_memberships，
+  // 只改 profiles.company_id 会让这个人在新公司「什么都看不到」。
+  if(isSuperAdmin&&data.company_id!==undefined&&targetUser&&String(targetUser.company_id)!==String(data.company_id)){
+    var nc=data.company_id;
+    if(nc){
+      var ex=await callAdmin('select','company_memberships',{query:'id',filters:[{col:'user_id',op:'eq',val:userId},{col:'company_id',op:'eq',val:nc}],});
+      if(ex&&ex.data&&ex.data.length){
+        await callAdmin('update','company_memberships',{payload:{status:'active',role:(data.role==='admin'?'admin':'member')},filters:[{col:'id',op:'eq',val:ex.data[0].id}],query:'id'});
+      }else{
+        await callAdmin('insert','company_memberships',{payload:{user_id:userId,company_id:nc,role:(data.role==='admin'?'admin':'member'),status:'active',joined_at:new Date().toISOString()},query:'id'});
+      }
+      await callAdmin('update','profiles',{payload:{active_company_id:nc},filters:[{col:'user_id',op:'eq',val:userId}],query:'user_id'});
+    }else if(targetUser.company_id){
+      // 离职：把成员关系一并摘掉，否则他还能凭旧 membership 读到原公司数据
+      await callAdmin('delete','company_memberships',{filters:[{col:'user_id',op:'eq',val:userId},{col:'company_id',op:'eq',val:targetUser.company_id}]});
+    }
+  }
   showToast('已更新');
   for(var i=0;i<adminUserList.length;i++){if(adminUserList[i].user_id===userId){
     adminUserList[i].display_name=data.display_name;
@@ -787,12 +859,13 @@ async function saveDept(){
 
 async function deleteDept(id,name){
   if(!await uiConfirm('确定删除部门「'+name+'」？下属用户将变为无部门。'))return;
-  // Unlink users first
-  await sb.from('profiles').update({department_id:null}).eq('department_id',id);
+  // 先把成员从这个部门摘掉（改的是别人 → 走代理，带公司范围）
+  var ur=await callAdmin('update','profiles',{payload:{department_id:null},filters:[{col:'department_id',op:'eq',val:id},{col:'company_id',op:'eq',val:currentCompanyId}],query:'user_id'});
+  if(!ur||ur.error){showToast('解绑部门成员失败: '+((ur&&ur.error&&ur.error.message)||'网络错误'),'error');return}
   var error=null;
   if(isSuperAdmin||currentUserRole==='admin'){
     try{var dr=await callAdmin('delete','departments',{filters:[{col:'id',op:'eq',val:id}],query:'*'});
-    if(dr&&dr.error){var dj=dr.data.catch(function(){});error={message:dj&&dj.message||dr.statusText}}
+    if(dr&&dr.error){error={message:dr.error.message||'删除失败'}}
     }catch(e){error={message:e.message}}
   }else{
     var res=await sb.from('departments').delete().eq('id',id);error=res.error;
@@ -842,7 +915,17 @@ function renderDeptTree(nodes,level){
 
 function formatDateTime(iso){if(!iso)return'';try{var d=new Date(iso);var y=d.getFullYear();var m=String(d.getMonth()+1).padStart(2,'0');var day=String(d.getDate()).padStart(2,'0');var h=String(d.getHours()).padStart(2,'0');var min=String(d.getMinutes()).padStart(2,'0');return y+'-'+m+'-'+day+' '+h+':'+min;}catch(e){return iso;}}
 // escHtml 已上移至 02-auth.js（与 h() 同处），避免拆分后跨模块的时序依赖
-async function doSetUserDeptCommit(userId,deptId){var tu=adminUserList.find(function(u){return u.user_id===userId;});if(!isSuperAdmin&&currentUserRole==='admin'&&tu&&tu.company_id!==currentCompanyId){showToast('权限不足');return;}var{error}=await sb.from('profiles').update({department_id:deptId}).eq('user_id',userId);if(error){showToast('操作失败: '+error.message,'error');return}for(var i=0;i<adminUserList.length;i++){if(adminUserList[i].user_id===userId){adminUserList[i].department_id=deptId;break;}}var m=document.getElementById('user-dept-modal');if(m)m.remove();if(typeof renderAdminEmployees==="function")renderAdminEmployees();}
+async function doSetUserDeptCommit(userId,deptId){
+  var tu=adminUserList.find(function(u){return u.user_id===userId;});
+  if(!isSuperAdmin&&currentUserRole==='admin'&&tu&&tu.company_id!==currentCompanyId){showToast('权限不足');return;}
+  // 改别人的部门走代理：直连会命中 profiles_update_self 策略（0 行、无报错）
+  var r=await callAdmin('update','profiles',{payload:{department_id:deptId},filters:[{col:'user_id',op:'eq',val:userId}],query:'user_id,department_id'});
+  if(!r||r.error){showToast('操作失败: '+((r&&r.error&&r.error.message)||'网络错误'),'error');return}
+  if(!r.data||r.data.length===0){showToast('未生效：目标不在你的管理范围','error');return}
+  for(var i=0;i<adminUserList.length;i++){if(adminUserList[i].user_id===userId){adminUserList[i].department_id=deptId;break;}}
+  var m=document.getElementById('user-dept-modal');if(m)m.remove();
+  if(typeof renderAdminEmployees==="function")renderAdminEmployees();
+}
 function closeDeptFormModal(){var m=document.getElementById('dept-form-modal');if(m)m.remove();}
 function delDeptById(id){var dept=null;for(var i=0;i<allDepartments.length;i++){if(allDepartments[i].id===id){dept=allDepartments[i];break;}}if(dept)deleteDept(id,dept.name);}
 
@@ -898,7 +981,12 @@ async function saveNewUser(){
   var selCompanyId=null;if(isSuperAdmin){var cname=document.getElementById('add-user-company').value.trim();if(cname){var found=null;var cab=typeof allAdminCompanies!=='undefined'?allAdminCompanies:allCompanies||[];for(var i=0;i<cab.length;i++){if(cab[i].name===cname){found=cab[i];break}}if(found){selCompanyId=found.id}else{showToast('未找到公司: '+cname);return}}}
   var body={user_id:newUserId,email:email,role:role||'user',role_id:roleId,company_id:selCompanyId||currentCompanyId,display_name:name,position:position,phone:phone,department_id:deptId?parseInt(deptId):null};
   var res=await callAdmin('upsert','profiles',{payload:body,query:'*'});
-  if(!res.ok){var txt=await res.text();console.error('Profile write failed:',res.status,txt);showToast('Profile write failed: HTTP '+res.status);return}
+  // callAdmin 返回 {data,error}，不是 Response —— 原来判断 res.ok 恒为假，
+  // 建号到写档案这步一定会炸。这里按 error 判断。
+  if(!res||res.error){console.error('Profile write failed:',res&&res.error);showToast('档案写入失败: '+((res&&res.error&&res.error.message)||'未知错误'));return}
+  // 同步成员关系：否则新同事在成员列表 / 资源授权 / 跨表归属校验里都查不到
+  var mem=await callAdmin('insert','company_memberships',{payload:{user_id:newUserId,company_id:body.company_id,role:(role==='admin'?'admin':'member'),status:'active',joined_at:new Date().toISOString()},query:'id'});
+  if(!mem||mem.error){console.warn('membership insert failed:',mem&&mem.error);}
   closeAddUserForm();
   showToast('用户创建成功');
   await loadAdminData(true);

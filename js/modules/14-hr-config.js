@@ -14,6 +14,8 @@ async function renderAdminEmployees(){
   if(allDepartments)for(var i=0;i<allDepartments.length;i++){var d=allDepartments[i];ds.innerHTML+='<option value="'+escHtml(d.id)+'">'+escHtml(d.name)+'</option>';}
   ds.value=df;
   var list=(allUsers||[]).filter(function(u){
+    // 平台超管只对「本人」可见：其他公司的任何成员（含公司管理员）都看不到这一行
+    if(!isSuperAdmin&&isPlatformSuperProfile(u))return false;
     if(!isSuperAdmin&&currentCompanyId!==null&&u.company_id!==currentCompanyId)return false;
     return true;
   });
@@ -55,7 +57,7 @@ async function sendInvitationByEmail(){
     var userCheck=await callAdmin('select','profiles',{query:'user_id,company_id',filters:[{col:'email',op:'eq',val:email}]});
     var userData=null;if(userCheck&&userCheck.data){var ua=userCheck.data;if(ua&&ua.length>0)userData=ua[0]}
     var r=await callAdmin('insert','invitations',{payload:{from_company_id:currentCompanyId,to_email:email,message:message||null}});
-    if(r&&r.error){var j=r.error.catch(function(){});document.getElementById('invite-err').textContent='发送失败: '+(j&&j.message||r.statusText);document.getElementById('invite-err').style.display='block';return}
+    if(r&&r.error){var j=r.error;document.getElementById('invite-err').textContent='发送失败: '+(j&&j.message||r.statusText);document.getElementById('invite-err').style.display='block';return}
     closeInviteModal();
     var msg=userData&&userData.company_id?'该用户当前在职，但已发送邀请（需先离职才能接受）。':'邀请已发送，用户将在通知面板看到邀请。';
     if(!userData)msg='邀请已发送。该邮箱尚未注册，用户注册后将自动看到邀请。';
@@ -101,7 +103,7 @@ async function inviteFreeAgent(uid,email){
   if(!await uiConfirm('确认邀请 '+email+' 入职本公司？'))return;
   try{
     var r=await callAdmin('update','profiles',{payload:{invited_company_id:currentCompanyId,invited_at:new Date().toISOString()},filters:[{col:'user_id',op:'eq',val:uid}],query:'*'});
-    if(r&&r.error){var j=r.error.catch(function(){});showToast('邀请失败: '+(j&&j.message||r.statusText));return}
+    if(r&&r.error){var j=r.error;showToast('邀请失败: '+(j&&j.message||r.statusText));return}
     showToast('邀请已发送');
     await loadFreeAgents();renderFreeAgents();
   }catch(e){showToast('邀请失败: '+e.message)}
@@ -128,7 +130,7 @@ async function submitResignation(){
   if(d<today){document.getElementById('resign-form-err').textContent='离职日期不能是过去';document.getElementById('resign-form-err').style.display='block';return}
   try{
     var r=await callAdmin('update','profiles',{payload:{resignation_status:'pending',resignation_date:dateVal,resignation_reason:reason||null,resignation_requested_at:new Date().toISOString()},filters:[{col:'user_id',op:'eq',val:currentUser.id}],query:'*'});
-    if(r&&r.error){var j=r.error.catch(function(){});document.getElementById('resign-form-err').textContent='提交失败: '+(j&&j.message||r.statusText);document.getElementById('resign-form-err').style.display='block';return}
+    if(r&&r.error){var j=r.error;document.getElementById('resign-form-err').textContent='提交失败: '+(j&&j.message||r.statusText);document.getElementById('resign-form-err').style.display='block';return}
     closeResignForm();showToast('离职申请已提交，等待管理员审批');
     document.getElementById('my-resign-btn').style.display='none';
   }catch(e){document.getElementById('resign-form-err').textContent='提交失败: '+e.message;document.getElementById('resign-form-err').style.display='block'}
@@ -166,7 +168,7 @@ async function approveResignation(uid){
   if(!await uiConfirm('确认通过该离职申请？'))return;
   try{
     var r=await callAdmin('update','profiles',{payload:{resignation_status:'approved'},filters:[{col:'user_id',op:'eq',val:uid}],query:'*'});
-    if(r&&r.error){var j=r.error.catch(function(){});showToast('操作失败: '+(j&&j.message||r.statusText));return}
+    if(r&&r.error){var j=r.error;showToast('操作失败: '+(j&&j.message||r.statusText));return}
     showToast('已通过离职申请，到期后将自动解除');
     await loadResignations();renderResignations();
   }catch(e){showToast('操作失败: '+e.message)}
@@ -175,7 +177,7 @@ async function rejectResignation(uid){
   if(!await uiConfirm('确认拒绝该离职申请？'))return;
   try{
     var r=await callAdmin('update','profiles',{payload:{resignation_status:'rejected'},filters:[{col:'user_id',op:'eq',val:uid}],query:'*'});
-    if(r&&r.error){var j=r.error.catch(function(){});showToast('操作失败: '+(j&&j.message||r.statusText));return}
+    if(r&&r.error){var j=r.error;showToast('操作失败: '+(j&&j.message||r.statusText));return}
     showToast('已拒绝离职申请');
     await loadResignations();renderResignations();
   }catch(e){showToast('操作失败: '+e.message)}
@@ -186,9 +188,24 @@ async function rejectResignation(uid){
 var allOpLogs=[];var logsError=null;
 async function loadOperationLogs(){
   try{
-    var resp=await callAdmin('select','operation_logs',{query:'*',filters:[{col:'company_id',op:'eq',val:currentCompanyId},{col:'',op:'order',val:'created_at.desc'},{col:'',op:'limit',val:500}]});
-    if(resp&&resp.data){allOpLogs=resp.data;logsError=null;}
-    else{allOpLogs=[];var t=await resp.text();logsError='HTTP '+resp.status+(' '+t.substring(0,120));console.error('loadOperationLogs:',resp.status,t.substring(0,200));}
+    // 超管：全平台日志（不限定公司），这是「超管能管理所有公司」的一部分；
+    // 其他角色：只看本公司，且服务端（admin-proxy / RLS）已剔除超管产生的日志。
+    var filters=isSuperAdmin
+      ? [{col:'',op:'order',val:'created_at.desc'},{col:'',op:'limit',val:500}]
+      : [{col:'company_id',op:'eq',val:currentCompanyId},{col:'',op:'order',val:'created_at.desc'},{col:'',op:'limit',val:500}];
+    var resp=await callAdmin('select','operation_logs',{query:'*',filters:filters});
+    if(resp&&resp.data){
+      allOpLogs=resp.data.filter(function(l){
+        return isSuperAdmin || String(l.actor_role||'')!=='super_admin';
+      });
+      logsError=null;
+    }
+    else{
+      allOpLogs=[];
+      var t=(resp&&resp.error&&resp.error.message)||'unknown';
+      logsError=t;
+      console.error('loadOperationLogs:',t);
+    }
   }catch(e){allOpLogs=[];logsError=e.message;console.error('loadOperationLogs:',e);}
 }
 function renderOperationLogs(){
@@ -200,12 +217,13 @@ function renderOperationLogs(){
   if(af)list=list.filter(function(l){return l.action===af;});
   if(ef)list=list.filter(function(l){return l.entity_type===ef;});
   if(q)list=list.filter(function(l){return (l.user_name||'').toLowerCase().indexOf(q)>=0||(l.entity_name||'').toLowerCase().indexOf(q)>=0;});
-  var h='<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="border-bottom:2px solid var(--border)"><th style="padding:10px 8px;text-align:left;width:140px">时间</th><th style="padding:10px 8px;text-align:left;width:80px">操作人</th><th style="padding:10px 8px;text-align:left;width:60px">动作</th><th style="padding:10px 8px;text-align:left;width:80px">类型</th><th style="padding:10px 8px;text-align:left">目标</th><th style="padding:10px 8px;text-align:left">详情</th></tr></thead><tbody>';
-  var actions={create:'创建',update:'更新',delete:'删除',export:'导出',login:'登录'};
+  var h='<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="border-bottom:2px solid var(--border)"><th style="padding:10px 8px;text-align:left;width:140px">时间</th>'+(isSuperAdmin?'<th style="padding:10px 8px;text-align:left;width:70px">公司</th>':'')+'<th style="padding:10px 8px;text-align:left;width:80px">操作人</th><th style="padding:10px 8px;text-align:left;width:60px">动作</th><th style="padding:10px 8px;text-align:left;width:80px">类型</th><th style="padding:10px 8px;text-align:left">目标</th><th style="padding:10px 8px;text-align:left">详情</th></tr></thead><tbody>';
+  var actions={create:'创建',update:'更新',delete:'删除',export:'导出',login:'登录',insert:'新增',upsert:'写入'};
   for(var i=0;i<list.length;i++){
     var l=list[i];var dt=new Date(l.created_at).toLocaleString('zh-CN');
     var detail='';try{var d=typeof l.detail==='string'?JSON.parse(l.detail):l.detail;detail=JSON.stringify(d).substring(0,80);}catch(e){}
-    h+='<tr style="border-bottom:1px solid var(--border)"><td style="padding:8px;font-size:12px;color:var(--text3)">'+dt+'</td><td style="padding:8px">'+escHtml(l.user_name||'')+'</td><td style="padding:8px">'+(actions[l.action]||l.action)+'</td><td style="padding:8px;font-size:12px;color:var(--text3)">'+escHtml(l.entity_type)+'</td><td style="padding:8px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(l.entity_name||'')+'</td><td style="padding:8px;font-size:11px;color:var(--text3)">'+escHtml(detail)+'</td></tr>';
+    var coCell=isSuperAdmin?('<td style="padding:8px;font-size:12px;color:var(--text3)">'+(l.company_id==null?'-':l.company_id)+(String(l.actor_role||'')==='super_admin'?' <span style="color:#ef4444">超管</span>':'')+'</td>'):'';
+    h+='<tr style="border-bottom:1px solid var(--border)"><td style="padding:8px;font-size:12px;color:var(--text3)">'+dt+'</td>'+coCell+'<td style="padding:8px">'+escHtml(l.user_name||'')+'</td><td style="padding:8px">'+(actions[l.action]||l.action)+'</td><td style="padding:8px;font-size:12px;color:var(--text3)">'+escHtml(l.entity_type)+'</td><td style="padding:8px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(l.entity_name||'')+'</td><td style="padding:8px;font-size:11px;color:var(--text3)">'+escHtml(detail)+'</td></tr>';
   }
   h+='</tbody></table>';
   if(list.length===0){

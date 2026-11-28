@@ -3,6 +3,13 @@
 // 源: js/app_v2.js 第 39-452 行（机械切片，未改一行代码）
 // ==========================================================================
 // === 资源授权缓存（member 只能看授权的资源）===
+// 平台超级管理员：role 与邮箱必须同时匹配（与 sql/tenant_security_hardening.sql、
+// admin-proxy v5 保持同一口径）。只把 profiles.role 改成 super_admin 不再算超管。
+var PLATFORM_SUPER_EMAIL='767142066@qq.com';
+function isPlatformSuperProfile(p){
+  var em=String((p&&p.email)||(currentUser&&currentUser.email)||'').trim().toLowerCase();
+  return !!p&&p.role==='super_admin'&&em===PLATFORM_SUPER_EMAIL;
+}
 let memberGrants={clients:'all',products:'all',suppliers:'all'};
 async function loadMemberGrants(){
   if(isSuperAdmin){memberGrants={clients:'all',products:'all',suppliers:'all'};return}
@@ -260,7 +267,7 @@ async function onLoginSuccess(user){
   try{sb.from('profiles').update({last_login_at:new Date().toISOString()}).eq('user_id',user.id).then(function(){}).catch(function(){})}catch(e){}
 
   // === 多公司支持 ===
-  isSuperAdmin=profile&&profile.role==='super_admin';
+  isSuperAdmin=isPlatformSuperProfile(profile);
   document.getElementById('login-user').value='';
   document.getElementById('login-pass').value='';
   document.getElementById('login-screen').classList.add('hidden');
@@ -312,8 +319,9 @@ async function onLoginSuccess(user){
     }
   }
 
-  // 更新 profiles.active_company_id
-  try{await sb.from('profiles').update({active_company_id:currentCompanyId,role:isSuperAdmin?'super_admin':currentCompanyRole}).eq('user_id',user.id)}catch(e){}
+  // 更新 profiles.active_company_id（只写激活公司；role 由数据库守卫，
+  // 前端写 role 会被 guard_profile_privileges 还原，且超管身份不再靠这条写入维持）
+  try{await sb.from('profiles').update({active_company_id:currentCompanyId}).eq('user_id',user.id)}catch(e){}
   // Load departments and set currentUser.department for permission checks
   if(currentCompanyId){
     var {data:depts}=await sb.from('departments').select('*').eq('company_id',currentCompanyId);
@@ -449,7 +457,11 @@ async function loadCompanyMembersForAdmin(){
   try{
     var r=await sb.rpc('list_company_members',{p_company_id:currentCompanyId});
     if(r.error){list.innerHTML='<div class="empty-state">加载失败: '+r.error.message+'</div>';return}
-    var members=r.data||[];
+    // 服务端 list_company_members 已剔除平台超管，这里再兜一层：
+    // 其他公司的任何成员都不应看到超管账号
+    var members=(r.data||[]).filter(function(m){
+      return String((m&&m.email)||'').trim().toLowerCase()!==PLATFORM_SUPER_EMAIL;
+    });
     if(members.length===0){list.innerHTML='<div class="empty-state">暂无成员</div>';return}
     var html='';
     for(var i=0;i<members.length;i++){
@@ -473,8 +485,10 @@ async function loadCompanyMembersForAdmin(){
 async function promoteMember(userId){
   if(!await uiConfirm('确认提升该成员为管理员？'))return;
   try{
-    var r=await sb.from('company_memberships').update({role:'admin'}).eq('user_id',userId).eq('company_id',currentCompanyId);
-    if(r.error){showToast(r.error.message);return}
+    // 直连改成员关系会命中 RLS 的 0 行静默失败，统一走代理（校验本公司管理员身份）
+    var r=await callAdmin('update','company_memberships',{payload:{role:'admin'},filters:[{col:'user_id',op:'eq',val:userId},{col:'company_id',op:'eq',val:currentCompanyId}],query:'id'});
+    if(!r||r.error){showToast('提升失败: '+((r&&r.error&&r.error.message)||'未知错误'));return}
+    if(!r.data||r.data.length===0){showToast('未生效：目标不是本公司成员');return}
     showToast('已提升为管理员');
     loadCompanyMembersForAdmin();
   }catch(e){showToast('操作失败: '+(e.message||e.toString()))}

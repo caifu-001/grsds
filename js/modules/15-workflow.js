@@ -444,7 +444,7 @@ async function saveWtVisual(){
     var url=SUPABASE_URL+'/rest/v1/workflow_templates'+(wtEditId?'?id=eq.'+wtEditId:'');
     var method=wtEditId?'PATCH':'POST';
     if(wtEditId){var r=await callAdmin('update','workflow_templates',{payload:body,filters:[{col:'id',op:'eq',val:wtEditId}],query:'*'});}else{var r=await callAdmin('insert','workflow_templates',{payload:body});};
-    if(r&&r.error){var t=await r.text();showToast('保存失败: '+t,'error');btn.disabled=false;btn.textContent='保存';return}
+    if(r&&r.error){showToast('保存失败: '+((r.error&&r.error.message)||'未知错误'),'error');btn.disabled=false;btn.textContent='保存';return}
     document.getElementById('wt-modal-overlay').remove();
     await renderWorkflowTemplates();
     showToast(wtEditId?'模板已更新':'模板已创建');
@@ -459,7 +459,7 @@ async function deleteWt(id){
   try{
     var url=SUPABASE_URL+'/rest/v1/workflow_templates?id=eq.'+id;
     var r=await callAdmin('delete','workflow_templates',{filters:[{col:'id',op:'eq',val:id}]});
-    if(r&&r.error){var e=await r.text();showToast('删除失败: '+e,'error');return}
+    if(r&&r.error){showToast('删除失败: '+((r.error&&r.error.message)||'未知错误'),'error');return}
     await renderWorkflowTemplates();
     showToast('模板已删除');
   }catch(e){showToast('删除异常: '+e.message,'error')}
