@@ -7,6 +7,30 @@
 
 // === 安全管理 API 代理 (P0-2 修复) ===
 // 所有需 service_role 的操作统一走 Supabase Edge Function
+// session 有效性保障：supabase-js@2 的 getSession() 读的是内存里的 session，
+// 页面长时间后台、或浏览器阻止第三方存储（控制台会提示 Tracking Prevention
+// blocked access to storage）时自动刷新可能没落地，拿到过期 / null 的 session
+// 直接调代理就会 401 Unauthorized: invalid or expired token。
+// 因此：发请求前先确认 session 有效，401 时强制刷新并重试一次。
+async function validAdminSession(){
+  try{
+    var r=await sb.auth.getSession();
+    var s=r&&r.data&&r.data.session;
+    if(!s||!s.access_token)return null;                          // 交给下面的 401 分支处理
+    var exp=Number(s.expires_at||0);
+    if(exp>0){
+      if(exp<1e12)exp=exp*1000;                                  // 秒 → 毫秒
+      if(exp-Date.now()<60000){
+        var f=await refreshAdminSession();
+        return f||s;                                              // 刷新失败也先用旧 token，别误杀
+      }
+    }
+    return s;
+  }catch(e){return null}
+}
+async function refreshAdminSession(){
+  try{var r=await sb.auth.refreshSession();return (r&&r.data&&r.data.session)||null}catch(e){return null}
+}
 async function callAdmin(op,table,opts){
   opts=opts||{};
   try{
@@ -15,8 +39,23 @@ async function callAdmin(op,table,opts){
     if(opts.userId!==undefined)bodyObj.userId=opts.userId;
     if(opts.password!==undefined)bodyObj.password=opts.password;
     var body=JSON.stringify(bodyObj);
-    var r=await fetch(SUPAFUNC_BASE,{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,Authorization:'Bearer '+(await sb.auth.getSession()).data.session?.access_token||''},body:body});
-    if(!r.ok){var txt=await r.text();console.error('callAdmin failed:',r.status,txt);return{data:null,error:{message:'Admin API error: HTTP ' + r.status + ' - ' + (txt||'empty response')}}};
+    var ses=await validAdminSession();
+    // 括号必须包住 token：原来写成 'Bearer '+token||'' ，+ 优先级高于 || ，
+    // session 为 null 时会拼出字符串 'Bearer undefined' → 代理 401。
+    // 没有 token 时不在这里短路，仍发一次请求，由 401 分支强制刷新重试兜底。
+    var token=(ses&&ses.access_token)||'';
+    var post=function(t){return fetch(SUPAFUNC_BASE,{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,Authorization:'Bearer '+t},body:body})};
+    var r=await post(token);
+    if(r.status===401){
+      var s2=await refreshAdminSession();                       // 请求途中刚好过期：刷新后重试一次
+      if(s2&&s2.access_token)r=await post(s2.access_token);
+    }
+    if(!r.ok){
+      var txt=await r.text();
+      console.error('callAdmin failed:',r.status,txt);
+      if(r.status===401)return{data:null,error:{message:'登录状态已失效，请重新登录后再操作（代理仍返回 401）'}};
+      return{data:null,error:{message:'Admin API error: HTTP ' + r.status + ' - ' + (txt||'empty response')}};
+    }
     return await r.json();
   }catch(e){console.error('callAdmin error:',e);return{data:null,error:{message:e.message||'Network error'}};}
 }

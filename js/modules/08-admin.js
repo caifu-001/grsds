@@ -961,9 +961,10 @@ async function saveNewUser(){
   if(roleVal&&roleVal.startsWith('r_')){roleId=parseInt(roleVal.slice(2));role='custom'}
   if(!email){showToast('请输入邮箱');return}
   if(!password||password.length<6){showToast('密码至少6位');return}
-  // Step 1: Refresh admin token, capture fresh access_token for fetch
-  var adminToken=null;
-  try{try{await sb.auth.refreshSession()}catch(e){}var s=(await sb.auth.getSession()).data.session;if(s)adminToken=s.access_token}catch(e){}
+  // Step 1: 刷新并备份管理员完整 session（access_token + refresh_token）
+  var adminSession=null;
+  try{try{await sb.auth.refreshSession()}catch(e){}var s=(await sb.auth.getSession()).data.session;
+    if(s&&s.access_token&&s.refresh_token)adminSession={access_token:s.access_token,refresh_token:s.refresh_token}}catch(e){}
   // Step 2: Backup admin localStorage (now contains refreshed tokens from step 1)
   var authKey=null,authVal=null;
   for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k&&k.indexOf('auth-token')>=0){authKey=k;authVal=localStorage.getItem(k);break}}
@@ -975,9 +976,14 @@ async function saveNewUser(){
     showToast('该邮箱已注册，请在Supabase Auth面板中查找用户ID后手动关联档案');
     return;
   }else{showToast('创建失败: '+(error?error.message:'未知错误'));return}
-  // Step 4: Restore admin localStorage, reload sb client session
-  if(authKey&&authVal){localStorage.setItem(authKey,authVal);await sb.auth.getSession()}
-  // Step 5: Write profile via raw fetch (adminToken from step 1 — independent of sb client state)
+  // Step 4: 恢复管理员 session。getSession() 只读内存、不会重读 localStorage，
+  // 所以原来「setItem + getSession」是无效的：signUp 若把 sb 切成新用户或清空
+  // session，后续 callAdmin 会拿着错误 token 调代理 → 401 invalid or expired token。
+  // 必须用 setSession() 把内存 + storage 一起写回（已确认全库无 onAuthStateChange 监听）。
+  if(adminSession){
+    try{await sb.auth.setSession(adminSession)}catch(e){if(authKey&&authVal)localStorage.setItem(authKey,authVal)}
+  }else if(authKey&&authVal){localStorage.setItem(authKey,authVal)}
+  // Step 5: 写档案（session 已在 Step 4 恢复，callAdmin 拿到的是管理员 token）
   var selCompanyId=null;if(isSuperAdmin){var cname=document.getElementById('add-user-company').value.trim();if(cname){var found=null;var cab=typeof allAdminCompanies!=='undefined'?allAdminCompanies:allCompanies||[];for(var i=0;i<cab.length;i++){if(cab[i].name===cname){found=cab[i];break}}if(found){selCompanyId=found.id}else{showToast('未找到公司: '+cname);return}}}
   var body={user_id:newUserId,email:email,role:role||'user',role_id:roleId,company_id:selCompanyId||currentCompanyId,display_name:name,position:position,phone:phone,department_id:deptId?parseInt(deptId):null};
   var res=await callAdmin('upsert','profiles',{payload:body,query:'*'});

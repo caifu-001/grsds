@@ -291,9 +291,56 @@ body、把 `userId` / `password` 透传到顶层 —— **table 按约定就是�
 })()
 ```
 
+### 超管重置密码 401：session 过期 + token 拼接 bug（第四轮，2026-11-28）
+
+**现象**：400 修好后，超管重置**其他公司**成员密码变成
+`401 {"error":"Unauthorized: invalid or expired token"}`。
+
+**先定性**：401 来自代理第 1 段身份校验（`/auth/v1/user`），**早于**所有表/权限判定，
+因此与目标用户属于哪家公司**完全无关**。「其他公司」只是操作场景，不是原因。
+线上探测：无 token → `missing bearer token`，假 token → `invalid or expired token`；
+service_role 查超管 auth 账号：未封禁、邮箱已确认 → 账号侧没问题。
+
+**根因 1（运算符优先级）**：`01-core.js` 原写法
+`Authorization:'Bearer '+(await sb.auth.getSession()).data.session?.access_token||''`。
+`+` 优先级高于 `||`，实际等价于 `('Bearer ' + token) || ''`；session 为 null 时拼出字符串
+`'Bearer undefined'`（truthy，`||''` 不生效）→ 代理拿到无效 token → 401。
+
+**根因 2（JWT 过期 + 自动刷新没落地）**：`supabase.createClient(URL, ANON)` 用默认配置，
+access_token 默认 1 小时；页面长时间后台、以及控制台一直出现的
+`Tracking Prevention blocked access to storage` 会让自动刷新没写回存储。
+前端原本没有任何主动刷新 / 401 重试，一旦 `getSession()` 返回过期 session，
+**所有 `callAdmin` 操作**（不止重置密码）都会 401。
+
+**修法（只改前端，代理不用动）**：
+- 新增 `validAdminSession()` / `refreshAdminSession()`：`expires_at` 剩 60 秒内提前刷新；
+  刷新失败不误杀，仍用旧 token 发请求；**401 时强制刷新并重试一次**；最终仍 401
+  才返回「登录状态已失效，请重新登录」而不是笼统的 401。
+- 修正括号，token 为空时不再产生 `Bearer undefined`。
+- 顺带修 `08-admin.js` 的 `saveNewUser()` Step 4：原来用
+  `localStorage.setItem(...) + getSession()` 恢复管理员 session 是**无效**的
+  （supabase-js@2 的 `getSession()` 读内存、不会重读 storage）。改用
+  `setSession({access_token, refresh_token})`，避免建号后 session 被切成新用户、
+  后续所有 `callAdmin` 401。已确认全库无 `onAuthStateChange` 监听器，`setSession` 无副作用。
+
+**验证**：`check-ui` / `smoke-batchB` / `lint-contracts` / `lint-hoisting` 全绿，
+安全门禁 70/70；新增 `.workbuddy/tools/pgtest/verify-calladmin.mjs` 沙箱 **7/7**
+（有效 session 直放、快过期提前刷新、401 刷新重试、刷新失败明确提示、
+不拼 `Bearer undefined`、userId/password 透传、刷新失败不误杀）。
+
+**不等前端部署也能立刻恢复**：重新登录一次；或控制台执行
+`await sb.auth.refreshSession()` 后重试。先看 session 状态：
+
+```js
+(async()=>{const s=(await sb.auth.getSession()).data.session;console.log(s?{hasToken:!!s.access_token,expires_at:new Date(s.expires_at*1000).toISOString(),expired:Date.now()>s.expires_at*1000}:'session=null，需要重新登录')})()
+```
+
 ### 还剩什么
 
-- **重新部署 admin-proxy**（本轮改了 2 处，比上一轮大）。部署后直接用界面重试一次重置密码，
-  或跑上面的探针；再用**公司管理员账号**验证「重置本公司成员密码」也能成功（这条以前是 500）。
+- **前端改动需 push + GitHub Pages 生效（1~3 分钟）+ Ctrl+F5 强刷**才会生效；
+  `index.html` 的 `?v=` 已按 md5 刷新，别用旧缓存。
+- **第三轮的 admin-proxy 仍要重新部署**（那两处：auth_* 表名校验、helpers 作用域）。
+  401 发生在身份校验阶段，看不出代理版本，所以这次报错**不能**证明代理已部署；
+  部署后用「不存在 uid」探针确认（见上一节），再试重置密码。
 - 第四节 7 条人工验证清单。重点：用 1281 的公司管理员登录，确认看不到超管、
   看不到超管日志、**能编辑自己公司资料**、审核按钮不可用。
