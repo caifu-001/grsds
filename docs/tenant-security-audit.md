@@ -161,10 +161,52 @@ harness 留在 `.workbuddy/tools/pgtest/`（不进 git），后续改 SQL 可以
 本地 PostgreSQL 16.4 复现 42P17 后执行该补丁：递归消失、管理员能正常读到本公司成员关系、
 匿名读 companies 变成 `permission denied`；主脚本 + 补丁一起跑 **32/32 断言全通过**。
 
+### 补丁执行后的线上实测（2026-11-28）
+
+| 检查项 | 实测结果 |
+|---|---|
+| 匿名直查 `company_memberships` | `[]` / `Content-Range: */0`，**42P17 消失** |
+| 匿名读 `companies` | `42501 permission denied`（提示 `GRANT SELECT ... TO anon`），4510 行不再外泄 |
+| 匿名读 profiles / operation_logs / clients / contacts / orders / invitations | 仍全部 **0 行** |
+
+`revoke select on companies from anon` 只影响未登录态：登录后的请求带用户 JWT
+（role=`authenticated`），不走 anon 权限。逐条核过前端 10 处 `from('companies')` 调用，
+`02-auth.js` 检查注册中公司、管理页公司名录、公司名自动补全全部发生在登录之后，不受影响。
+
+### 不用去 Dashboard 也能确认 admin-proxy 版本
+
+代理强制校验用户 JWT，无 token 时 v4/v5 都返回 401；拿 `service_role` key 去探也会被
+GoTrue 以 `bad_jwt: missing sub claim` 拒绝，所以**外部探不到版本**。
+登录任意账号后，在浏览器控制台粘贴：
+
+```js
+(async () => {
+  const r = await callAdmin('rpc', '__version_probe__', { payload: {} });
+  const m = (r && r.error && r.error.message) || '';
+  console.log(m.includes('rpc not allowed') ? '✅ admin-proxy v5' : '❌ 不是 v5 / 未部署', m.slice(0, 160));
+})();
+```
+
+v5 会在 RPC 白名单处直接返回 `Forbidden: rpc not allowed: __version_probe__`；
+v4 会把这个不存在的函数转给 PostgREST，返回 `Could not find the function`。
+探针不发任何写请求、不改数据。
+
+### 部署 v5 后发现并修掉的一处功能回归
+
+v5 把 companies 的写校验收紧成「filters 里必须有 `company_id` 且属于自己管理的公司」，
+但 `08-admin.js` 的 `saveCompany` / `deleteCompany` 是按 `id` 定位的（companies.id 就是
+company_id），filters 里没有 company_id → **公司管理员编辑/删除自己公司会收到 403**（v4 下正常）。
+
+已在代理里补「按 id 回查该行真实归属」，并**以回查结果为唯一依据**（filters / payload 里的
+`company_id` 是前端传的，可以伪造）：命中 `ownCompanyIds` 才放行，跨公司仍拒绝；
+审核类字段（`status` / `is_tenant` 等）继续剥离。
+把代理源码剥离 TS 类型后在本地沙箱里真实执行（`.workbuddy/tools/pgtest/verify-proxy.mjs`），
+9 条断言全通过，含「伪造 `company_id` 过滤 + 跨公司 id」仍返回 403。
+`profiles` 加严的「无过滤不给查」也核过：唯一无过滤的调用 `08-admin.js:344` 只在超管分支，
+v5 对超管直接放行，不受影响。
+
 ### 还剩什么
 
-- **`admin-proxy` v5 必须确认已部署**。Edge Function 在线（无 token 返回 401 属正常），
-  但版本无法从外部探测 —— 需要到 Dashboard → Edge Functions → `admin-proxy` 看代码首行
-  是否为 `admin-proxy v5 (multi-tenant hardened)` / 部署时间是否晚于本次改动。
-  没部署的话，前端的跨公司写操作仍走旧代理，第 2 条防线是缺的。
-- 第四节 7 条人工验证清单。
+- **重新部署一次 admin-proxy**（上面这处回归修复），再用控制台探针确认是 v5。
+- 第四节 7 条人工验证清单。重点：用 1281 的公司管理员登录，确认看不到超管、
+  看不到超管日志、**能编辑自己公司资料**、注册审核按钮不可用。

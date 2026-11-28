@@ -329,9 +329,27 @@ Deno.serve(async (req) => {
             (payload && payload.company_id != null ? String(payload.company_id) : null);
 
           if (safeTable === "companies") {
-            // 只能改自己管理的公司；审核类字段一律剥离
+            // 只能改自己管理的公司；审核类字段一律剥离。
+            // companies 的 id 就是 company_id：前端按 id 保存/删除本公司资料时
+            // filters 里只有 id、没有 company_id，此时必须回查该行真实归属，
+            // 否则公司管理员连「编辑自己公司」都会被误判成跨公司（403）。
+            // 以「按 id 回查到的行」为唯一依据，不用 filters / payload 里的
+            // company_id —— 那些是前端传的，可以伪造。
             const ownCompanyIds = Object.keys(adminOf);
-            if (fc == null || ownCompanyIds.indexOf(String(fc)) < 0) {
+            let scopeCid: string | null = null;
+            if (rid != null) {
+              const rr = await rest(
+                "companies?id=eq." + encodeURIComponent(rid) + "&select=id&limit=1"
+              );
+              if (rr.ok) {
+                const rows = await rr.json();
+                scopeCid = Array.isArray(rows) && rows[0] && rows[0].id != null
+                  ? String(rows[0].id) : null;
+              }
+            } else {
+              scopeCid = fc; // 没有按 id 定位时（批量更新），才退回到显式范围
+            }
+            if (scopeCid == null || ownCompanyIds.indexOf(String(scopeCid)) < 0) {
               return json({ error: "Forbidden: company out of scope" }, 403);
             }
             if (payload && typeof payload === "object" && !Array.isArray(payload)) {
