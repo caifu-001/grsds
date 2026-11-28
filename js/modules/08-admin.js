@@ -394,9 +394,9 @@ function renderAdminPerms(){
       var tc=PERM_TEXT_COLORS[lvl]||PERM_TEXT_COLORS.none;
       var label=PERM_LABELS[lvl]||'无';
       if(role.isDefault){
-        h+='<td class="pm-cell pm-readonly" style="background:'+bg+';color:'+tc+'">'+label+'</td>';
+        h+='<td class="pm-cell pm-readonly" style="background:'+bg+';color:'+tc+'" title="内置角色权限固定；如需自定义请在「角色管理」中新建或编辑角色">'+label+'</td>';
       }else{
-        h+='<td class="pm-cell pm-editable" style="background:'+bg+';color:'+tc+'" onclick="cyclePermLevel(this,\''+role.id+',\''+modules[mi]+'\')" title="点击切换">'+label+'</td>';
+        h+='<td class="pm-cell pm-editable" style="background:'+bg+';color:'+tc+'" onclick="cyclePermLevel(this,'+parseInt(role.id,10)+',\''+modules[mi]+'\')" title="点击切换：无 → 查看 → 查看/编辑 → 完全控制">'+label+'</td>';
       }
     }
     h+='</tr>';
@@ -408,18 +408,18 @@ function renderAdminPerms(){
 async function cyclePermLevel(cell,roleId,module){
   // Find role and cycle permission level
   var role=allRoles.find(function(x){return x.id===parseInt(roleId)});
-  if(!role)return;
+  if(!role)return;if(!isSuperAdmin&&Number(role.company_id)!==Number(currentCompanyId)){showToast('无权修改其他公司的角色','error');return}
   var perms=role.permissions;
-  if(typeof perms==='string')perms=JSON.parse(perms);
+  if(typeof perms==='string'){try{perms=JSON.parse(perms)}catch(e){perms={}}}
   perms=perms||{};
   var cur=perms[module]||'none';
   var idx=PERM_LEVELS.indexOf(cur);
   var next=PERM_LEVELS[(idx+1)%PERM_LEVELS.length];
   perms[module]=next;
   
-  // Save to DB
-  var {error}=await sb.from('roles').update({permissions:perms,updated_at:new Date().toISOString()}).eq('id',parseInt(roleId));
-  if(error){showToast('保存失败: '+error.message);return;}
+  // 写库必须校验命中行数：RLS 过滤时会「200 无 error 但 0 行」；roles 读走直连，绝不回退代理
+  var wr=await safeWriteById('roles','update',{permissions:perms,updated_at:new Date().toISOString()},parseInt(roleId),{allowProxy:false});
+  if(!wr.hit||wr.error){showToast('保存失败: '+((wr.error&&wr.error.message)||'未命中任何行，可能被权限策略过滤'),'error');return}
   role.permissions=perms;
   
   // Update cell display
@@ -436,7 +436,7 @@ function renderAdminRoles(){
     var r=allRoles[i];
     var permMap={none:'无',view:'查看',view_edit:'查看/编辑',full:'完全控制'};
     var perms=r.permissions||{};
-    if(typeof perms==='string')perms=JSON.parse(perms);
+    if(typeof perms==='string'){try{perms=JSON.parse(perms)}catch(e){perms={}}}
     var labels=[];
     if(perms.clients)labels.push('客户:'+(permMap[perms.clients]||perms.clients));
     if(perms.orders)labels.push('订单:'+(permMap[perms.orders]||perms.orders));
@@ -449,7 +449,7 @@ function renderAdminRoles(){
 function openRoleForm(id){
   var r=id?allRoles.find(function(x){return x.id===id}):null;
   var perms=r?r.permissions:null;
-  if(typeof perms==='string')perms=JSON.parse(perms);
+  if(typeof perms==='string'){try{perms=JSON.parse(perms)}catch(e){perms={}}}
   perms=perms||{};
   var modules=['clients','orders','sales','inventory','admin','reports'];
   var modNames={clients:'客户管理',orders:'订单管理',sales:'销售管理',inventory:'供应链',admin:'系统管理',reports:'报表'};
