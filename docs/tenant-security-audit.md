@@ -125,3 +125,46 @@ PostgreSQL 的 `CREATE OR REPLACE FUNCTION` 允许「加默认值」，**不允�
 ```
 
 harness 留在 `.workbuddy/tools/pgtest/`（不进 git），后续改 SQL 可以先本地跑通再上线上。
+
+## 七、线上执行后的只读验收（2026-11-28 10:51）
+
+用户在 SQL Editor 执行成功、无报错。用 service_role + anon key 复核的实际结果：
+
+| 检查项 | 线上实际值 | 结论 |
+|---|---|---|
+| `platform_config.super_admin_email` | `767142066@qq.com`（02:51 UTC 写入） | ✓ |
+| `profiles.role='super_admin'` 行数 | **1**（仅 767142066） | ✓ 唯一化生效 |
+| 75989677@qq.com | 已降为 `admin`，公司 1737 | ✓ |
+| `companies.is_tenant=true` | 5 家（1 / 755 / 1281 / 1734 / 1737） | ✓ 客户档案没被误标 |
+| 待审核租户 | 0 | ✓ |
+| `operation_logs.actor_role` | 超管行 10561 / 非空 10612 / null 14537（对不上 profiles 的历史行） | ✓ 回填生效 |
+| `is_platform_super_user()` 实调 | 超管 uid → `true`；假超管 uid → `false` | ✓ 邮箱绑定生效 |
+| 函数签名 | 5 个 RPC 空参调用均 404（不是 300/203）+ OpenAPI required 列表正确 | ✓ 无歧义重载、默认值都还在 |
+| 匿名读 profiles / operation_logs / clients / contacts / orders / invitations | 全部 **0 行** | ✓ 旧宽松策略清干净了 |
+| 线上前端 | `index.html` 的 `?v=` 与本地 3 个 JS 的 md5 完全一致，特征串 `isPlatformSuperProfile` / `approve_tenant_company` / `actor_role` 全命中 | ✓ 已生效 |
+
+### 顺带发现的两个历史遗留（不是本次脚本造成的）
+
+1. **匿名直查 `company_memberships` 报 `42P17 infinite recursion detected in policy`**。
+   根因是 `sql/create_memberships_table.sql` 留下的两条「自引用」策略（策略体里
+   `FROM company_memberships cm2` 查的还是自己）。加固脚本只清了 `profiles` /
+   `operation_logs` 的旧策略，没动这张表。
+   **当前不影响主流程**：登录走 `rpc/get_my_memberships`（SECURITY DEFINER 绕 RLS）、
+   成员管理走 admin-proxy（service_role 绕 RLS）；但任何直连读写成员关系都会失败。
+2. **匿名 key 能读 `companies` 全表 4510 行**（客户公司档案 + 5 家租户公司名）。
+   其余核心表都是 0 行，只有这一张漏。属于客户公司名自动补全的历史宽松读策略。
+
+两个都写进了 `sql/fix_membership_rls_recursion.sql`（幂等、可重复执行）：
+循环 drop 该表全部旧策略 → 用 SECURITY DEFINER 的 `my_admin_company_ids()` 重建不递归的策略
+→ `revoke select on public.companies from anon`（只收匿名，登录用户不受影响）。
+
+本地 PostgreSQL 16.4 复现 42P17 后执行该补丁：递归消失、管理员能正常读到本公司成员关系、
+匿名读 companies 变成 `permission denied`；主脚本 + 补丁一起跑 **32/32 断言全通过**。
+
+### 还剩什么
+
+- **`admin-proxy` v5 必须确认已部署**。Edge Function 在线（无 token 返回 401 属正常），
+  但版本无法从外部探测 —— 需要到 Dashboard → Edge Functions → `admin-proxy` 看代码首行
+  是否为 `admin-proxy v5 (multi-tenant hardened)` / 部署时间是否晚于本次改动。
+  没部署的话，前端的跨公司写操作仍走旧代理，第 2 条防线是缺的。
+- 第四节 7 条人工验证清单。
