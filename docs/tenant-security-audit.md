@@ -200,6 +200,31 @@ v5 会在 RPC 白名单处直接返回 `Forbidden: rpc not allowed: __version_pr
 v4 会把这个不存在的函数转给 PostgREST，返回 `Could not find the function`。
 探针不发任何写请求、不改数据。
 
+**局限**：这个探针只能证明「跑的是 v5 系列」，**分不出是不是 `1048a57` 修好的那一版**
+—— 修复改的是 companies 的归属判定，RPC 白名单两版完全一样。要确认修复版已部署，
+用**公司管理员账号**（超管会跳过那段判定，测不出来）登录后再跑探针 ②：
+
+```js
+(async () => {
+  const r = await callAdmin('update', 'companies', {
+    payload: { __probe_col__: 1 },
+    filters: [{ col: 'id', op: 'eq', val: currentCompanyId }]
+  });
+  const s = JSON.stringify(r || {});
+  if (/company out of scope/.test(s)) console.log('❌ 旧版 v5，修复未部署');
+  else if (/__probe_col__|does not exist|42703/.test(s)) console.log('✅ 修复版 v5 已部署');
+  else console.log('? 未预期响应', s.slice(0, 200));
+})();
+```
+
+原理：按 `id` 更新自己公司、payload 里放一个**不存在的列**。旧版在归属校验处就 403
+（`Forbidden: company out of scope`），修复版会回查到本公司、放行到 PostgREST，
+而 PostgREST 在列校验阶段就返回 `42703 column "__probe_col__" does not exist`。
+**两种情况都不会写入任何数据**（旧版压根没发出 PATCH）。
+本地把 `6cb9845`（未修版）与当前版源码分别放进沙箱真实执行，探针结果一个是
+`HTTP 403 / PATCH=false`，一个是 `HTTP 200 / 42703`，已验证能稳定区分
+（`.workbuddy/tools/pgtest/verify-proxy-probe.mjs`）。
+
 ### 部署 v5 后发现并修掉的一处功能回归
 
 v5 把 companies 的写校验收紧成「filters 里必须有 `company_id` 且属于自己管理的公司」，
@@ -216,6 +241,7 @@ v5 对超管直接放行，不受影响。
 
 ### 还剩什么
 
-- **重新部署一次 admin-proxy**（上面这处回归修复），再用控制台探针确认是 v5。
+- **重新部署一次 admin-proxy**（上面这处回归修复）。探针 ① 已确认线上是 v5 系列，
+  但分不出有没有带上修复；部署后用**公司管理员账号**跑探针 ② 确认是修复版。
 - 第四节 7 条人工验证清单。重点：用 1281 的公司管理员登录，确认看不到超管、
   看不到超管日志、**能编辑自己公司资料**、注册审核按钮不可用。
