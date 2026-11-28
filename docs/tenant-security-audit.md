@@ -168,6 +168,15 @@ harness 留在 `.workbuddy/tools/pgtest/`（不进 git），后续改 SQL 可以
 | 匿名直查 `company_memberships` | `[]` / `Content-Range: */0`，**42P17 消失** |
 | 匿名读 `companies` | `42501 permission denied`（提示 `GRANT SELECT ... TO anon`），4510 行不再外泄 |
 | 匿名读 profiles / operation_logs / clients / contacts / orders / invitations | 仍全部 **0 行** |
+| 补丁末尾自检（用户贴回） | `cm_policies=2`、`self_ref_policies=0`、`profile_policies=3` —— **三个全部命中预期** |
+
+三个数字的含义：
+
+- `cm_policies=2`：重建后的 `cm_select` + `cm_write` 两条，其余旧策略已被循环 drop。
+- `self_ref_policies=0`：策略体里再没有 `FROM company_memberships` 的自引用，42P17 的根因已除。
+- `profile_policies=3`：加固脚本建立的 `profiles_select_self` / `profiles_insert_self` /
+  `profiles_update_self`。脚本末尾会循环 drop 这 3 条之外的所有历史策略，所以**等于 3 是干净的
+  证明** —— 留任何一条 `FOR ALL USING(true)` 之类的旧策略，RLS 的「或」关系都会让隔离形同虚设。
 
 `revoke select on companies from anon` 只影响未登录态：登录后的请求带用户 JWT
 （role=`authenticated`），不走 anon 权限。逐条核过前端 10 处 `from('companies')` 调用，
