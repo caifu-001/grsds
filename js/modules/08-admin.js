@@ -14,7 +14,7 @@ sb.auth.getSession().then(async function(res){
     if(profile){currentUserRole=profile.role||'user';isSuperAdmin=isPlatformSuperProfile(profile);currentCompanyId=profile.active_company_id||profile.company_id;currentCompanyRole=currentUserRole;currentCompanyName='';}
     if(!currentCompanyId){document.getElementById('login-screen').classList.remove('hidden');return}
     // Load multi-company memberships
-    try{var {data:mems}=await sb.rpc('get_my_memberships');if(mems&&mems.length){allMyCompanies=mems;var cur=mems.find(function(m){return m.company_id==currentCompanyId});if(cur){currentCompanyRole=cur.role||currentUserRole;currentCompanyName=cur.company_name||'';currentUserRole=currentCompanyRole;}}}catch(e){console.error('get_my_memberships failed:',e)}
+    try{var {data:mems}=await sb.rpc('get_my_memberships');if(mems&&mems.length){allMyCompanies=mems;var cur=mems.find(function(m){return m.company_id==currentCompanyId});if(cur){currentCompanyRole=cur.role||currentUserRole;currentCompanyName=cur.company_name||'';if(!isSuperAdmin)currentUserRole=currentCompanyRole;}}}catch(e){console.error('get_my_memberships failed:',e)}
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('main-screen').classList.remove('hidden');
     switchTab('analytics');

@@ -334,7 +334,7 @@ async function onLoginSuccess(user){
     }
   }
   // Sync currentUserRole for code that still uses the old variable
-  currentUserRole=currentCompanyRole;
+  currentUserRole=isSuperAdmin?'super_admin':currentCompanyRole; // 平台超管身份来自 profiles.role+平台邮箱，不能被 company_memberships.role(超管在 1734 只是 admin)覆盖
   document.getElementById('main-screen').classList.remove('hidden');
   updateCompanyUIBadge();
   if(isAdmin())document.getElementById('tab-admin').classList.remove('hidden');
@@ -352,7 +352,7 @@ async function switchActiveCompany(companyId){
   currentCompanyId=companyId;
   currentCompanyRole=mem.role||'member';
   currentCompanyName=mem.company_name||'';
-  currentUserRole=currentCompanyRole;
+  currentUserRole=isSuperAdmin?'super_admin':currentCompanyRole; // 平台超管身份来自 profiles.role+平台邮箱，不能被 company_memberships.role(超管在 1734 只是 admin)覆盖
   updateCompanyUIBadge();
   // 重新加载所有数据
   location.reload();
