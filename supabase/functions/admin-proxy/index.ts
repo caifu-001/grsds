@@ -39,6 +39,13 @@ const SUPER_ADMIN_EMAIL = (Deno.env.get("SUPER_ADMIN_EMAIL") || "767142066@qq.co
 // 允许通过代理调用的 RPC（其余一律拒绝）
 const ALLOWED_RPC = ["write_op_log", "batch_grant_resources"];
 
+// 高风险 Auth Admin 操作：直接调 GoTrue /auth/v1/admin/users/，不走 /rest/v1/<table>。
+// 前端按约定传 table:''（见 01-core.js callAdmin 透传 userId/password），因此下面
+// 第 3 段的表名注入校验必须跳过它们 —— 否则 400 "unsafe table name" 会让超管
+// 无法重置密码 / 删除用户。权限由第 4 段 isAdmin / isSuper / targetUserInScope
+// 三层把关，与 table 无关；把 safeTable 置空可确保恶意 table 也不会被后面误用。
+const AUTH_OPS = ["auth_list_users", "auth_reset_password", "auth_delete_user"];
+
 // ── 表策略 ──
 const ADMIN_ONLY_TABLES = ["companies", "departments", "roles", "approval_templates"];
 const SHARED_TABLES = ["workflow_templates"];
@@ -102,6 +109,19 @@ Deno.serve(async (req) => {
   const rest = (path: string, init?: RequestInit) =>
     fetch(SUPABASE_URL + "/rest/v1/" + path, Object.assign({ headers: svcHeaders }, init || {}));
 
+  // ── helpers 共享状态（必须放在 try 外）──
+  // 下方 helpers（targetUserInScope / checkSelfTable 等）定义在 try/catch 之外，
+  // 只能看到 serve 回调作用域的变量。早期把 allowed / inAllowed / eqValOf 写在
+  // try 内，非超管一调用就 ReferenceError("allowed is not defined") → 500。
+  // 受影响：公司管理员重置/删除成员、以及所有走 checkSelfTable 的读写。
+  let allowed: Record<string, boolean> = {};
+  let isSuper = false;
+  const inAllowed = (v: unknown) => isSuper || (v != null && allowed[String(v)] === true);
+  const eqValOf = (arr: any[], col: string) => {
+    const f = (arr || []).find((x) => x && x.col === col && (x.op || "eq") === "eq");
+    return f ? String(f.val) : null;
+  };
+
   try {
     // ── 0. 解析请求体 ──
     const body = await req.json();
@@ -133,14 +153,14 @@ Deno.serve(async (req) => {
 
     const superEmails = new Set([SUPER_ADMIN_EMAIL]);
     // 双校验：role 与邮箱必须同时满足
-    const isSuper = profile.role === "super_admin" && superEmails.has(callerEmail);
+    isSuper = profile.role === "super_admin" && superEmails.has(callerEmail);
 
     const memRes = await rest(
       "company_memberships?user_id=eq." + encodeURIComponent(callerId) +
         "&status=eq.active&select=company_id,role&limit=1000"
     );
     const memArr = memRes.ok ? await memRes.json() : [];
-    const allowed: Record<string, boolean> = {};
+    allowed = {};
     const adminOf: Record<string, boolean> = {};
     const memFirstCompany: string | null = (() => {
       const arr = Array.isArray(memArr) ? memArr : [];
@@ -183,33 +203,36 @@ Deno.serve(async (req) => {
       }
     }
 
-    const inAllowed = (v: unknown) => isSuper || (v != null && allowed[String(v)] === true);
-
-    const eqValOf = (arr: any[], col: string) => {
-      const f = (arr || []).find((x) => x && x.col === col && (x.op || "eq") === "eq");
-      return f ? String(f.val) : null;
-    };
+    // inAllowed / eqValOf 已提到 try 外（helpers 需要共享），此处不再重复定义。
 
     // ── 3. 注入防护：query 只允许纯列清单；filters.col 只允许标识符 ──
+    // auth_* 走的是 GoTrue Admin API（/auth/v1/admin/users/...），table / query /
+    // filters 全都不参与 URL 构造，且前端按约定传 table:'' → 三段校验一律跳过，
+    // 否则 400 "unsafe table name" 会让超管无法重置密码 / 删除用户。
+    const isAuthOp = AUTH_OPS.includes(op);
     const sel = typeof query === "string" && query.trim() ? query.trim() : "*";
-    if (!SELECT_RE.test(sel)) {
+    if (!isAuthOp && !SELECT_RE.test(sel)) {
       return json({ error: "Bad request: unsafe select expression" }, 400);
     }
     const fArr: any[] = Array.isArray(filters) ? filters : [];
-    for (const f of fArr) {
-      if (!f || typeof f !== "object") return json({ error: "Bad request: invalid filter" }, 400);
-      const col = f.col == null ? "" : String(f.col);
-      if (col !== "" && !IDENT_RE.test(col)) {
-        return json({ error: "Bad request: unsafe filter column" }, 400);
+    if (!isAuthOp) {
+      for (const f of fArr) {
+        if (!f || typeof f !== "object") return json({ error: "Bad request: invalid filter" }, 400);
+        const col = f.col == null ? "" : String(f.col);
+        if (col !== "" && !IDENT_RE.test(col)) {
+          return json({ error: "Bad request: unsafe filter column" }, 400);
+        }
       }
     }
-    const safeTable = typeof table === "string" ? table : "";
-    if (op !== "rpc" && !IDENT_RE.test(safeTable)) {
+    // auth_* 的 table 强制置空（不参与构造，也杜绝恶意值被后面误用）；
+    // rpc 的 table 是函数名，由第 6 段 ALLOWED_RPC 白名单单独把关。
+    const safeTable = isAuthOp ? "" : (typeof table === "string" ? table : "");
+    if (op !== "rpc" && !isAuthOp && !IDENT_RE.test(safeTable)) {
       return json({ error: "Bad request: unsafe table name" }, 400);
     }
 
     // ── 4. 高危 Auth 操作：仅管理员 ──
-    if (op === "auth_list_users" || op === "auth_reset_password" || op === "auth_delete_user") {
+    if (isAuthOp) {
       if (!isAdmin) return json({ error: "Forbidden: admin required" }, 403);
 
       if (!isSuper && op !== "auth_list_users") {

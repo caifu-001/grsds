@@ -239,9 +239,61 @@ company_id），filters 里没有 company_id → **公司管理员编辑/删除�
 `profiles` 加严的「无过滤不给查」也核过：唯一无过滤的调用 `08-admin.js:344` 只在超管分支，
 v5 对超管直接放行，不受影响。
 
+### 超管重置密码 400 / 非超管 500（第三轮修复，2026-11-28）
+
+**现象**：超管在员工管理里重置普通用户密码失败：
+`callAdmin failed: 400 {"error":"Bad request: unsafe table name"}`。
+控制台里的 `Tracking Prevention blocked access to storage` 是浏览器第三方存储提示，
+与本次失败无关 —— 请求已发出且拿到 400，说明 token 正常。
+
+**根因 1（400，v5 引入的回归）**：前端 `doResetPassword()` / `deleteUser()` 走
+`callAdmin('auth_reset_password','',{userId,password})`；`01-core.js` 把 `table` 原样放进
+body、把 `userId` / `password` 透传到顶层 —— **table 按约定就是空串**。v5 新加的第 3 段
+注入防护却对「所有非 rpc 的 op」都要求 `IDENT_RE.test(table)`，空串不匹配 → 在到达
+第 4 段 auth 分支之前就 400。受影响：`auth_reset_password` / `auth_delete_user` /
+`auth_list_users`。v4 没有这段校验，属 v5 回归。
+
+**根因 2（500，v4 起的历史遗留）**：本地沙箱跑非超管路径时报
+`ReferenceError: allowed is not defined` / `eqValOf is not defined`。`try {}`（112–529 行）
+里定义 `allowed` / `inAllowed` / `eqValOf`，但 helpers（`targetUserInScope` /
+`checkSelfTable`）位于 catch 之后、try 之外，块级 `const` 不可见。超管路径会提前 return，
+所以一直没暴露。影响面比 auth 更大：**公司管理员重置/删除成员、以及所有走
+`checkSelfTable` 的 profiles / company_memberships / invitations 读写都会 500**。
+
+**修法**：
+1. 常量区新增 `AUTH_OPS`，三段注入校验（select / filter / table）对 auth_* 一律跳过，
+   并把 `safeTable` 强制置空；auth 分支复用同一常量。权限仍由 `isAdmin` / `isSuper` /
+   `targetUserInScope` 三层把关，与 table 无关 —— 跳过校验不放开任何越权。
+2. `allowed` / `inAllowed` / `eqValOf` 提到 try 外的 serve 回调作用域；`isSuper` 改为
+   外层 `let` + try 内赋值，`adminOf` 等仍通过 `ctx` 传入。
+
+**验证**：`.workbuddy/tools/pgtest/verify-proxy.mjs` 扩到 20 条断言，剥离 TS 类型后
+在 vm 沙箱真实执行代理源码：
+
+- 当前版 **20/20**；用 `6cb9845`（修复前 v5）跑同一套 → **7/20**，⑧⑨ 明确
+  `400 unsafe table name`、⑮ 明确 `500 eqValOf is not defined`，排除 harness 假阳性。
+- 覆盖：超管改密/删号放行并真发 GoTrue PUT/DELETE、公司管理员本公司放行、跨公司 403、
+  非管理员 403 且零 GoTrue 写、恶意 table 对数据操作仍 400、auth_* 的恶意 table
+  被置空且不进入 URL、非超管走 `checkSelfTable` 不再 500。
+- 门禁扩到 **70/70**。
+
+### 不用真改密码就能确认修复版已部署
+
+登录超管，控制台粘贴（用一个不存在的 uid，GoTrue 只回 `user_not_found`，**不改任何密码**）：
+
+```js
+(async()=>{
+  const r=await callAdmin('auth_reset_password','',{userId:'00000000-0000-0000-0000-000000000000',password:'probe-only-123456'});
+  const s=JSON.stringify(r||{});
+  if(/unsafe table name/.test(s)) console.log('❌ 旧版代理（400 表名校验）');
+  else if(/user_not_found|not found|404/i.test(s)) console.log('✅ 修复版已部署');
+  else console.log('? 未预期',s.slice(0,200));
+})()
+```
+
 ### 还剩什么
 
-- **重新部署一次 admin-proxy**（上面这处回归修复）。探针 ① 已确认线上是 v5 系列，
-  但分不出有没有带上修复；部署后用**公司管理员账号**跑探针 ② 确认是修复版。
+- **重新部署 admin-proxy**（本轮改了 2 处，比上一轮大）。部署后直接用界面重试一次重置密码，
+  或跑上面的探针；再用**公司管理员账号**验证「重置本公司成员密码」也能成功（这条以前是 500）。
 - 第四节 7 条人工验证清单。重点：用 1281 的公司管理员登录，确认看不到超管、
-  看不到超管日志、**能编辑自己公司资料**、注册审核按钮不可用。
+  看不到超管日志、**能编辑自己公司资料**、审核按钮不可用。
